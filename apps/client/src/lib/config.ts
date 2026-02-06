@@ -69,14 +69,16 @@ export function getFileUrl(src: string) {
   return src;
 }
 
-export function getFileUploadSizeLimit() {
+export function getFileUploadSizeLimit(): number {
   const limit = getConfigValue("FILE_UPLOAD_SIZE_LIMIT", "50mb");
-  return bytes(limit);
+  const parsed = bytes(limit);
+  return Number.isNaN(parsed) || parsed <= 0 ? bytes("50mb") : parsed;
 }
 
-export function getFileImportSizeLimit() {
+export function getFileImportSizeLimit(): number {
   const limit = getConfigValue("FILE_IMPORT_SIZE_LIMIT", "200mb");
-  return bytes(limit);
+  const parsed = bytes(limit);
+  return Number.isNaN(parsed) || parsed <= 0 ? bytes("200mb") : parsed;
 }
 
 export function getDrawioUrl() {
@@ -103,5 +105,6 @@ function getConfigValue(key: string, defaultValue: string = undefined): string {
   const rawValue = import.meta.env.DEV
     ? process?.env?.[key]
     : window?.CONFIG?.[key];
-  return rawValue ?? defaultValue;
+  const value = rawValue ?? defaultValue;
+  return value === "" ? defaultValue : value;
 }
