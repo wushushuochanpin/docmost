@@ -1,0 +1,17 @@
+---
+description: Port exposure rules (no accidental public ports, no port drift)
+alwaysApply: true
+---
+
+# Ports
+
+- Public: **only** `80/443` (Nginx).
+- Server deploy uses repo root `docker-compose.yml` only (do not run `backend/centrifugo/docker-compose.yml`).
+- Docker `ports:` must be pinned and loopback-bound:
+  - ✅ `"127.0.0.1:3001:3001"`
+  - ❌ `"3001"` (random host port)
+  - ❌ `"3001:3001"` (binds 0.0.0.0)
+- Prefer internal networking: remove `ports:` when host access is not needed.
+- Debug access uses `ssh -L` only; do not open security-group/firewall ports.
+
+**After any restart/deploy:** `docker compose ps` must show no `0.0.0.0:xxxx->...`.
