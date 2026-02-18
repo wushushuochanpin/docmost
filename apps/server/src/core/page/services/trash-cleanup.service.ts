@@ -41,7 +41,7 @@ export class TrashCleanupService {
       // Process each page
       for (const page of oldDeletedPages) {
         try {
-          await this.cleanupPage(page.id);
+          await this.cleanupPage(page.id, page.workspaceId);
         } catch (error) {
           this.logger.error(
             `Failed to cleanup page ${page.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -59,7 +59,7 @@ export class TrashCleanupService {
     }
   }
 
-  private async cleanupPage(pageId: string) {
+  private async cleanupPage(pageId: string, workspaceId: string) {
     // Get all descendants using recursive CTE (including the page itself)
     const descendants = await this.db
       .withRecursive('page_descendants', (db) =>
@@ -67,11 +67,13 @@ export class TrashCleanupService {
           .selectFrom('pages')
           .select(['id'])
           .where('id', '=', pageId)
+          .where('workspaceId', '=', workspaceId)
           .unionAll((exp) =>
             exp
               .selectFrom('pages as p')
               .select(['p.id'])
-              .innerJoin('page_descendants as pd', 'pd.id', 'p.parentPageId'),
+              .innerJoin('page_descendants as pd', 'pd.id', 'p.parentPageId')
+              .where('p.workspaceId', '=', workspaceId),
           ),
       )
       .selectFrom('page_descendants')
@@ -90,6 +92,7 @@ export class TrashCleanupService {
         QueueJob.DELETE_PAGE_ATTACHMENTS,
         {
           pageId: id,
+          workspaceId,
         },
         {
           jobId: `delete-page-attachments-${id}`,
@@ -104,7 +107,11 @@ export class TrashCleanupService {
 
     try {
       if (pageIds.length > 0) {
-        await this.db.deleteFrom('pages').where('id', 'in', pageIds).execute();
+        await this.db
+          .deleteFrom('pages')
+          .where('workspaceId', '=', workspaceId)
+          .where('id', 'in', pageIds)
+          .execute();
       }
     } catch (error) {
       // Log but don't throw - pages might have been deleted by another node

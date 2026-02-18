@@ -28,6 +28,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { QueueJob, QueueName } from '../../../integrations/queue/constants';
 import { Queue } from 'bullmq';
 import { createByteCountingStream } from '../../../common/helpers/utils';
+import { getMimeType } from '../../../common/helpers';
 
 @Injectable()
 export class AttachmentService {
@@ -57,13 +58,14 @@ export class AttachmentService {
 
     let isUpdate = false;
     let attachmentId = null;
+    let existingAttachment: Attachment = null;
 
     // passing attachmentId to allow for updating diagrams
     // instead of creating new files for each save
     if (opts?.attachmentId) {
-      const existingAttachment = await this.attachmentRepo.findById(
-        opts.attachmentId,
-      );
+      existingAttachment = await this.attachmentRepo.findById(opts.attachmentId, {
+        workspaceId,
+      });
       if (!existingAttachment) {
         throw new NotFoundException(
           'Existing attachment to overwrite not found',
@@ -71,9 +73,10 @@ export class AttachmentService {
       }
 
       if (
-        existingAttachment.pageId !== pageId &&
-        existingAttachment.fileExt !== preparedFile.fileExtension &&
-        existingAttachment.workspaceId !== workspaceId
+        existingAttachment.pageId !== pageId ||
+        existingAttachment.spaceId !== spaceId ||
+        existingAttachment.workspaceId !== workspaceId ||
+        existingAttachment.fileExt !== preparedFile.fileExtension
       ) {
         throw new BadRequestException('File attachment does not match');
       }
@@ -83,7 +86,15 @@ export class AttachmentService {
       attachmentId = uuid7();
     }
 
-    const filePath = `${getAttachmentFolderPath(AttachmentType.File, workspaceId)}/${attachmentId}/${preparedFile.fileName}`;
+    const targetFileName = isUpdate
+      ? existingAttachment.fileName
+      : preparedFile.fileName;
+    const detectedMimeType = getMimeType(targetFileName);
+
+    preparedFile.fileName = targetFileName;
+    preparedFile.mimeType = detectedMimeType;
+
+    const filePath = `${getAttachmentFolderPath(AttachmentType.File, workspaceId)}/${attachmentId}/${targetFileName}`;
 
     const { stream, getBytesRead } = createByteCountingStream(
       preparedFile.multiPartFile.file,
@@ -99,9 +110,15 @@ export class AttachmentService {
       if (isUpdate) {
         attachment = await this.attachmentRepo.updateAttachment(
           {
+            fileName: targetFileName,
+            filePath: filePath,
+            fileSize: preparedFile.fileSize,
+            mimeType: detectedMimeType,
+            fileExt: preparedFile.fileExtension,
             updatedAt: new Date(),
           },
           attachmentId,
+          workspaceId,
         );
       } else {
         attachment = await this.saveAttachment({
@@ -223,7 +240,7 @@ export class AttachmentService {
       });
     } catch (err) {
       // delete uploaded file on db update failure
-      await this.deleteRedundantFile(filePath);
+      await this.deleteRedundantFile(filePath, workspaceId);
       throw new BadRequestException('Failed to upload image');
     }
 
@@ -231,16 +248,16 @@ export class AttachmentService {
       // delete old avatar or logo
       const oldFilePath =
         getAttachmentFolderPath(type, workspaceId) + '/' + oldFileName;
-      await this.deleteRedundantFile(oldFilePath);
+      await this.deleteRedundantFile(oldFilePath, workspaceId);
     }
 
     return attachment;
   }
 
-  async deleteRedundantFile(filePath: string) {
+  async deleteRedundantFile(filePath: string, workspaceId?: string) {
     try {
       await this.storageService.delete(filePath);
-      await this.attachmentRepo.deleteAttachmentByFilePath(filePath);
+      await this.attachmentRepo.deleteAttachmentByFilePath(filePath, workspaceId);
     } catch (error) {
       this.logger.error('deleteRedundantFile', error);
     }
@@ -295,9 +312,11 @@ export class AttachmentService {
     );
   }
 
-  async handleDeleteSpaceAttachments(spaceId: string) {
+  async handleDeleteSpaceAttachments(spaceId: string, workspaceId?: string) {
     try {
-      const attachments = await this.attachmentRepo.findBySpaceId(spaceId);
+      const attachments = await this.attachmentRepo.findBySpaceId(spaceId, {
+        workspaceId,
+      });
       if (!attachments || attachments.length === 0) {
         return;
       }
@@ -308,7 +327,10 @@ export class AttachmentService {
         attachments.map(async (attachment) => {
           try {
             await this.storageService.delete(attachment.filePath);
-            await this.attachmentRepo.deleteAttachmentById(attachment.id);
+            await this.attachmentRepo.deleteAttachmentById(
+              attachment.id,
+              workspaceId,
+            );
           } catch (err) {
             failedDeletions.push(attachment.id);
             this.logger.log(
@@ -329,12 +351,15 @@ export class AttachmentService {
     }
   }
 
-  async handleDeleteUserAvatars(userId: string) {
+  async handleDeleteUserAvatars(userId: string, workspaceId?: string) {
     try {
       const userAvatars = await this.db
         .selectFrom('attachments')
         .select(['id', 'filePath'])
         .where('creatorId', '=', userId)
+        .$if(Boolean(workspaceId), (qb) =>
+          qb.where('workspaceId', '=', workspaceId!),
+        )
         .where('type', '=', AttachmentType.Avatar)
         .execute();
 
@@ -346,7 +371,10 @@ export class AttachmentService {
         userAvatars.map(async (attachment) => {
           try {
             await this.storageService.delete(attachment.filePath);
-            await this.attachmentRepo.deleteAttachmentById(attachment.id);
+            await this.attachmentRepo.deleteAttachmentById(
+              attachment.id,
+              workspaceId,
+            );
           } catch (err) {
             this.logger.log(
               `DeleteUserAvatar: failed to delete user avatar ${attachment.id}:`,
@@ -360,13 +388,16 @@ export class AttachmentService {
     }
   }
 
-  async handleDeletePageAttachments(pageId: string) {
+  async handleDeletePageAttachments(pageId: string, workspaceId?: string) {
     try {
       // Fetch attachments for this page from database
       const attachments = await this.db
         .selectFrom('attachments')
         .select(['id', 'filePath'])
         .where('pageId', '=', pageId)
+        .$if(Boolean(workspaceId), (qb) =>
+          qb.where('workspaceId', '=', workspaceId!),
+        )
         .execute();
 
       if (!attachments || attachments.length === 0) {
@@ -381,7 +412,10 @@ export class AttachmentService {
             // Delete from storage
             await this.storageService.delete(attachment.filePath);
             // Delete from database
-            await this.attachmentRepo.deleteAttachmentById(attachment.id);
+            await this.attachmentRepo.deleteAttachmentById(
+              attachment.id,
+              workspaceId,
+            );
           } catch (err) {
             failedDeletions.push(attachment.id);
             this.logger.error(
@@ -409,7 +443,7 @@ export class AttachmentService {
   async removeUserAvatar(user: User) {
     if (user.avatarUrl && !user.avatarUrl.toLowerCase().startsWith('http')) {
       const filePath = `${getAttachmentFolderPath(AttachmentType.Avatar, user.workspaceId)}/${user.avatarUrl}`;
-      await this.deleteRedundantFile(filePath);
+      await this.deleteRedundantFile(filePath, user.workspaceId);
     }
 
     await this.userRepo.updateUser(
@@ -428,7 +462,7 @@ export class AttachmentService {
 
     if (space.logo && !space.logo.toLowerCase().startsWith('http')) {
       const filePath = `${getAttachmentFolderPath(AttachmentType.SpaceIcon, workspaceId)}/${space.logo}`;
-      await this.deleteRedundantFile(filePath);
+      await this.deleteRedundantFile(filePath, workspaceId);
     }
 
     await this.spaceRepo.updateSpace({ logo: null }, spaceId, workspaceId);
@@ -437,7 +471,7 @@ export class AttachmentService {
   async removeWorkspaceIcon(workspace: Workspace) {
     if (workspace.logo && !workspace.logo.toLowerCase().startsWith('http')) {
       const filePath = `${getAttachmentFolderPath(AttachmentType.WorkspaceIcon, workspace.id)}/${workspace.logo}`;
-      await this.deleteRedundantFile(filePath);
+      await this.deleteRedundantFile(filePath, workspace.id);
     }
 
     await this.workspaceRepo.updateWorkspace({ logo: null }, workspace.id);

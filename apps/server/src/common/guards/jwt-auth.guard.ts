@@ -65,6 +65,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         path: '/',
         expires: addDays(new Date(), 365),
         secure: this.environmentService.isHttps(),
+        sameSite: 'lax',
       });
     }
   }

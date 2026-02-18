@@ -55,8 +55,12 @@ export class PageController {
 
   @HttpCode(HttpStatus.OK)
   @Post('/info')
-  async getPage(@Body() dto: PageInfoDto, @AuthUser() user: User) {
-    const page = await this.pageService.getPageInfo(dto.pageId);
+  async getPage(
+    @Body() dto: PageInfoDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const page = await this.pageService.getPageInfo(dto.pageId, workspace.id);
 
     if (!page) {
       throw new NotFoundException('Page not found');
@@ -90,8 +94,14 @@ export class PageController {
 
   @HttpCode(HttpStatus.OK)
   @Post('update')
-  async update(@Body() updatePageDto: UpdatePageDto, @AuthUser() user: User) {
-    const page = await this.pageRepo.findById(updatePageDto.pageId);
+  async update(
+    @Body() updatePageDto: UpdatePageDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const page = await this.pageRepo.findById(updatePageDto.pageId, {
+      workspaceId: workspace.id,
+    });
 
     if (!page) {
       throw new NotFoundException('Page not found');
@@ -112,7 +122,9 @@ export class PageController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(deletePageDto.pageId);
+    const page = await this.pageRepo.findById(deletePageDto.pageId, {
+      workspaceId: workspace.id,
+    });
 
     if (!page) {
       throw new NotFoundException('Page not found');
@@ -148,7 +160,9 @@ export class PageController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(pageIdDto.pageId);
+    const page = await this.pageRepo.findById(pageIdDto.pageId, {
+      workspaceId: workspace.id,
+    });
 
     if (!page) {
       throw new NotFoundException('Page not found');
@@ -162,6 +176,7 @@ export class PageController {
     await this.pageRepo.restorePage(pageIdDto.pageId, workspace.id);
 
     return this.pageRepo.findById(pageIdDto.pageId, {
+      workspaceId: workspace.id,
       includeHasChildren: true,
     });
   }
@@ -172,6 +187,7 @@ export class PageController {
     @Body() recentPageDto: RecentPageDto,
     @Body() pagination: PaginationOptions,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ) {
     if (recentPageDto.spaceId) {
       const ability = await this.spaceAbility.createForUser(
@@ -186,10 +202,11 @@ export class PageController {
       return this.pageService.getRecentSpacePages(
         recentPageDto.spaceId,
         pagination,
+        workspace.id,
       );
     }
 
-    return this.pageService.getRecentPages(user.id, pagination);
+    return this.pageService.getRecentPages(user.id, workspace.id, pagination);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -198,6 +215,7 @@ export class PageController {
     @Body() deletedPageDto: DeletedPageDto,
     @Body() pagination: PaginationOptions,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ) {
     if (deletedPageDto.spaceId) {
       const ability = await this.spaceAbility.createForUser(
@@ -212,6 +230,7 @@ export class PageController {
       return this.pageService.getDeletedSpacePages(
         deletedPageDto.spaceId,
         pagination,
+        workspace.id,
       );
     }
   }
@@ -222,8 +241,11 @@ export class PageController {
     @Body() dto: PageIdDto,
     @Body() pagination: PaginationOptions,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(dto.pageId);
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page) {
       throw new NotFoundException('Page not found');
     }
@@ -233,7 +255,11 @@ export class PageController {
       throw new ForbiddenException();
     }
 
-    return this.pageHistoryService.findHistoryByPageId(page.id, pagination);
+    return this.pageHistoryService.findHistoryByPageId(
+      page.id,
+      pagination,
+      workspace.id,
+    );
   }
 
   @HttpCode(HttpStatus.OK)
@@ -241,8 +267,12 @@ export class PageController {
   async getPageHistoryInfo(
     @Body() dto: PageHistoryIdDto,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ) {
-    const history = await this.pageHistoryService.findById(dto.historyId);
+    const history = await this.pageHistoryService.findById(
+      dto.historyId,
+      workspace.id,
+    );
     if (!history) {
       throw new NotFoundException('Page history not found');
     }
@@ -263,6 +293,7 @@ export class PageController {
     @Body() dto: SidebarPageDto,
     @Body() pagination: PaginationOptions,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ) {
     if (!dto.spaceId && !dto.pageId) {
       throw new BadRequestException(
@@ -272,7 +303,9 @@ export class PageController {
     let spaceId = dto.spaceId;
 
     if (dto.pageId) {
-      const page = await this.pageRepo.findById(dto.pageId);
+      const page = await this.pageRepo.findById(dto.pageId, {
+        workspaceId: workspace.id,
+      });
       if (!page) {
         throw new ForbiddenException();
       }
@@ -285,7 +318,12 @@ export class PageController {
       throw new ForbiddenException();
     }
 
-    return this.pageService.getSidebarPages(spaceId, pagination, dto.pageId);
+    return this.pageService.getSidebarPages(
+      spaceId,
+      pagination,
+      workspace.id,
+      dto.pageId,
+    );
   }
 
   @HttpCode(HttpStatus.OK)
@@ -293,8 +331,11 @@ export class PageController {
   async movePageToSpace(
     @Body() dto: MovePageToSpaceDto,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ) {
-    const movedPage = await this.pageRepo.findById(dto.pageId);
+    const movedPage = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!movedPage) {
       throw new NotFoundException('Page to move not found');
     }
@@ -320,8 +361,14 @@ export class PageController {
 
   @HttpCode(HttpStatus.OK)
   @Post('duplicate')
-  async duplicatePage(@Body() dto: DuplicatePageDto, @AuthUser() user: User) {
-    const copiedPage = await this.pageRepo.findById(dto.pageId);
+  async duplicatePage(
+    @Body() dto: DuplicatePageDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const copiedPage = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!copiedPage) {
       throw new NotFoundException('Page to copy not found');
     }
@@ -358,8 +405,14 @@ export class PageController {
 
   @HttpCode(HttpStatus.OK)
   @Post('move')
-  async movePage(@Body() dto: MovePageDto, @AuthUser() user: User) {
-    const movedPage = await this.pageRepo.findById(dto.pageId);
+  async movePage(
+    @Body() dto: MovePageDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const movedPage = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!movedPage) {
       throw new NotFoundException('Moved page not found');
     }
@@ -377,13 +430,17 @@ export class PageController {
 
   @HttpCode(HttpStatus.OK)
   @Post('batch-move')
-  async batchMovePages(@Body() dto: BatchMovePageDto, @AuthUser() user: User) {
+  async batchMovePages(
+    @Body() dto: BatchMovePageDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
     const ability = await this.spaceAbility.createForUser(user, dto.spaceId);
     if (ability.cannot(SpaceCaslAction.Edit, SpaceCaslSubject.Page)) {
       throw new ForbiddenException();
     }
 
-    return this.pageService.batchMovePages(dto);
+    return this.pageService.batchMovePages(dto, workspace.id);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -424,8 +481,14 @@ export class PageController {
 
   @HttpCode(HttpStatus.OK)
   @Post('pin')
-  async pinPage(@Body() dto: PinPageDto, @AuthUser() user: User) {
-    const page = await this.pageRepo.findById(dto.pageId);
+  async pinPage(
+    @Body() dto: PinPageDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page) {
       throw new NotFoundException('Page not found');
     }
@@ -435,13 +498,19 @@ export class PageController {
       throw new ForbiddenException();
     }
 
-    return this.pageService.setPagePinned(page.id, true);
+    return this.pageService.setPagePinned(page.id, true, workspace.id);
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('unpin')
-  async unpinPage(@Body() dto: PinPageDto, @AuthUser() user: User) {
-    const page = await this.pageRepo.findById(dto.pageId);
+  async unpinPage(
+    @Body() dto: PinPageDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page) {
       throw new NotFoundException('Page not found');
     }
@@ -451,13 +520,19 @@ export class PageController {
       throw new ForbiddenException();
     }
 
-    return this.pageService.setPagePinned(page.id, false);
+    return this.pageService.setPagePinned(page.id, false, workspace.id);
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('/breadcrumbs')
-  async getPageBreadcrumbs(@Body() dto: PageIdDto, @AuthUser() user: User) {
-    const page = await this.pageRepo.findById(dto.pageId);
+  async getPageBreadcrumbs(
+    @Body() dto: PageIdDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page) {
       throw new NotFoundException('Page not found');
     }
@@ -466,6 +541,6 @@ export class PageController {
     if (ability.cannot(SpaceCaslAction.Read, SpaceCaslSubject.Page)) {
       throw new ForbiddenException();
     }
-    return this.pageService.getPageBreadCrumbs(page.id);
+    return this.pageService.getPageBreadCrumbs(page.id, workspace.id);
   }
 }

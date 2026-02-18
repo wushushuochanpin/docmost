@@ -12,7 +12,7 @@ import {
 import { ExportService } from './export.service';
 import { ExportPageDto, ExportSpaceDto } from './dto/export-dto';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
-import { User } from '@docmost/db/types/entity.types';
+import { User, Workspace } from '@docmost/db/types/entity.types';
 import SpaceAbilityFactory from '../../core/casl/abilities/space-ability.factory';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
@@ -25,6 +25,7 @@ import { sanitize } from 'sanitize-filename-ts';
 import { getExportExtension } from './utils';
 import { getMimeType } from '../../common/helpers';
 import * as path from 'path';
+import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 
 @Controller()
 export class ExportController {
@@ -40,9 +41,11 @@ export class ExportController {
   async exportPage(
     @Body() dto: ExportPageDto,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
     @Res() res: FastifyReply,
   ) {
     const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
       includeContent: true,
     });
 
@@ -57,6 +60,7 @@ export class ExportController {
 
     const zipFileStream = await this.exportService.exportPages(
       dto.pageId,
+      workspace.id,
       dto.format,
       dto.includeAttachments,
       dto.includeChildren,
@@ -79,6 +83,7 @@ export class ExportController {
   async exportSpace(
     @Body() dto: ExportSpaceDto,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
     @Res() res: FastifyReply,
   ) {
     const ability = await this.spaceAbility.createForUser(user, dto.spaceId);
@@ -88,6 +93,7 @@ export class ExportController {
 
     const exportFile = await this.exportService.exportSpace(
       dto.spaceId,
+      workspace.id,
       dto.format,
       dto.includeAttachments,
     );

@@ -40,6 +40,8 @@ import { EventName } from '../../../common/events/event.contants';
 @Injectable()
 export class FileImportTaskService {
   private readonly logger = new Logger(FileImportTaskService.name);
+  private readonly MAX_IMPORT_PAGE_FILES = 10000;
+  private readonly MAX_IMPORT_ATTACHMENT_FILES = 50000;
 
   constructor(
     private readonly storageService: StorageService,
@@ -157,6 +159,18 @@ export class FileImportTaskService {
     const allFiles = await collectMarkdownAndHtmlFiles(extractDir);
     const attachmentCandidates = await buildAttachmentCandidates(extractDir);
     const docmostMetadata = await readDocmostMetadata(extractDir);
+
+    if (allFiles.length > this.MAX_IMPORT_PAGE_FILES) {
+      throw new Error(
+        `Import contains too many page files (${allFiles.length}). Maximum allowed is ${this.MAX_IMPORT_PAGE_FILES}.`,
+      );
+    }
+
+    if (attachmentCandidates.size > this.MAX_IMPORT_ATTACHMENT_FILES) {
+      throw new Error(
+        `Import contains too many attachment files (${attachmentCandidates.size}). Maximum allowed is ${this.MAX_IMPORT_ATTACHMENT_FILES}.`,
+      );
+    }
 
     const pagesMap = new Map<string, ImportPageNode>();
 

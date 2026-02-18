@@ -220,23 +220,37 @@ export class SpaceMemberRepo {
   }
 
   getUserSpaceIdsQuery(userId: string) {
-    return this.db
+    return this.getUserSpaceIdsQueryByWorkspace(userId);
+  }
+
+  getUserSpaceIdsQueryByWorkspace(userId: string, workspaceId?: string) {
+    const directMembershipQuery = this.db
       .selectFrom('spaceMembers')
       .innerJoin('spaces', 'spaces.id', 'spaceMembers.spaceId')
       .select('spaces.id')
       .where('userId', '=', userId)
-      .union(
-        this.db
-          .selectFrom('spaceMembers')
-          .innerJoin('groupUsers', 'groupUsers.groupId', 'spaceMembers.groupId')
-          .innerJoin('spaces', 'spaces.id', 'spaceMembers.spaceId')
-          .select('spaces.id')
-          .where('groupUsers.userId', '=', userId),
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('spaces.workspaceId', '=', workspaceId!),
       );
+
+    const groupMembershipQuery = this.db
+      .selectFrom('spaceMembers')
+      .innerJoin('groupUsers', 'groupUsers.groupId', 'spaceMembers.groupId')
+      .innerJoin('spaces', 'spaces.id', 'spaceMembers.spaceId')
+      .select('spaces.id')
+      .where('groupUsers.userId', '=', userId)
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('spaces.workspaceId', '=', workspaceId!),
+      );
+
+    return directMembershipQuery.union(groupMembershipQuery);
   }
 
-  async getUserSpaceIds(userId: string): Promise<string[]> {
-    const membership = await this.getUserSpaceIdsQuery(userId).execute();
+  async getUserSpaceIds(userId: string, workspaceId?: string): Promise<string[]> {
+    const membership = await this.getUserSpaceIdsQueryByWorkspace(
+      userId,
+      workspaceId,
+    ).execute();
     return membership.map((space) => space.id);
   }
 

@@ -2,6 +2,9 @@ import * as yauzl from 'yauzl';
 import * as path from 'path';
 import * as fs from 'node:fs';
 
+const MAX_ZIP_ENTRIES = 20_000;
+const MAX_ZIP_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
+
 export enum FileTaskType {
   Import = 'import',
   Export = 'export',
@@ -53,6 +56,27 @@ function extractZipInternal(
   allowNested: boolean,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    let entryCount = 0;
+    let totalUncompressedBytes = 0;
+
+    const checkZipLimits = (entry: yauzl.Entry) => {
+      entryCount += 1;
+      if (entryCount > MAX_ZIP_ENTRIES) {
+        throw new Error(
+          `ZIP contains too many entries. Maximum allowed is ${MAX_ZIP_ENTRIES}`,
+        );
+      }
+
+      const entrySize =
+        typeof entry.uncompressedSize === 'number' ? entry.uncompressedSize : 0;
+      totalUncompressedBytes += entrySize;
+      if (totalUncompressedBytes > MAX_ZIP_UNCOMPRESSED_BYTES) {
+        throw new Error(
+          `ZIP is too large after extraction. Maximum allowed is ${MAX_ZIP_UNCOMPRESSED_BYTES} bytes`,
+        );
+      }
+    };
+
     yauzl.open(
       source,
       { lazyEntries: true, decodeStrings: false, autoClose: true },
@@ -63,6 +87,12 @@ function extractZipInternal(
         if (allowNested && zipfile.entryCount === 1) {
           zipfile.readEntry();
           zipfile.once('entry', (entry) => {
+            try {
+              checkZipLimits(entry);
+            } catch (zipLimitErr) {
+              return reject(zipLimitErr);
+            }
+
             const name = entry.fileName.toString('utf8').replace(/^\/+/, '');
             const isZip =
               !/\/$/.test(entry.fileName) &&
@@ -101,6 +131,13 @@ function extractZipInternal(
         // Normal extraction
         zipfile.readEntry();
         zipfile.on('entry', (entry) => {
+          try {
+            checkZipLimits(entry);
+          } catch (zipLimitErr) {
+            zipfile.close();
+            return reject(zipLimitErr);
+          }
+
           const name = entry.fileName.toString('utf8');
           const safe = name.replace(/^\/+/, '');
 

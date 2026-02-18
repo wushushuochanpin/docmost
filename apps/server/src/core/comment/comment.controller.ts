@@ -42,7 +42,9 @@ export class CommentController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(createCommentDto.pageId);
+    const page = await this.pageRepo.findById(createCommentDto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page || page.deletedAt) {
       throw new NotFoundException('Page not found');
     }
@@ -69,8 +71,11 @@ export class CommentController {
     @Body()
     pagination: PaginationOptions,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(input.pageId);
+    const page = await this.pageRepo.findById(input.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page) {
       throw new NotFoundException('Page not found');
     }
@@ -79,13 +84,19 @@ export class CommentController {
     if (ability.cannot(SpaceCaslAction.Read, SpaceCaslSubject.Page)) {
       throw new ForbiddenException();
     }
-    return this.commentService.findByPageId(page.id, pagination);
+    return this.commentService.findByPageId(page.id, pagination, workspace.id);
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('info')
-  async findOne(@Body() input: CommentIdDto, @AuthUser() user: User) {
-    const comment = await this.commentRepo.findById(input.commentId);
+  async findOne(
+    @Body() input: CommentIdDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const comment = await this.commentRepo.findById(input.commentId, {
+      workspaceId: workspace.id,
+    });
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
@@ -102,8 +113,14 @@ export class CommentController {
 
   @HttpCode(HttpStatus.OK)
   @Post('update')
-  async update(@Body() dto: UpdateCommentDto, @AuthUser() user: User) {
-    const comment = await this.commentRepo.findById(dto.commentId);
+  async update(
+    @Body() dto: UpdateCommentDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const comment = await this.commentRepo.findById(dto.commentId, {
+      workspaceId: workspace.id,
+    });
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
@@ -125,8 +142,14 @@ export class CommentController {
 
   @HttpCode(HttpStatus.OK)
   @Post('delete')
-  async delete(@Body() input: CommentIdDto, @AuthUser() user: User) {
-    const comment = await this.commentRepo.findById(input.commentId);
+  async delete(
+    @Body() input: CommentIdDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const comment = await this.commentRepo.findById(input.commentId, {
+      workspaceId: workspace.id,
+    });
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
@@ -152,7 +175,7 @@ export class CommentController {
 
       // Owner can delete if no children from other users
       if (!hasChildrenFromOthers) {
-        await this.commentRepo.deleteComment(comment.id);
+        await this.commentRepo.deleteComment(comment.id, workspace.id);
         return;
       }
 
@@ -162,7 +185,7 @@ export class CommentController {
           'Only space admins can delete comments with replies from other users',
         );
       }*/
-      await this.commentRepo.deleteComment(comment.id);
+      await this.commentRepo.deleteComment(comment.id, workspace.id);
       return;
     }
 
@@ -172,6 +195,6 @@ export class CommentController {
         'You can only delete your own comments or must be a space admin',
       );
     }
-    await this.commentRepo.deleteComment(comment.id);
+    await this.commentRepo.deleteComment(comment.id, workspace.id);
   }
 }

@@ -48,9 +48,10 @@ export class ShareController {
   @Post('/')
   async getShares(
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
     @Body() pagination: PaginationOptions,
   ) {
-    return this.shareRepo.getShares(user.id, pagination);
+    return this.shareRepo.getShares(user.id, workspace.id, pagination);
   }
 
   @Public()
@@ -77,8 +78,12 @@ export class ShareController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('/info')
-  async getShare(@Body() dto: ShareIdDto) {
+  async getShare(
+    @Body() dto: ShareIdDto,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
     const share = await this.shareRepo.findById(dto.shareId, {
+      workspaceId: workspace.id,
       includeSharedPage: true,
     });
 
@@ -96,7 +101,9 @@ export class ShareController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(dto.pageId);
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page) {
       throw new NotFoundException('Shared page not found');
     }
@@ -116,7 +123,9 @@ export class ShareController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(createShareDto.pageId);
+    const page = await this.pageRepo.findById(createShareDto.pageId, {
+      workspaceId: workspace.id,
+    });
 
     if (!page || workspace.id !== page.workspaceId) {
       throw new NotFoundException('Page not found');
@@ -137,8 +146,14 @@ export class ShareController {
 
   @HttpCode(HttpStatus.OK)
   @Post('update')
-  async update(@Body() updateShareDto: UpdateShareDto, @AuthUser() user: User) {
-    const share = await this.shareRepo.findById(updateShareDto.shareId);
+  async update(
+    @Body() updateShareDto: UpdateShareDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const share = await this.shareRepo.findById(updateShareDto.shareId, {
+      workspaceId: workspace.id,
+    });
 
     if (!share) {
       throw new NotFoundException('Share not found');
@@ -149,13 +164,19 @@ export class ShareController {
       throw new ForbiddenException();
     }
 
-    return this.shareService.updateShare(share.id, updateShareDto);
+    return this.shareService.updateShare(share.id, updateShareDto, workspace.id);
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('delete')
-  async delete(@Body() shareIdDto: ShareIdDto, @AuthUser() user: User) {
-    const share = await this.shareRepo.findById(shareIdDto.shareId);
+  async delete(
+    @Body() shareIdDto: ShareIdDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const share = await this.shareRepo.findById(shareIdDto.shareId, {
+      workspaceId: workspace.id,
+    });
 
     if (!share) {
       throw new NotFoundException('Share not found');
@@ -166,7 +187,7 @@ export class ShareController {
       throw new ForbiddenException();
     }
 
-    await this.shareRepo.deleteShare(share.id);
+    await this.shareRepo.deleteShare(share.id, workspace.id);
   }
 
   @Public()

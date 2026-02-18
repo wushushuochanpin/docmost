@@ -32,7 +32,6 @@ import {
 import { getMimeType } from '../../common/helpers';
 import {
   AttachmentType,
-  inlineFileExtensions,
   MAX_AVATAR_SIZE,
 } from './attachment.constants';
 import {
@@ -57,6 +56,14 @@ import { RemoveIconDto } from './dto/attachment.dto';
 @Controller()
 export class AttachmentController {
   private readonly logger = new Logger(AttachmentController.name);
+  private readonly safeInlineMimeByExt: Record<string, string[]> = {
+    '.jpg': ['image/jpeg'],
+    '.jpeg': ['image/jpeg'],
+    '.png': ['image/png'],
+    '.pdf': ['application/pdf'],
+    '.mp4': ['video/mp4'],
+    '.mov': ['video/quicktime', 'video/mp4'],
+  };
 
   constructor(
     private readonly attachmentService: AttachmentService,
@@ -105,7 +112,9 @@ export class AttachmentController {
       throw new BadRequestException('PageId is required');
     }
 
-    const page = await this.pageRepo.findById(pageId);
+    const page = await this.pageRepo.findById(pageId, {
+      workspaceId: workspace.id,
+    });
 
     if (!page) {
       throw new NotFoundException('Page not found');
@@ -155,13 +164,34 @@ export class AttachmentController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
     @Param('fileId') fileId: string,
-    @Param('fileName') fileName?: string,
+  ) {
+    return this.sendFileByAttachmentId(res, user, workspace, fileId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('/files/by-id/:fileId')
+  async getFileById(
+    @Res() res: FastifyReply,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+    @Param('fileId') fileId: string,
+  ) {
+    return this.sendFileByAttachmentId(res, user, workspace, fileId);
+  }
+
+  private async sendFileByAttachmentId(
+    res: FastifyReply,
+    user: User,
+    workspace: Workspace,
+    fileId: string,
   ) {
     if (!isValidUUID(fileId)) {
       throw new NotFoundException('Invalid file id');
     }
 
-    const attachment = await this.attachmentRepo.findById(fileId);
+    const attachment = await this.attachmentRepo.findById(fileId, {
+      workspaceId: workspace.id,
+    });
     if (
       !attachment ||
       attachment.workspaceId !== workspace.id ||
@@ -187,9 +217,10 @@ export class AttachmentController {
       res.headers({
         'Content-Type': attachment.mimeType,
         'Cache-Control': 'private, max-age=3600',
+        'X-Content-Type-Options': 'nosniff',
       });
 
-      if (!inlineFileExtensions.includes(attachment.fileExt)) {
+      if (!this.isSafeInlineAttachment(attachment.fileExt, attachment.mimeType)) {
         res.header(
           'Content-Disposition',
           `attachment; filename="${encodeURIComponent(attachment.fileName)}"`,
@@ -231,7 +262,9 @@ export class AttachmentController {
       throw new NotFoundException('File not found');
     }
 
-    const attachment = await this.attachmentRepo.findById(fileId);
+    const attachment = await this.attachmentRepo.findById(fileId, {
+      workspaceId: workspace.id,
+    });
     if (
       !attachment ||
       attachment.workspaceId !== workspace.id ||
@@ -249,9 +282,10 @@ export class AttachmentController {
       res.headers({
         'Content-Type': attachment.mimeType,
         'Cache-Control': 'public, max-age=3600',
+        'X-Content-Type-Options': 'nosniff',
       });
 
-      if (!inlineFileExtensions.includes(attachment.fileExt)) {
+      if (!this.isSafeInlineAttachment(attachment.fileExt, attachment.mimeType)) {
         res.header(
           'Content-Disposition',
           `attachment; filename="${encodeURIComponent(attachment.fileName)}"`,
@@ -375,6 +409,7 @@ export class AttachmentController {
       res.headers({
         'Content-Type': getMimeType(filePath),
         'Cache-Control': 'private, max-age=86400',
+        'X-Content-Type-Options': 'nosniff',
       });
       return res.send(fileStream);
     } catch (err) {
@@ -432,5 +467,20 @@ export class AttachmentController {
       await this.attachmentService.removeWorkspaceIcon(workspace);
       return;
     }
+  }
+
+  private isSafeInlineAttachment(fileExt?: string, mimeType?: string): boolean {
+    const normalizedExt = fileExt?.toLowerCase();
+    const normalizedMime = mimeType?.toLowerCase();
+    if (!normalizedExt || !normalizedMime) {
+      return false;
+    }
+
+    const allowedMimeTypes = this.safeInlineMimeByExt[normalizedExt];
+    if (!allowedMimeTypes) {
+      return false;
+    }
+
+    return allowedMimeTypes.includes(normalizedMime);
   }
 }

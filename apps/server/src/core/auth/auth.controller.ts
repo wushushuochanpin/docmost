@@ -170,7 +170,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: FastifyReply) {
-    res.clearCookie('authToken');
+    res.clearCookie('authToken', {
+      path: '/',
+      sameSite: 'lax',
+    });
   }
 
   setAuthCookie(res: FastifyReply, token: string) {
@@ -179,6 +182,7 @@ export class AuthController {
       path: '/',
       expires: this.environmentService.getCookieExpiresIn(),
       secure: this.environmentService.isHttps(),
+      sameSite: 'lax',
     });
   }
 }

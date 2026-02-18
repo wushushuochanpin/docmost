@@ -41,12 +41,19 @@ export class PersistenceExtension implements Extension {
   async onLoadDocument(data: onLoadDocumentPayload) {
     const { documentName, document } = data;
     const pageId = getPageId(documentName);
+    const workspaceId = data.context?.user?.workspaceId as string | undefined;
 
     if (!document.isEmpty('default')) {
       return;
     }
 
+    if (!workspaceId) {
+      this.logger.warn(`Missing workspace in collab context for ${pageId}`);
+      return;
+    }
+
     const page = await this.pageRepo.findById(pageId, {
+      workspaceId,
       includeContent: true,
       includeYdoc: true,
     });
@@ -88,6 +95,7 @@ export class PersistenceExtension implements Extension {
     const { documentName, document, context } = data;
 
     const pageId = getPageId(documentName);
+    const workspaceId = context?.user?.workspaceId as string | undefined;
 
     const tiptapJson = TiptapTransformer.fromYdoc(document, 'default');
     const ydocState = Buffer.from(Y.encodeStateAsUpdate(document));
@@ -102,9 +110,15 @@ export class PersistenceExtension implements Extension {
 
     let page: Page = null;
 
+    if (!workspaceId) {
+      this.logger.warn(`Missing workspace in collab store context for ${pageId}`);
+      return;
+    }
+
     try {
       await executeTx(this.db, async (trx) => {
         page = await this.pageRepo.findById(pageId, {
+          workspaceId,
           withLock: true,
           includeContent: true,
           trx,
@@ -144,6 +158,7 @@ export class PersistenceExtension implements Extension {
           },
           pageId,
           trx,
+          workspaceId,
         );
 
         this.logger.debug(`Page updated: ${pageId} - SlugId: ${page.slugId}`);

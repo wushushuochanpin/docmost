@@ -1,11 +1,23 @@
 .editor {
     height: 100%;
-    padding: 8px 0;
-    margin: 48px auto;
+    padding: 16px 0 28px;
+    margin: 24px auto 56px;
+    background: var(--ui-bg-surface);
+    border: 1px solid var(--ui-border-default);
+    border-radius: 14px;
+    box-shadow: var(--ui-shadow-sm);
+    overflow: hidden;
+
+    :global(.ProseMirror) {
+        background: transparent;
+    }
 
     @media print {
         padding: 0;
         margin: 0;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
     }
 }
-

@@ -36,14 +36,15 @@ export class ShareService {
   ) {}
 
   async getShareTree(shareId: string, workspaceId: string) {
-    const share = await this.shareRepo.findById(shareId);
-    if (!share || share.workspaceId !== workspaceId) {
+    const share = await this.shareRepo.findById(shareId, { workspaceId });
+    if (!share) {
       throw new NotFoundException('Share not found');
     }
 
     if (share.includeSubPages) {
       const pageList = await this.pageRepo.getPageAndDescendants(share.pageId, {
         includeContent: false,
+        workspaceId,
       });
 
       return { share, pageTree: pageList };
@@ -61,7 +62,7 @@ export class ShareService {
     const { authUserId, workspaceId, page, createShareDto } = opts;
 
     try {
-      const shares = await this.shareRepo.findByPageId(page.id);
+      const shares = await this.shareRepo.findByPageId(page.id, { workspaceId });
       if (shares) {
         return shares;
       }
@@ -81,7 +82,11 @@ export class ShareService {
     }
   }
 
-  async updateShare(shareId: string, updateShareDto: UpdateShareDto) {
+  async updateShare(
+    shareId: string,
+    updateShareDto: UpdateShareDto,
+    workspaceId?: string,
+  ) {
     try {
       return this.shareRepo.updateShare(
         {
@@ -89,6 +94,9 @@ export class ShareService {
           searchIndexing: updateShareDto.searchIndexing,
         },
         shareId,
+        {
+          workspaceId,
+        },
       );
     } catch (err) {
       this.logger.error(err);
@@ -104,6 +112,7 @@ export class ShareService {
     }
 
     const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId,
       includeContent: true,
       includeCreator: true,
     });
@@ -141,6 +150,7 @@ export class ShareService {
             'shares.createdAt',
           ])
           .where(isValidUUID(pageId) ? 'pages.id' : 'pages.slugId', '=', pageId)
+          .where('pages.workspaceId', '=', workspaceId)
           .where('pages.deletedAt', 'is', null)
           .unionAll(
             (union) =>
@@ -165,6 +175,7 @@ export class ShareService {
                   's.createdAt',
                 ])
                 .where('p.deletedAt', 'is', null)
+                .where('p.workspaceId', '=', workspaceId)
                 .where(sql`ph.share_id`, 'is', null) // stop if share found
                 .where(sql`ph.level`, '<', sql`25`), // prevent loop
           ),

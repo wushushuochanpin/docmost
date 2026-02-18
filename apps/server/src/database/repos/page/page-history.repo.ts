@@ -33,6 +33,7 @@ export class PageHistoryRepo {
   async findById(
     pageHistoryId: string,
     opts?: {
+      workspaceId?: string;
       includeContent?: boolean;
       trx?: KyselyTransaction;
     },
@@ -44,6 +45,9 @@ export class PageHistoryRepo {
       .select(this.baseFields)
       .$if(opts?.includeContent, (qb) => qb.select('content'))
       .select((eb) => this.withLastUpdatedBy(eb))
+      .$if(Boolean(opts?.workspaceId), (qb) =>
+        qb.where('workspaceId', '=', opts!.workspaceId!),
+      )
       .where('id', '=', pageHistoryId)
       .executeTakeFirst();
   }
@@ -77,11 +81,18 @@ export class PageHistoryRepo {
     );
   }
 
-  async findPageHistoryByPageId(pageId: string, pagination: PaginationOptions) {
+  async findPageHistoryByPageId(
+    pageId: string,
+    pagination: PaginationOptions,
+    workspaceId?: string,
+  ) {
     const query = this.db
       .selectFrom('pageHistory')
       .select(this.baseFields)
       .select((eb) => this.withLastUpdatedBy(eb))
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
       .where('pageId', '=', pageId);
 
     return executeWithCursorPagination(query, {

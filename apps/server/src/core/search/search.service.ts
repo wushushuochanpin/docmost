@@ -71,21 +71,28 @@ export class SearchService {
 
     if (searchParams.spaceId) {
       // search by spaceId
-      queryResults = queryResults.where('spaceId', '=', searchParams.spaceId);
+      queryResults = queryResults
+        .where('spaceId', '=', searchParams.spaceId)
+        .where('workspaceId', '=', opts.workspaceId);
     } else if (opts.userId && !searchParams.spaceId) {
       // only search spaces the user is a member of
       queryResults = queryResults
         .where(
           'spaceId',
           'in',
-          this.spaceMemberRepo.getUserSpaceIdsQuery(opts.userId),
+          this.spaceMemberRepo.getUserSpaceIdsQueryByWorkspace(
+            opts.userId,
+            opts.workspaceId,
+          ),
         )
         .where('workspaceId', '=', opts.workspaceId);
     } else if (searchParams.shareId && !searchParams.spaceId && !opts.userId) {
       // search in shares
       const shareId = searchParams.shareId;
-      const share = await this.shareRepo.findById(shareId);
-      if (!share || share.workspaceId !== opts.workspaceId) {
+      const share = await this.shareRepo.findById(shareId, {
+        workspaceId: opts.workspaceId,
+      });
+      if (!share) {
         return { items: [] };
       }
 
@@ -95,6 +102,7 @@ export class SearchService {
           share.pageId,
           {
             includeContent: false,
+            workspaceId: opts.workspaceId,
           },
         );
 
@@ -195,7 +203,10 @@ export class SearchService {
         .limit(limit);
 
       // only search spaces the user has access to
-      const userSpaceIds = await this.spaceMemberRepo.getUserSpaceIds(userId);
+      const userSpaceIds = await this.spaceMemberRepo.getUserSpaceIds(
+        userId,
+        workspaceId,
+      );
 
       if (suggestion?.spaceId) {
         if (userSpaceIds.includes(suggestion.spaceId)) {

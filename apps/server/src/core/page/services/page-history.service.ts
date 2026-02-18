@@ -8,8 +8,9 @@ import { CursorPaginationResult } from '@docmost/db/pagination/cursor-pagination
 export class PageHistoryService {
   constructor(private pageHistoryRepo: PageHistoryRepo) {}
 
-  async findById(historyId: string): Promise<PageHistory> {
+  async findById(historyId: string, workspaceId?: string): Promise<PageHistory> {
     return await this.pageHistoryRepo.findById(historyId, {
+      workspaceId,
       includeContent: true,
     });
   }
@@ -17,10 +18,12 @@ export class PageHistoryService {
   async findHistoryByPageId(
     pageId: string,
     paginationOptions: PaginationOptions,
+    workspaceId?: string,
   ): Promise<CursorPaginationResult<PageHistory>> {
     return this.pageHistoryRepo.findPageHistoryByPageId(
       pageId,
       paginationOptions,
+      workspaceId,
     );
   }
 }

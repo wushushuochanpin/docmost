@@ -32,6 +32,7 @@ export class AttachmentRepo {
   async findById(
     attachmentId: string,
     opts?: {
+      workspaceId?: string;
       trx?: KyselyTransaction;
     },
   ): Promise<Attachment> {
@@ -40,6 +41,9 @@ export class AttachmentRepo {
     return db
       .selectFrom('attachments')
       .select(this.baseFields)
+      .$if(Boolean(opts?.workspaceId), (qb) =>
+        qb.where('workspaceId', '=', opts!.workspaceId!),
+      )
       .where('id', '=', attachmentId)
       .executeTakeFirst();
   }
@@ -60,6 +64,7 @@ export class AttachmentRepo {
   async findBySpaceId(
     spaceId: string,
     opts?: {
+      workspaceId?: string;
       trx?: KyselyTransaction;
     },
   ): Promise<Attachment[]> {
@@ -68,6 +73,9 @@ export class AttachmentRepo {
     return db
       .selectFrom('attachments')
       .select(this.baseFields)
+      .$if(Boolean(opts?.workspaceId), (qb) =>
+        qb.where('workspaceId', '=', opts!.workspaceId!),
+      )
       .where('spaceId', '=', spaceId)
       .execute();
   }
@@ -75,11 +83,17 @@ export class AttachmentRepo {
   updateAttachmentsByPageId(
     updatableAttachment: UpdatableAttachment,
     pageIds: string[],
-    trx?: KyselyTransaction,
+    opts?: {
+      workspaceId?: string;
+      trx?: KyselyTransaction;
+    },
   ) {
-    return dbOrTx(this.db, trx)
+    return dbOrTx(this.db, opts?.trx)
       .updateTable('attachments')
       .set(updatableAttachment)
+      .$if(Boolean(opts?.workspaceId), (qb) =>
+        qb.where('workspaceId', '=', opts!.workspaceId!),
+      )
       .where('pageId', 'in', pageIds)
       .returning(this.baseFields)
       .executeTakeFirst();
@@ -88,25 +102,41 @@ export class AttachmentRepo {
   async updateAttachment(
     updatableAttachment: UpdatableAttachment,
     attachmentId: string,
+    workspaceId?: string,
   ): Promise<Attachment> {
     return await this.db
       .updateTable('attachments')
       .set(updatableAttachment)
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
       .where('id', '=', attachmentId)
       .returning(this.baseFields)
       .executeTakeFirst();
   }
 
-  async deleteAttachmentById(attachmentId: string): Promise<void> {
+  async deleteAttachmentById(
+    attachmentId: string,
+    workspaceId?: string,
+  ): Promise<void> {
     await this.db
       .deleteFrom('attachments')
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
       .where('id', '=', attachmentId)
       .executeTakeFirst();
   }
 
-  async deleteAttachmentByFilePath(attachmentFilePath: string): Promise<void> {
+  async deleteAttachmentByFilePath(
+    attachmentFilePath: string,
+    workspaceId?: string,
+  ): Promise<void> {
     await this.db
       .deleteFrom('attachments')
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
       .where('filePath', '=', attachmentFilePath)
       .executeTakeFirst();
   }

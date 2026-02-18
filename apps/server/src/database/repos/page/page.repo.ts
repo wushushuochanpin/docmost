@@ -47,6 +47,7 @@ export class PageRepo {
   async findById(
     pageId: string,
     opts?: {
+      workspaceId?: string;
       includeContent?: boolean;
       includeTextContent?: boolean;
       includeYdoc?: boolean;
@@ -67,6 +68,9 @@ export class PageRepo {
       .$if(opts?.includeContent, (qb) => qb.select('content'))
       .$if(opts?.includeYdoc, (qb) => qb.select('ydoc'))
       .$if(opts?.includeTextContent, (qb) => qb.select('textContent'))
+      .$if(Boolean(opts?.workspaceId), (qb) =>
+        qb.where('workspaceId', '=', opts!.workspaceId!),
+      )
       .$if(opts?.includeHasChildren, (qb) =>
         qb.select((eb) => this.withHasChildren(eb)),
       );
@@ -104,18 +108,23 @@ export class PageRepo {
     updatablePage: UpdatablePage,
     pageId: string,
     trx?: KyselyTransaction,
+    workspaceId?: string,
   ) {
-    return this.updatePages(updatablePage, [pageId], trx);
+    return this.updatePages(updatablePage, [pageId], trx, workspaceId);
   }
 
   async updatePages(
     updatePageData: UpdatablePage,
     pageIds: string[],
     trx?: KyselyTransaction,
+    workspaceId?: string,
   ) {
     const result = await dbOrTx(this.db, trx)
       .updateTable('pages')
       .set({ ...updatePageData, updatedAt: new Date() })
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
       .where(
         pageIds.some((pageId) => !isValidUUID(pageId)) ? 'slugId' : 'id',
         'in',
@@ -175,11 +184,13 @@ export class PageRepo {
           .selectFrom('pages')
           .select(['id'])
           .where('id', '=', pageId)
+          .where('workspaceId', '=', workspaceId)
           .unionAll((exp) =>
             exp
               .selectFrom('pages as p')
               .select(['p.id'])
-              .innerJoin('page_descendants as pd', 'pd.id', 'p.parentPageId'),
+              .innerJoin('page_descendants as pd', 'pd.id', 'p.parentPageId')
+              .where('p.workspaceId', '=', workspaceId),
           ),
       )
       .selectFrom('page_descendants')
@@ -196,10 +207,15 @@ export class PageRepo {
             deletedById: deletedById,
             deletedAt: currentDate,
           })
+          .where('workspaceId', '=', workspaceId)
           .where('id', 'in', pageIds)
           .execute();
 
-        await trx.deleteFrom('shares').where('pageId', 'in', pageIds).execute();
+        await trx
+          .deleteFrom('shares')
+          .where('workspaceId', '=', workspaceId)
+          .where('pageId', 'in', pageIds)
+          .execute();
       });
 
       this.eventEmitter.emit(EventName.PAGE_SOFT_DELETED, {
@@ -214,6 +230,7 @@ export class PageRepo {
     const pageToRestore = await this.db
       .selectFrom('pages')
       .select(['id', 'parentPageId'])
+      .where('workspaceId', '=', workspaceId)
       .where('id', '=', pageId)
       .executeTakeFirst();
 
@@ -227,6 +244,7 @@ export class PageRepo {
       const parent = await this.db
         .selectFrom('pages')
         .select(['id', 'deletedAt'])
+        .where('workspaceId', '=', workspaceId)
         .where('id', '=', pageToRestore.parentPageId)
         .executeTakeFirst();
 
@@ -241,11 +259,13 @@ export class PageRepo {
           .selectFrom('pages')
           .select(['id'])
           .where('id', '=', pageId)
+          .where('workspaceId', '=', workspaceId)
           .unionAll((exp) =>
             exp
               .selectFrom('pages as p')
               .select(['p.id'])
-              .innerJoin('page_descendants as pd', 'pd.id', 'p.parentPageId'),
+              .innerJoin('page_descendants as pd', 'pd.id', 'p.parentPageId')
+              .where('p.workspaceId', '=', workspaceId),
           ),
       )
       .selectFrom('page_descendants')
@@ -258,6 +278,7 @@ export class PageRepo {
     await this.db
       .updateTable('pages')
       .set({ deletedById: null, deletedAt: null })
+      .where('workspaceId', '=', workspaceId)
       .where('id', 'in', pageIds)
       .execute();
 
@@ -266,6 +287,7 @@ export class PageRepo {
       await this.db
         .updateTable('pages')
         .set({ parentPageId: null })
+        .where('workspaceId', '=', workspaceId)
         .where('id', '=', pageId)
         .execute();
     }
@@ -275,11 +297,18 @@ export class PageRepo {
     });
   }
 
-  async getRecentPagesInSpace(spaceId: string, pagination: PaginationOptions) {
+  async getRecentPagesInSpace(
+    spaceId: string,
+    pagination: PaginationOptions,
+    workspaceId?: string,
+  ) {
     const query = this.db
       .selectFrom('pages')
       .select(this.baseFields)
       .select((eb) => this.withSpace(eb))
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
       .where('spaceId', '=', spaceId)
       .where('deletedAt', 'is', null);
 
@@ -298,12 +327,24 @@ export class PageRepo {
     });
   }
 
-  async getRecentPages(userId: string, pagination: PaginationOptions) {
+  async getRecentPages(
+    userId: string,
+    workspaceId: string,
+    pagination: PaginationOptions,
+  ) {
     const query = this.db
       .selectFrom('pages')
       .select(this.baseFields)
       .select((eb) => this.withSpace(eb))
-      .where('spaceId', 'in', this.spaceMemberRepo.getUserSpaceIdsQuery(userId))
+      .where(
+        'spaceId',
+        'in',
+        this.spaceMemberRepo.getUserSpaceIdsQueryByWorkspace(
+          userId,
+          workspaceId,
+        ),
+      )
+      .where('workspaceId', '=', workspaceId)
       .where('deletedAt', 'is', null);
 
     return executeWithCursorPagination(query, {
@@ -321,13 +362,20 @@ export class PageRepo {
     });
   }
 
-  async getDeletedPagesInSpace(spaceId: string, pagination: PaginationOptions) {
+  async getDeletedPagesInSpace(
+    spaceId: string,
+    pagination: PaginationOptions,
+    workspaceId?: string,
+  ) {
     const query = this.db
       .selectFrom('pages')
       .select(this.baseFields)
       .select('content')
       .select((eb) => this.withSpace(eb))
       .select((eb) => this.withDeletedBy(eb))
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
       .where('spaceId', '=', spaceId)
       .where('deletedAt', 'is not', null)
       // Only include pages that are either root pages (no parent) or whose parent is not deleted
@@ -427,7 +475,7 @@ export class PageRepo {
 
   async getPageAndDescendants(
     parentPageId: string,
-    opts: { includeContent: boolean },
+    opts: { includeContent: boolean; workspaceId?: string },
   ) {
     return this.db
       .withRecursive('page_hierarchy', (db) =>
@@ -446,6 +494,9 @@ export class PageRepo {
             'updatedAt',
           ])
           .$if(opts?.includeContent, (qb) => qb.select('content'))
+          .$if(Boolean(opts?.workspaceId), (qb) =>
+            qb.where('workspaceId', '=', opts!.workspaceId!),
+          )
           .where('id', '=', parentPageId)
           .where('deletedAt', 'is', null)
           .unionAll((exp) =>
@@ -465,6 +516,9 @@ export class PageRepo {
               ])
               .$if(opts?.includeContent, (qb) => qb.select('p.content'))
               .innerJoin('page_hierarchy as ph', 'p.parentPageId', 'ph.id')
+              .$if(Boolean(opts?.workspaceId), (qb) =>
+                qb.where('p.workspaceId', '=', opts!.workspaceId!),
+              )
               .where('p.deletedAt', 'is', null),
           ),
       )

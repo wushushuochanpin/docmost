@@ -26,7 +26,12 @@ export class WsGateway implements OnGatewayConnection, OnModuleDestroy {
 
   async handleConnection(client: Socket, ...args: any[]): Promise<void> {
     try {
-      const cookies = cookie.parse(client.handshake.headers.cookie);
+      const rawCookie = client.handshake.headers.cookie;
+      if (!rawCookie) {
+        throw new Error('Missing auth cookie');
+      }
+
+      const cookies = cookie.parse(rawCookie);
       const token: JwtPayload = await this.tokenService.verifyJwt(
         cookies['authToken'],
         JwtType.ACCESS,
@@ -35,7 +40,14 @@ export class WsGateway implements OnGatewayConnection, OnModuleDestroy {
       const userId = token.sub;
       const workspaceId = token.workspaceId;
 
-      const userSpaceIds = await this.spaceMemberRepo.getUserSpaceIds(userId);
+      const userSpaceIds = await this.spaceMemberRepo.getUserSpaceIds(
+        userId,
+        workspaceId,
+      );
+
+      client.data.workspaceId = workspaceId;
+      client.data.userId = userId;
+      client.data.allowedSpaceIds = userSpaceIds;
 
       const workspaceRoom = `workspace-${workspaceId}`;
       const spaceRooms = userSpaceIds.map((id) => this.getSpaceRoomName(id));
@@ -49,6 +61,16 @@ export class WsGateway implements OnGatewayConnection, OnModuleDestroy {
 
   @SubscribeMessage('message')
   handleMessage(client: Socket, data: any): void {
+    const workspaceId = client.data?.workspaceId as string | undefined;
+    const allowedSpaceIds = Array.isArray(client.data?.allowedSpaceIds)
+      ? (client.data.allowedSpaceIds as string[])
+      : [];
+
+    if (!workspaceId) {
+      client.emit('Unauthorized');
+      return;
+    }
+
     const spaceEvents = [
       'updateOne',
       'addTreeNode',
@@ -57,12 +79,28 @@ export class WsGateway implements OnGatewayConnection, OnModuleDestroy {
     ];
 
     if (spaceEvents.includes(data?.operation) && data?.spaceId) {
+      if (!allowedSpaceIds.includes(data.spaceId)) {
+        client.emit('Forbidden');
+        return;
+      }
+
       const room = this.getSpaceRoomName(data.spaceId);
-      client.broadcast.to(room).emit('message', data);
+      client.broadcast.to(room).emit('message', {
+        ...data,
+        workspaceId,
+      });
       return;
     }
 
-    client.broadcast.emit('message', data);
+    if (data?.workspaceId && data.workspaceId !== workspaceId) {
+      client.emit('Forbidden');
+      return;
+    }
+
+    client.broadcast.to(`workspace-${workspaceId}`).emit('message', {
+      ...data,
+      workspaceId,
+    });
   }
 
   @SubscribeMessage('join-room')

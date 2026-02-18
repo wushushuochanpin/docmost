@@ -50,10 +50,17 @@ export class AuthenticationExtension implements Extension {
       throw new UnauthorizedException();
     }
 
-    const page = await this.pageRepo.findById(pageId);
+    const page = await this.pageRepo.findById(pageId, { workspaceId });
     if (!page) {
       this.logger.warn(`Page not found: ${pageId}`);
       throw new NotFoundException('Page not found');
+    }
+
+    if (page.workspaceId !== workspaceId) {
+      this.logger.warn(
+        `Workspace mismatch for collab page=${pageId} user=${user.id}`,
+      );
+      throw new UnauthorizedException();
     }
 
     const userSpaceRoles = await this.spaceMemberRepo.getUserSpaceRoles(

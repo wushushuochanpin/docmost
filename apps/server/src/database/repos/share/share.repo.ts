@@ -39,6 +39,7 @@ export class ShareRepo {
   async findById(
     shareId: string,
     opts?: {
+      workspaceId?: string;
       includeSharedPage?: boolean;
       includeCreator?: boolean;
       withLock?: boolean;
@@ -47,7 +48,12 @@ export class ShareRepo {
   ): Promise<Share> {
     const db = dbOrTx(this.db, opts?.trx);
 
-    let query = db.selectFrom('shares').select(this.baseFields);
+    let query = db
+      .selectFrom('shares')
+      .select(this.baseFields)
+      .$if(Boolean(opts?.workspaceId), (qb) =>
+        qb.where('workspaceId', '=', opts!.workspaceId!),
+      );
 
     if (opts?.includeSharedPage) {
       query = query.select((eb) => this.withSharedPage(eb));
@@ -73,6 +79,7 @@ export class ShareRepo {
   async findByPageId(
     pageId: string,
     opts?: {
+      workspaceId?: string;
       includeCreator?: boolean;
       withLock?: boolean;
       trx?: KyselyTransaction;
@@ -83,6 +90,9 @@ export class ShareRepo {
     let query = db
       .selectFrom('shares')
       .select(this.baseFields)
+      .$if(Boolean(opts?.workspaceId), (qb) =>
+        qb.where('workspaceId', '=', opts!.workspaceId!),
+      )
       .where('pageId', '=', pageId);
 
     if (opts?.includeCreator) {
@@ -98,11 +108,17 @@ export class ShareRepo {
   async updateShare(
     updatableShare: UpdatableShare,
     shareId: string,
-    trx?: KyselyTransaction,
+    opts?: {
+      workspaceId?: string;
+      trx?: KyselyTransaction;
+    },
   ) {
-    return dbOrTx(this.db, trx)
+    return dbOrTx(this.db, opts?.trx)
       .updateTable('shares')
       .set({ ...updatableShare, updatedAt: new Date() })
+      .$if(Boolean(opts?.workspaceId), (qb) =>
+        qb.where('workspaceId', '=', opts!.workspaceId!),
+      )
       .where(
         isValidUUID(shareId) ? 'id' : sql`LOWER(key)`,
         '=',
@@ -124,8 +140,12 @@ export class ShareRepo {
       .executeTakeFirst();
   }
 
-  async deleteShare(shareId: string): Promise<void> {
+  async deleteShare(shareId: string, workspaceId?: string): Promise<void> {
     let query = this.db.deleteFrom('shares');
+
+    if (workspaceId) {
+      query = query.where('workspaceId', '=', workspaceId);
+    }
 
     if (isValidUUID(shareId)) {
       query = query.where('id', '=', shareId);
@@ -136,14 +156,26 @@ export class ShareRepo {
     await query.execute();
   }
 
-  async getShares(userId: string, pagination: PaginationOptions) {
+  async getShares(
+    userId: string,
+    workspaceId: string,
+    pagination: PaginationOptions,
+  ) {
     const query = this.db
       .selectFrom('shares')
       .select(this.baseFields)
       .select((eb) => this.withPage(eb))
       .select((eb) => this.withSpace(eb, userId))
       .select((eb) => this.withCreator(eb))
-      .where('spaceId', 'in', this.spaceMemberRepo.getUserSpaceIdsQuery(userId));
+      .where(
+        'spaceId',
+        'in',
+        this.spaceMemberRepo.getUserSpaceIdsQueryByWorkspace(
+          userId,
+          workspaceId,
+        ),
+      )
+      .where('workspaceId', '=', workspaceId);
 
     return executeWithCursorPagination(query, {
       perPage: pagination.limit,

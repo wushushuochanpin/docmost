@@ -58,7 +58,22 @@ export function getSpaceUrl(spaceSlug: string) {
 
 export function getFileUrl(src: string) {
   if (!src) return src;
-  if (src.startsWith("http")) return src;
+  if (src.startsWith("http")) {
+    try {
+      const parsedUrl = new URL(src);
+      const isInternalFilePath =
+        parsedUrl.pathname.startsWith("/api/files/") ||
+        parsedUrl.pathname.startsWith("/files/");
+
+      if (isInternalFilePath) {
+        const normalizedPath = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+        return `${getAppUrl()}${normalizedPath}`;
+      }
+    } catch {
+      return src;
+    }
+    return src;
+  }
   if (src.startsWith("/api/")) {
     // Remove the '/api' prefix
     return getBackendUrl() + src.substring(4);

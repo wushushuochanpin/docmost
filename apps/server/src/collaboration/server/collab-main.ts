@@ -30,6 +30,14 @@ async function bootstrap() {
 
   app.enableCors();
 
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addHook('onSend', function (_req, reply, payload, done) {
+      reply.header('X-Content-Type-Options', 'nosniff');
+      done(null, payload);
+    });
+
   const reflector = app.get(Reflector);
   app.useGlobalInterceptors(new TransformHttpResponseInterceptor(reflector));
   app.enableShutdownHooks();

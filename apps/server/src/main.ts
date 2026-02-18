@@ -62,6 +62,10 @@ async function bootstrap() {
     .decorateReply('end', function () {
       this.send('');
     })
+    .addHook('onSend', function (_req, reply, payload, done) {
+      reply.header('X-Content-Type-Options', 'nosniff');
+      done(null, payload);
+    })
     .addHook('preHandler', function (req, reply, done) {
       // don't require workspaceId for the following paths
       const excludedPaths = [

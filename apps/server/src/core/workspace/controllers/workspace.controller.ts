@@ -296,6 +296,7 @@ export class WorkspaceController {
       path: '/',
       expires: this.environmentService.getCookieExpiresIn(),
       secure: this.environmentService.isHttps(),
+      sameSite: 'lax',
     });
 
     return {

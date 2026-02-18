@@ -17,26 +17,39 @@ import { jsonObjectFrom } from 'kysely/helpers/postgres';
 export class CommentRepo {
   constructor(@InjectKysely() private readonly db: KyselyDB) {}
 
-  // todo, add workspaceId
   async findById(
     commentId: string,
-    opts?: { includeCreator: boolean; includeResolvedBy: boolean },
+    opts?: {
+      workspaceId?: string;
+      includeCreator?: boolean;
+      includeResolvedBy?: boolean;
+    },
   ): Promise<Comment> {
     return await this.db
       .selectFrom('comments')
       .selectAll('comments')
       .$if(opts?.includeCreator, (qb) => qb.select(this.withCreator))
       .$if(opts?.includeResolvedBy, (qb) => qb.select(this.withResolvedBy))
+      .$if(Boolean(opts?.workspaceId), (qb) =>
+        qb.where('workspaceId', '=', opts!.workspaceId!),
+      )
       .where('id', '=', commentId)
       .executeTakeFirst();
   }
 
-  async findPageComments(pageId: string, pagination: PaginationOptions) {
+  async findPageComments(
+    pageId: string,
+    pagination: PaginationOptions,
+    workspaceId?: string,
+  ) {
     const query = this.db
       .selectFrom('comments')
       .selectAll('comments')
       .select((eb) => this.withCreator(eb))
       .select((eb) => this.withResolvedBy(eb))
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
       .where('pageId', '=', pageId);
 
     return executeWithCursorPagination(query, {
@@ -51,12 +64,18 @@ export class CommentRepo {
   async updateComment(
     updatableComment: UpdatableComment,
     commentId: string,
-    trx?: KyselyTransaction,
+    opts?: {
+      workspaceId?: string;
+      trx?: KyselyTransaction;
+    },
   ) {
-    const db = dbOrTx(this.db, trx);
+    const db = dbOrTx(this.db, opts?.trx);
     await db
       .updateTable('comments')
       .set(updatableComment)
+      .$if(Boolean(opts?.workspaceId), (qb) =>
+        qb.where('workspaceId', '=', opts!.workspaceId!),
+      )
       .where('id', '=', commentId)
       .execute();
   }
@@ -91,8 +110,14 @@ export class CommentRepo {
     ).as('resolvedBy');
   }
 
-  async deleteComment(commentId: string): Promise<void> {
-    await this.db.deleteFrom('comments').where('id', '=', commentId).execute();
+  async deleteComment(commentId: string, workspaceId?: string): Promise<void> {
+    await this.db
+      .deleteFrom('comments')
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
+      .where('id', '=', commentId)
+      .execute();
   }
 
   async hasChildren(commentId: string): Promise<boolean> {

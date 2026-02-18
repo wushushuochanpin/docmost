@@ -67,15 +67,17 @@ export class PageService {
     includeContent?: boolean,
     includeYdoc?: boolean,
     includeSpace?: boolean,
+    workspaceId?: string,
   ): Promise<Page> {
     return this.pageRepo.findById(pageId, {
+      workspaceId,
       includeContent,
       includeYdoc,
       includeSpace,
     });
   }
 
-  async getPageInfo(pageId: string): Promise<
+  async getPageInfo(pageId: string, workspaceId?: string): Promise<
     | (Page & {
         nodeType: PageNodeType;
         isPinned: boolean;
@@ -84,6 +86,7 @@ export class PageService {
     | undefined
   > {
     const page = await this.pageRepo.findById(pageId, {
+      workspaceId,
       includeSpace: true,
       includeContent: true,
       includeCreator: true,
@@ -125,6 +128,7 @@ export class PageService {
     if (createPageDto.parentPageId) {
       const parentPage = await this.pageRepo.findById(
         createPageDto.parentPageId,
+        { workspaceId },
       );
 
       if (!parentPage || parentPage.spaceId !== createPageDto.spaceId) {
@@ -231,9 +235,12 @@ export class PageService {
         contributorIds: contributorIds,
       },
       page.id,
+      undefined,
+      page.workspaceId,
     );
 
     return await this.pageRepo.findById(page.id, {
+      workspaceId: page.workspaceId,
       includeSpace: true,
       includeContent: true,
       includeCreator: true,
@@ -245,6 +252,7 @@ export class PageService {
   async getSidebarPages(
     spaceId: string,
     pagination: PaginationOptions,
+    workspaceId?: string,
     pageId?: string,
   ): Promise<
     CursorPaginationResult<
@@ -322,6 +330,9 @@ export class PageService {
       .select(pinSortExpression.as('pinSortOrder'))
       .select(pinnedAtSortExpression.as('pinnedAtSort'))
       .select((eb) => this.pageRepo.withHasChildren(eb))
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('pages.workspaceId', '=', workspaceId!),
+      )
       .where('pages.deletedAt', 'is', null)
       .where('pages.spaceId', '=', spaceId);
 
@@ -372,6 +383,9 @@ export class PageService {
         .select(() => sql<number>`0`.as('pinSortOrder'))
         .select(() => sql<Date>`to_timestamp(0)`.as('pinnedAtSort'))
         .select((eb) => this.pageRepo.withHasChildren(eb))
+        .$if(Boolean(workspaceId), (qb) =>
+          qb.where('pages.workspaceId', '=', workspaceId!),
+        )
         .where('pages.deletedAt', 'is', null)
         .where('pages.spaceId', '=', spaceId);
 
@@ -414,9 +428,13 @@ export class PageService {
         { spaceId, parentPageId: null, position: nextPosition },
         rootPage.id,
         trx,
+        rootPage.workspaceId,
       );
       const pageIds = await this.pageRepo
-        .getPageAndDescendants(rootPage.id, { includeContent: false })
+        .getPageAndDescendants(rootPage.id, {
+          includeContent: false,
+          workspaceId: rootPage.workspaceId,
+        })
         .then((pages) => pages.map((page) => page.id));
       // The first id is the root page id
       if (pageIds.length > 1) {
@@ -425,6 +443,7 @@ export class PageService {
           { spaceId },
           pageIds.filter((id) => id !== rootPage.id),
           trx,
+          rootPage.workspaceId,
         );
       }
 
@@ -433,6 +452,7 @@ export class PageService {
           await trx
             .updateTable('pageNodeMeta')
             .set({ spaceId, updatedAt: new Date() })
+            .where('workspaceId', '=', rootPage.workspaceId)
             .where('pageId', 'in', pageIds)
             .execute();
         } catch (err) {
@@ -445,6 +465,7 @@ export class PageService {
         await trx
           .updateTable('shares')
           .set({ spaceId: spaceId })
+          .where('workspaceId', '=', rootPage.workspaceId)
           .where('pageId', 'in', pageIds)
           .execute();
 
@@ -452,6 +473,7 @@ export class PageService {
         await trx
           .updateTable('comments')
           .set({ spaceId: spaceId })
+          .where('workspaceId', '=', rootPage.workspaceId)
           .where('pageId', 'in', pageIds)
           .execute();
 
@@ -459,7 +481,10 @@ export class PageService {
         await this.attachmentRepo.updateAttachmentsByPageId(
           { spaceId },
           pageIds,
-          trx,
+          {
+            workspaceId: rootPage.workspaceId,
+            trx,
+          },
         );
 
         await this.aiQueue.add(QueueJob.PAGE_MOVED_TO_SPACE, {
@@ -491,6 +516,7 @@ export class PageService {
 
     const pages = await this.pageRepo.getPageAndDescendants(rootPage.id, {
       includeContent: true,
+      workspaceId: rootPage.workspaceId,
     });
 
     const pageMap = new Map<string, CopyPageMapEntry>();
@@ -707,6 +733,7 @@ export class PageService {
 
     const newPageId = pageMap.get(rootPage.id).newPageId;
     const duplicatedPage = await this.pageRepo.findById(newPageId, {
+      workspaceId: rootPage.workspaceId,
       includeSpace: true,
     });
 
@@ -738,7 +765,9 @@ export class PageService {
       // changing the page's parent
       let targetParentNodeType: PageNodeType | null = null;
       if (targetParentId) {
-        const parentPage = await this.pageRepo.findById(targetParentId);
+        const parentPage = await this.pageRepo.findById(targetParentId, {
+          workspaceId: movedPage.workspaceId,
+        });
         if (!parentPage || parentPage.spaceId !== movedPage.spaceId) {
           throw new NotFoundException('Parent page not found');
         }
@@ -760,11 +789,15 @@ export class PageService {
         parentPageId: parentPageId,
       },
       dto.pageId,
+      undefined,
+      movedPage.workspaceId,
     );
   }
 
-  async setPagePinned(pageId: string, isPinned: boolean) {
-    const page = await this.pageRepo.findById(pageId);
+  async setPagePinned(pageId: string, isPinned: boolean, workspaceId?: string) {
+    const page = await this.pageRepo.findById(pageId, {
+      workspaceId,
+    });
     if (!page) {
       throw new NotFoundException('Page not found');
     }
@@ -790,8 +823,10 @@ export class PageService {
     };
   }
 
-  async batchMovePages(dto: BatchMovePageDto) {
-    const targetFolder = await this.pageRepo.findById(dto.targetFolderId);
+  async batchMovePages(dto: BatchMovePageDto, workspaceId?: string) {
+    const targetFolder = await this.pageRepo.findById(dto.targetFolderId, {
+      workspaceId,
+    });
     if (!targetFolder || targetFolder.spaceId !== dto.spaceId) {
       throw new NotFoundException('Target folder not found');
     }
@@ -801,7 +836,10 @@ export class PageService {
       throw new BadRequestException('Target must be a folder');
     }
 
-    const pagesToMove = await this.resolvePagesForBatchMove(dto);
+    const pagesToMove = await this.resolvePagesForBatchMove(
+      dto,
+      targetFolder.workspaceId,
+    );
     if (pagesToMove.length === 0) {
       return {
         taskId: null,
@@ -817,11 +855,13 @@ export class PageService {
           .selectFrom('pages')
           .select(['id', 'parentPageId'])
           .where('id', '=', targetFolder.id)
+          .where('workspaceId', '=', targetFolder.workspaceId)
           .unionAll((exp) =>
             exp
               .selectFrom('pages as p')
               .select(['p.id', 'p.parentPageId'])
-              .innerJoin('page_ancestors as pa', 'pa.parentPageId', 'p.id'),
+              .innerJoin('page_ancestors as pa', 'pa.parentPageId', 'p.id')
+              .where('p.workspaceId', '=', targetFolder.workspaceId),
           ),
       )
       .selectFrom('page_ancestors')
@@ -833,6 +873,7 @@ export class PageService {
     const targetSiblings = await this.db
       .selectFrom('pages')
       .select(['id', 'title'])
+      .where('workspaceId', '=', targetFolder.workspaceId)
       .where('spaceId', '=', dto.spaceId)
       .where('parentPageId', '=', targetFolder.id)
       .where('deletedAt', 'is', null)
@@ -881,6 +922,7 @@ export class PageService {
     const lastSibling = await this.db
       .selectFrom('pages')
       .select(['position'])
+      .where('workspaceId', '=', targetFolder.workspaceId)
       .where('spaceId', '=', dto.spaceId)
       .where('parentPageId', '=', targetFolder.id)
       .where('deletedAt', 'is', null)
@@ -902,6 +944,7 @@ export class PageService {
             position: nextPosition,
             updatedAt: new Date(),
           })
+          .where('workspaceId', '=', targetFolder.workspaceId)
           .where('id', '=', page.id)
           .execute();
       }
@@ -920,10 +963,16 @@ export class PageService {
     };
   }
 
-  private async resolvePagesForBatchMove(dto: BatchMovePageDto) {
+  private async resolvePagesForBatchMove(
+    dto: BatchMovePageDto,
+    workspaceId?: string,
+  ) {
     const baseQuery = this.db
       .selectFrom('pages')
       .select(['id', 'title', 'parentPageId', 'spaceId', 'workspaceId'])
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
       .where('spaceId', '=', dto.spaceId)
       .where('deletedAt', 'is', null);
 
@@ -1048,6 +1097,7 @@ export class PageService {
               position: nextPosition,
               updatedAt: new Date(),
             })
+            .where('workspaceId', '=', workspaceId)
             .where('id', '=', page.id)
             .execute();
 
@@ -1156,6 +1206,7 @@ export class PageService {
             position: item.oldPosition ?? null,
             updatedAt: new Date(),
           })
+          .where('workspaceId', '=', workspaceId)
           .where('id', '=', item.pageId)
           .execute();
 
@@ -1282,7 +1333,7 @@ export class PageService {
     return message.includes('relation') && message.includes('does not exist');
   }
 
-  async getPageBreadCrumbs(childPageId: string) {
+  async getPageBreadCrumbs(childPageId: string, workspaceId?: string) {
     const ancestors = await this.db
       .withRecursive('page_ancestors', (db) =>
         db
@@ -1298,6 +1349,9 @@ export class PageService {
             'deletedAt',
           ])
           .select((eb) => this.pageRepo.withHasChildren(eb))
+          .$if(Boolean(workspaceId), (qb) =>
+            qb.where('workspaceId', '=', workspaceId!),
+          )
           .where('id', '=', childPageId)
           .where('deletedAt', 'is', null)
           .unionAll((exp) =>
@@ -1332,6 +1386,9 @@ export class PageService {
               )
               //.select((eb) => this.withHasChildren(eb))
               .innerJoin('page_ancestors as pa', 'pa.parentPageId', 'p.id')
+              .$if(Boolean(workspaceId), (qb) =>
+                qb.where('p.workspaceId', '=', workspaceId!),
+              )
               .where('p.deletedAt', 'is', null),
           ),
       )
@@ -1345,22 +1402,29 @@ export class PageService {
   async getRecentSpacePages(
     spaceId: string,
     pagination: PaginationOptions,
+    workspaceId?: string,
   ): Promise<CursorPaginationResult<Page>> {
-    return this.pageRepo.getRecentPagesInSpace(spaceId, pagination);
+    return this.pageRepo.getRecentPagesInSpace(spaceId, pagination, workspaceId);
   }
 
   async getRecentPages(
     userId: string,
+    workspaceId: string,
     pagination: PaginationOptions,
   ): Promise<CursorPaginationResult<Page>> {
-    return this.pageRepo.getRecentPages(userId, pagination);
+    return this.pageRepo.getRecentPages(userId, workspaceId, pagination);
   }
 
   async getDeletedSpacePages(
     spaceId: string,
     pagination: PaginationOptions,
+    workspaceId?: string,
   ): Promise<CursorPaginationResult<Page>> {
-    return this.pageRepo.getDeletedPagesInSpace(spaceId, pagination);
+    return this.pageRepo.getDeletedPagesInSpace(
+      spaceId,
+      pagination,
+      workspaceId,
+    );
   }
 
   async forceDelete(pageId: string, workspaceId: string): Promise<void> {
@@ -1371,11 +1435,13 @@ export class PageService {
           .selectFrom('pages')
           .select(['id'])
           .where('id', '=', pageId)
+          .where('workspaceId', '=', workspaceId)
           .unionAll((exp) =>
             exp
               .selectFrom('pages as p')
               .select(['p.id'])
-              .innerJoin('page_descendants as pd', 'pd.id', 'p.parentPageId'),
+              .innerJoin('page_descendants as pd', 'pd.id', 'p.parentPageId')
+              .where('p.workspaceId', '=', workspaceId),
           ),
       )
       .selectFrom('page_descendants')
@@ -1390,6 +1456,7 @@ export class PageService {
         QueueJob.DELETE_PAGE_ATTACHMENTS,
         {
           pageId: id,
+          workspaceId,
         },
         {
           jobId: `delete-page-attachments-${id}`,
@@ -1403,7 +1470,11 @@ export class PageService {
     }
 
     if (pageIds.length > 0) {
-      await this.db.deleteFrom('pages').where('id', 'in', pageIds).execute();
+      await this.db
+        .deleteFrom('pages')
+        .where('workspaceId', '=', workspaceId)
+        .where('id', 'in', pageIds)
+        .execute();
       this.eventEmitter.emit(EventName.PAGE_DELETED, {
         pageIds: pageIds,
         workspaceId,

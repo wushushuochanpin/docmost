@@ -37,6 +37,7 @@ import {
   getProsemirrorContent,
 } from '../../common/helpers/prosemirror/utils';
 import { htmlToMarkdown } from '@docmost/editor-ext';
+import pLimit from 'p-limit';
 
 @Injectable()
 export class ExportService {
@@ -97,6 +98,7 @@ export class ExportService {
 
   async exportPages(
     pageId: string,
+    workspaceId: string,
     format: string,
     includeAttachments: boolean,
     includeChildren: boolean,
@@ -107,10 +109,12 @@ export class ExportService {
       //@ts-ignore
       pages = await this.pageRepo.getPageAndDescendants(pageId, {
         includeContent: true,
+        workspaceId,
       });
     } else {
       // Only fetch the single page when includeChildren is false
       const page = await this.pageRepo.findById(pageId, {
+        workspaceId,
         includeContent: true,
       });
       if (page){
@@ -142,6 +146,7 @@ export class ExportService {
 
   async exportSpace(
     spaceId: string,
+    workspaceId: string,
     format: string,
     includeAttachments: boolean,
   ) {
@@ -149,6 +154,7 @@ export class ExportService {
       .selectFrom('spaces')
       .selectAll()
       .where('id', '=', spaceId)
+      .where('workspaceId', '=', workspaceId)
       .executeTakeFirst();
 
     if (!space) {
@@ -170,6 +176,7 @@ export class ExportService {
         'pages.createdAt',
         'pages.updatedAt',
       ])
+      .where('workspaceId', '=', workspaceId)
       .where('spaceId', '=', spaceId)
       .where('deletedAt', 'is', null)
       .execute();
@@ -230,7 +237,12 @@ export class ExportService {
         );
 
         if (includeAttachments) {
-          await this.zipAttachments(updatedJsonContent, page.spaceId, folder);
+          await this.zipAttachments(
+            updatedJsonContent,
+            page.spaceId,
+            page.workspaceId,
+            folder,
+          );
           updatedJsonContent =
             updateAttachmentUrlsToLocalPaths(updatedJsonContent);
         }
@@ -276,29 +288,38 @@ export class ExportService {
     zip.file('docmost-metadata.json', JSON.stringify(metadata, null, 2));
   }
 
-  async zipAttachments(prosemirrorJson: any, spaceId: string, zip: JSZip) {
+  async zipAttachments(
+    prosemirrorJson: any,
+    spaceId: string,
+    workspaceId: string,
+    zip: JSZip,
+  ) {
     const attachmentIds = getAttachmentIds(prosemirrorJson);
 
     if (attachmentIds.length > 0) {
+      const limit = pLimit(4);
       const attachments = await this.db
         .selectFrom('attachments')
         .selectAll()
         .where('id', 'in', attachmentIds)
+        .where('workspaceId', '=', workspaceId)
         .where('spaceId', '=', spaceId)
         .execute();
 
       await Promise.all(
-        attachments.map(async (attachment) => {
-          try {
-            const fileBuffer = await this.storageService.read(
-              attachment.filePath,
-            );
-            const filePath = `/files/${attachment.id}/${attachment.fileName}`;
-            zip.file(filePath, fileBuffer);
-          } catch (err) {
-            this.logger.debug(`Attachment export error ${attachment.id}`, err);
-          }
-        }),
+        attachments.map((attachment) =>
+          limit(async () => {
+            try {
+              const fileStream = await this.storageService.readStream(
+                attachment.filePath,
+              );
+              const filePath = `/files/${attachment.id}/${attachment.fileName}`;
+              zip.file(filePath, fileStream as unknown as NodeJS.ReadableStream);
+            } catch (err) {
+              this.logger.debug(`Attachment export error ${attachment.id}`, err);
+            }
+          }),
+        ),
       );
     }
   }

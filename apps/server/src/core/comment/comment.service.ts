@@ -19,8 +19,9 @@ export class CommentService {
     private pageRepo: PageRepo,
   ) {}
 
-  async findById(commentId: string) {
+  async findById(commentId: string, workspaceId?: string) {
     const comment = await this.commentRepo.findById(commentId, {
+      workspaceId,
       includeCreator: true,
       includeResolvedBy: true,
     });
@@ -40,6 +41,9 @@ export class CommentService {
     if (createCommentDto.parentCommentId) {
       const parentComment = await this.commentRepo.findById(
         createCommentDto.parentCommentId,
+        {
+          workspaceId,
+        },
       );
 
       if (!parentComment || parentComment.pageId !== page.id) {
@@ -66,14 +70,17 @@ export class CommentService {
   async findByPageId(
     pageId: string,
     pagination: PaginationOptions,
+    workspaceId?: string,
   ): Promise<CursorPaginationResult<Comment>> {
-    const page = await this.pageRepo.findById(pageId);
+    const page = await this.pageRepo.findById(pageId, {
+      workspaceId,
+    });
 
     if (!page) {
       throw new BadRequestException('Page not found');
     }
 
-    return this.commentRepo.findPageComments(pageId, pagination);
+    return this.commentRepo.findPageComments(pageId, pagination, workspaceId);
   }
 
   async update(
@@ -96,6 +103,9 @@ export class CommentService {
         updatedAt: editedAt,
       },
       comment.id,
+      {
+        workspaceId: comment.workspaceId,
+      },
     );
     comment.content = commentContent;
     comment.editedAt = editedAt;
