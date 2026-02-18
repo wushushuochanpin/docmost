@@ -10,6 +10,7 @@ import { TransformHttpResponseInterceptor } from './common/interceptors/http-res
 import { WsRedisIoAdapter } from './ws/adapter/ws-redis.adapter';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyCookie from '@fastify/cookie';
+import fastifyCompress from '@fastify/compress';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -46,6 +47,11 @@ async function bootstrap() {
 
   await app.register(fastifyMultipart);
   await app.register(fastifyCookie);
+  await app.register(fastifyCompress, {
+    global: true,
+    encodings: ['br', 'gzip'],
+    threshold: 1024,
+  });
 
   app
     .getHttpAdapter()

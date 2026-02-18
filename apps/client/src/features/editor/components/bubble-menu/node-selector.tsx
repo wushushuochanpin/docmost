@@ -133,10 +133,10 @@ export const NodeSelector: FC<NodeSelectorProps> = ({
     <Popover opened={isOpen} withArrow>
       <Popover.Target>
         <Button
-          variant="default"
-          style={{ border: "none", height: "34px" }}
+          variant="subtle"
+          style={{ height: "34px" }}
           radius="0"
-          rightSection={<IconChevronDown size={16} />}
+          rightSection={<IconChevronDown size={16} stroke={1.75} />}
           onClick={() => setIsOpen(!isOpen)}
         >
           {t(activeItem?.name)}
@@ -149,7 +149,7 @@ export const NodeSelector: FC<NodeSelectorProps> = ({
             {items.map((item, index) => (
               <Button
                 key={index}
-                variant="default"
+                variant="subtle"
                 leftSection={<item.icon size={16} />}
                 rightSection={
                   activeItem.name === item.name && <IconCheck size={16} />
@@ -160,7 +160,6 @@ export const NodeSelector: FC<NodeSelectorProps> = ({
                   item.command();
                   setIsOpen(false);
                 }}
-                style={{ border: "none" }}
               >
                 {t(item.name)}
               </Button>

@@ -13,6 +13,7 @@ import {
 } from "@/features/space/permissions/permissions.type.ts";
 import { useTranslation } from "react-i18next";
 import React from "react";
+import FolderView from "./folder-view";
 
 const MemoizedFullEditor = React.memo(FullEditor);
 const MemoizedPageHeader = React.memo(PageHeader);
@@ -48,6 +49,12 @@ export default function Page() {
     return <></>;
   }
 
+  const canManagePage = spaceAbility.can(
+    SpaceCaslAction.Manage,
+    SpaceCaslSubject.Page,
+  );
+  const isFolder = page.nodeType === "folder";
+
   return (
     page && (
       <div>
@@ -56,24 +63,26 @@ export default function Page() {
         </Helmet>
 
         <MemoizedPageHeader
-          readOnly={spaceAbility.cannot(
-            SpaceCaslAction.Manage,
-            SpaceCaslSubject.Page,
-          )}
+          readOnly={!canManagePage}
         />
 
-        <MemoizedFullEditor
-          key={page.id}
-          pageId={page.id}
-          title={page.title}
-          content={page.content}
-          slugId={page.slugId}
-          spaceSlug={page?.space?.slug}
-          editable={spaceAbility.can(
-            SpaceCaslAction.Manage,
-            SpaceCaslSubject.Page,
-          )}
-        />
+        {isFolder ? (
+          <FolderView
+            folderPage={page}
+            readOnly={!canManagePage}
+            spaceSlug={page?.space?.slug}
+          />
+        ) : (
+          <MemoizedFullEditor
+            key={page.id}
+            pageId={page.id}
+            title={page.title}
+            content={page.content}
+            slugId={page.slugId}
+            spaceSlug={page?.space?.slug}
+            editable={canManagePage}
+          />
+        )}
         <MemoizedHistoryModal pageId={page.id} />
       </div>
     )

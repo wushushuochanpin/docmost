@@ -25,7 +25,7 @@ interface SpaceDetailsProps {
 }
 export default function SpaceDetails({ spaceId, readOnly }: SpaceDetailsProps) {
   const { t } = useTranslation();
-  const { data: space, isLoading, refetch } = useSpaceQuery(spaceId);
+  const { data: space, refetch } = useSpaceQuery(spaceId);
   const [exportOpened, { open: openExportModal, close: closeExportModal }] =
     useDisclosure(false);
   const [isIconUploading, setIsIconUploading] = useState(false);
@@ -76,7 +76,7 @@ export default function SpaceDetails({ spaceId, readOnly }: SpaceDetailsProps) {
               currentImageUrl={space.logo}
               fallbackName={space.name}
               size={"60px"}
-              variant="filled"
+              variant="light"
 
               type={AvatarIconType.SPACE_ICON}
               onUpload={handleIconUpload}

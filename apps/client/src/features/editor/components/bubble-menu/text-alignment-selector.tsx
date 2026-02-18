@@ -85,14 +85,14 @@ export const TextAlignmentSelector: FC<TextAlignmentProps> = ({
     <Popover opened={isOpen} withArrow>
       <Popover.Target>
         <Button
-          variant="default"
-          style={{ border: "none", height: "34px" }}
+          variant="subtle"
+          style={{ height: "34px" }}
           px="5"
           radius="0"
-          rightSection={<IconChevronDown size={16} />}
+          rightSection={<IconChevronDown size={16} stroke={1.75} />}
           onClick={() => setIsOpen(!isOpen)}
         >
-          <activeItem.icon style={{ width: rem(16) }} stroke={2} />
+          <activeItem.icon style={{ width: rem(16) }} stroke={1.75} />
         </Button>
       </Popover.Target>
 
@@ -102,7 +102,7 @@ export const TextAlignmentSelector: FC<TextAlignmentProps> = ({
             {items.map((item, index) => (
               <Button
                 key={index}
-                variant="default"
+                variant="subtle"
                 leftSection={<item.icon size={16} />}
                 rightSection={
                   activeItem.name === item.name && <IconCheck size={16} />
@@ -113,7 +113,6 @@ export const TextAlignmentSelector: FC<TextAlignmentProps> = ({
                   item.command();
                   setIsOpen(false);
                 }}
-                style={{ border: "none" }}
               >
                 {t(item.name)}
               </Button>

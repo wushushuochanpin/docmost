@@ -101,7 +101,7 @@ export default function ShareModal({ readOnly }: ShareModalProps) {
     () => (
       <Group my="sm" gap={4} wrap="nowrap">
         <TextInput
-          variant="filled"
+          variant="default"
           value={publicLink}
           readOnly
           rightSection={<CopyTextButton text={publicLink} />}
@@ -125,7 +125,6 @@ export default function ShareModal({ readOnly }: ShareModalProps) {
     <Popover width={350} position="bottom" withArrow shadow="md">
       <Popover.Target>
         <Button
-          style={{ border: "none" }}
           size="compact-sm"
           leftSection={
             <Indicator
@@ -137,7 +136,7 @@ export default function ShareModal({ readOnly }: ShareModalProps) {
               <IconWorld size={20} stroke={1.5} />
             </Indicator>
           }
-          variant="default"
+          variant="subtle"
         >
           {t("Share")}
         </Button>

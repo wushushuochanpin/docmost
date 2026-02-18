@@ -58,7 +58,7 @@ export default function PageImportModal({
         mah={400}
         keepMounted={true}
       >
-        <Modal.Overlay />
+        <Modal.Overlay blur={1} />
         <Modal.Content style={{ overflow: "hidden" }}>
           <Modal.Header py={0}>
             <Modal.Title fw={500}>{t("Import pages")}</Modal.Title>
@@ -294,13 +294,13 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
   // @ts-ignore
   return (
     <>
-      <SimpleGrid cols={2}>
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
         <FileButton onChange={handleFileUpload} accept=".md" multiple resetRef={markdownFileRef}>
           {(props) => (
             <Button
               justify="start"
               variant="default"
-              leftSection={<IconMarkdown size={18} />}
+              leftSection={<IconMarkdown size={16} stroke={1.75} />}
               {...props}
             >
               Markdown
@@ -313,7 +313,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
             <Button
               justify="start"
               variant="default"
-              leftSection={<IconFileCode size={18} />}
+              leftSection={<IconFileCode size={16} stroke={1.75} />}
               {...props}
             >
               HTML
@@ -330,7 +330,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
             <Button
               justify="start"
               variant="default"
-              leftSection={<IconBrandNotion size={18} />}
+              leftSection={<IconBrandNotion size={16} stroke={1.75} />}
               {...props}
             >
               Notion
@@ -351,7 +351,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
                 disabled={!canUseConfluence}
                 justify="start"
                 variant="default"
-                leftSection={<ConfluenceIcon size={18} />}
+                leftSection={<ConfluenceIcon size={16} />}
                 {...props}
               >
                 Confluence
@@ -383,7 +383,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
               <Group justify="center">
                 <Button
                   justify="center"
-                  leftSection={<IconFileTypeZip size={18} />}
+                  leftSection={<IconFileTypeZip size={16} stroke={1.75} />}
                   {...props}
                 >
                   {t("Upload file")}

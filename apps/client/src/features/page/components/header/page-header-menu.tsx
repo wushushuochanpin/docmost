@@ -78,21 +78,19 @@ export default function PageHeaderMenu({ readOnly }: PageHeaderMenuProps) {
 
       <Tooltip label={t("Comments")} openDelay={250} withArrow>
         <ActionIcon
-          variant="default"
-          style={{ border: "none" }}
+          variant="subtle"
           onClick={() => toggleAside("comments")}
         >
-          <IconMessage size={20} stroke={2} />
+          <IconMessage size={18} stroke={1.75} />
         </ActionIcon>
       </Tooltip>
 
       <Tooltip label={t("Table of contents")} openDelay={250} withArrow>
         <ActionIcon
-          variant="default"
-          style={{ border: "none" }}
+          variant="subtle"
           onClick={() => toggleAside("toc")}
         >
-          <IconList size={20} stroke={2} />
+          <IconList size={18} stroke={1.75} />
         </ActionIcon>
       </Tooltip>
 
@@ -165,8 +163,8 @@ function PageActionMenu({ readOnly }: PageActionMenuProps) {
         arrowPosition="center"
       >
         <Menu.Target>
-          <ActionIcon variant="default" style={{ border: "none" }}>
-            <IconDots size={20} />
+          <ActionIcon variant="subtle">
+            <IconDots size={18} stroke={1.75} />
           </ActionIcon>
         </Menu.Target>
 
@@ -333,8 +331,8 @@ function ConnectionWarning() {
       openDelay={250}
       withArrow
     >
-      <ActionIcon variant="default" c="red" style={{ border: "none" }}>
-        <IconWifiOff size={20} stroke={2} />
+      <ActionIcon variant="subtle" c="red">
+        <IconWifiOff size={18} stroke={1.75} />
       </ActionIcon>
     </Tooltip>
   );

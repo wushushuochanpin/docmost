@@ -1,11 +1,12 @@
 .bubbleMenu {
   display: flex;
   width: fit-content;
-  border-radius: 2px;
-  border: 1px solid
-    light-dark(var(--mantine-color-gray-3), var(--mantine-color-gray-8));
+  border-radius: 10px;
+  border: 1px solid var(--ui-border-default);
+  background: var(--ui-bg-surface);
+  box-shadow: var(--ui-shadow-sm);
 
   .active {
-    color: light-dark(var(--mantine-color-blue-8), var(--mantine-color-gray-5));
+    color: var(--ui-accent-primary);
   }
 }

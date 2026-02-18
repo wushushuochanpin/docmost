@@ -33,6 +33,10 @@ import { Queue } from 'bullmq';
 import { generateRandomSuffixNumbers } from '../../../common/helpers';
 import { isPageEmbeddingsTableExists } from '@docmost/db/helpers/helpers';
 import { CursorPaginationResult } from '@docmost/db/pagination/cursor-pagination';
+import {
+  ReleaseChannel,
+  WorkspaceReleaseChannelRepo,
+} from '@docmost/db/repos/workspace/workspace-release-channel.repo';
 
 @Injectable()
 export class WorkspaceService {
@@ -45,6 +49,7 @@ export class WorkspaceService {
     private groupRepo: GroupRepo,
     private groupUserRepo: GroupUserRepo,
     private userRepo: UserRepo,
+    private workspaceReleaseChannelRepo: WorkspaceReleaseChannelRepo,
     private environmentService: EnvironmentService,
     private domainService: DomainService,
     @InjectKysely() private readonly db: KyselyDB,
@@ -64,6 +69,37 @@ export class WorkspaceService {
     }
 
     return workspace;
+  }
+
+  async getReleaseChannel(workspaceId: string) {
+    return this.workspaceReleaseChannelRepo.getReleaseChannel(workspaceId);
+  }
+
+  async updateReleaseChannel(
+    workspaceId: string,
+    releaseChannel: ReleaseChannel,
+    updatedBy: string,
+  ) {
+    const workspace = await this.workspaceRepo.findById(workspaceId);
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const channel = await this.workspaceReleaseChannelRepo.upsertReleaseChannel(
+      workspaceId,
+      releaseChannel,
+      updatedBy,
+    );
+
+    if (!channel) {
+      throw new BadRequestException('Failed to update release channel');
+    }
+
+    return {
+      workspaceId: channel.workspaceId,
+      releaseChannel: channel.releaseChannel,
+      updatedAt: channel.updatedAt,
+    };
   }
 
   async getWorkspacePublicData(workspaceId: string) {

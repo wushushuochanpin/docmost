@@ -73,9 +73,14 @@ export function AppHeader() {
           )}
 
           <Text
-            size="lg"
+            size="md"
             fw={600}
-            style={{ cursor: "pointer", userSelect: "none" }}
+            style={{
+              cursor: "pointer",
+              userSelect: "none",
+              color: "var(--ui-text-primary)",
+              letterSpacing: "0.01em",
+            }}
             component={Link}
             to="/home"
           >
@@ -96,7 +101,7 @@ export function AppHeader() {
           </Group>
         </div>
 
-        <Group px={"xl"} wrap="nowrap">
+        <Group px="md" wrap="nowrap">
           {isCloud() && isTrial && trialDaysLeft !== 0 && (
             <Badge
               variant="light"

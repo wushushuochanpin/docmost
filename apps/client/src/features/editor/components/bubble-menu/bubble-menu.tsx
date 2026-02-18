@@ -176,15 +176,14 @@ export const EditorBubbleMenu: FC<EditorBubbleMenuProps> = (props) => {
             <Tooltip key={index} label={t(item.name)} withArrow>
               <ActionIcon
                 key={index}
-                variant="default"
+                variant="subtle"
                 size="lg"
                 radius="0"
                 aria-label={t(item.name)}
                 className={clsx({ [classes.active]: item.isActive() })}
-                style={{ border: "none" }}
                 onClick={item.command}
               >
-                <item.icon style={{ width: rem(16) }} stroke={2} />
+                <item.icon style={{ width: rem(16) }} stroke={1.75} />
               </ActionIcon>
             </Tooltip>
           ))}
@@ -213,14 +212,13 @@ export const EditorBubbleMenu: FC<EditorBubbleMenuProps> = (props) => {
         />
 
         <ActionIcon
-          variant="default"
+          variant="subtle"
           size="lg"
           radius="0"
           aria-label={t(commentItem.name)}
-          style={{ border: "none" }}
           onClick={commentItem.command}
         >
-          <IconMessage size={16} stroke={2} />
+          <IconMessage size={16} stroke={1.75} />
         </ActionIcon>
       </div>
     </BubbleMenu>

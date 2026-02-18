@@ -7,9 +7,12 @@ import {
   Billing,
   Comments,
   FileTasks,
+  FolderMigrationJobItems,
+  FolderMigrationJobs,
   Groups,
   GroupUsers,
   PageHistory,
+  PageNodeMeta,
   Pages,
   Shares,
   SpaceMembers,
@@ -18,6 +21,7 @@ import {
   Users,
   UserTokens,
   WorkspaceInvitations,
+  WorkspaceReleaseChannel,
   Workspaces,
 } from '@docmost/db/types/db';
 import { PageEmbeddings } from '@docmost/db/types/embeddings.types';
@@ -30,10 +34,13 @@ export interface DbInterface {
   billing: Billing;
   comments: Comments;
   fileTasks: FileTasks;
+  folderMigrationJobItems: FolderMigrationJobItems;
+  folderMigrationJobs: FolderMigrationJobs;
   groups: Groups;
   groupUsers: GroupUsers;
   pageEmbeddings: PageEmbeddings;
   pageHistory: PageHistory;
+  pageNodeMeta: PageNodeMeta;
   pages: Pages;
   shares: Shares;
   spaceMembers: SpaceMembers;
@@ -42,6 +49,7 @@ export interface DbInterface {
   users: Users;
   userTokens: UserTokens;
   workspaceInvitations: WorkspaceInvitations;
+  workspaceReleaseChannel: WorkspaceReleaseChannel;
   workspaces: Workspaces;
   apiKeys: ApiKeys;
 }

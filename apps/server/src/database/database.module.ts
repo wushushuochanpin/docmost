@@ -28,6 +28,8 @@ import { PageListener } from '@docmost/db/listeners/page.listener';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import * as postgres from 'postgres';
 import { normalizePostgresUrl } from '../common/helpers';
+import { PageNodeMetaRepo } from './repos/page/page-node-meta.repo';
+import { WorkspaceReleaseChannelRepo } from './repos/workspace/workspace-release-channel.repo';
 
 @Global()
 @Module({
@@ -80,6 +82,8 @@ import { normalizePostgresUrl } from '../common/helpers';
     UserTokenRepo,
     BacklinkRepo,
     ShareRepo,
+    PageNodeMetaRepo,
+    WorkspaceReleaseChannelRepo,
     PageListener,
   ],
   exports: [
@@ -96,6 +100,8 @@ import { normalizePostgresUrl } from '../common/helpers';
     UserTokenRepo,
     BacklinkRepo,
     ShareRepo,
+    PageNodeMetaRepo,
+    WorkspaceReleaseChannelRepo,
   ],
 })
 export class DatabaseModule
