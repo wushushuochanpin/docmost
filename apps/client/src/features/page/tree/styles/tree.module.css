@@ -128,6 +128,16 @@
     flex: 0 0 auto;
 }
 
+.counts {
+    min-width: 56px;
+    margin-right: 4px;
+    text-align: right;
+    font-size: rem(11px);
+    color: var(--ui-text-tertiary);
+    font-variant-numeric: tabular-nums;
+    flex: 0 0 auto;
+}
+
 .arrow {
     display: flex;
 }

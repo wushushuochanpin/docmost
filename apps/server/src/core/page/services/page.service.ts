@@ -47,6 +47,14 @@ import {
 import { BatchMovePageDto } from '../dto/batch-move-page.dto';
 import { sql } from 'kysely';
 
+type SidebarCountFields = {
+  directChildCount: number;
+  directChildFolderCount: number;
+  descendantFolderCount: number;
+  descendantFileCount: number;
+  descendantTotalCount: number;
+};
+
 @Injectable()
 export class PageService {
   private readonly logger = new Logger(PageService.name);
@@ -263,6 +271,11 @@ export class PageService {
         pinnedAt: Date | null;
         pinSortOrder: number;
         pinnedAtSort: Date;
+        directChildCount: number;
+        directChildFolderCount: number;
+        descendantFolderCount: number;
+        descendantFileCount: number;
+        descendantTotalCount: number;
       }
     >
   > {
@@ -344,7 +357,7 @@ export class PageService {
     }
 
     try {
-      return await executeWithCursorPagination(query, {
+      const paginatedResult = await executeWithCursorPagination(query, {
         perPage: 250,
         cursor: pagination.cursor,
         beforeCursor: pagination.beforeCursor,
@@ -359,6 +372,16 @@ export class PageService {
           };
         },
       });
+
+      const enrichedItems = await this.enrichSidebarItemsWithCounts(
+        paginatedResult.items,
+        spaceId,
+      );
+
+      return {
+        ...paginatedResult,
+        items: enrichedItems,
+      };
     } catch (err) {
       if (!this.isMissingTableError(err)) {
         throw err;
@@ -404,7 +427,7 @@ export class PageService {
         { expression: 'pages.id', direction: 'asc' },
       ] as const;
 
-      return executeWithCursorPagination(legacyQuery, {
+      const paginatedResult = await executeWithCursorPagination(legacyQuery, {
         perPage: 250,
         cursor: pagination.cursor,
         beforeCursor: pagination.beforeCursor,
@@ -416,6 +439,177 @@ export class PageService {
             id: parsed.id,
           };
         },
+      });
+
+      const enrichedItems = await this.enrichSidebarItemsWithCounts(
+        paginatedResult.items,
+        spaceId,
+      );
+
+      return {
+        ...paginatedResult,
+        items: enrichedItems,
+      };
+    }
+  }
+
+  private async enrichSidebarItemsWithCounts<T extends { id: string }>(
+    items: T[],
+    spaceId: string,
+  ): Promise<Array<T & SidebarCountFields>> {
+    if (!items.length) {
+      return [] as Array<T & SidebarCountFields>;
+    }
+
+    const pageIds = items.map((item) => item.id);
+    const rootValues = sql.join(pageIds.map((id) => sql`(${id}::uuid)`));
+    const pageIdInClause = sql.join(pageIds.map((id) => sql`${id}::uuid`));
+
+    try {
+      const directCountsResult = await sql<{
+        pageId: string;
+        directChildCount: number;
+        directChildFolderCount: number;
+      }>`
+        select
+          child.parent_page_id as "pageId",
+          count(*)::int as "directChildCount",
+          count(*) filter (where coalesce(meta.node_type, 'file') = 'folder')::int as "directChildFolderCount"
+        from pages child
+        left join page_node_meta meta on meta.page_id = child.id
+        where child.parent_page_id in (${pageIdInClause})
+          and child.deleted_at is null
+          and child.space_id = ${spaceId}
+        group by child.parent_page_id
+      `.execute(this.db);
+
+      const descendantCountsResult = await sql<{
+        pageId: string;
+        descendantFolderCount: number;
+        descendantFileCount: number;
+        descendantTotalCount: number;
+      }>`
+        with recursive roots(page_id) as (
+          values ${rootValues}
+        ),
+        descendants(root_id, id) as (
+          select roots.page_id, child.id
+          from roots
+          join pages child
+            on child.parent_page_id = roots.page_id
+           and child.deleted_at is null
+           and child.space_id = ${spaceId}
+          union all
+          select descendants.root_id, child.id
+          from descendants
+          join pages child
+            on child.parent_page_id = descendants.id
+           and child.deleted_at is null
+           and child.space_id = ${spaceId}
+        )
+        select
+          descendants.root_id as "pageId",
+          count(*) filter (where coalesce(meta.node_type, 'file') = 'folder')::int as "descendantFolderCount",
+          count(*) filter (where coalesce(meta.node_type, 'file') = 'file')::int as "descendantFileCount",
+          count(*)::int as "descendantTotalCount"
+        from descendants
+        left join page_node_meta meta on meta.page_id = descendants.id
+        group by descendants.root_id
+      `.execute(this.db);
+
+      const directCountMap = new Map<
+        string,
+        { directChildCount: number; directChildFolderCount: number }
+      >(
+        directCountsResult.rows.map((row) => [
+          row.pageId,
+          {
+            directChildCount: Number(row.directChildCount ?? 0),
+            directChildFolderCount: Number(row.directChildFolderCount ?? 0),
+          },
+        ]),
+      );
+      const descendantCountMap = new Map<
+        string,
+        {
+          descendantFolderCount: number;
+          descendantFileCount: number;
+          descendantTotalCount: number;
+        }
+      >(
+        descendantCountsResult.rows.map((row) => [
+          row.pageId,
+          {
+            descendantFolderCount: Number(row.descendantFolderCount ?? 0),
+            descendantFileCount: Number(row.descendantFileCount ?? 0),
+            descendantTotalCount: Number(row.descendantTotalCount ?? 0),
+          },
+        ]),
+      );
+
+      return items.map((item) => {
+        const direct = directCountMap.get(item.id);
+        const descendant = descendantCountMap.get(item.id);
+        return {
+          ...item,
+          directChildCount: direct?.directChildCount ?? 0,
+          directChildFolderCount: direct?.directChildFolderCount ?? 0,
+          descendantFolderCount: descendant?.descendantFolderCount ?? 0,
+          descendantFileCount: descendant?.descendantFileCount ?? 0,
+          descendantTotalCount: descendant?.descendantTotalCount ?? 0,
+        };
+      });
+    } catch (err) {
+      if (!this.isMissingTableError(err)) {
+        throw err;
+      }
+
+      const descendantTotalsResult = await sql<{
+        pageId: string;
+        descendantTotalCount: number;
+      }>`
+        with recursive roots(page_id) as (
+          values ${rootValues}
+        ),
+        descendants(root_id, id) as (
+          select roots.page_id, child.id
+          from roots
+          join pages child
+            on child.parent_page_id = roots.page_id
+           and child.deleted_at is null
+           and child.space_id = ${spaceId}
+          union all
+          select descendants.root_id, child.id
+          from descendants
+          join pages child
+            on child.parent_page_id = descendants.id
+           and child.deleted_at is null
+           and child.space_id = ${spaceId}
+        )
+        select
+          descendants.root_id as "pageId",
+          count(*)::int as "descendantTotalCount"
+        from descendants
+        group by descendants.root_id
+      `.execute(this.db);
+
+      const descendantTotalMap = new Map<string, number>(
+        descendantTotalsResult.rows.map((row) => [
+          row.pageId,
+          Number(row.descendantTotalCount ?? 0),
+        ]),
+      );
+
+      return items.map((item) => {
+        const descendantTotalCount = descendantTotalMap.get(item.id) ?? 0;
+        return {
+          ...item,
+          directChildCount: 0,
+          directChildFolderCount: 0,
+          descendantFolderCount: 0,
+          descendantFileCount: descendantTotalCount,
+          descendantTotalCount,
+        };
       });
     }
   }
