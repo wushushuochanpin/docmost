@@ -575,5 +575,14 @@
   "No answer available": "Pas de réponse disponible",
   "Background color": "Couleur de fond",
   "Highlight color": "Couleur de surbrillance",
-  "Remove color": "Supprimer la couleur"
+  "Remove color": "Supprimer la couleur",
+  "New file": "Nouveau fichier",
+  "New folder": "Nouveau dossier",
+  "No items in this folder.": "Aucun élément dans ce dossier.",
+  "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}} dossiers · {{fileCount}} fichiers",
+  "Pinned": "Épinglé",
+  "Unpinned": "Désépinglé",
+  "Unpin": "Désépingler",
+  "Pin to top": "Épingler en haut",
+  "Failed to update pin status": "Échec de la mise à jour du statut d'épinglage"
 }

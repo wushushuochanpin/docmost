@@ -575,5 +575,14 @@
   "No answer available": "Nenhuma resposta disponível",
   "Background color": "Cor de fundo",
   "Highlight color": "Cor de destaque",
-  "Remove color": "Remover cor"
+  "Remove color": "Remover cor",
+  "New file": "Novo arquivo",
+  "New folder": "Nova pasta",
+  "No items in this folder.": "Nenhum item nesta pasta.",
+  "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}} pastas · {{fileCount}} arquivos",
+  "Pinned": "Fixado",
+  "Unpinned": "Desafixado",
+  "Unpin": "Desafixar",
+  "Pin to top": "Fixar no topo",
+  "Failed to update pin status": "Falha ao atualizar o status de fixação"
 }

@@ -575,5 +575,14 @@
   "No answer available": "Відповідь недоступна",
   "Background color": "Колір фону",
   "Highlight color": "Колір підсвічування",
-  "Remove color": "Видалити колір"
+  "Remove color": "Видалити колір",
+  "New file": "Новий файл",
+  "New folder": "Нова папка",
+  "No items in this folder.": "У цій папці немає елементів.",
+  "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}} папок · {{fileCount}} файлів",
+  "Pinned": "Закріплено",
+  "Unpinned": "Відкріплено",
+  "Unpin": "Відкріпити",
+  "Pin to top": "Закріпити вгорі",
+  "Failed to update pin status": "Не вдалося оновити статус закріплення"
 }

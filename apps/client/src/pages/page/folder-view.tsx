@@ -64,6 +64,21 @@ export default function FolderView({
     () => data?.pages.flatMap((page) => page.items ?? []) ?? [],
     [data],
   );
+  const { folderCount, fileCount } = useMemo(
+    () =>
+      children.reduce(
+        (acc, item) => {
+          if (item.nodeType === "folder") {
+            acc.folderCount += 1;
+          } else {
+            acc.fileCount += 1;
+          }
+          return acc;
+        },
+        { folderCount: 0, fileCount: 0 },
+      ),
+    [children],
+  );
 
   async function handleCreateChild(nodeType: "file" | "folder") {
     if (readOnly || creatingNodeType) {
@@ -109,7 +124,10 @@ export default function FolderView({
       <Stack p="md" gap="sm" className={classes.contentArea}>
         <Group justify="space-between" align="center" className={classes.toolbar}>
           <Text size="sm" className={classes.metaText}>
-            {children.length} items
+            {t("{{folderCount}} folders · {{fileCount}} files", {
+              folderCount,
+              fileCount,
+            })}
           </Text>
 
           {!readOnly && (
@@ -120,7 +138,7 @@ export default function FolderView({
                 loading={creatingNodeType === "file"}
                 onClick={() => handleCreateChild("file")}
               >
-                New file
+                {t("New file")}
               </Button>
               <Button
                 size="xs"
@@ -129,7 +147,7 @@ export default function FolderView({
                 loading={creatingNodeType === "folder"}
                 onClick={() => handleCreateChild("folder")}
               >
-                New folder
+                {t("New folder")}
               </Button>
             </Group>
           )}
@@ -142,7 +160,7 @@ export default function FolderView({
             </Group>
           ) : children.length === 0 ? (
             <Text size="sm" py="md" ta="center" className={classes.emptyState}>
-              No items in this folder.
+              {t("No items in this folder.")}
             </Text>
           ) : (
             <Stack gap={6}>
@@ -178,9 +196,11 @@ export default function FolderView({
                       </Text>
                     </Group>
 
-                    {item.isPinned ? (
-                      <IconPin size={13} stroke={1.75} className={classes.pinIcon} />
-                    ) : null}
+                    <span className={classes.itemMeta}>
+                      {item.isPinned ? (
+                        <IconPin size={13} stroke={1.75} className={classes.pinIcon} />
+                      ) : null}
+                    </span>
                   </Group>
                 </Anchor>
               ))}

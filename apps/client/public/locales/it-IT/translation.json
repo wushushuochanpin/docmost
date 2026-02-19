@@ -575,5 +575,14 @@
   "No answer available": "Nessuna risposta disponibile",
   "Background color": "Colore di sfondo",
   "Highlight color": "Colore evidenziato",
-  "Remove color": "Rimuovi colore"
+  "Remove color": "Rimuovi colore",
+  "New file": "Nuovo file",
+  "New folder": "Nuova cartella",
+  "No items in this folder.": "Nessun elemento in questa cartella.",
+  "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}} cartelle · {{fileCount}} file",
+  "Pinned": "Fissato",
+  "Unpinned": "Non fissato",
+  "Unpin": "Rimuovi fissaggio",
+  "Pin to top": "Fissa in alto",
+  "Failed to update pin status": "Impossibile aggiornare lo stato di fissaggio"
 }

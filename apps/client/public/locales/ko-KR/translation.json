@@ -575,5 +575,14 @@
   "No answer available": "답변을 제공할 수 없습니다",
   "Background color": "배경 색",
   "Highlight color": "강조 색",
-  "Remove color": "색 제거"
+  "Remove color": "색 제거",
+  "New file": "새 파일",
+  "New folder": "새 폴더",
+  "No items in this folder.": "이 폴더에는 항목이 없습니다.",
+  "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}}개 폴더 · {{fileCount}}개 파일",
+  "Pinned": "고정됨",
+  "Unpinned": "고정 해제됨",
+  "Unpin": "고정 해제",
+  "Pin to top": "상단에 고정",
+  "Failed to update pin status": "고정 상태를 업데이트하지 못했습니다"
 }

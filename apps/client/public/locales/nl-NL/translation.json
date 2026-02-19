@@ -575,5 +575,14 @@
   "No answer available": "Geen antwoord beschikbaar",
   "Background color": "Achtergrondkleur",
   "Highlight color": "Markeerkleur",
-  "Remove color": "Kleur verwijderen"
+  "Remove color": "Kleur verwijderen",
+  "New file": "Nieuw bestand",
+  "New folder": "Nieuwe map",
+  "No items in this folder.": "Geen items in deze map.",
+  "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}} mappen · {{fileCount}} bestanden",
+  "Pinned": "Vastgezet",
+  "Unpinned": "Niet vastgezet",
+  "Unpin": "Losmaken",
+  "Pin to top": "Bovenaan vastzetten",
+  "Failed to update pin status": "Vastzetstatus kon niet worden bijgewerkt"
 }

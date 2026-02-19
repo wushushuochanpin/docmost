@@ -16,8 +16,11 @@
     border-radius: 8px;
     display: flex;
     align-items: center;
+    gap: 2px;
     height: 100%;
     width: calc(100% - 8px);
+    min-width: 0;
+    padding-right: 2px;
     text-decoration: none;
     color: var(--ui-text-primary);
     transition: background-color 120ms ease, border-color 120ms ease;
@@ -29,20 +32,26 @@
 
 
     .actions {
-        visibility: hidden;
-        position: absolute;
-        height: 100%;
-        top: 0;
-        right: 0;
-        border-top-right-radius: 8px;
-        border-bottom-right-radius: 8px;
-        background-color: var(--ui-bg-subtle);
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 120ms ease;
     }
 
       &:hover .actions {
-       visibility: visible;
+       opacity: 1;
+       pointer-events: auto;
     }
 
+}
+
+.node:global(.isSelected) .actions,
+.node:global(.isFocused) .actions {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .node:global(.willReceiveDrop) {
@@ -88,11 +97,35 @@
 
 .text {
     flex: 1;
+    min-width: 0;
+    line-height: 1.2;
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: rem(14px);
     font-weight: 500;
     color: var(--ui-text-primary);
+}
+
+.nodeIcon {
+    margin-right: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.pinnedBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border-radius: 999px;
+    border: 1px solid var(--ui-border-default);
+    background: var(--ui-bg-surface);
+    color: var(--ui-text-tertiary);
+    padding: 1px 4px;
+    margin-right: 2px;
+    flex: 0 0 auto;
 }
 
 .arrow {

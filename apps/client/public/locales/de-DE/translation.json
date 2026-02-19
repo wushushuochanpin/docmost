@@ -575,5 +575,14 @@
   "No answer available": "Keine Antwort verfügbar",
   "Background color": "Hintergrundfarbe",
   "Highlight color": "Hervorhebungsfarbe",
-  "Remove color": "Farbe entfernen"
+  "Remove color": "Farbe entfernen",
+  "New file": "Neue Datei",
+  "New folder": "Neuer Ordner",
+  "No items in this folder.": "Keine Elemente in diesem Ordner.",
+  "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}} Ordner · {{fileCount}} Dateien",
+  "Pinned": "Angeheftet",
+  "Unpinned": "Nicht angeheftet",
+  "Unpin": "Anheften aufheben",
+  "Pin to top": "Oben anheften",
+  "Failed to update pin status": "Anheftungsstatus konnte nicht aktualisiert werden"
 }

@@ -13,7 +13,10 @@ import { useTranslation } from "react-i18next";
 import { useRedirectToCloudSelect } from "@/ee/hooks/use-redirect-to-cloud-select.tsx";
 import { useTrackOrigin } from "@/hooks/use-track-origin";
 import APP_ROUTE from "@/lib/app-route.ts";
-import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/api-client.ts";
+import {
+  APP_NAVIGATE_EVENT,
+  AUTH_UNAUTHORIZED_EVENT,
+} from "@/lib/api-client.ts";
 
 const SetupWorkspace = lazy(() => import("@/pages/auth/setup-workspace.tsx"));
 const LoginPage = lazy(() => import("@/pages/auth/login"));
@@ -101,8 +104,24 @@ export default function App() {
     };
 
     window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    const onNavigate = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        to?: string;
+        replace?: boolean;
+        state?: Record<string, unknown>;
+      }>;
+      if (!customEvent.detail?.to) return;
+
+      navigate(customEvent.detail.to, {
+        replace: customEvent.detail.replace ?? true,
+        state: customEvent.detail.state,
+      });
+    };
+    window.addEventListener(APP_NAVIGATE_EVENT, onNavigate);
+
     return () => {
       window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+      window.removeEventListener(APP_NAVIGATE_EVENT, onNavigate);
     };
   }, [location.hash, location.pathname, location.search, navigate]);
 

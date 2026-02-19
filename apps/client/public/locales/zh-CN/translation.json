@@ -575,5 +575,14 @@
   "No answer available": "无可用答案",
   "Background color": "背景颜色",
   "Highlight color": "突出显示颜色",
-  "Remove color": "移除颜色"
+  "Remove color": "移除颜色",
+  "New file": "新建文件",
+  "New folder": "新建文件夹",
+  "No items in this folder.": "此文件夹暂无内容。",
+  "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}} 个文件夹 · {{fileCount}} 个文件",
+  "Pinned": "已置顶",
+  "Unpinned": "已取消置顶",
+  "Unpin": "取消置顶",
+  "Pin to top": "置顶",
+  "Failed to update pin status": "更新置顶状态失败"
 }

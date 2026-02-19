@@ -575,5 +575,14 @@
   "No answer available": "回答がありません",
   "Background color": "背景色",
   "Highlight color": "ハイライト色",
-  "Remove color": "色を削除"
+  "Remove color": "色を削除",
+  "New file": "新しいファイル",
+  "New folder": "新しいフォルダー",
+  "No items in this folder.": "このフォルダーには項目がありません。",
+  "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}} 個のフォルダー · {{fileCount}} 個のファイル",
+  "Pinned": "固定済み",
+  "Unpinned": "固定解除済み",
+  "Unpin": "固定を解除",
+  "Pin to top": "上部に固定",
+  "Failed to update pin status": "固定状態の更新に失敗しました"
 }

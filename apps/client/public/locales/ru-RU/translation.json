@@ -575,5 +575,14 @@
   "No answer available": "Ответ недоступен",
   "Background color": "Цвет фона",
   "Highlight color": "Цвет выделения",
-  "Remove color": "Удалить цвет"
+  "Remove color": "Удалить цвет",
+  "New file": "Новый файл",
+  "New folder": "Новая папка",
+  "No items in this folder.": "В этой папке нет элементов.",
+  "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}} папок · {{fileCount}} файлов",
+  "Pinned": "Закреплено",
+  "Unpinned": "Откреплено",
+  "Unpin": "Открепить",
+  "Pin to top": "Закрепить наверху",
+  "Failed to update pin status": "Не удалось обновить статус закрепления"
 }

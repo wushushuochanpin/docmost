@@ -135,20 +135,37 @@ export default function PageEditor({
         setIsRemoteSynced(event.state);
       };
       const onAuthenticationFailedHandler = () => {
-        const payload = jwtDecode(collabQuery?.token);
-        const now = Date.now().valueOf() / 1000;
-        const isTokenExpired = now >= payload.exp;
-        if (isTokenExpired) {
-          refetchCollabToken().then((result) => {
-            if (result.data?.token) {
-              socket.disconnect();
-              setTimeout(() => {
-                remote.configuration.token = result.data.token;
-                socket.connect();
-              }, 100);
-            }
-          });
+        const providerToken = providersRef.current?.remote.configuration.token;
+        const currentToken =
+          typeof providerToken === "string"
+            ? providerToken
+            : collabQuery?.token;
+
+        let shouldRefreshToken = !currentToken;
+        if (currentToken) {
+          try {
+            const payload = jwtDecode<{ exp?: number }>(currentToken);
+            const now = Date.now().valueOf() / 1000;
+            shouldRefreshToken = !payload?.exp || now >= payload.exp;
+          } catch {
+            shouldRefreshToken = true;
+          }
         }
+
+        if (!shouldRefreshToken) return;
+
+        refetchCollabToken().then((result) => {
+          if (!result.data?.token) return;
+
+          const remoteProvider = providersRef.current?.remote;
+          if (!remoteProvider) return;
+
+          socket.disconnect();
+          setTimeout(() => {
+            remoteProvider.configuration.token = result.data.token;
+            socket.connect();
+          }, 100);
+        });
       };
       const remote = new HocuspocusProvider({
         websocketProvider: socket,
@@ -174,6 +191,20 @@ export default function PageEditor({
       providersRef.current = null;
     };
   }, [pageId]);
+
+  useEffect(() => {
+    if (!collabQuery?.token || !providersRef.current) return;
+
+    const remoteProvider = providersRef.current.remote;
+    const socket = providersRef.current.socket;
+
+    if (remoteProvider.configuration.token !== collabQuery.token) {
+      remoteProvider.configuration.token = collabQuery.token;
+      if (yjsConnectionStatus === WebSocketStatus.Disconnected) {
+        socket.connect();
+      }
+    }
+  }, [collabQuery?.token, yjsConnectionStatus]);
 
   // Only connect/disconnect on tab/idle, not destroy
   useEffect(() => {

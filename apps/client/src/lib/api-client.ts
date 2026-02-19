@@ -3,6 +3,7 @@ import APP_ROUTE from "@/lib/app-route.ts";
 import { isCloud } from "@/lib/config.ts";
 
 export const AUTH_UNAUTHORIZED_EVENT = "docmost:auth:unauthorized";
+export const APP_NAVIGATE_EVENT = "docmost:app:navigate";
 
 const api: AxiosInstance = axios.create({
   baseURL: "/api",
@@ -49,7 +50,14 @@ api.interceptors.response.use(
               !isCloud() &&
               window.location.pathname != APP_ROUTE.AUTH.SETUP
             ) {
-              window.location.href = APP_ROUTE.AUTH.SETUP;
+              window.dispatchEvent(
+                new CustomEvent(APP_NAVIGATE_EVENT, {
+                  detail: {
+                    to: APP_ROUTE.AUTH.SETUP,
+                    replace: true,
+                  },
+                }),
+              );
             }
           }
           break;
