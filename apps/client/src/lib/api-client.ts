@@ -2,6 +2,8 @@ import axios, { AxiosInstance } from "axios";
 import APP_ROUTE from "@/lib/app-route.ts";
 import { isCloud } from "@/lib/config.ts";
 
+export const AUTH_UNAUTHORIZED_EVENT = "docmost:auth:unauthorized";
+
 const api: AxiosInstance = axios.create({
   baseURL: "/api",
   withCredentials: true,
@@ -71,7 +73,13 @@ function redirectToLogin() {
     "/invites",
   ];
   if (!exemptPaths.some((path) => window.location.pathname.startsWith(path))) {
-    window.location.href = APP_ROUTE.AUTH.LOGIN;
+    window.dispatchEvent(
+      new CustomEvent(AUTH_UNAUTHORIZED_EVENT, {
+        detail: {
+          from: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        },
+      }),
+    );
   }
 }
 

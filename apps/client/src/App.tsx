@@ -1,11 +1,19 @@
-import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { Error404 } from "@/components/ui/error-404.tsx";
 import { ErrorBoundary } from "react-error-boundary";
 import { isCloud } from "@/lib/config.ts";
 import { useTranslation } from "react-i18next";
 import { useRedirectToCloudSelect } from "@/ee/hooks/use-redirect-to-cloud-select.tsx";
 import { useTrackOrigin } from "@/hooks/use-track-origin";
+import APP_ROUTE from "@/lib/app-route.ts";
+import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/api-client.ts";
 
 const SetupWorkspace = lazy(() => import("@/pages/auth/setup-workspace.tsx"));
 const LoginPage = lazy(() => import("@/pages/auth/login"));
@@ -63,8 +71,40 @@ const MfaSetupRequiredPage = lazy(() =>
 
 export default function App() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
   useRedirectToCloudSelect();
   useTrackOrigin();
+
+  useEffect(() => {
+    const onUnauthorized = (event: Event) => {
+      const authPaths = [
+        APP_ROUTE.AUTH.LOGIN,
+        APP_ROUTE.AUTH.SIGNUP,
+        APP_ROUTE.AUTH.FORGOT_PASSWORD,
+        APP_ROUTE.AUTH.PASSWORD_RESET,
+        "/invites",
+      ];
+      if (authPaths.some((path) => location.pathname.startsWith(path))) {
+        return;
+      }
+
+      const customEvent = event as CustomEvent<{ from?: string }>;
+      const from =
+        customEvent.detail?.from ??
+        `${location.pathname}${location.search}${location.hash}`;
+
+      navigate(APP_ROUTE.AUTH.LOGIN, {
+        replace: true,
+        state: { from },
+      });
+    };
+
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => {
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    };
+  }, [location.hash, location.pathname, location.search, navigate]);
 
   return (
     <Suspense fallback={null}>

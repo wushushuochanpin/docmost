@@ -12,12 +12,14 @@ import { useCollabToken } from "@/features/auth/queries/auth-query.tsx";
 import { Error404 } from "@/components/ui/error-404.tsx";
 import { Box, Center, Loader, Text } from "@mantine/core";
 import APP_ROUTE from "@/lib/app-route.ts";
+import { Navigate, useLocation } from "react-router-dom";
 
 export function UserProvider({ children }: React.PropsWithChildren) {
   const [, setCurrentUser] = useAtom(currentUserAtom);
   const { data, isLoading, error, isError, refetch } = useCurrentUser();
   const { i18n } = useTranslation();
   const [, setSocket] = useAtom(socketAtom);
+  const location = useLocation();
   // fetch collab token on load
   const { data: collab } = useCollabToken();
 
@@ -75,15 +77,8 @@ export function UserProvider({ children }: React.PropsWithChildren) {
     const status = error?.["response"]?.status;
     const isUnauthorized = status === 401;
     if (isUnauthorized) {
-      window.location.href = APP_ROUTE.AUTH.LOGIN;
-      return (
-        <Center
-          h="100vh"
-          style={{ background: "var(--mantine-color-gray-0, #f6f7f9)" }}
-        >
-          <Loader size="lg" color="blue" />
-        </Center>
-      );
+      const from = `${location.pathname}${location.search}${location.hash}`;
+      return <Navigate to={APP_ROUTE.AUTH.LOGIN} replace state={{ from }} />;
     }
     return (
       <Center
