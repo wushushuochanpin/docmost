@@ -7,14 +7,20 @@ isProject: false
 
 # Figma 设计稿引用方案包与施工计划
 
-**存储位置**：`/root/coderepository/docmost/docs/prd`（本计划归属 docs/prd 目录）
+**成文日期**：2026-02-20 02:26:00 UTC+8
+**最后修订**：2026-02-20 02:57:28 UTC+8
+
+本计划用于说明 Figma 对齐方案与实施步骤。阅读时当前系统实现可能已发生变化，请以实际代码与产品行为为准，谨慎参考。
+
+**存储位置**：`docs/prd`（本计划归属 docs/prd 目录）
 
 ## 约束与目标
 
-- **不删减现有功能**：所有当前 Docmost 行为（侧边树点击、重命名、新建、拖拽、目录浏览、权限与接口）保持不变，仅做 UI/交互增强与视觉对齐。
-- **尽可能引用 Figma**：以 [UI Design Improvement Proposal](https://www.figma.com/make/JFwYRqSb1UmrhU3tojIugP/UI-Design-Improvement-Proposal) 为设计依据，在方案包中显式映射设计稿与实现，施工时通过 Figma MCP 拉取细节。
+- **不删减现有功能**：所有当前 Docmost 行为（侧边树点击、重命名、新建、拖拽、目录浏览、权限与接口）保持不变；**左侧树区域自定义宽度（拖拽调整侧边栏宽度）必须保留**；仅做 UI/交互增强与视觉对齐。
+- **尽可能引用 Figma**：以 [UI Design Improvement Proposal](https://www.figma.com/make/JFwYRqSb1UmrhU3tojIugP/UI-Design-Improvement-Proposal) 为设计依据（设计稿已更新，三点与加号已包含）；在方案包中显式映射设计稿与实现，施工时通过 Figma MCP 拉取细节。
+- **优先使用现有依赖库**：能通过现有依赖（Mantine、项目内组件或成熟 npm 库）实现的，优先直接引用或封装，尽量不从零手写。
 - **先方案包、后施工**：按 PRD skill 在既有 PRD 包内补充「设计稿对照」文档，再按 01/02/06 + 新文档实施。
-- **文档编排按钮置顶**：设计稿中页面编辑区的格式化工具栏（加粗、斜体、标题、列表、对齐、链接、图片、表格等）在内容区顶部吸顶展示，滚动文档时保持可见；实现上可采用 `position: sticky` 或固定容器，与现有 BubbleMenu 可并存或按设计二选一，以不删减现有编排能力为前提。
+- **文档编排按钮置顶**：设计稿中页面编辑区的格式化工具栏（加粗、斜体、标题、列表、对齐、链接、图片、表格等）在内容区顶部吸顶展示，滚动文档时保持可见；实现上可采用 `position: sticky` 或固定容器，且与现有 BubbleMenu 并存，不二选一。
 
 ---
 
@@ -56,10 +62,13 @@ isProject: false
 - **依据**：以 01_产品方案_PRD.md、02_技术方案_架构与接口.md、新建的 07_Figma设计对照与实现要点.md 及 06_实施计划_测试与回滚.md 为唯一实施与验收依据。
 - **实现范围**：
   - space-tree.tsx 与 tree.module.css：置顶徽标（pin + 类型）、节点名称与操作区水平居中对齐，布局与 07 中 Figma 映射一致。
+  - space-tree.tsx 与 `POST /pages/sidebar-pages`：每个节点展示“一级下级目录数 + 全部下级总数”，路径不变、响应新增兼容字段。
   - folder-view.tsx 与 folder-view.module.css：顶部统计改为「文件夹数 · 文件数」展示，视觉与 07 中 Figma 映射一致。
-  - 页面编辑器（page-editor.tsx + bubble-menu 或独立 sticky toolbar）：文档编排/格式化工具栏在内容区顶部吸顶（sticky），滚动时保持可见；与现有 BubbleMenu 能力不冲突（可并存或按设计稿收敛为一处），不删减现有编排功能。
+  - 页面编辑器（page-editor.tsx + bubble-menu 或独立 sticky toolbar）：文档编排/格式化工具栏在内容区顶部吸顶（sticky），滚动时保持可见；与现有 BubbleMenu 并存，不删减现有编排功能。
+  - **保留**：左侧树区域自定义宽度（`global-app-shell` 侧边栏拖拽调整），回归 T-007。
+- **实现偏好**：优先使用现有依赖库（Mantine、项目内组件或成熟 npm），尽量不从零手写；实施前评估可复用库。
 - **引用 Figma 的方式**：施工时通过 Figma MCP 读取 07 中记录的 Figma 链接或节点 ID，提取间距、字号、颜色、图标等，确保实现与设计稿一致；若 MCP 无法访问某节点，以 07 文档中书面描述为准。
-- **功能与回归**：严格满足 07 中「现有功能不删减」检查清单；执行 06 中测试矩阵（T-001~T-005），回滚按 06 方案执行。
+- **功能与回归**：严格满足 07 中「现有功能不删减」检查清单；执行 06 中测试矩阵（T-001~T-012），回滚按 06 方案执行。
 
 ---
 
