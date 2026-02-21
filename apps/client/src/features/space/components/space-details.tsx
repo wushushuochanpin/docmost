@@ -18,6 +18,8 @@ import {
   ResponsiveSettingsControl,
   ResponsiveSettingsRow,
 } from "@/components/ui/responsive-settings-row.tsx";
+import SpacePublicSharingToggle from "@/ee/security/components/space-public-sharing-toggle.tsx";
+import useEnterpriseAccess from "@/ee/hooks/use-enterprise-access.tsx";
 
 interface SpaceDetailsProps {
   spaceId: string;
@@ -87,6 +89,13 @@ export default function SpaceDetails({ spaceId, readOnly }: SpaceDetailsProps) {
           </div>
 
           <EditSpaceForm space={space} readOnly={readOnly} />
+
+          {showSharingToggle && (
+            <>
+              <Divider my="lg" />
+              <SpacePublicSharingToggle space={space} />
+            </>
+          )}
 
           {!readOnly && (
             <>

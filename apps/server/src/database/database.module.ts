@@ -24,6 +24,8 @@ import { MigrationService } from '@docmost/db/services/migration.service';
 import { UserTokenRepo } from './repos/user-token/user-token.repo';
 import { BacklinkRepo } from '@docmost/db/repos/backlink/backlink.repo';
 import { ShareRepo } from '@docmost/db/repos/share/share.repo';
+import { NotificationRepo } from '@docmost/db/repos/notification/notification.repo';
+import { WatcherRepo } from '@docmost/db/repos/watcher/watcher.repo';
 import { PageListener } from '@docmost/db/listeners/page.listener';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import * as postgres from 'postgres';

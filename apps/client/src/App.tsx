@@ -166,13 +166,7 @@ export default function App() {
           <Route path={"/s/:spaceSlug/trash"} element={<SpaceTrash />} />
           <Route
             path={"/s/:spaceSlug/p/:pageSlug"}
-            element={
-              <ErrorBoundary
-                fallback={<>{t("Failed to load page. An error occurred.")}</>}
-              >
-                <Page />
-              </ErrorBoundary>
-            }
+            element={<Page />}
           />
 
           <Route path={"/settings"}>

@@ -17,13 +17,13 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { AttachmentService } from './services/attachment.service';
-import { FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { FileInterceptor } from '../../common/interceptors/file.interceptor';
 import * as bytes from 'bytes';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { User, Workspace } from '@docmost/db/types/entity.types';
+import { Attachment, User, Workspace } from '@docmost/db/types/entity.types';
 import { StorageService } from '../../integrations/storage/storage.service';
 import {
   getAttachmentFolderPath,
@@ -160,6 +160,7 @@ export class AttachmentController {
   @UseGuards(JwtAuthGuard)
   @Get('/files/:fileId/:fileName')
   async getFile(
+    @Req() req: FastifyRequest,
     @Res() res: FastifyReply,
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
@@ -236,6 +237,7 @@ export class AttachmentController {
 
   @Get('/files/public/:fileId/:fileName')
   async getPublicFile(
+    @Req() req: FastifyRequest,
     @Res() res: FastifyReply,
     @AuthWorkspace() workspace: Workspace,
     @Param('fileId') fileId: string,

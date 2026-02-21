@@ -25,10 +25,10 @@ async function bootstrap() {
     }),
     {
       rawBody: true,
-      // disable Nest logger so pino handles all logs
+      // captures NestJS internal errors
+      logger: new InternalLogFilter(),
       // bufferLogs must be false else pino will fail
       // to log OnApplicationBootstrap logs
-      logger: false,
       bufferLogs: false,
     },
   );

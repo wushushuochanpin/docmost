@@ -20,4 +20,12 @@ export class CreatePageDto {
 
   @IsUUID()
   spaceId: string;
+
+  @IsOptional()
+  content?: string | object;
+
+  @ValidateIf((o) => o.content !== undefined)
+  @Transform(({ value }) => value?.toLowerCase() ?? 'json')
+  @IsIn(['json', 'markdown', 'html'])
+  format?: ContentFormat;
 }

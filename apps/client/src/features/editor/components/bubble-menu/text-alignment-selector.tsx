@@ -7,7 +7,7 @@ import {
   IconCheck,
   IconChevronDown,
 } from "@tabler/icons-react";
-import { Popover, Button, ScrollArea, rem } from "@mantine/core";
+import { Popover, Button, ScrollArea, Tooltip, rem } from "@mantine/core";
 import type { Editor } from "@tiptap/react";
 import { useEditorState } from "@tiptap/react";
 import { useTranslation } from "react-i18next";

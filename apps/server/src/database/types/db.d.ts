@@ -225,6 +225,7 @@ export interface GroupUsers {
 
 export interface PageHistory {
   content: Json | null;
+  contributorIds: Generated<string[] | null>;
   coverPhoto: string | null;
   createdAt: Generated<Timestamp>;
   icon: string | null;
@@ -310,6 +311,7 @@ export interface Spaces {
   id: Generated<string>;
   logo: string | null;
   name: string | null;
+  settings: Json | null;
   slug: string;
   updatedAt: Generated<Timestamp>;
   visibility: Generated<string>;
@@ -453,6 +455,34 @@ export interface Workspaces {
   updatedAt: Generated<Timestamp>;
 }
 
+export interface Notifications {
+  id: Generated<string>;
+  userId: string;
+  workspaceId: string;
+  type: string;
+  actorId: string | null;
+  pageId: string | null;
+  spaceId: string | null;
+  commentId: string | null;
+  data: Json | null;
+  readAt: Timestamp | null;
+  emailedAt: Timestamp | null;
+  archivedAt: Timestamp | null;
+  createdAt: Generated<Timestamp>;
+}
+
+export interface Watchers {
+  id: Generated<string>;
+  userId: string;
+  pageId: string | null;
+  spaceId: string;
+  workspaceId: string;
+  type: string;
+  addedById: string | null;
+  mutedAt: Timestamp | null;
+  createdAt: Generated<Timestamp>;
+}
+
 export interface DB {
   apiKeys: ApiKeys;
   backupJobs: BackupJobs;
@@ -469,6 +499,7 @@ export interface DB {
   folderMigrationJobs: FolderMigrationJobs;
   groups: Groups;
   groupUsers: GroupUsers;
+  notifications: Notifications;
   pageHistory: PageHistory;
   pageNodeMeta: PageNodeMeta;
   pages: Pages;
@@ -478,6 +509,7 @@ export interface DB {
   userMfa: UserMfa;
   users: Users;
   userTokens: UserTokens;
+  watchers: Watchers;
   workspaceInvitations: WorkspaceInvitations;
   workspaceReleaseChannel: WorkspaceReleaseChannel;
   workspaces: Workspaces;
