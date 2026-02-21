@@ -19,17 +19,17 @@ services:
       - docmost:/app/data/storage
 
   db:
-    image: postgres:18
+    image: postgres:16-alpine
     environment:
       POSTGRES_DB: docmost
       POSTGRES_USER: docmost
       POSTGRES_PASSWORD: STRONG_DB_PASSWORD
     restart: unless-stopped
     volumes:
-      - db_data:/var/lib/postgresql
+      - db_data:/var/lib/postgresql/data
 
   redis:
-    image: redis:8
+    image: redis:7.2-alpine
     command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
     restart: unless-stopped
     volumes:

@@ -74,6 +74,17 @@ import { GeneralQueueProcessor } from './processors/general-queue.processor';
       },
     }),
     BullModule.registerQueue({
+      name: QueueName.HISTORY_QUEUE,
+      defaultJobOptions: {
+        removeOnComplete: true,
+        removeOnFail: true,
+        attempts: 2,
+      },
+    }),
+    BullModule.registerQueue({
+      name: QueueName.NOTIFICATION_QUEUE,
+    }),
+    BullModule.registerQueue({
       name: QueueName.BACKUP_QUEUE,
       defaultJobOptions: {
         removeOnComplete: { count: 500 },

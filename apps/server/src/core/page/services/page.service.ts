@@ -45,6 +45,9 @@ import { Queue } from 'bullmq';
 import { QueueJob, QueueName } from '../../../integrations/queue/constants';
 import { EventName } from '../../../common/events/event.contants';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { CollaborationGateway } from '../../../collaboration/collaboration.gateway';
+import { markdownToHtml } from '@docmost/editor-ext';
+import { WatcherService } from '../../watcher/watcher.service';
 import {
   PageNodeMetaRepo,
   PageNodeType,
@@ -160,6 +163,21 @@ export class PageService {
       childNodeType: nodeType,
       parentNodeType,
     });
+
+    let content = undefined;
+    let textContent = undefined;
+    let ydoc = undefined;
+
+    if (createPageDto?.content && createPageDto?.format) {
+      const prosemirrorJson = await this.parseProsemirrorContent(
+        createPageDto.content,
+        createPageDto.format,
+      );
+
+      content = prosemirrorJson;
+      textContent = jsonToText(prosemirrorJson);
+      ydoc = createYdocFromJson(prosemirrorJson);
+    }
 
     const createdPage = await this.pageRepo.insertPage({
       slugId: generateSlugId(),

@@ -156,6 +156,23 @@ export class ShareRepo {
     await query.execute();
   }
 
+  async deleteBySpaceId(spaceId: string, workspaceId?: string): Promise<void> {
+    await this.db
+      .deleteFrom('shares')
+      .where('spaceId', '=', spaceId)
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
+      .execute();
+  }
+
+  async deleteByWorkspaceId(workspaceId: string): Promise<void> {
+    await this.db
+      .deleteFrom('shares')
+      .where('workspaceId', '=', workspaceId)
+      .execute();
+  }
+
   async getShares(
     userId: string,
     workspaceId: string,

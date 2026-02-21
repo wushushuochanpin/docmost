@@ -23,6 +23,7 @@ import {
   FolderMigrationJobs as _FolderMigrationJobs,
   UserMfa as _UserMFA,
   PageNodeMeta as _PageNodeMeta,
+  Watchers,
   ApiKeys,
   WorkspaceReleaseChannel as _WorkspaceReleaseChannel,
 } from './db';

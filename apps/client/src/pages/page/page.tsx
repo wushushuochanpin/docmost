@@ -13,6 +13,11 @@ import {
 } from "@/features/space/permissions/permissions.type.ts";
 import { useTranslation } from "react-i18next";
 import React from "react";
+import { EmptyState } from "@/components/ui/empty-state.tsx";
+import { IconAlertTriangle, IconFileOff } from "@tabler/icons-react";
+import { Button } from "@mantine/core";
+import { Link } from "react-router-dom";
+import { ErrorBoundary } from "react-error-boundary";
 import FolderView from "./folder-view";
 
 const MemoizedFullEditor = React.memo(FullEditor);

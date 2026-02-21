@@ -28,6 +28,8 @@ interface SpaceDetailsProps {
 export default function SpaceDetails({ spaceId, readOnly }: SpaceDetailsProps) {
   const { t } = useTranslation();
   const { data: space, refetch } = useSpaceQuery(spaceId);
+  const hasEnterpriseAccess = useEnterpriseAccess();
+  const showSharingToggle = !readOnly && hasEnterpriseAccess;
   const [exportOpened, { open: openExportModal, close: closeExportModal }] =
     useDisclosure(false);
   const [isIconUploading, setIsIconUploading] = useState(false);

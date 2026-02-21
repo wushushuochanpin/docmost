@@ -38,6 +38,8 @@ import {
   ReleaseChannel,
   WorkspaceReleaseChannelRepo,
 } from '@docmost/db/repos/workspace/workspace-release-channel.repo';
+import { ShareRepo } from '@docmost/db/repos/share/share.repo';
+import { WatcherRepo } from '@docmost/db/repos/watcher/watcher.repo';
 
 @Injectable()
 export class WorkspaceService {

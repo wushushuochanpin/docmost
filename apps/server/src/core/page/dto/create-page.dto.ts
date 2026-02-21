@@ -1,5 +1,14 @@
-import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateIf,
+} from 'class-validator';
+import { Transform } from 'class-transformer';
 import { PageNodeType } from '@docmost/db/repos/page/page-node-meta.repo';
+
+export type ContentFormat = 'json' | 'markdown' | 'html';
 
 export class CreatePageDto {
   @IsOptional()
