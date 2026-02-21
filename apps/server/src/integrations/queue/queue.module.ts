@@ -73,6 +73,15 @@ import { BacklinksProcessor } from './processors/backlinks.processor';
         attempts: 1,
       },
     }),
+    BullModule.registerQueue({
+      name: QueueName.BACKUP_QUEUE,
+      defaultJobOptions: {
+        removeOnComplete: { count: 500 },
+        removeOnFail: { count: 100 },
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 60 * 1000 },
+      },
+    }),
   ],
   exports: [BullModule],
   providers: [BacklinksProcessor],

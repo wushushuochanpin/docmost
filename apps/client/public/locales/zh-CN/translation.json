@@ -584,5 +584,18 @@
   "Unpinned": "已取消置顶",
   "Unpin": "取消置顶",
   "Pin to top": "置顶",
-  "Failed to update pin status": "更新置顶状态失败"
+  "Failed to update pin status": "更新置顶状态失败",
+  "Backup & Restore": "备份与恢复",
+  "Run backup now": "立即备份",
+  "Trigger a full backup or download a previous backup.": "触发一次完整备份或下载已有备份。",
+  "Started": "开始时间",
+  "Ended": "结束时间",
+  "Size": "大小",
+  "Triggered by": "触发方式",
+  "Actions": "操作",
+  "Download": "下载",
+  "Running": "进行中",
+  "Failed": "失败",
+  "Canceled": "已取消",
+  "Pending": "等待中"
 }

@@ -61,6 +61,7 @@ const WorkspaceApiKeys = lazy(
   () => import("@/ee/api-key/pages/workspace-api-keys"),
 );
 const AiSettings = lazy(() => import("@/ee/ai/pages/ai-settings.tsx"));
+const Backup = lazy(() => import("@/pages/settings/backup/backup"));
 const MfaChallengePage = lazy(() =>
   import("@/ee/mfa/pages/mfa-challenge-page").then((module) => ({
     default: module.MfaChallengePage,
@@ -190,7 +191,12 @@ export default function App() {
             <Route path={"sharing"} element={<Shares />} />
             <Route path={"security"} element={<Security />} />
             <Route path={"ai"} element={<AiSettings />} />
-            {!isCloud() && <Route path={"license"} element={<License />} />}
+            {!isCloud() && (
+              <>
+                <Route path={"backup"} element={<Backup />} />
+                <Route path={"license"} element={<License />} />
+              </>
+            )}
             {isCloud() && <Route path={"billing"} element={<Billing />} />}
           </Route>
         </Route>
