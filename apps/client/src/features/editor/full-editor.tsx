@@ -35,13 +35,17 @@ export function FullEditor({
       size={!fullPageWidth && 900}
       className={classes.editor}
     >
-      <MemoizedTitleEditor
-        pageId={pageId}
-        slugId={slugId}
-        title={title}
-        spaceSlug={spaceSlug}
-        editable={editable}
-      />
+      <div className={classes.titleSection}>
+        <MemoizedTitleEditor
+          pageId={pageId}
+          slugId={slugId}
+          title={title}
+          spaceSlug={spaceSlug}
+          editable={editable}
+          className={classes.surfaceTitle}
+        />
+      </div>
+
       <MemoizedPageEditor
         pageId={pageId}
         editable={editable}

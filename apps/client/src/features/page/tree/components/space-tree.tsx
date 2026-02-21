@@ -414,6 +414,8 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
   }
 
   const pageUrl = buildPageUrl(spaceSlug, node.data.slugId, node.data.name);
+  const directChildCount = node.data.directChildCount ?? 0;
+  const descendantTotalCount = node.data.descendantTotalCount ?? 0;
 
   const buildSubmittedName = (value: string) => value.trim() || "untitled";
 
@@ -478,6 +480,12 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
         // @ts-ignore
         ref={dragHandle}
         onClick={() => {
+          if (node.data.nodeType === "folder" && !node.isOpen) {
+            node.open();
+            if (node.data.hasChildren && node.children.length === 0) {
+              handleLoadChildren(node);
+            }
+          }
           if (mobileSidebarOpened) {
             toggleMobileSidebar();
           }
@@ -515,6 +523,12 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
             )}
           </span>
         ) : null}
+        <span
+          className={classes.counts}
+          title={`Direct children (1 level): ${directChildCount} · All descendants: ${descendantTotalCount}`}
+        >
+          {directChildCount} · {descendantTotalCount}
+        </span>
 
         <div className={classes.actions}>
           <NodeMenu node={node} treeApi={tree} spaceId={node.data.spaceId} />
@@ -697,6 +711,14 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
         nodeType: duplicatedPage.nodeType ?? node.data.nodeType ?? "file",
         isPinned: duplicatedPage.isPinned ?? false,
         pinnedAt: duplicatedPage.pinnedAt ?? null,
+        directChildCount:
+          duplicatedPage.directChildCount ??
+          duplicatedPage.directChildFolderCount ??
+          0,
+        directChildFolderCount: duplicatedPage.directChildFolderCount ?? 0,
+        descendantFolderCount: duplicatedPage.descendantFolderCount ?? 0,
+        descendantFileCount: duplicatedPage.descendantFileCount ?? 0,
+        descendantTotalCount: duplicatedPage.descendantTotalCount ?? 0,
         children: [],
       };
 
