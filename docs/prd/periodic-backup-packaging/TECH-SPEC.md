@@ -69,7 +69,8 @@
 - `workspaceId` (uuid)
 - `policyId` (uuid, nullable; 手动触发可为空)
 - `triggerType` (`schedule` | `manual` | `api`)
-- `status` (`pending` | `running` | `success` | `failed` | `canceled`)
+- `triggeredByUserId` (uuid, nullable；仅 `manual` 时必填，用于列表展示「操作人」与审计；`schedule`/`api` 为空时展示为「系统」)
+- `status` (`pending` | `running` | `success` | `failed` | `canceled`)；语义与流转见下「备份任务状态机」
 - `startedAt`, `endedAt`
 - `durationMs` (bigint)
 - `artifactPath` (string)
@@ -78,6 +79,12 @@
 - `errorCode` (string, nullable)
 - `errorMessage` (text, nullable)
 - `metadata` (jsonb)
+
+**备份任务状态机**（`backupJobs.status`）：
+
+- 枚举：`pending`（等待中）、`running`（备份中）、`success`（成功）、`failed`（失败）、`canceled`（已取消）。
+- 流转：`pending` → `running` → `success` | `failed` | `canceled`；`pending`/`running` 时可主动置为 `canceled`。
+- 执行方式：**异步**。触发后创建任务（`pending`），由队列/Worker 消费并置为 `running`，完成后置为终态；列表需展示上述全部状态（含「备份中」），可通过轮询或 WebSocket 刷新。
 
 ## 4.3 `backupRestores`
 
@@ -92,12 +99,15 @@
 
 ## 5. 打包规范
 
+- **每次备份一个包**：每次备份任务产生一份完整快照（一个独立包），可单独还原，无依赖链；不做增量。
+- **DB 格式**：使用 **plain SQL**（`pg_dump -Fp`）后 gzip，即 `docmost.sql.gz`，便于通用工具打开（文本编辑器、psql、任意 PG 客户端）。参见 [02_备份页面_COS与格式说明.md](./02_备份页面_COS与格式说明.md)。
+
 建议包结构（逻辑）：
 
 ```text
 backup-<workspaceId>-<yyyyMMddHHmmss>.tar.zst
   /manifest.json
-  /db/docmost.sql.gz
+  /db/docmost.sql.gz         # plain SQL, gzip 压缩
   /storage/...               # 文件快照
   /checksums/SHA256SUMS
   /meta/version.txt
@@ -117,24 +127,28 @@ backup-<workspaceId>-<yyyyMMddHHmmss>.tar.zst
 
 ## 6.1 备份执行流程
 
-1. 读取策略并生成任务记录（`pending`）。
-2. 获取分布式锁（Redis）防止并发重入。
+1. 读取策略并生成任务记录（`pending`）；触发方立即返回，任务由队列/Worker 异步执行。
+2. Worker 取到任务后获取分布式锁（Redis）防止并发重入，将状态更新为 `running`（备份中）。
 3. 执行 DB dump（流式压缩）。
 4. 执行文件快照：
    - `local`：遍历本地目录并流式写入包；
    - `s3`：按 prefix 拉取对象并流式写入包。
 5. 生成 checksum 与 manifest。
 6. 上传/落盘备份产物。
-7. 更新任务为 `success`，写审计日志与指标。
-8. 释放锁，执行保留策略清理。
+7. 更新任务为 `success`（或失败时 `failed`），写审计日志与指标。
+8. 释放锁，执行保留策略清理。若中途异常或取消，将任务置为 `failed` 或 `canceled`。
 
 ## 6.2 恢复流程
 
-1. 权限校验 + 二次确认。
-2. 下载并校验备份包完整性。
-3. `dry-run`：仅做结构和兼容校验，生成报告。
-4. `apply`：恢复 DB，再恢复文件，最后做抽样一致性检查。
-5. 记录恢复任务报告与审计日志。
+1. **选择还原源**（手工选择其一）：
+   - **按任务**：从本实例备份任务列表选择某次成功任务的 `jobId`，后端按 `artifactPath` 定位包；
+   - **按 COS**：当目标为 S3/COS 时，拉取配置 bucket/prefix 下的备份对象列表，用户选择一条（如 key），后端从 COS 拉取该包；
+   - **按上传**：用户上传备份包到服务端临时存储，后端对该上传文件进行还原。
+2. 权限校验 + 二次确认（含所选备份的展示，如时间、大小）。
+3. 下载/读取并校验备份包完整性。
+4. `dry-run`：仅做结构和兼容校验，生成报告。
+5. `apply`：恢复 DB，再恢复文件，最后做抽样一致性检查。
+6. 记录恢复任务报告与审计日志。
 
 ## 7. API 草案（v1）
 
@@ -151,9 +165,15 @@ backup-<workspaceId>-<yyyyMMddHHmmss>.tar.zst
 - `GET /backups/jobs/:id`
   - 查询任务详情
 - `POST /backups/jobs/:id/restore`
-  - 执行恢复（`mode=dry-run|apply`）
+  - 按任务 ID 执行恢复（`mode=dry-run|apply`）
 - `GET /backups/jobs/:id/download-url`
   - 获取短时效下载链接
+- `GET /backups/artifacts`（或等价）
+  - 当目标为 S3/COS 时：列出配置 bucket/prefix 下的备份对象，供用户**手工选择**后还原（返回 key、大小、最后修改时间等）
+- `POST /backups/restore-from-artifact`
+  - 按 COS key（或 artifact 标识）发起恢复（body 含 `artifactKey`、`mode` 等）
+- `POST /backups/restore-from-upload`
+  - 上传备份包后发起恢复（如 multipart 上传，再 `mode=dry-run|apply`）；或先上传得到临时 ID，再调恢复接口传入该 ID
 
 权限建议：仅 Workspace `owner/admin` 可用。
 
