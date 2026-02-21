@@ -41,7 +41,7 @@ services:
     command: >
       sh -c "pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
       && pnpm --filter @docmost/editor-ext run build
-      && pnpm concurrently -n 'frontend,backend' -c 'cyan,green'
+      && pnpm concurrently --kill-others-on-fail -n 'frontend,backend' -c 'cyan,green'
       'pnpm --filter ./apps/client run dev'
       'pnpm --filter ./apps/server run start:dev'"
     networks:
