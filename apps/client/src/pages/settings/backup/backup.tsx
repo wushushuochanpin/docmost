@@ -8,7 +8,7 @@ import {
   Space,
   Tooltip,
 } from "@mantine/core";
-import { IconPlayerPlay, IconDownload } from "@tabler/icons-react";
+import { IconPlayerPlay, IconDownload, IconRefresh } from "@tabler/icons-react";
 import SettingsTitle from "@/components/settings/settings-title";
 import { useTranslation } from "react-i18next";
 import { getAppName } from "@/lib/config";
@@ -64,7 +64,12 @@ export default function BackupPage() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorStack, setCursorStack] = useState<(string | undefined)[]>([]);
 
-  const { data, isLoading } = useBackupJobsQuery({ cursor, limit: 20 });
+  const { data, isLoading, refetch, isFetching } = useBackupJobsQuery({
+    cursor,
+    limit: 20,
+  });
+  const isInProgress = (status: string) =>
+    status === "running" || status === "pending";
   const runMutation = useRunBackupMutation();
 
   const goNext = useCallback((nextCursor: string | null | undefined) => {
@@ -165,6 +170,18 @@ export default function BackupPage() {
                       <Text fz="sm">{formatTrigger(job)}</Text>
                     </Table.Td>
                     <Table.Td>
+                      {isInProgress(job.status) && (
+                        <Button
+                          variant="subtle"
+                          size="compact-sm"
+                          leftSection={<IconRefresh size={14} />}
+                          loading={isFetching}
+                          onClick={() => refetch()}
+                          title={t("Refresh status")}
+                        >
+                          {t("Refresh")}
+                        </Button>
+                      )}
                       {job.status === "success" && (
                         <Button
                           variant="subtle"
