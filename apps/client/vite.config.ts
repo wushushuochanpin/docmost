@@ -45,7 +45,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: process.env.VITE_DEV_HOST === "true" ? "0.0.0.0" : false,
-      allowedHosts: ["doc.superchat.help", "test-doc.superchat.help", "localhost", "127.0.0.1"],
+      allowedHosts: true,
       proxy: {
         "/api": {
           target: proxyTarget,

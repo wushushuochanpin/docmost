@@ -10,7 +10,7 @@ services:
     env_file:
       - .env
     environment:
-      APP_URL: 'http://localhost:3000'
+      APP_URL: 'https://book.superchat.help'
       BACKUP_LOCAL_PATH: '/app/data/storage/backups'
     # Loopback-only so only Nginx (80/443) is public; debug via ssh -L
     ports:
