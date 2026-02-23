@@ -10,7 +10,11 @@ import { useAtom } from "jotai";
 import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { readOnlyEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
 import { useEditorScroll } from "./hooks/use-editor-scroll";
-import { getEditorFontScale } from "@/features/editor/utils/editor-font-size-utils";
+import {
+  extractEditorFontSizeFromUser,
+  getEditorFontScale,
+} from "@/features/editor/utils/editor-font-size-utils";
+import { editorFontSizePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 
 interface PageEditorProps {
   title: string;
@@ -36,8 +40,9 @@ export default function ReadonlyPageEditor({
     : "";
   const { handleScrollTo } = useEditorScroll({ canScroll, initialScrollTo });
   const [user] = useAtom(userAtom);
+  const [localEditorFontSize] = useAtom(editorFontSizePreferenceAtom);
   const editorFontScale = getEditorFontScale(
-    user?.settings?.preferences?.editorFontSize,
+    localEditorFontSize ?? extractEditorFontSizeFromUser(user),
   );
 
   useEffect(() => {

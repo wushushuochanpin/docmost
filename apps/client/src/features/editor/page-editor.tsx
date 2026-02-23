@@ -67,6 +67,7 @@ import { jwtDecode } from "jwt-decode";
 import { searchSpotlight } from "@/features/search/constants.ts";
 import { useEditorScroll } from "./hooks/use-editor-scroll";
 import { EditorAiMenu } from "@/ee/ai/components/editor/ai-menu/ai-menu";
+import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 
 interface PageEditorProps {
   pageId: string;
@@ -88,6 +89,7 @@ export default function PageEditor({
   }, []);
 
   const [currentUser] = useAtom(currentUserAtom);
+  const [localPageEditMode] = useAtom(pageEditModePreferenceAtom);
   const [, setPageEditor] = useAtom(pageEditorAtom);
   const [, setAsideState] = useAtom(asideStateAtom);
   const [, setActiveCommentId] = useAtom(activeCommentIdAtom);
@@ -104,7 +106,9 @@ export default function PageEditor({
   const { pageSlug } = useParams();
   const slugId = extractPageSlugId(pageSlug);
   const userPageEditMode =
-    currentUser?.user?.settings?.preferences?.pageEditMode ?? PageEditMode.Edit;
+    localPageEditMode ??
+    currentUser?.user?.settings?.preferences?.pageEditMode ??
+    PageEditMode.Edit;
   const canScroll = useCallback(
     () => Boolean(isComponentMounted.current && editorRef.current),
     [isComponentMounted],

@@ -5,7 +5,11 @@ import PageEditor from "@/features/editor/page-editor";
 import { Container } from "@mantine/core";
 import { useAtom } from "jotai";
 import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
-import { getEditorFontScale } from "@/features/editor/utils/editor-font-size-utils";
+import { editorFontSizePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
+import {
+  extractEditorFontSizeFromUser,
+  getEditorFontScale,
+} from "@/features/editor/utils/editor-font-size-utils";
 
 const MemoizedTitleEditor = React.memo(TitleEditor);
 const MemoizedPageEditor = React.memo(PageEditor);
@@ -28,9 +32,10 @@ export function FullEditor({
   editable,
 }: FullEditorProps) {
   const [user] = useAtom(userAtom);
+  const [localEditorFontSize] = useAtom(editorFontSizePreferenceAtom);
   const fullPageWidth = user.settings?.preferences?.fullPageWidth;
   const editorFontScale = getEditorFontScale(
-    user.settings?.preferences?.editorFontSize,
+    localEditorFontSize ?? extractEditorFontSizeFromUser(user),
   );
 
   return (

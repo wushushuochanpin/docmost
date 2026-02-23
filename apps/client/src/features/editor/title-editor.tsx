@@ -27,6 +27,7 @@ import localEmitter from "@/lib/local-emitter.ts";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { PageEditMode } from "@/features/user/types/user.types.ts";
 import { searchSpotlight } from "@/features/search/constants.ts";
+import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 
 export interface TitleEditorProps {
   pageId: string;
@@ -54,8 +55,11 @@ export function TitleEditor({
   const navigate = useNavigate();
   const [activePageId, setActivePageId] = useState(pageId);
   const [currentUser] = useAtom(currentUserAtom);
+  const [localPageEditMode] = useAtom(pageEditModePreferenceAtom);
   const userPageEditMode =
-    currentUser?.user?.settings?.preferences?.pageEditMode ?? PageEditMode.Edit;
+    localPageEditMode ??
+    currentUser?.user?.settings?.preferences?.pageEditMode ??
+    PageEditMode.Edit;
 
   const titleEditor = useEditor({
     extensions: [

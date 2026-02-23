@@ -530,7 +530,12 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
           />
         </div>
 
-        <span className={classes.text}>{node.data.name || t("untitled")}</span>
+        <span
+          className={classes.text}
+          title={node.data.name || t("untitled")}
+        >
+          {node.data.name || t("untitled")}
+        </span>
         {node.data.isPinned ? (
           <span className={classes.pinnedBadge} title={t("Pinned")}>
             <IconPin size={11} stroke={1.85} />

@@ -1,11 +1,12 @@
 import { Text, MantineSize, SegmentedControl } from "@mantine/core";
 import { useAtom } from "jotai";
-import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { updateUser } from "@/features/user/services/user-service.ts";
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PageEditMode } from "@/features/user/types/user.types.ts";
 import { ResponsiveSettingsRow, ResponsiveSettingsContent, ResponsiveSettingsControl } from "@/components/ui/responsive-settings-row";
+import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
+import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
 
 export default function PageStatePref() {
   const { t } = useTranslation();
@@ -30,22 +31,90 @@ interface PageStateSegmentedControlProps {
   size?: MantineSize;
 }
 
+function normalizePageEditMode(mode?: string | null): PageEditMode | undefined {
+  return mode === PageEditMode.Edit || mode === PageEditMode.Read
+    ? mode
+    : undefined;
+}
+
 export function PageStateSegmentedControl({
   size,
 }: PageStateSegmentedControlProps) {
   const { t } = useTranslation();
   const [user, setUser] = useAtom(userAtom);
+  const [localPageEditMode, setLocalPageEditMode] = useAtom(
+    pageEditModePreferenceAtom,
+  );
+  const [isLoading, setIsLoading] = useState(false);
   const pageEditMode =
-    user?.settings?.preferences?.pageEditMode ?? PageEditMode.Edit;
+    localPageEditMode ??
+    user?.settings?.preferences?.pageEditMode ??
+    PageEditMode.Edit;
   const [value, setValue] = useState(pageEditMode);
 
   const handleChange = useCallback(
-    async (value: string) => {
-      const updatedUser = await updateUser({ pageEditMode: value });
-      setValue(value);
-      setUser(updatedUser);
+    async (nextMode: string) => {
+      const normalizedValue = normalizePageEditMode(nextMode);
+
+      if (
+        isLoading ||
+        !normalizedValue ||
+        normalizedValue === pageEditMode ||
+        normalizedValue === value
+      ) {
+        return;
+      }
+
+      const prevValue = value;
+      const prevUser = user;
+      const prevLocal = localPageEditMode;
+      const fallbackFromUser =
+        normalizePageEditMode(prevUser?.settings?.preferences?.pageEditMode) ??
+        prevLocal ??
+        PageEditMode.Edit;
+
+      setValue(normalizedValue);
+      setIsLoading(true);
+      setLocalPageEditMode(normalizedValue);
+      if (prevUser) {
+        setUser({
+          ...prevUser,
+          settings: {
+            ...(prevUser?.settings ?? {}),
+            preferences: {
+              ...(prevUser?.settings?.preferences ?? {}),
+              pageEditMode: normalizedValue,
+            },
+          },
+        });
+      }
+
+      try {
+        const updatedUser = await updateUser({ pageEditMode: normalizedValue });
+        setUser(updatedUser);
+        setLocalPageEditMode(
+          normalizePageEditMode(updatedUser.settings?.preferences?.pageEditMode) ??
+            normalizedValue,
+        );
+      } catch (error) {
+        setValue(prevValue);
+        setLocalPageEditMode(fallbackFromUser);
+        if (prevUser) {
+          setUser(prevUser);
+        }
+      } finally {
+        setIsLoading(false);
+      }
     },
-    [user, setUser],
+    [
+      isLoading,
+      localPageEditMode,
+      pageEditMode,
+      setLocalPageEditMode,
+      setUser,
+      user,
+      value,
+    ],
   );
 
   useEffect(() => {
@@ -58,6 +127,7 @@ export function PageStateSegmentedControl({
     <SegmentedControl
       size={size}
       value={value}
+      disabled={isLoading}
       onChange={handleChange}
       data={[
         { label: t("Edit"), value: PageEditMode.Edit },
