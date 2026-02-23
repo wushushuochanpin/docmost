@@ -19,6 +19,7 @@ export interface FullEditorProps {
   slugId: string;
   title: string;
   content: string;
+  updatedAt: Date | string;
   spaceSlug: string;
   editable: boolean;
 }
@@ -28,6 +29,7 @@ export function FullEditor({
   title,
   slugId,
   content,
+  updatedAt,
   spaceSlug,
   editable,
 }: FullEditorProps) {
@@ -50,6 +52,7 @@ export function FullEditor({
           pageId={pageId}
           slugId={slugId}
           title={title}
+          updatedAt={updatedAt}
           spaceSlug={spaceSlug}
           editable={editable}
           className={classes.surfaceTitle}

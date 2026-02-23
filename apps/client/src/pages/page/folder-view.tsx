@@ -117,6 +117,7 @@ export default function FolderView({
         pageId={folderPage.id}
         slugId={folderPage.slugId}
         title={folderPage.title}
+        updatedAt={folderPage.updatedAt}
         spaceSlug={currentSpaceSlug}
         editable={!readOnly}
       />

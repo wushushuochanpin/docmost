@@ -37,6 +37,27 @@ export default function Breadcrumb() {
     pageId: extractPageSlugId(pageSlug),
   });
   const isMobile = useMediaQuery("(max-width: 48em)");
+  const getItemsSource = () => {
+    if (breadcrumbNodes && breadcrumbNodes.length > 0) {
+      return breadcrumbNodes;
+    }
+
+    if (!currentPage) return null;
+
+    return [
+      {
+        id: currentPage.id,
+        slugId: currentPage.slugId,
+        name: currentPage.title,
+        icon: currentPage.icon,
+        position: "0",
+        spaceId: currentPage.spaceId,
+        parentPageId: currentPage.parentPageId,
+        hasChildren: false,
+        children: [],
+      },
+    ];
+  };
 
   useEffect(() => {
     if (treeData?.length > 0 && currentPage) {
@@ -62,9 +83,11 @@ export default function Breadcrumb() {
       </Button.Group>
     ));
 
-  const MobileHiddenNodesTooltipContent = () =>
-    breadcrumbNodes?.map((node, index) => {
-      const isCurrent = index === breadcrumbNodes.length - 1;
+  const MobileHiddenNodesTooltipContent = () => {
+    const sourceNodes = getItemsSource() ?? [];
+
+    return sourceNodes.map((node, index) => {
+      const isCurrent = index === sourceNodes.length - 1;
       return (
         <Button.Group orientation="vertical" key={node.id}>
           {isCurrent ? (
@@ -87,6 +110,7 @@ export default function Breadcrumb() {
         </Button.Group>
       );
     });
+  };
 
   const renderAnchor = useCallback(
     (node: SpaceTreeNode) => (
@@ -118,11 +142,12 @@ export default function Breadcrumb() {
   );
 
   const getBreadcrumbItems = () => {
-    if (!breadcrumbNodes || breadcrumbNodes.length <= 1) return [];
+    const nodes = getItemsSource();
+    if (!nodes || nodes.length === 0) return [];
 
-    if (breadcrumbNodes.length > 3) {
-      const firstNode = breadcrumbNodes[0];
-      const lastNode = breadcrumbNodes[breadcrumbNodes.length - 1];
+    if (nodes.length > 3) {
+      const firstNode = nodes[0];
+      const lastNode = nodes[nodes.length - 1];
 
       return [
         renderAnchor(firstNode),
@@ -146,16 +171,17 @@ export default function Breadcrumb() {
       ];
     }
 
-    return breadcrumbNodes.map((node, index) => {
-      const isCurrent = index === breadcrumbNodes.length - 1;
+    return nodes.map((node, index) => {
+      const isCurrent = index === nodes.length - 1;
       return isCurrent ? renderCurrent(node) : renderAnchor(node);
     });
   };
 
   const getMobileBreadcrumbItems = () => {
-    if (!breadcrumbNodes || breadcrumbNodes.length <= 1) return [];
+    const nodes = getItemsSource();
+    if (!nodes || nodes.length === 0) return [];
 
-    if (breadcrumbNodes.length > 0) {
+    if (nodes.length > 1) {
       return [
         <Popover
           width={250}
@@ -178,9 +204,8 @@ export default function Breadcrumb() {
       ];
     }
 
-    return breadcrumbNodes.map((node, index) => {
-      const isCurrent = index === breadcrumbNodes.length - 1;
-      return isCurrent ? renderCurrent(node) : renderAnchor(node);
+    return nodes.map((node) => {
+      return renderCurrent(node);
     });
   };
 

@@ -33,6 +33,40 @@
     }
 }
 
+.titleRow {
+    display: flex;
+    align-items: center;
+    justify-content: stretch;
+    gap: 8px;
+    min-width: 0;
+}
+
+.titleEditorContent {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.titleMeta {
+    flex: 0 0 auto;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: rem(11px);
+    color: var(--ui-text-tertiary);
+    border: 1px solid var(--ui-border-default);
+    background: color-mix(in srgb, var(--ui-bg-subtle) 88%, transparent);
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    white-space: nowrap;
+    text-align: left;
+    line-height: 1.2;
+}
+
+.titleMetaLine {
+    line-height: 1.2;
+}
+
 .surfaceTitle {
     min-width: 0;
 

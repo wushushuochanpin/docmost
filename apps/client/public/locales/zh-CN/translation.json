@@ -380,6 +380,7 @@
   "Edited by {{name}} {{time}}": "由{{name}} 编辑于 {{time}}",
   "Word count: {{wordCount}}": "字数：{{wordCount}}",
   "Character count: {{characterCount}}": "字符数：{{characterCount}}",
+  "Last updated: {{time}}": "最后编辑：{{time}}",
   "New update": "新更新",
   "{{latestVersion}} is available": "{{latestVersion}} 已经可以使用",
   "Default page edit mode": "默认页面编辑模式",

@@ -28,11 +28,13 @@ import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { PageEditMode } from "@/features/user/types/user.types.ts";
 import { searchSpotlight } from "@/features/search/constants.ts";
 import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
+import classes from "@/features/editor/styles/editor.module.css";
 
 export interface TitleEditorProps {
   pageId: string;
   slugId: string;
   title: string;
+  updatedAt: Date | string;
   spaceSlug: string;
   editable: boolean;
   className?: string;
@@ -42,6 +44,7 @@ export function TitleEditor({
   pageId,
   slugId,
   title,
+  updatedAt,
   spaceSlug,
   editable,
   className,
@@ -247,17 +250,22 @@ export function TitleEditor({
   }
 
   return (
-    <div id="page-title-anchor" className={className}>
-      <EditorContent
-        editor={titleEditor}
-        onKeyDown={(event) => {
-          // First handle the search hotkey
-          getHotkeyHandler([["mod+F", openSearchDialog]])(event);
+    <div
+      id="page-title-anchor"
+      className={`${className ?? ""} ${classes.titleRow}`}
+    >
+      <div className={classes.titleEditorContent}>
+        <EditorContent
+          editor={titleEditor}
+          onKeyDown={(event) => {
+            // First handle the search hotkey
+            getHotkeyHandler([["mod+F", openSearchDialog]])(event);
 
-          // Then handle other key events
-          handleTitleKeyDown(event);
-        }}
-      />
+            // Then handle other key events
+            handleTitleKeyDown(event);
+          }}
+        />
+      </div>
     </div>
   );
 }

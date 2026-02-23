@@ -46,3 +46,17 @@ export function usePageHistoryQuery(
     staleTime: HISTORY_STALE_TIME,
   });
 }
+
+export function useLatestPageHistoryQuery(
+  pageId: string,
+): UseQueryResult<IPageHistory | null, Error> {
+  return useQuery({
+    queryKey: ["page-history-latest", pageId],
+    queryFn: async () => {
+      const historyList = await getPageHistoryList(pageId);
+      return historyList.items[0] ?? null;
+    },
+    enabled: !!pageId,
+    staleTime: HISTORY_STALE_TIME,
+  });
+}

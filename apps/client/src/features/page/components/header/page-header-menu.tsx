@@ -1,4 +1,11 @@
-import { ActionIcon, Group, Menu, Text, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Group,
+  Menu,
+  Stack,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import {
   IconArrowRight,
   IconArrowsHorizontal,
@@ -41,13 +48,116 @@ import { EditorFontSizeSegmentedControl } from "@/features/editor/components/edi
 import MovePageModal from "@/features/page/components/move-page-modal.tsx";
 import { useTimeAgo } from "@/hooks/use-time-ago.tsx";
 import ShareModal from "@/features/share/components/share-modal.tsx";
+import { useLatestPageHistoryQuery } from "@/features/page-history/queries/page-history-query.ts";
 
 interface PageHeaderMenuProps {
   readOnly?: boolean;
 }
 export default function PageHeaderMenu({ readOnly }: PageHeaderMenuProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const toggleAside = useToggleAside();
+  const { pageSlug } = useParams();
+  const pageId = extractPageSlugId(pageSlug);
+  const [documentCharCount, setDocumentCharCount] = useState(0);
+  const [relativeUpdatedAt, setRelativeUpdatedAt] = useState("");
+  const [pageEditor] = useAtom(pageEditorAtom);
+  const { data: currentPage } = usePageQuery({ pageId: pageId ?? "" });
+  const { data: latestPageHistory } = useLatestPageHistoryQuery(
+    currentPage?.id || pageId || "",
+  );
+  const sourceUpdatedAt = latestPageHistory?.createdAt ?? currentPage?.updatedAt;
+  const sourceUpdatedAtTimestamp = sourceUpdatedAt
+    ? new Date(sourceUpdatedAt).getTime()
+    : NaN;
+
+  const formatAbsoluteDate = (date: Date, locale: string) => {
+    const normalizedLocale = locale || "en-US";
+
+    if (normalizedLocale.startsWith("zh")) {
+      const year = date.getFullYear();
+      const month = `${date.getMonth() + 1}`.padStart(2, "0");
+      const day = `${date.getDate()}`.padStart(2, "0");
+      const hour = `${date.getHours()}`.padStart(2, "0");
+      const minute = `${date.getMinutes()}`.padStart(2, "0");
+      const second = `${date.getSeconds()}`.padStart(2, "0");
+
+      return `${year}年${month}月${day}日${hour}:${minute}:${second}`;
+    }
+
+    return new Intl.DateTimeFormat(normalizedLocale, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(date);
+  };
+
+  const formatUpdatedAt = (date: Date, locale: string) => {
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    const diffMs = Date.now() - date.getTime();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const normalizedLocale = locale || "en-US";
+
+    if (Math.abs(diffMs) <= dayMs) {
+      const formatter = new Intl.RelativeTimeFormat(normalizedLocale, {
+        numeric: "auto",
+      });
+      const absSeconds = Math.abs(Math.round(diffMs / 1000));
+
+      if (absSeconds < 60) {
+        return formatter.format(-Math.round(diffMs / 1000), "second");
+      }
+
+      if (absSeconds < 3600) {
+        return formatter.format(-Math.round(diffMs / (60 * 1000)), "minute");
+      }
+
+      return formatter.format(-Math.round(diffMs / (60 * 60 * 1000)), "hour");
+    }
+
+    return formatAbsoluteDate(date, normalizedLocale);
+  };
+
+  useEffect(() => {
+    if (Number.isNaN(sourceUpdatedAtTimestamp)) {
+      setRelativeUpdatedAt("");
+      return;
+    }
+
+    const updateLabel = () => {
+      setRelativeUpdatedAt(
+        formatUpdatedAt(new Date(sourceUpdatedAtTimestamp), i18n.language),
+      );
+    };
+
+    updateLabel();
+    const timer = setInterval(updateLabel, 60 * 1000);
+    return () => clearInterval(timer);
+  }, [i18n.language, sourceUpdatedAtTimestamp]);
+
+  useEffect(() => {
+    if (!pageEditor) return;
+
+    const updateDocumentCharCount = () => {
+      const count = pageEditor.storage?.characterCount?.characters?.();
+      if (typeof count === "number") {
+        setDocumentCharCount(count);
+      }
+    };
+
+    updateDocumentCharCount();
+    pageEditor.on("update", updateDocumentCharCount);
+
+    return () => {
+      pageEditor.off("update", updateDocumentCharCount);
+    };
+  }, [pageEditor]);
 
   useHotkeys(
     [
@@ -73,6 +183,27 @@ export default function PageHeaderMenu({ readOnly }: PageHeaderMenuProps) {
   return (
     <>
       <ConnectionWarning />
+
+      <Stack gap={0} style={{ lineHeight: 1.1, textAlign: "left" }}>
+        <Text
+          size="xs"
+          c="dimmed"
+          ta="left"
+          style={{ minWidth: 120, whiteSpace: "nowrap" }}
+        >
+          {t("Character count: {{characterCount}}", {
+            characterCount: documentCharCount,
+          })}
+        </Text>
+        <Text
+          size="xs"
+          c="dimmed"
+          ta="left"
+          style={{ whiteSpace: "nowrap" }}
+        >
+          {t("Last updated: {{time}}", { time: relativeUpdatedAt })}
+        </Text>
+      </Stack>
 
       {!readOnly && <PageStateSegmentedControl size="xs" />}
       <EditorFontSizeSegmentedControl size="xs" />
