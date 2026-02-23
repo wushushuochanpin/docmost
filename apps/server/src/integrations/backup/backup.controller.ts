@@ -2,6 +2,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Body,
   Param,
   Post,
   Query,
@@ -20,7 +21,11 @@ import {
 } from '../../core/casl/interfaces/workspace-ability.type';
 import { FastifyReply } from 'fastify';
 import { BackupJobService } from './backup-job.service';
-import { ListBackupJobsDto, BackupJobIdDto } from './dto/backup-job.dto';
+import {
+  BackupRunDto,
+  ListBackupJobsDto,
+  BackupJobIdDto,
+} from './dto/backup-job.dto';
 import * as path from 'path';
 
 @UseGuards(JwtAuthGuard)
@@ -55,15 +60,65 @@ export class BackupController {
 
   @Post('jobs/run')
   async runBackup(
+    @Body() body: BackupRunDto | undefined,
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
     this.ensureCanManageBackup(user, workspace);
+    if (body?.cleanupOnly) {
+      const cleanedCount = await this.backupJobService.cleanupStaleJobsByWorkspace(
+        workspace.id,
+      );
+      return { cleanedCount };
+    }
+
     const job = await this.backupJobService.createManualJob(
       workspace.id,
       user.id,
     );
     return { job };
+  }
+
+  @Post('jobs/cleanup-stale')
+  async cleanupStaleJobs(
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    this.ensureCanManageBackup(user, workspace);
+    const cleanedCount = await this.backupJobService.cleanupStaleJobsByWorkspace(
+      workspace.id,
+    );
+    return { cleanedCount };
+  }
+
+  @Get('jobs/cleanup-stale')
+  async cleanupStaleJobsGet(
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    this.ensureCanManageBackup(user, workspace);
+    const cleanedCount = await this.backupJobService.cleanupStaleJobsByWorkspace(
+      workspace.id,
+    );
+    return { cleanedCount };
+  }
+
+  @Post('jobs/:id')
+  async postJobAction(
+    @Param('id') jobId: string,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    this.ensureCanManageBackup(user, workspace);
+
+    if (jobId !== 'cleanup-stale') {
+      throw new ForbiddenException();
+    }
+
+    const cleanedCount = await this.backupJobService.cleanupStaleJobsByWorkspace(
+      workspace.id,
+    );
+    return { cleanedCount };
   }
 
   @Get('jobs/:id')

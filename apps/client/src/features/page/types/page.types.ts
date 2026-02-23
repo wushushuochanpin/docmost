@@ -7,6 +7,8 @@ export interface IPage {
   content: string;
   icon: string;
   coverPhoto: string;
+  themeColor?: string;
+  themePattern?: string;
   parentPageId: string | null;
   creatorId: string;
   spaceId: string;
@@ -118,6 +120,8 @@ export interface IPageInput {
   nodeType?: "file" | "folder";
   icon: string;
   coverPhoto: string;
+  themeColor?: string;
+  themePattern?: string;
   position: string;
   isLocked: boolean;
 }

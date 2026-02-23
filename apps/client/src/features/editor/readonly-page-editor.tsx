@@ -7,8 +7,10 @@ import { Heading, UniqueID } from "@docmost/editor-ext";
 import { Text } from "@tiptap/extension-text";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { useAtom } from "jotai";
+import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { readOnlyEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
 import { useEditorScroll } from "./hooks/use-editor-scroll";
+import { getEditorFontScale } from "@/features/editor/utils/editor-font-size-utils";
 
 interface PageEditorProps {
   title: string;
@@ -33,6 +35,10 @@ export default function ReadonlyPageEditor({
     ? window.location.hash.slice(1)
     : "";
   const { handleScrollTo } = useEditorScroll({ canScroll, initialScrollTo });
+  const [user] = useAtom(userAtom);
+  const editorFontScale = getEditorFontScale(
+    user?.settings?.preferences?.editorFontSize,
+  );
 
   useEffect(() => {
     isComponentMounted.current = true;
@@ -65,7 +71,7 @@ export default function ReadonlyPageEditor({
   ];
 
   return (
-    <>
+    <div style={{ "--editor-font-scale": editorFontScale } as React.CSSProperties}>
       <EditorProvider
         editable={false}
         immediatelyRender={true}
@@ -93,6 +99,6 @@ export default function ReadonlyPageEditor({
         }}
       ></EditorProvider>
       <div style={{ paddingBottom: "20vh" }}></div>
-    </>
+    </div>
   );
 }

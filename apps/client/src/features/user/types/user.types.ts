@@ -20,6 +20,7 @@ export interface IUser {
   deletedAt: Date;
   fullPageWidth: boolean; // used for update
   pageEditMode: string; // used for update
+  editorFontSize?: EditorFontSize; // used for update
   hasGeneratedPassword?: boolean;
 }
 
@@ -32,10 +33,17 @@ export interface IUserSettings {
   preferences: {
     fullPageWidth: boolean;
     pageEditMode: string;
+    editorFontSize?: EditorFontSize;
   };
 }
 
 export enum PageEditMode {
   Read = "read",
   Edit = "edit",
+}
+
+export enum EditorFontSize {
+  Small = "small",
+  Normal = "normal",
+  Large = "large",
 }

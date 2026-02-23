@@ -30,6 +30,7 @@ export class HistoryProcessor extends WorkerHost implements OnModuleDestroy {
 
       const page = await this.pageRepo.findById(pageId, {
         includeContent: true,
+        workspaceId: job.data.workspaceId,
       });
 
       if (!page) {

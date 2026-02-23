@@ -51,6 +51,14 @@ export class UserService {
       );
     }
 
+    if (typeof updateUserDto.editorFontSize !== 'undefined') {
+      return this.userRepo.updatePreference(
+        userId,
+        'editorFontSize',
+        updateUserDto.editorFontSize.toLowerCase(),
+      );
+    }
+
     if (updateUserDto.name) {
       user.name = updateUserDto.name;
     }

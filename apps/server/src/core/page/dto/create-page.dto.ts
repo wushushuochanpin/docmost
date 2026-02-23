@@ -9,6 +9,8 @@ import { Transform } from 'class-transformer';
 import { PageNodeType } from '@docmost/db/repos/page/page-node-meta.repo';
 
 export type ContentFormat = 'json' | 'markdown' | 'html';
+export type ThemeColor = 'white' | 'yellow' | 'green' | 'blue' | 'pink';
+export type ThemePattern = 'blank' | 'dots' | 'grid' | 'lines';
 
 export class CreatePageDto {
   @IsOptional()
@@ -18,6 +20,16 @@ export class CreatePageDto {
   @IsOptional()
   @IsString()
   icon?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['white', 'yellow', 'green', 'blue', 'pink'])
+  themeColor?: ThemeColor;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['blank', 'dots', 'grid', 'lines'])
+  themePattern?: ThemePattern;
 
   @IsOptional()
   @IsString()

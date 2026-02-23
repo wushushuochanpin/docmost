@@ -250,7 +250,7 @@ export class PersistenceExtension implements Extension {
 
     await this.historyQueue.add(
       QueueJob.PAGE_HISTORY,
-      { pageId: page.id } as IPageHistoryJob,
+      { pageId: page.id, workspaceId: page.workspaceId },
       { jobId: page.id, delay },
     );
   }

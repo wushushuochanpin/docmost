@@ -26,6 +26,7 @@ services:
       AWS_S3_ENDPOINT: '${AWS_S3_ENDPOINT}'
       AWS_S3_FORCE_PATH_STYLE: '${AWS_S3_FORCE_PATH_STYLE:-false}'
       AWS_S3_URL: '${AWS_S3_URL:-}'
+      BACKUP_LOCAL_PATH: '/app/data/storage/backups'
       PORT: '3000'
       VITE_DEV_HOST: 'true'
       VITE_PROXY_TARGET: 'http://127.0.0.1:3000'
@@ -41,9 +42,14 @@ services:
     command: >
       sh -c "pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
       && pnpm --filter @docmost/editor-ext run build
-      && pnpm concurrently --kill-others-on-fail -n 'frontend,backend' -c 'cyan,green'
-      'pnpm --filter ./apps/client run dev'
-      'pnpm --filter ./apps/server run start:dev'"
+      && rm -f apps/server/tsconfig.build.tsbuildinfo
+      && rm -f apps/server/tsconfig.tsbuildinfo
+      && rm -rf apps/server/dist
+      && pnpm run server:build
+      && pnpm --filter ./apps/server run migration:up
+      && pnpm concurrently --kill-others-on-fail -n 'backend,frontend' -c 'green,cyan'
+      'pnpm --filter ./apps/server run start:prod'
+      'pnpm --filter ./apps/client run dev'"
     networks:
       - prod
     restart: unless-stopped

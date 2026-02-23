@@ -1,8 +1,8 @@
-import { Badge, Group, Text, Tooltip } from "@mantine/core";
+import { Badge, Group, Text, Tooltip, UnstyledButton } from "@mantine/core";
 import classes from "./app-header.module.css";
 import React from "react";
 import TopMenu from "@/components/layouts/global/top-menu.tsx";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import APP_ROUTE from "@/lib/app-route.ts";
 import { useAtom } from "jotai";
 import {
@@ -13,16 +13,14 @@ import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-to
 import SidebarToggle from "@/components/ui/sidebar-toggle-button.tsx";
 import { useTranslation } from "react-i18next";
 import useTrial from "@/ee/hooks/use-trial.tsx";
-import { isCloud } from "@/lib/config.ts";
+import { getSpaceUrl, isCloud } from "@/lib/config.ts";
+import { useDisclosure } from "@mantine/hooks";
 import {
   SearchControl,
   SearchMobileControl,
 } from "@/features/search/components/search-control.tsx";
-import {
-  searchSpotlight,
-  shareSearchSpotlight,
-} from "@/features/search/constants.ts";
-import { NotificationPopover } from "@/features/notification/components/notification-popover.tsx";
+import { searchSpotlight } from "@/features/search/constants.ts";
+import SpaceSettingsModal from "@/features/space/components/settings-modal.tsx";
 
 const links = [{ link: APP_ROUTE.HOME, label: "Home" }];
 
@@ -34,16 +32,40 @@ export function AppHeader() {
   const [desktopOpened] = useAtom(desktopSidebarAtom);
   const toggleDesktop = useToggleSidebar(desktopSidebarAtom);
   const { isTrial, trialDaysLeft } = useTrial();
+  const location = useLocation();
+  const { spaceSlug } = useParams();
+  const [opened, { open: openSpaceSettings, close: closeSpaceSettings }] =
+    useDisclosure(false);
 
   const isHomeRoute = location.pathname.startsWith("/home");
   const isSpacesRoute = location.pathname === "/spaces";
   const hideSidebar = isHomeRoute || isSpacesRoute;
+  const isSpaceRoute = location.pathname.startsWith("/s/");
 
   const items = links.map((link) => (
     <Link key={link.label} to={link.link} className={classes.link}>
       {t(link.label)}
     </Link>
   ));
+
+  if (isSpaceRoute && spaceSlug) {
+    items.push(
+      <Link
+        key="overview"
+        to={getSpaceUrl(spaceSlug)}
+        className={classes.link}
+      >
+        {t("Overview")}
+      </Link>,
+      <UnstyledButton
+        key="space-settings"
+        className={classes.link}
+        onClick={openSpaceSettings}
+      >
+        {t("Space settings")}
+      </UnstyledButton>,
+    );
+  }
 
   return (
     <>
@@ -93,15 +115,6 @@ export function AppHeader() {
           </Group>
         </Group>
 
-        <div>
-          <Group visibleFrom="sm">
-            <SearchControl onClick={searchSpotlight.open} />
-          </Group>
-          <Group hiddenFrom="sm">
-            <SearchMobileControl onSearch={searchSpotlight.open} />
-          </Group>
-        </div>
-
         <Group px="md" wrap="nowrap">
           {isCloud() && isTrial && trialDaysLeft !== 0 && (
             <Badge
@@ -112,13 +125,25 @@ export function AppHeader() {
               visibleFrom="xs"
             >
               {trialDaysLeft === 1
-                ? "1 day left"
-                : `${trialDaysLeft} days left`}
+              ? "1 day left"
+              : `${trialDaysLeft} days left`}
             </Badge>
           )}
+          <Group visibleFrom="sm">
+            <SearchControl onClick={searchSpotlight.open} />
+          </Group>
+          <Group hiddenFrom="sm">
+            <SearchMobileControl onSearch={searchSpotlight.open} />
+          </Group>
           <TopMenu />
         </Group>
       </Group>
+
+      <SpaceSettingsModal
+        opened={opened}
+        onClose={closeSpaceSettings}
+        spaceId={spaceSlug ?? ""}
+      />
     </>
   );
 }

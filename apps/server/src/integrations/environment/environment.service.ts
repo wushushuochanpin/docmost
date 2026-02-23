@@ -95,6 +95,20 @@ export class EnvironmentService {
     );
   }
 
+  getBackupStaleJobMinutes(): number {
+    const raw = this.configService.get<string>(
+      'BACKUP_STALE_JOB_MINUTES',
+      '30',
+    );
+    const parsed = Number.parseInt(raw, 10);
+
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return 1440;
+    }
+
+    return parsed;
+  }
+
   getFileUploadSizeLimit(): string {
     const value = this.configService.get<string>('FILE_UPLOAD_SIZE_LIMIT', '50mb');
     return value?.trim() || '50mb';

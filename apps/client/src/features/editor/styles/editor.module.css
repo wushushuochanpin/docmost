@@ -44,7 +44,7 @@
 
     :global(.ProseMirror h1) {
         margin: 0;
-        font-size: rem(24px);
+        font-size: calc(24px * var(--editor-font-scale, 1));
         font-weight: 700;
         line-height: 1.25;
     }

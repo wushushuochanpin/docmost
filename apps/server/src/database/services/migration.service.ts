@@ -12,12 +12,22 @@ export class MigrationService {
   constructor(@InjectKysely() private readonly db: KyselyDB) {}
 
   async migrateToLatest(): Promise<void> {
+    const distMigrations = path.join(__dirname, '..', 'migrations');
+    const sourceMigrations = path.resolve(process.cwd(), 'src', 'database', 'migrations');
+
+    let migrationFolder = distMigrations;
+    try {
+      await fs.access(migrationFolder);
+    } catch {
+      migrationFolder = sourceMigrations;
+    }
+
     const migrator = new Migrator({
       db: this.db,
       provider: new FileMigrationProvider({
         fs,
         path,
-        migrationFolder: path.join(__dirname, '..', 'migrations'),
+        migrationFolder,
       }),
     });
 

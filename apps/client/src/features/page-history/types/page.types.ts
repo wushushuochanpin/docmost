@@ -12,6 +12,8 @@ export interface IPageHistory {
   slug: string;
   icon: string;
   coverPhoto: string;
+  themeColor?: string;
+  themePattern?: string;
   version: number;
   lastUpdatedById: string;
   workspaceId: string;

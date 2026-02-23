@@ -5,6 +5,7 @@ import PageEditor from "@/features/editor/page-editor";
 import { Container } from "@mantine/core";
 import { useAtom } from "jotai";
 import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
+import { getEditorFontScale } from "@/features/editor/utils/editor-font-size-utils";
 
 const MemoizedTitleEditor = React.memo(TitleEditor);
 const MemoizedPageEditor = React.memo(PageEditor);
@@ -28,12 +29,16 @@ export function FullEditor({
 }: FullEditorProps) {
   const [user] = useAtom(userAtom);
   const fullPageWidth = user.settings?.preferences?.fullPageWidth;
+  const editorFontScale = getEditorFontScale(
+    user.settings?.preferences?.editorFontSize,
+  );
 
   return (
     <Container
       fluid={fullPageWidth}
       size={!fullPageWidth && 900}
       className={classes.editor}
+      style={{ "--editor-font-scale": editorFontScale } as React.CSSProperties}
     >
       <div className={classes.titleSection}>
         <MemoizedTitleEditor

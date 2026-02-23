@@ -4,6 +4,7 @@ import { KyselyDB } from '@docmost/db/types/kysely.types';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as path from 'path';
+import * as fs from 'fs-extra';
 import { QueueJob, QueueName } from '../queue/constants';
 import { EnvironmentService } from '../environment/environment.service';
 
@@ -50,10 +51,105 @@ export class BackupJobService {
     private readonly environmentService: EnvironmentService,
   ) {}
 
+  private getStaleThresholdDate(): Date {
+    const minutes = this.environmentService.getBackupStaleJobMinutes();
+    const now = Date.now();
+    const thresholdMs = now - minutes * 60 * 1000;
+    return new Date(thresholdMs);
+  }
+
+  private async markJobFailedAsStale(
+    row: {
+      id: string;
+      status: BackupJobStatus;
+      startedAt: Date | string | null;
+      createdAt: Date | string;
+    },
+    endedAt: Date,
+  ): Promise<void> {
+    const started = row.startedAt ?? row.createdAt;
+    const durationMs = endedAt.getTime() - new Date(started).getTime();
+
+    await this.db
+      .updateTable('backupJobs')
+      .set({
+        status: 'failed',
+        endedAt,
+        durationMs: String(Math.max(durationMs, 0)),
+        errorCode: 'BACKUP_STALE',
+        errorMessage:
+          'Backup job was not completed before stale threshold and was marked as failed during cleanup.',
+      })
+      .where('id', '=', row.id)
+      .execute();
+  }
+
+  async cleanupStaleJobs(): Promise<number> {
+    return this.cleanupStaleJobsByWorkspace();
+  }
+
+  async cleanupStaleJobsByWorkspace(workspaceId?: string): Promise<number> {
+    const threshold = this.getStaleThresholdDate();
+    const now = new Date();
+
+    let q = this.db
+      .selectFrom('backupJobs')
+      .select(['id', 'status', 'startedAt', 'createdAt'])
+      .where('status', 'in', ['pending', 'running'])
+      .orderBy('createdAt', 'desc');
+
+    if (workspaceId) {
+      q = q.where('workspaceId', '=', workspaceId);
+    }
+
+    const staleJobs = await q
+      .where((eb) =>
+        eb.or([
+          eb.and([
+            eb('status', '=', 'pending' as const),
+            eb('createdAt', '<', threshold),
+          ]),
+          eb.and([
+            eb('status', '=', 'running' as const),
+            eb.or([
+              eb('startedAt', '<', threshold),
+              eb.and([
+                eb('startedAt', 'is', null),
+                eb('createdAt', '<', threshold),
+              ]),
+            ]),
+          ]),
+        ]),
+      )
+      .execute();
+
+    if (!staleJobs.length) {
+      return 0;
+    }
+
+    let count = 0;
+    for (const row of staleJobs) {
+      await this.markJobFailedAsStale(
+        {
+          id: row.id,
+          status: row.status,
+          startedAt: row.startedAt as Date | string | null,
+          createdAt: row.createdAt,
+        },
+        now,
+      );
+      count += 1;
+    }
+
+    return count;
+  }
+
   async createManualJob(
     workspaceId: string,
     userId: string,
   ): Promise<BackupJobRow> {
+    await this.cleanupStaleJobsByWorkspace(workspaceId);
+
     const [row] = await this.db
       .insertInto('backupJobs')
       .values({
@@ -113,6 +209,8 @@ export class BackupJobService {
     workspaceId: string,
     opts: { cursor?: string; limit?: number },
   ): Promise<ListBackupJobsResult> {
+    await this.cleanupStaleJobsByWorkspace(workspaceId);
+
     const limit = Math.min(opts.limit ?? 20, 100);
     let q = this.db
       .selectFrom('backupJobs')
@@ -221,18 +319,27 @@ export class BackupJobService {
     return row as { id: string; status: string } | null;
   }
 
-  getArtifactFullPath(workspaceId: string, jobId: string): Promise<string | null> {
-    return this.db
+  async getArtifactFullPath(
+    workspaceId: string,
+    jobId: string,
+  ): Promise<string | null> {
+    const row = await this.db
       .selectFrom('backupJobs')
       .select('artifactPath')
       .where('workspaceId', '=', workspaceId)
       .where('id', '=', jobId)
       .where('status', '=', 'success')
-      .executeTakeFirst()
-      .then((row) => {
-        if (!row?.artifactPath) return null;
-        const root = this.environmentService.getBackupLocalPath();
-        return path.join(root, row.artifactPath);
-      });
+      .executeTakeFirst();
+
+    if (!row?.artifactPath) return null;
+
+    const root = this.environmentService.getBackupLocalPath();
+    const fullPath = path.join(root, row.artifactPath);
+
+    if (!(await fs.pathExists(fullPath))) {
+      return null;
+    }
+
+    return fullPath;
   }
 }

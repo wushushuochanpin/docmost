@@ -1,6 +1,7 @@
 import SettingsTitle from "@/components/settings/settings-title.tsx";
 import AccountLanguage from "@/features/user/components/account-language.tsx";
 import AccountTheme from "@/features/user/components/account-theme.tsx";
+import EditorFontSizePref from "@/features/user/components/editor-font-size-pref";
 import PageWidthPref from "@/features/user/components/page-width-pref.tsx";
 import PageEditPref from "@/features/user/components/page-state-pref";
 import { getAppName } from "@/lib/config.ts";
@@ -30,6 +31,10 @@ export default function AccountPreferences() {
 
       <PageWidthPref />
       
+      <Divider my={"md"} />
+
+      <EditorFontSizePref />
+
       <Divider my={"md"} />
 
       <PageEditPref />

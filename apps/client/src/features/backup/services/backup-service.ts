@@ -35,6 +35,10 @@ export interface ListBackupJobsResult {
   hasPrevPage: boolean;
 }
 
+export interface CleanupStaleJobsResult {
+  cleanedCount: number;
+}
+
 // Backend wraps responses as { data, success, status }
 function unwrap<T>(res: unknown): T {
   const obj = res as { data?: T };
@@ -61,6 +65,21 @@ export async function getBackupJobs(params?: {
 export async function runBackup(): Promise<{ job: BackupJob }> {
   const res = await api.post("/backups/jobs/run");
   return unwrap<{ job: BackupJob }>(res);
+}
+
+export async function cleanupStaleBackupJobs(): Promise<CleanupStaleJobsResult> {
+  try {
+    const res = await api.post("/backups/jobs/run", { cleanupOnly: true });
+    return unwrap<CleanupStaleJobsResult>(res);
+  } catch (err: unknown) {
+    const status = (err as { response?: { status?: number } })?.response
+      ?.status;
+    if (status === 404) {
+      const res = await api.post("/backups/jobs/cleanup-stale");
+      return unwrap<CleanupStaleJobsResult>(res);
+    }
+    throw err;
+  }
 }
 
 export async function getBackupDownloadUrl(

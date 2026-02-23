@@ -2,7 +2,6 @@ import { OmitType, PartialType } from '@nestjs/mapped-types';
 import {
   IsBoolean,
   IsIn,
-  IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
@@ -25,6 +24,11 @@ export class UpdateUserDto extends PartialType(
   @IsString()
   @IsIn(['read', 'edit'])
   pageEditMode: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['small', 'normal', 'large'])
+  editorFontSize: string;
 
   @IsOptional()
   @IsString()

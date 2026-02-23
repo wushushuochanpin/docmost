@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
 export class ListBackupJobsDto {
   @IsOptional()
@@ -17,4 +17,10 @@ export class ListBackupJobsDto {
 export class BackupJobIdDto {
   @IsUUID()
   id: string;
+}
+
+export class BackupRunDto {
+  @IsOptional()
+  @IsBoolean()
+  cleanupOnly?: boolean;
 }

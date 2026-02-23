@@ -21,12 +21,18 @@
 
 .sectionPages {
     margin-bottom: 0;
+    overflow-x: auto;
     overflow-y: hidden;
 
     .pages {
         height: 100%;
+        overflow-x: auto;
         padding-bottom: 26px;
     }
+}
+
+.pagesHeader {
+    min-width: 0;
 }
 
 .menuItems {

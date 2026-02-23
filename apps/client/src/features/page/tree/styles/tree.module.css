@@ -5,6 +5,8 @@
 .treeContainer {
     height: 100%;
     min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
 
     > div, > div > .tree {
         height: 100% !important;
@@ -18,8 +20,8 @@
     align-items: center;
     gap: 2px;
     height: 100%;
-    width: calc(100% - 8px);
-    min-width: 0;
+    width: max-content;
+    min-width: calc(100% - 8px);
     padding-right: 2px;
     text-decoration: none;
     color: var(--ui-text-primary);
@@ -97,10 +99,10 @@
 
 .text {
     flex: 1;
-    min-width: 0;
+    min-width: auto;
     line-height: 1.2;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-overflow: unset;
     font-size: rem(14px);
     font-weight: 500;
     color: var(--ui-text-primary);

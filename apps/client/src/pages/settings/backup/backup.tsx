@@ -16,6 +16,7 @@ import { Helmet } from "react-helmet-async";
 import {
   useBackupJobsQuery,
   useRunBackupMutation,
+  useCleanupStaleJobsMutation,
 } from "@/features/backup/queries/backup-query";
 import type { BackupJob } from "@/features/backup/services/backup-service";
 import Paginate from "@/components/common/paginate";
@@ -71,6 +72,7 @@ export default function BackupPage() {
   const isInProgress = (status: string) =>
     status === "running" || status === "pending";
   const runMutation = useRunBackupMutation();
+  const cleanupMutation = useCleanupStaleJobsMutation();
 
   const goNext = useCallback((nextCursor: string | null | undefined) => {
     if (nextCursor) {
@@ -113,6 +115,14 @@ export default function BackupPage() {
           onClick={() => runMutation.mutate()}
         >
           {t("Run backup now")}
+        </Button>
+        <Button
+          variant="light"
+          leftSection={<IconRefresh size={16} />}
+          loading={cleanupMutation.isPending}
+          onClick={() => cleanupMutation.mutate()}
+        >
+          {t("Cleanup stale jobs")}
         </Button>
       </Group>
 

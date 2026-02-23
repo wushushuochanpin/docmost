@@ -1,18 +1,9 @@
-import {
-  ActionIcon,
-  Group,
-  Menu,
-  Text,
-  Tooltip,
-  UnstyledButton,
-} from "@mantine/core";
+import { ActionIcon, Group, Menu, Text, Tooltip } from "@mantine/core";
 import {
   IconArrowDown,
   IconDots,
   IconFileExport,
-  IconHome,
-  IconPlus,
-  IconSearch,
+  IconFolder,
   IconSettings,
   IconTrash,
 } from "@tabler/icons-react";
@@ -20,12 +11,11 @@ import classes from "./space-sidebar.module.css";
 import React from "react";
 import { useAtom } from "jotai";
 import { treeApiAtom } from "@/features/page/tree/atoms/tree-api-atom.ts";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import clsx from "clsx";
 import { useDisclosure } from "@mantine/hooks";
 import SpaceSettingsModal from "@/features/space/components/settings-modal.tsx";
 import { useGetSpaceBySlugQuery } from "@/features/space/queries/space-query.ts";
-import { getSpaceUrl } from "@/lib/config.ts";
 import SpaceTree from "@/features/page/tree/components/space-tree.tsx";
 import { useSpaceAbility } from "@/features/space/permissions/use-space-ability.ts";
 import {
@@ -36,18 +26,12 @@ import PageImportModal from "@/features/page/components/page-import-modal.tsx";
 import { useTranslation } from "react-i18next";
 import { SwitchSpace } from "./switch-space";
 import ExportModal from "@/components/common/export-modal";
-import { mobileSidebarAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
-import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-toggle-sidebar.ts";
-import { searchSpotlight } from "@/features/search/constants";
 
 export function SpaceSidebar() {
   const { t } = useTranslation();
   const [tree] = useAtom(treeApiAtom);
-  const location = useLocation();
   const [opened, { open: openSettings, close: closeSettings }] =
     useDisclosure(false);
-  const [mobileSidebarOpened] = useAtom(mobileSidebarAtom);
-  const toggleMobileSidebar = useToggleSidebar(mobileSidebarAtom);
 
   const { spaceSlug } = useParams();
   const { data: space } = useGetSpaceBySlugQuery(spaceSlug);
@@ -81,79 +65,6 @@ export function SpaceSidebar() {
           />
         </div>
 
-        <div className={classes.section}>
-          <div className={classes.menuItems}>
-            <UnstyledButton
-              component={Link}
-              to={getSpaceUrl(spaceSlug)}
-              className={clsx(
-                classes.menu,
-                location.pathname.toLowerCase() === getSpaceUrl(spaceSlug)
-                  ? classes.activeButton
-                  : "",
-              )}
-            >
-              <div className={classes.menuItemInner}>
-                <IconHome
-                  size={16}
-                  className={classes.menuItemIcon}
-                  stroke={1.75}
-                />
-                <span>{t("Overview")}</span>
-              </div>
-            </UnstyledButton>
-
-            <UnstyledButton
-              className={classes.menu}
-              onClick={searchSpotlight.open}
-            >
-              <div className={classes.menuItemInner}>
-                <IconSearch
-                  size={16}
-                  className={classes.menuItemIcon}
-                  stroke={1.75}
-                />
-                <span>{t("Search")}</span>
-              </div>
-            </UnstyledButton>
-
-            <UnstyledButton className={classes.menu} onClick={openSettings}>
-              <div className={classes.menuItemInner}>
-                <IconSettings
-                  size={16}
-                  className={classes.menuItemIcon}
-                  stroke={1.75}
-                />
-                <span>{t("Space settings")}</span>
-              </div>
-            </UnstyledButton>
-
-            {spaceAbility.can(
-              SpaceCaslAction.Manage,
-              SpaceCaslSubject.Page,
-            ) && (
-              <UnstyledButton
-                className={classes.menu}
-                onClick={() => {
-                  handleCreateFolder();
-                  if (mobileSidebarOpened) {
-                    toggleMobileSidebar();
-                  }
-                }}
-              >
-                <div className={classes.menuItemInner}>
-                  <IconPlus
-                    size={16}
-                    className={classes.menuItemIcon}
-                    stroke={1.75}
-                  />
-                  <span>{t("New folder")}</span>
-                </div>
-              </UnstyledButton>
-            )}
-          </div>
-        </div>
-
         <div className={clsx(classes.section, classes.sectionPages)}>
           <Group className={classes.pagesHeader} justify="space-between">
             <Text size="xs" fw={500} c="dimmed">
@@ -174,7 +85,7 @@ export function SpaceSidebar() {
                     onClick={handleCreateFolder}
                     aria-label={t("Create folder")}
                   >
-                    <IconPlus size={16} stroke={1.75} />
+                    <IconFolder size={16} stroke={1.75} />
                   </ActionIcon>
                 </Tooltip>
               </Group>
