@@ -90,6 +90,7 @@ import { mobileSidebarAtom } from "@/components/layouts/global/hooks/atoms/sideb
 import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-toggle-sidebar.ts";
 import CopyPageModal from "../../components/copy-page-modal.tsx";
 import { duplicatePage } from "../../services/page-service.ts";
+import { AutoTooltipText } from "@/components/ui/auto-tooltip-text.tsx";
 
 interface SpaceTreeProps {
   spaceId: string;
@@ -530,12 +531,17 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
           />
         </div>
 
-        <span
+        <AutoTooltipText
           className={classes.text}
-          title={node.data.name || t("untitled")}
+          tooltipProps={{
+            openDelay: 50,
+            withArrow: true,
+            position: "right",
+          }}
+          lineClamp={1}
         >
           {node.data.name || t("untitled")}
-        </span>
+        </AutoTooltipText>
         {node.data.isPinned ? (
           <span className={classes.pinnedBadge} title={t("Pinned")}>
             <IconPin size={11} stroke={1.85} />

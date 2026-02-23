@@ -2,6 +2,7 @@ import classes from "@/features/editor/styles/editor.module.css";
 import React from "react";
 import { TitleEditor } from "@/features/editor/title-editor";
 import PageEditor from "@/features/editor/page-editor";
+import { EditorTopToolbar } from "@/features/editor/components/editor-top-toolbar.tsx";
 import { Container } from "@mantine/core";
 import { useAtom } from "jotai";
 import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
@@ -58,6 +59,8 @@ export function FullEditor({
           className={classes.surfaceTitle}
         />
       </div>
+
+      <EditorTopToolbar pageId={pageId} editable={editable} />
 
       <MemoizedPageEditor
         pageId={pageId}

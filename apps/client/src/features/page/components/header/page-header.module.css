@@ -33,34 +33,11 @@
   overflow: hidden;
 }
 
-.divider {
-  width: 1px;
-  height: 20px;
-  background: var(--ui-border-default);
-  flex: 0 0 auto;
-}
-
-.toolbarSlot {
-  min-width: 0;
-  max-width: min(50vw, 680px);
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  height: 100%;
-}
-
 .right {
   justify-self: end;
   min-width: 0;
 
   @media (max-width: $mantine-breakpoint-sm) {
     gap: var(--mantine-spacing-sm);
-  }
-}
-
-@media (max-width: $mantine-breakpoint-sm) {
-  .divider,
-  .toolbarSlot {
-    display: none;
   }
 }
