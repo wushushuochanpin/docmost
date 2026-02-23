@@ -1,35 +1,11 @@
-import { MantineSize, SegmentedControl, Text } from "@mantine/core";
+import { MantineSize, SegmentedControl } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
-import { EditorFontSize } from "@/features/user/types/user.types.ts";
 import { updateUser } from "@/features/user/services/user-service.ts";
-import { notifications } from "@mantine/notifications";
-import {
-  ResponsiveSettingsRow,
-  ResponsiveSettingsContent,
-  ResponsiveSettingsControl,
-} from "@/components/ui/responsive-settings-row";
-
-export default function EditorFontSizePref() {
-  const { t } = useTranslation();
-
-  return (
-    <ResponsiveSettingsRow>
-      <ResponsiveSettingsContent>
-        <Text size="md">{t("Document font size")}</Text>
-        <Text size="sm" c="dimmed">
-          {t("Choose a comfortable reading and editing font size for documents.")}
-        </Text>
-      </ResponsiveSettingsContent>
-
-      <ResponsiveSettingsControl>
-        <EditorFontSizeSegmentedControl />
-      </ResponsiveSettingsControl>
-    </ResponsiveSettingsRow>
-  );
-}
+import { EditorFontSize } from "@/features/user/types/user.types.ts";
+import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
 
 interface EditorFontSizeSegmentedControlProps {
   size?: MantineSize;
