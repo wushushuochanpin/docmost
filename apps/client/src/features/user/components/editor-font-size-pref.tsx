@@ -1,6 +1,6 @@
 import { MantineSize, SegmentedControl, Text } from "@mantine/core";
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { EditorFontSize } from "@/features/user/types/user.types.ts";
@@ -45,16 +45,8 @@ export function EditorFontSizeSegmentedControl({
   const [value, setValue] = useState<EditorFontSize>(editorFontSize);
   const [isLoading, setIsLoading] = useState(false);
 
-  const safeValue = useMemo<EditorFontSize>(() => {
-    return (
-      [
-        EditorFontSize.Small,
-        EditorFontSize.Normal,
-        EditorFontSize.Large,
-      ] as const
-    ).includes(editorFontSize as EditorFontSize)
-      ? (editorFontSize as EditorFontSize)
-      : EditorFontSize.Normal;
+  useEffect(() => {
+    setValue(editorFontSize);
   }, [editorFontSize]);
 
   const handleChange = useCallback(
@@ -89,8 +81,6 @@ export function EditorFontSizeSegmentedControl({
           ].includes(updatedPreference as EditorFontSize)
         ) {
           setValue(updatedPreference as EditorFontSize);
-        } else {
-          setValue(safeValue);
         }
       } catch (err) {
         setValue(prevValue);
@@ -103,14 +93,8 @@ export function EditorFontSizeSegmentedControl({
         setIsLoading(false);
       }
     },
-    [isLoading, safeValue, setUser, t, value],
+    [isLoading, setUser, t, value],
   );
-
-  useEffect(() => {
-    if (safeValue !== value) {
-      setValue(safeValue);
-    }
-  }, [safeValue, value]);
 
   return (
     <SegmentedControl
