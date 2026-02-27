@@ -2,6 +2,10 @@
   color-scheme: light;
 }
 
+[data-mantine-color-scheme="dark"] {
+  color-scheme: dark;
+}
+
 /* Single background layer: body. No stacked Main/editor layers. */
 body {
   background: var(--ui-bg-surface);
