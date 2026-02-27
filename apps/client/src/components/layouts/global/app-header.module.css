@@ -1,7 +1,7 @@
 .header {
     height: 100%;
     margin-bottom: rem(120px);
-    background-color: var(--ui-bg-canvas);
+    background-color: transparent;
     border-bottom: rem(1px) solid var(--ui-border-default);
     padding-left: var(--mantine-spacing-md);
     padding-right: var(--mantine-spacing-md);

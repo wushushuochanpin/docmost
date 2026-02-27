@@ -1,8 +1,8 @@
 .editor {
     height: 100%;
-    padding: 0 0 84px; /* 28px + 56px: keep bottom space but paint with surface (avoids gray strip) */
-    margin: 20px auto 0;
-    background: var(--ui-bg-surface);
+    padding: 0 0 28px;
+    margin: 20px auto 56px;
+    background: transparent; /* Main provides page background; no extra layer */
     border: 0;
     border-radius: 0;
     box-shadow: none;

@@ -80,6 +80,14 @@ export default function GlobalAppShell({
   const isPageRoute = location.pathname.includes("/p/");
   const hideSidebar = isHomeRoute || isSpacesRoute;
 
+  const navbarVisible = !hideSidebar && (mobileOpened || desktopOpened);
+  const navbarOffsetPx =
+    !isPageRoute || !navbarVisible
+      ? 0
+      : isSpaceRoute
+        ? sidebarWidth
+        : 300;
+
   const closeTocPanel = React.useCallback(() => {
     setAsideState({ tab: "toc", isAsideOpen: false });
   }, [setAsideState]);
@@ -117,7 +125,7 @@ export default function GlobalAppShell({
           {isSettingsRoute && <SettingsSidebar />}
         </AppShell.Navbar>
       )}
-      <AppShell.Main className={clsx({ [classes.pageMain]: isPageRoute })}>
+      <AppShell.Main>
         {isSettingsRoute ? (
           <Container size={850}>{children}</Container>
         ) : (
@@ -126,11 +134,16 @@ export default function GlobalAppShell({
       </AppShell.Main>
 
       {isPageRoute && (
-        <>
+        <div
+          style={
+            { "--app-shell-navbar-offset": `${navbarOffsetPx}px` } as React.CSSProperties
+          }
+        >
           <div
             className={clsx(
               classes.pageAsidePanel,
               classes.leftPanel,
+              classes.leftPanelFadeOnly,
               isTocPanelOpen && classes.openPanel,
             )}
             aria-hidden={!isTocPanelOpen}
@@ -150,7 +163,7 @@ export default function GlobalAppShell({
               <Aside tab="comments" onClose={closeCommentsPanel} />
             )}
           </div>
-        </>
+        </div>
       )}
     </AppShell>
   );

@@ -1,5 +1,5 @@
 .navbar {
-    background-color: var(--ui-bg-canvas);
+    background-color: transparent; /* shell .navbar provides background */
     height: 100%;
     width: 100%;
     padding: var(--mantine-spacing-md);

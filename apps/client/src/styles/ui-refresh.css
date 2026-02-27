@@ -2,13 +2,14 @@
   color-scheme: light;
 }
 
+/* Single background layer: body. No stacked Main/editor layers. */
 body {
-  background: var(--ui-bg-canvas);
+  background: var(--ui-bg-surface);
   color: var(--ui-text-primary);
 }
 
 .mantine-AppShell-main {
-  background: var(--ui-bg-canvas);
+  background: transparent;
 }
 
 .mantine-Paper-root[data-with-border="true"] {

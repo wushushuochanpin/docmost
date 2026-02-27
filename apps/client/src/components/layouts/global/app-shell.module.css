@@ -1,5 +1,5 @@
 .header, .navbar {
-  background-color: var(--ui-bg-canvas);
+  background-color: transparent; /* body is the single layer */
 }
 
 .navbar {
@@ -15,11 +15,6 @@
   border-inline-end: 1px solid var(--ui-border-default);
 }
 
-/* Override global .mantine-AppShell-main (--ui-bg-canvas) so the 56px margin
-   below the editor shows the same surface; otherwise a gray strip appears. */
-:global(.mantine-AppShell-main).pageMain {
-  background-color: var(--ui-bg-surface);
-}
 
 .pageAsidePanel {
   position: fixed;
@@ -43,20 +38,30 @@
   pointer-events: auto;
 }
 
+/* Anchor to content edge (right of navbar); no fly-in from viewport left */
 .leftPanel {
   inset-inline-start: var(--app-shell-navbar-offset, 0rem);
   border-inline-end: 1px solid var(--ui-border-default);
-  transform: translateX(calc(-100% - 12px));
+  transform: translateX(-100%);
 }
 
 .leftPanel.openPanel {
   transform: translateX(0);
 }
 
+/* When navbar is collapsed (offset 0), fade only so no bar flying from left */
+.leftPanel.leftPanelFadeOnly {
+  transition: opacity 0.16s ease;
+}
+.leftPanel.leftPanelFadeOnly.openPanel {
+  transform: translateX(0);
+  transition: opacity 0.16s ease;
+}
+
 .rightPanel {
   inset-inline-end: 0;
   border-inline-start: 1px solid var(--ui-border-default);
-  transform: translateX(calc(100% + 12px));
+  transform: translateX(100%);
 }
 
 .rightPanel.openPanel {
