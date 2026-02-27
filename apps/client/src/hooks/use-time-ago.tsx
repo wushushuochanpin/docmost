@@ -1,12 +1,31 @@
 import { timeAgo } from "@/lib/time.ts";
 import { useEffect, useState } from "react";
 
-export function useTimeAgo(date: Date | string) {
-  const [value, setValue] = useState(() => timeAgo(new Date(date)));
+function resolveTimeAgoValue(date?: Date | string | null) {
+  if (!date) {
+    return "";
+  }
+
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  return timeAgo(parsedDate);
+}
+
+export function useTimeAgo(date?: Date | string | null) {
+  const [value, setValue] = useState(() => resolveTimeAgoValue(date));
 
   useEffect(() => {
+    setValue(resolveTimeAgoValue(date));
+
+    if (!date) {
+      return;
+    }
+
     const interval = setInterval(() => {
-      setValue(timeAgo(new Date(date)));
+      setValue(resolveTimeAgoValue(date));
     }, 5 * 1000);
 
     return () => clearInterval(interval);

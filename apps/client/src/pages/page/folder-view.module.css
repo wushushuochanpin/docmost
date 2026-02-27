@@ -1,7 +1,7 @@
 .container {
   height: 100%;
   padding: 0;
-  margin: 46px auto 24px;
+  margin: 0 auto 24px;
 
   @media print {
     padding: 0;

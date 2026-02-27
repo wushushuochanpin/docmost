@@ -15,6 +15,7 @@ import {
   getEditorFontScale,
 } from "@/features/editor/utils/editor-font-size-utils";
 import { editorFontSizePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
+import classes from "@/features/editor/styles/editor.module.css";
 
 interface PageEditorProps {
   title: string;
@@ -77,12 +78,14 @@ export default function ReadonlyPageEditor({
 
   return (
     <div style={{ "--editor-font-scale": editorFontScale } as React.CSSProperties}>
-      <EditorProvider
-        editable={false}
-        immediatelyRender={true}
-        extensions={titleExtensions}
-        content={title}
-      ></EditorProvider>
+      <div className={classes.surfaceTitle}>
+        <EditorProvider
+          editable={false}
+          immediatelyRender={true}
+          extensions={titleExtensions}
+          content={title}
+        ></EditorProvider>
+      </div>
 
       <EditorProvider
         editable={false}

@@ -8,6 +8,10 @@
   line-height: var(--mantine-line-height-xl);
   font-weight: 400;
   width: 100%;
+  --doc-title-font-size: calc(26px * var(--editor-font-scale, 1));
+  --doc-h1-font-size: calc(24px * var(--editor-font-scale, 1));
+  --doc-h2-font-size: calc(22px * var(--editor-font-scale, 1));
+  --doc-h3-font-size: calc(20px * var(--editor-font-scale, 1));
 
   padding-left: 3rem;
   padding-right: 3rem;
@@ -55,6 +59,18 @@
   h6 {
     line-height: 1.1;
     margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: var(--doc-h1-font-size);
+  }
+
+  h2 {
+    font-size: var(--doc-h2-font-size);
+  }
+
+  h3 {
+    font-size: var(--doc-h3-font-size);
   }
 
   code {

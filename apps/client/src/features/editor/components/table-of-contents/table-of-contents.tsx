@@ -18,10 +18,11 @@ export type HeadingLink = {
   position: number;
 };
 
-const recalculateLinks = (nodePos: NodePos[]) => {
+const recalculateLinks = (nodePos?: NodePos[] | null) => {
+  const safeNodePos = Array.isArray(nodePos) ? nodePos : [];
   const nodes: HTMLElement[] = [];
 
-  const links: HeadingLink[] = Array.from(nodePos).reduce<HeadingLink[]>(
+  const links: HeadingLink[] = Array.from(safeNodePos).reduce<HeadingLink[]>(
     (acc, item) => {
       const label = item.node.textContent;
       const level = Number(item.node.attrs.level);
@@ -50,11 +51,20 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
   const headerPaddingRef = useRef<HTMLDivElement | null>(null);
 
   const handleScrollToHeading = (position: number) => {
+    if (!props.editor) {
+      return;
+    }
+
     const { view } = props.editor;
 
-    const headerOffset = parseInt(
-      window.getComputedStyle(headerPaddingRef.current).getPropertyValue("top"),
-    );
+    const headerOffset = headerPaddingRef.current
+      ? parseInt(
+          window
+            .getComputedStyle(headerPaddingRef.current)
+            .getPropertyValue("top"),
+          10,
+        ) || 0
+      : 0;
 
     const { node } = view.domAtPos(position);
     const element = node as HTMLElement;

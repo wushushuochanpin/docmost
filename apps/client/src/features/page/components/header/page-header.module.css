@@ -1,43 +1,64 @@
 .header {
   height: 45px;
-  background-color: var(--ui-bg-canvas);
+  background-color: var(--ui-bg-surface);
   border-bottom: rem(1px) solid var(--ui-border-default);
-  padding-left: var(--mantine-spacing-md);
-  padding-right: var(--mantine-spacing-md);
-  position: fixed;
+  position: sticky;
   z-index: 220;
-  isolation: isolate;
-  top: var(--app-shell-header-offset, 0rem);
-  inset-inline-start: var(--app-shell-navbar-offset, 0rem);
-  inset-inline-end: var(--app-shell-aside-offset, 0rem);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  top: 0;
+  display: flex;
   align-items: center;
-  column-gap: var(--mantine-spacing-sm);
-
-  @media (max-width: $mantine-breakpoint-sm) {
-    padding-left: var(--mantine-spacing-xs);
-    padding-right: var(--mantine-spacing-xs);
-  }
 
   @media print {
     display: none;
   }
 }
 
-.left {
-  display: flex;
+.row {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.right {
-  justify-self: end;
-  min-width: 0;
+  column-gap: 12px;
+  padding-inline-start: 0;
+  padding-inline-end: 12px;
 
   @media (max-width: $mantine-breakpoint-sm) {
-    gap: var(--mantine-spacing-sm);
+    column-gap: 8px;
+    grid-template-columns: 72px minmax(0, 1fr) auto;
+    padding-inline-end: 8px;
   }
+}
+
+.leftRail {
+  width: 84px;
+  min-width: 84px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding-inline-start: 8px;
+
+  @media (max-width: $mantine-breakpoint-sm) {
+    width: 72px;
+    min-width: 72px;
+    padding-inline-start: 4px;
+  }
+}
+
+.toolbarLayer {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.actions {
+  min-width: max-content;
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 14px;
 }

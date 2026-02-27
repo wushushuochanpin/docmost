@@ -1,11 +1,11 @@
 .editor {
     height: 100%;
     padding: 0 0 28px;
-    margin: 24px auto 56px;
+    margin: 20px auto 56px;
     background: var(--ui-bg-surface);
-    border: 1px solid var(--ui-border-default);
-    border-radius: 14px;
-    box-shadow: var(--ui-shadow-sm);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
     overflow: visible;
 
     :global(.ProseMirror) {
@@ -25,7 +25,7 @@
 .titleSection {
     padding: 14px 3rem 10px;
     border-bottom: 1px solid var(--ui-border-default);
-    background: var(--ui-bg-surface);
+    background: transparent;
 
     @media (max-width: $mantine-breakpoint-sm) {
         padding-left: 1rem;
@@ -78,7 +78,7 @@
 
     :global(.ProseMirror h1) {
         margin: 0;
-        font-size: calc(24px * var(--editor-font-scale, 1));
+        font-size: var(--doc-title-font-size);
         font-weight: 700;
         line-height: 1.25;
     }

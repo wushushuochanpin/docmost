@@ -110,6 +110,9 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
 
         <MemoizedPageHeader
           readOnly={!canManagePage}
+          pageId={page.id}
+          editable={canManagePage}
+          showEditorToolbar={!isFolder}
         />
 
         {isFolder ? (

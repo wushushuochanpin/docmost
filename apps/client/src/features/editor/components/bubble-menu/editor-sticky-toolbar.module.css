@@ -10,21 +10,17 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  width: max-content;
   max-width: 100%;
-  width: 100%;
+  min-width: 0;
   height: 34px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   padding: 0;
   scrollbar-width: none;
-}
-
-.toolbarInner::-webkit-scrollbar {
-  display: none;
 }
 
 .active {

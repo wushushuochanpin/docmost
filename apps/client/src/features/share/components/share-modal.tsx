@@ -31,9 +31,13 @@ import { workspaceAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { useSpaceQuery } from "@/features/space/queries/space-query.ts";
 
 interface ShareModalProps {
-  readOnly: boolean;
+  readOnly?: boolean;
 }
-export default function ShareModal({ readOnly }: ShareModalProps) {
+interface ShareContentProps {
+  readOnly?: boolean;
+}
+
+function ShareSettingsPanel({ readOnly }: ShareContentProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { pageSlug } = useParams();
@@ -130,6 +134,152 @@ export default function ShareModal({ readOnly }: ShareModalProps) {
   );
 
   return (
+    <div style={{ userSelect: "none" }}>
+      {isCloud() && isTrial ? (
+        <>
+          <Group justify="center" mb="sm">
+            <IconLock size={20} stroke={1.5} />
+          </Group>
+          <Text size="sm" ta="center" fw={500} mb="xs">
+            {t("Upgrade to share pages")}
+          </Text>
+          <Text size="sm" c="dimmed" ta="center" mb="sm">
+            {t(
+              "Page sharing is available on paid plans. Upgrade to share your pages publicly.",
+            )}
+          </Text>
+          <Button
+            size="xs"
+            onClick={() => navigate("/settings/billing")}
+            fullWidth
+          >
+            {t("Upgrade Plan")}
+          </Button>
+        </>
+      ) : sharingDisabled ? (
+        <>
+          <Group justify="center" mb="sm">
+            <IconLock size={20} stroke={1.5} />
+          </Group>
+          <Text size="sm" ta="center" fw={500} mb="xs">
+            {t("Public sharing is disabled")}
+          </Text>
+          <Text size="sm" c="dimmed" ta="center">
+            {workspaceDisabled
+              ? t("Public sharing has been disabled at the workspace level.")
+              : t("Public sharing has been disabled for this space.")}
+          </Text>
+        </>
+      ) : isDescendantShared ? (
+        <>
+          <Text size="sm">{t("Inherits public sharing from")}</Text>
+          <Anchor
+            size="sm"
+            underline="never"
+            style={{
+              cursor: "pointer",
+              color: "var(--mantine-color-text)",
+            }}
+            component={Link}
+            to={buildPageUrl(
+              spaceSlug,
+              share.sharedPage.slugId,
+              share.sharedPage.title,
+            )}
+          >
+            <Group gap="4" wrap="nowrap" my="sm">
+              {getPageIcon(share.sharedPage.icon)}
+              <div className={classes.shareLinkText}>
+                <Text fz="sm" fw={500} lineClamp={1}>
+                  {share.sharedPage.title || t("untitled")}
+                </Text>
+              </div>
+            </Group>
+          </Anchor>
+
+          {shareLink}
+        </>
+      ) : (
+        <>
+          <Group justify="space-between" wrap="nowrap" gap="xl">
+            <div>
+              <Text size="sm">
+                {isPagePublic ? t("Shared to web") : t("Share to web")}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {isPagePublic
+                  ? t("Anyone with the link can view this page")
+                  : t("Make this page publicly accessible")}
+              </Text>
+            </div>
+            <Switch
+              onChange={handleChange}
+              defaultChecked={isPagePublic}
+              disabled={readOnly}
+              size="xs"
+            />
+          </Group>
+
+          {pageIsShared && (
+            <>
+              {shareLink}
+              <Group justify="space-between" wrap="nowrap" gap="xl">
+                <div>
+                  <Text size="sm">{t("Include sub-pages")}</Text>
+                  <Text size="xs" c="dimmed">
+                    {t("Make sub-pages public too")}
+                  </Text>
+                </div>
+
+                <Switch
+                  onChange={handleSubPagesChange}
+                  checked={share.includeSubPages}
+                  size="xs"
+                  disabled={readOnly}
+                />
+              </Group>
+              <Group justify="space-between" wrap="nowrap" gap="xl" mt="sm">
+                <div>
+                  <Text size="sm">{t("Search engine indexing")}</Text>
+                  <Text size="xs" c="dimmed">
+                    {t("Allow search engines to index page")}
+                  </Text>
+                </div>
+                <Switch
+                  onChange={handleIndexSearchChange}
+                  checked={share.searchIndexing}
+                  size="xs"
+                  disabled={readOnly}
+                />
+              </Group>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export function ShareMenuContent({ readOnly }: ShareContentProps) {
+  return (
+    <div
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      <ShareSettingsPanel readOnly={readOnly} />
+    </div>
+  );
+}
+
+export default function ShareModal({ readOnly }: ShareModalProps) {
+  const { t } = useTranslation();
+  const { pageSlug } = useParams();
+  const pageSlugId = extractPageSlugId(pageSlug);
+  const { data: page } = usePageQuery({ pageId: pageSlugId });
+  const { data: share } = useShareForPageQuery(page?.id);
+  const isPagePublic = Boolean(share);
+
+  return (
     <Popover width={350} position="bottom" withArrow shadow="md">
       <Popover.Target>
         <Button
@@ -150,127 +300,7 @@ export default function ShareModal({ readOnly }: ShareModalProps) {
         </Button>
       </Popover.Target>
       <Popover.Dropdown style={{ userSelect: "none" }}>
-        {isCloud() && isTrial ? (
-          <>
-            <Group justify="center" mb="sm">
-              <IconLock size={20} stroke={1.5} />
-            </Group>
-            <Text size="sm" ta="center" fw={500} mb="xs">
-              {t("Upgrade to share pages")}
-            </Text>
-            <Text size="sm" c="dimmed" ta="center" mb="sm">
-              {t(
-                "Page sharing is available on paid plans. Upgrade to share your pages publicly.",
-              )}
-            </Text>
-            <Button
-              size="xs"
-              onClick={() => navigate("/settings/billing")}
-              fullWidth
-            >
-              {t("Upgrade Plan")}
-            </Button>
-          </>
-        ) : sharingDisabled ? (
-          <>
-            <Group justify="center" mb="sm">
-              <IconLock size={20} stroke={1.5} />
-            </Group>
-            <Text size="sm" ta="center" fw={500} mb="xs">
-              {t("Public sharing is disabled")}
-            </Text>
-            <Text size="sm" c="dimmed" ta="center">
-              {workspaceDisabled
-                ? t("Public sharing has been disabled at the workspace level.")
-                : t("Public sharing has been disabled for this space.")}
-            </Text>
-          </>
-        ) : isDescendantShared ? (
-          <>
-            <Text size="sm">{t("Inherits public sharing from")}</Text>
-            <Anchor
-              size="sm"
-              underline="never"
-              style={{
-                cursor: "pointer",
-                color: "var(--mantine-color-text)",
-              }}
-              component={Link}
-              to={buildPageUrl(
-                spaceSlug,
-                share.sharedPage.slugId,
-                share.sharedPage.title,
-              )}
-            >
-              <Group gap="4" wrap="nowrap" my="sm">
-                {getPageIcon(share.sharedPage.icon)}
-                <div className={classes.shareLinkText}>
-                  <Text fz="sm" fw={500} lineClamp={1}>
-                    {share.sharedPage.title || t("untitled")}
-                  </Text>
-                </div>
-              </Group>
-            </Anchor>
-
-            {shareLink}
-          </>
-        ) : (
-          <>
-            <Group justify="space-between" wrap="nowrap" gap="xl">
-              <div>
-                <Text size="sm">
-                  {isPagePublic ? t("Shared to web") : t("Share to web")}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {isPagePublic
-                    ? t("Anyone with the link can view this page")
-                    : t("Make this page publicly accessible")}
-                </Text>
-              </div>
-              <Switch
-                onChange={handleChange}
-                defaultChecked={isPagePublic}
-                disabled={readOnly}
-                size="xs"
-              />
-            </Group>
-
-            {pageIsShared && (
-              <>
-                {shareLink}
-                <Group justify="space-between" wrap="nowrap" gap="xl">
-                  <div>
-                    <Text size="sm">{t("Include sub-pages")}</Text>
-                    <Text size="xs" c="dimmed">
-                      {t("Make sub-pages public too")}
-                    </Text>
-                  </div>
-
-                  <Switch
-                    onChange={handleSubPagesChange}
-                    checked={share.includeSubPages}
-                    size="xs"
-                    disabled={readOnly}
-                  />
-                </Group>
-                <Group justify="space-between" wrap="nowrap" gap="xl" mt="sm">
-                  <div>
-                    <Text size="sm">{t("Search engine indexing")}</Text>
-                    <Text size="xs" c="dimmed">
-                      {t("Allow search engines to index page")}
-                    </Text>
-                  </div>
-                  <Switch
-                    onChange={handleIndexSearchChange}
-                    checked={share.searchIndexing}
-                    size="xs"
-                    disabled={readOnly}
-                  />
-                </Group>
-              </>
-            )}
-          </>
-        )}
+        <ShareSettingsPanel readOnly={readOnly} />
       </Popover.Dropdown>
     </Popover>
   );

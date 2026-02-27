@@ -15,6 +15,7 @@ import Aside from "@/components/layouts/global/aside.tsx";
 import classes from "./app-shell.module.css";
 import { useTrialEndAction } from "@/ee/hooks/use-trial-end-action.tsx";
 import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-toggle-sidebar.ts";
+import clsx from "clsx";
 
 export default function GlobalAppShell({
   children,
@@ -25,10 +26,12 @@ export default function GlobalAppShell({
   const [mobileOpened] = useAtom(mobileSidebarAtom);
   const toggleMobile = useToggleSidebar(mobileSidebarAtom);
   const [desktopOpened] = useAtom(desktopSidebarAtom);
-  const [{ isAsideOpen }] = useAtom(asideStateAtom);
+  const [{ isAsideOpen, tab }, setAsideState] = useAtom(asideStateAtom);
   const [sidebarWidth, setSidebarWidth] = useAtom(sidebarWidthAtom);
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef(null);
+  const isTocPanelOpen = isAsideOpen && tab === "toc";
+  const isCommentsPanelOpen = isAsideOpen && tab === "comments";
 
   const startResizing = React.useCallback((mouseDownEvent) => {
     mouseDownEvent.preventDefault();
@@ -77,6 +80,14 @@ export default function GlobalAppShell({
   const isPageRoute = location.pathname.includes("/p/");
   const hideSidebar = isHomeRoute || isSpacesRoute;
 
+  const closeTocPanel = React.useCallback(() => {
+    setAsideState({ tab: "toc", isAsideOpen: false });
+  }, [setAsideState]);
+
+  const closeCommentsPanel = React.useCallback(() => {
+    setAsideState({ tab: "comments", isAsideOpen: false });
+  }, [setAsideState]);
+
   return (
     <AppShell
       header={{ height: 45 }}
@@ -90,14 +101,7 @@ export default function GlobalAppShell({
           },
         }
       }
-      aside={
-        isPageRoute && {
-          width: 350,
-          breakpoint: "sm",
-          collapsed: { mobile: !isAsideOpen, desktop: !isAsideOpen },
-        }
-      }
-      padding="md"
+      padding={isPageRoute ? 0 : "md"}
     >
       <AppShell.Header px="md" className={classes.header}>
         <AppHeader />
@@ -113,7 +117,7 @@ export default function GlobalAppShell({
           {isSettingsRoute && <SettingsSidebar />}
         </AppShell.Navbar>
       )}
-      <AppShell.Main>
+      <AppShell.Main className={clsx({ [classes.pageMain]: isPageRoute })}>
         {isSettingsRoute ? (
           <Container size={850}>{children}</Container>
         ) : (
@@ -122,9 +126,31 @@ export default function GlobalAppShell({
       </AppShell.Main>
 
       {isPageRoute && (
-        <AppShell.Aside className={classes.aside} p="md" withBorder={false}>
-          <Aside />
-        </AppShell.Aside>
+        <>
+          <div
+            className={clsx(
+              classes.pageAsidePanel,
+              classes.leftPanel,
+              isTocPanelOpen && classes.openPanel,
+            )}
+            aria-hidden={!isTocPanelOpen}
+          >
+            {isTocPanelOpen && <Aside tab="toc" onClose={closeTocPanel} />}
+          </div>
+
+          <div
+            className={clsx(
+              classes.pageAsidePanel,
+              classes.rightPanel,
+              isCommentsPanelOpen && classes.openPanel,
+            )}
+            aria-hidden={!isCommentsPanelOpen}
+          >
+            {isCommentsPanelOpen && (
+              <Aside tab="comments" onClose={closeCommentsPanel} />
+            )}
+          </div>
+        </>
       )}
     </AppShell>
   );

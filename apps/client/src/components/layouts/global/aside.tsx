@@ -1,55 +1,92 @@
-import { Box, ScrollArea, Text } from "@mantine/core";
+import { ActionIcon, Box, Group, ScrollArea, Text } from "@mantine/core";
 import CommentListWithTabs from "@/features/comment/components/comment-list-with-tabs.tsx";
-import { useAtom } from "jotai";
-import { asideStateAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
 import React, { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { TableOfContents } from "@/features/editor/components/table-of-contents/table-of-contents.tsx";
 import { useAtomValue } from "jotai";
 import { pageEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
+import { IconX } from "@tabler/icons-react";
 
-export default function Aside() {
-  const [{ tab }] = useAtom(asideStateAtom);
+type AsideTab = "comments" | "toc";
+
+interface AsideProps {
+  tab: AsideTab;
+  onClose: () => void;
+}
+
+export default function Aside({ tab, onClose }: AsideProps) {
   const { t } = useTranslation();
   const pageEditor = useAtomValue(pageEditorAtom);
+  const isTocTab = tab === "toc";
 
   let title: string;
-  let component: ReactNode;
+  let content: ReactNode;
 
   switch (tab) {
     case "comments":
-      component = <CommentListWithTabs />;
+      content = <CommentListWithTabs />;
       title = "Comments";
       break;
     case "toc":
-      component = <TableOfContents editor={pageEditor} />;
+      content =
+        pageEditor && !pageEditor.isDestroyed ? (
+          <TableOfContents editor={pageEditor} />
+        ) : (
+          <Text size="sm" c="dimmed">
+            {t("Editor is loading...")}
+          </Text>
+        );
       title = "Table of contents";
       break;
     default:
-      component = null;
-      title = null;
+      content = null;
+      title = "";
   }
 
   return (
-    <Box p="md">
-      {component && (
-        <>
-          <Text mb="md" fw={500}>
-            {t(title)}
-          </Text>
+    <Box p={isTocTab ? 0 : "md"}>
+      {!isTocTab && (
+        <Group justify="space-between" align="center" mb="md" wrap="nowrap">
+          <Text fw={500}>{t(title)}</Text>
+          <ActionIcon
+            variant="subtle"
+            aria-label={t("Close panel")}
+            onClick={onClose}
+          >
+            <IconX size={18} stroke={1.75} />
+          </ActionIcon>
+        </Group>
+      )}
 
-          {tab === "comments" ? (
-            <CommentListWithTabs />
-          ) : (
-            <ScrollArea
-              style={{ height: "85vh" }}
-              scrollbarSize={5}
-              type="scroll"
-            >
-              <div style={{ paddingBottom: "200px" }}>{component}</div>
-            </ScrollArea>
-          )}
-        </>
+      {isTocTab ? (
+        <ScrollArea
+          style={{ height: "calc(100vh - 90px)" }}
+          scrollbarSize={5}
+          type="auto"
+        >
+          <div
+            style={{
+              minWidth: "max-content",
+              paddingInline: "12px",
+              paddingTop: "8px",
+              paddingBottom: "200px",
+            }}
+          >
+            {content}
+          </div>
+        </ScrollArea>
+      ) : (
+        <div
+          style={{
+            height: "calc(100vh - 150px)",
+            overflowY: "auto",
+            overflowX: "auto",
+          }}
+        >
+          <div style={{ minWidth: "max-content", paddingBottom: "200px" }}>
+            {content}
+          </div>
+        </div>
       )}
     </Box>
   );

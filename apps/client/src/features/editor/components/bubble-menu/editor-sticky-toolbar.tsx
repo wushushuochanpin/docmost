@@ -60,38 +60,46 @@ export const EditorStickyToolbar: FC<EditorStickyToolbarProps> = ({ editor }) =>
     },
   });
 
-  if (!editor || !editorState) {
+  if (!editor) {
     return null;
   }
+
+  const resolvedState = editorState ?? {
+    isBold: editor.isActive("bold"),
+    isItalic: editor.isActive("italic"),
+    isUnderline: editor.isActive("underline"),
+    isStrike: editor.isActive("strike"),
+    isCode: editor.isActive("code"),
+  };
 
   const items: ToolbarItem[] = [
     {
       name: "Bold",
-      isActive: () => editorState?.isBold,
+      isActive: () => resolvedState.isBold,
       command: () => editor.chain().focus().toggleBold().run(),
       icon: IconBold,
     },
     {
       name: "Italic",
-      isActive: () => editorState?.isItalic,
+      isActive: () => resolvedState.isItalic,
       command: () => editor.chain().focus().toggleItalic().run(),
       icon: IconItalic,
     },
     {
       name: "Underline",
-      isActive: () => editorState?.isUnderline,
+      isActive: () => resolvedState.isUnderline,
       command: () => editor.chain().focus().toggleUnderline().run(),
       icon: IconUnderline,
     },
     {
       name: "Strike",
-      isActive: () => editorState?.isStrike,
+      isActive: () => resolvedState.isStrike,
       command: () => editor.chain().focus().toggleStrike().run(),
       icon: IconStrikethrough,
     },
     {
       name: "Code",
-      isActive: () => editorState?.isCode,
+      isActive: () => resolvedState.isCode,
       command: () => editor.chain().focus().toggleCode().run(),
       icon: IconCode,
     },

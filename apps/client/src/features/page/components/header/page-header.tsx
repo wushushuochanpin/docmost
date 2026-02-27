@@ -1,27 +1,75 @@
 import classes from "./page-header.module.css";
 import PageHeaderMenu from "@/features/page/components/header/page-header-menu.tsx";
-import { Group } from "@mantine/core";
-import Breadcrumb from "@/features/page/components/breadcrumbs/breadcrumb.tsx";
+import { EditorTopToolbar } from "@/features/editor/components/editor-top-toolbar.tsx";
+import { ActionIcon, Tooltip } from "@mantine/core";
+import { IconList, IconX } from "@tabler/icons-react";
+import useToggleAside from "@/hooks/use-toggle-aside.tsx";
+import { useAtom } from "jotai";
+import { asideStateAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   readOnly?: boolean;
+  pageId?: string;
+  editable?: boolean;
+  showEditorToolbar?: boolean;
 }
-export default function PageHeader({ readOnly }: Props) {
+
+export default function PageHeader({
+  readOnly,
+  pageId,
+  editable,
+  showEditorToolbar,
+}: Props) {
+  const { t } = useTranslation();
+  const toggleAside = useToggleAside();
+  const [asideState, setAsideState] = useAtom(asideStateAtom);
+  const isTocOpen = asideState.isAsideOpen && asideState.tab === "toc";
+
+  const closeToc = () => {
+    setAsideState({ tab: "toc", isAsideOpen: false });
+  };
+
   return (
     <div className={classes.header}>
-      <Group className={classes.left} wrap="nowrap">
-        <Breadcrumb />
-      </Group>
+      <div className={classes.row}>
+        <div className={classes.leftRail}>
+          {showEditorToolbar && (
+            <>
+              <Tooltip label={t("Table of contents")} openDelay={250} withArrow>
+                <ActionIcon
+                  variant="subtle"
+                  onClick={() => toggleAside("toc")}
+                >
+                  <IconList size={18} stroke={1.75} />
+                </ActionIcon>
+              </Tooltip>
 
-      <Group
-        justify="flex-end"
-        h="100%"
-        wrap="nowrap"
-        gap="var(--mantine-spacing-xs)"
-        className={classes.right}
-      >
-        <PageHeaderMenu readOnly={readOnly} />
-      </Group>
+              {isTocOpen && (
+                <Tooltip
+                  label={t("Close table of contents")}
+                  openDelay={250}
+                  withArrow
+                >
+                  <ActionIcon variant="subtle" onClick={closeToc}>
+                    <IconX size={18} stroke={1.75} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </>
+          )}
+        </div>
+
+        {showEditorToolbar && pageId && (
+          <div className={classes.toolbarLayer}>
+            <EditorTopToolbar editable={Boolean(editable)} />
+          </div>
+        )}
+
+        <div className={classes.actions}>
+          <PageHeaderMenu readOnly={readOnly} pageId={pageId} />
+        </div>
+      </div>
     </div>
   );
 }

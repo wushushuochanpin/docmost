@@ -8,16 +8,18 @@ import {
 import {
   IconArrowRight,
   IconArrowsHorizontal,
+  IconChevronDown,
+  IconChevronUp,
   IconDots,
   IconFileExport,
   IconHistory,
   IconLink,
-  IconList,
   IconMarkdown,
   IconMessage,
   IconPrinter,
   IconTrash,
   IconWifiOff,
+  IconWorld,
 } from "@tabler/icons-react";
 import React, { useEffect, useRef, useState } from "react";
 import useToggleAside from "@/hooks/use-toggle-aside.tsx";
@@ -27,6 +29,7 @@ import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { useParams } from "react-router-dom";
 import { usePageQuery } from "@/features/page/queries/page-query.ts";
+import { useLatestPageHistoryQuery } from "@/features/page-history/queries/page-history-query.ts";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import { notifications } from "@mantine/notifications";
 import { getAppUrl } from "@/lib/config.ts";
@@ -46,15 +49,16 @@ import { PageStateSegmentedControl } from "@/features/user/components/page-state
 import { EditorFontSizeSegmentedControl } from "@/features/editor/components/editor-font-size-control.tsx";
 import MovePageModal from "@/features/page/components/move-page-modal.tsx";
 import { useTimeAgo } from "@/hooks/use-time-ago.tsx";
-import ShareModal from "@/features/share/components/share-modal.tsx";
+import { ShareMenuContent } from "@/features/share/components/share-modal.tsx";
 
 interface PageHeaderMenuProps {
   readOnly?: boolean;
+  pageId?: string;
 }
-export default function PageHeaderMenu({ readOnly }: PageHeaderMenuProps) {
-  const { t } = useTranslation();
-  const toggleAside = useToggleAside();
-
+export default function PageHeaderMenu({
+  readOnly,
+  pageId,
+}: PageHeaderMenuProps) {
   useHotkeys(
     [
       [
@@ -77,47 +81,31 @@ export default function PageHeaderMenu({ readOnly }: PageHeaderMenuProps) {
   );
 
   return (
-    <>
+    <Group wrap="nowrap" gap={14}>
+      <HeaderMeta pageId={pageId} />
       <ConnectionWarning />
 
       {!readOnly && <PageStateSegmentedControl size="xs" />}
       <EditorFontSizeSegmentedControl size="xs" />
 
-      <ShareModal readOnly={readOnly} />
-
-      <Tooltip label={t("Comments")} openDelay={250} withArrow>
-        <ActionIcon
-          variant="subtle"
-          onClick={() => toggleAside("comments")}
-        >
-          <IconMessage size={18} stroke={1.75} />
-        </ActionIcon>
-      </Tooltip>
-
-      <Tooltip label={t("Table of contents")} openDelay={250} withArrow>
-        <ActionIcon
-          variant="subtle"
-          onClick={() => toggleAside("toc")}
-        >
-          <IconList size={18} stroke={1.75} />
-        </ActionIcon>
-      </Tooltip>
-
-      <PageActionMenu readOnly={readOnly} />
-    </>
+      <PageActionMenu readOnly={readOnly} pageId={pageId} />
+    </Group>
   );
 }
 
 interface PageActionMenuProps {
   readOnly?: boolean;
+  pageId?: string;
 }
-function PageActionMenu({ readOnly }: PageActionMenuProps) {
+function PageActionMenu({ readOnly, pageId }: PageActionMenuProps) {
   const { t } = useTranslation();
+  const toggleAside = useToggleAside();
   const [, setHistoryModalOpen] = useAtom(historyAtoms);
   const clipboard = useClipboard({ timeout: 500 });
   const { pageSlug, spaceSlug } = useParams();
-  const { data: page, isLoading } = usePageQuery({
-    pageId: extractPageSlugId(pageSlug),
+  const resolvedPageId = pageId ?? extractPageSlugId(pageSlug);
+  const { data: page } = usePageQuery({
+    pageId: resolvedPageId,
   });
   const { openDeleteModal } = useDeletePageModal();
   const [tree] = useAtom(treeApiAtom);
@@ -127,8 +115,14 @@ function PageActionMenu({ readOnly }: PageActionMenuProps) {
     movePageModalOpened,
     { open: openMovePageModal, close: closeMoveSpaceModal },
   ] = useDisclosure(false);
+  const [menuOpened, setMenuOpened] = useState(false);
+  const [shareExpanded, setShareExpanded] = useState(false);
   const [pageEditor] = useAtom(pageEditorAtom);
-  const pageUpdatedAt = useTimeAgo(page?.updatedAt);
+  const pageUpdatedAt = useTimeAgo(page?.updatedAt ?? null);
+
+  if (!page) {
+    return null;
+  }
 
   const handleCopyLink = () => {
     const pageUrl =
@@ -161,15 +155,26 @@ function PageActionMenu({ readOnly }: PageActionMenuProps) {
     openDeleteModal({ onConfirm: () => tree?.delete(page.id) });
   };
 
+  const toggleSharePanel = () => {
+    setShareExpanded((previous) => !previous);
+  };
+
   return (
     <>
       <Menu
         shadow="xl"
         position="bottom-end"
         offset={20}
-        width={230}
+        width={360}
         withArrow
         arrowPosition="center"
+        opened={menuOpened}
+        onChange={(opened) => {
+          setMenuOpened(opened);
+          if (!opened) {
+            setShareExpanded(false);
+          }
+        }}
       >
         <Menu.Target>
           <ActionIcon variant="subtle">
@@ -178,6 +183,41 @@ function PageActionMenu({ readOnly }: PageActionMenuProps) {
         </Menu.Target>
 
         <Menu.Dropdown>
+          <Menu.Item
+            leftSection={<IconWorld size={16} />}
+            rightSection={
+              shareExpanded ? (
+                <IconChevronUp size={14} />
+              ) : (
+                <IconChevronDown size={14} />
+              )
+            }
+            closeMenuOnClick={false}
+            onClick={toggleSharePanel}
+          >
+            {t("Share")}
+          </Menu.Item>
+
+          {shareExpanded && (
+            <div
+              style={{
+                padding: "0.25rem 0.75rem 0.75rem",
+                borderBottom: "1px solid var(--ui-border-default)",
+              }}
+            >
+              <ShareMenuContent readOnly={readOnly} />
+            </div>
+          )}
+
+          <Menu.Item
+            leftSection={<IconMessage size={16} />}
+            onClick={() => toggleAside("comments")}
+          >
+            {t("Comments")}
+          </Menu.Item>
+
+          <Menu.Divider />
+
           <Menu.Item
             leftSection={<IconLink size={16} />}
             onClick={handleCopyLink}
@@ -250,7 +290,7 @@ function PageActionMenu({ readOnly }: PageActionMenuProps) {
             <Group px="sm" wrap="nowrap" style={{ cursor: "pointer" }}>
               <Tooltip
                 label={t("Edited by {{name}} {{time}}", {
-                  name: page.lastUpdatedBy.name,
+                  name: page.lastUpdatedBy?.name ?? page.creator?.name ?? "-",
                   time: pageUpdatedAt,
                 })}
                 position="left-start"
@@ -296,6 +336,139 @@ function PageActionMenu({ readOnly }: PageActionMenuProps) {
         open={movePageModalOpened}
       />
     </>
+  );
+}
+
+function formatAbsoluteDate(date: Date, locale: string) {
+  const normalizedLocale = locale || "en-US";
+
+  if (normalizedLocale.startsWith("zh")) {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    const hour = `${date.getHours()}`.padStart(2, "0");
+    const minute = `${date.getMinutes()}`.padStart(2, "0");
+    const second = `${date.getSeconds()}`.padStart(2, "0");
+
+    return `${year}年${month}月${day}日${hour}:${minute}:${second}`;
+  }
+
+  return new Intl.DateTimeFormat(normalizedLocale, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function formatUpdatedAt(date: Date, locale: string) {
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const diffMs = Date.now() - date.getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const normalizedLocale = locale || "en-US";
+
+  if (Math.abs(diffMs) <= dayMs) {
+    const formatter = new Intl.RelativeTimeFormat(normalizedLocale, {
+      numeric: "auto",
+    });
+    const absSeconds = Math.abs(Math.round(diffMs / 1000));
+
+    if (absSeconds < 60) {
+      return formatter.format(-Math.round(diffMs / 1000), "second");
+    }
+
+    if (absSeconds < 3600) {
+      return formatter.format(-Math.round(diffMs / (60 * 1000)), "minute");
+    }
+
+    return formatter.format(-Math.round(diffMs / (60 * 60 * 1000)), "hour");
+  }
+
+  return formatAbsoluteDate(date, normalizedLocale);
+}
+
+function HeaderMeta({ pageId }: { pageId?: string }) {
+  const { t, i18n } = useTranslation();
+  const { pageSlug } = useParams();
+  const [documentCharCount, setDocumentCharCount] = useState(0);
+  const [relativeUpdatedAt, setRelativeUpdatedAt] = useState("");
+  const pageEditor = useAtomValue(pageEditorAtom);
+  const resolvedPageId = pageId ?? extractPageSlugId(pageSlug);
+  const { data: currentPage } = usePageQuery({ pageId: resolvedPageId });
+  const { data: latestPageHistory } = useLatestPageHistoryQuery(
+    currentPage?.id || resolvedPageId || "",
+  );
+  const sourceUpdatedAt = latestPageHistory?.createdAt ?? currentPage?.updatedAt;
+  const sourceUpdatedAtTimestamp = sourceUpdatedAt
+    ? new Date(sourceUpdatedAt).getTime()
+    : NaN;
+
+  useEffect(() => {
+    if (!pageEditor) {
+      setDocumentCharCount(0);
+      return;
+    }
+
+    const updateDocumentCharCount = () => {
+      const count = pageEditor.storage?.characterCount?.characters?.();
+      if (typeof count === "number") {
+        setDocumentCharCount(count);
+      }
+    };
+
+    updateDocumentCharCount();
+    pageEditor.on("update", updateDocumentCharCount);
+
+    return () => {
+      pageEditor.off("update", updateDocumentCharCount);
+    };
+  }, [pageEditor]);
+
+  useEffect(() => {
+    if (Number.isNaN(sourceUpdatedAtTimestamp)) {
+      setRelativeUpdatedAt("");
+      return;
+    }
+
+    const updateLabel = () => {
+      setRelativeUpdatedAt(
+        formatUpdatedAt(new Date(sourceUpdatedAtTimestamp), i18n.language),
+      );
+    };
+
+    updateLabel();
+    const timer = setInterval(updateLabel, 60 * 1000);
+    return () => clearInterval(timer);
+  }, [i18n.language, sourceUpdatedAtTimestamp]);
+
+  if (!relativeUpdatedAt && documentCharCount === 0) {
+    return null;
+  }
+
+  return (
+    <Group gap={6} wrap="nowrap">
+      <Text size="xs" c="dimmed">
+        {t("Character count: {{characterCount}}", {
+          characterCount: documentCharCount,
+        })}
+      </Text>
+      {relativeUpdatedAt && (
+        <>
+          <Text size="xs" c="dimmed">
+            |
+          </Text>
+          <Text size="xs" c="dimmed">
+            {relativeUpdatedAt}
+          </Text>
+        </>
+      )}
+    </Group>
   );
 }
 
