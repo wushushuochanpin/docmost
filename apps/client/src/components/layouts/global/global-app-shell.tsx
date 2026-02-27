@@ -103,7 +103,7 @@ export default function GlobalAppShell({
       }
       padding={isPageRoute ? 0 : "md"}
     >
-      <AppShell.Header px="md" className={classes.header}>
+      <AppShell.Header px="md" className={classes.header} zIndex={300}>
         <AppHeader />
       </AppShell.Header>
       {!hideSidebar && (

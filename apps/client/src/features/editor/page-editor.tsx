@@ -256,8 +256,8 @@ export default function PageEditor({
       immediatelyRender: true,
       shouldRerenderOnTransaction: false,
       editorProps: {
-        scrollThreshold: 80,
-        scrollMargin: 80,
+        scrollThreshold: 90,
+        scrollMargin: 90,
         handleDOMEvents: {
           keydown: (_view, event) => {
             if ((event.ctrlKey || event.metaKey) && event.code === "KeyS") {
@@ -430,31 +430,33 @@ export default function PageEditor({
   }
 
   return (
-    <div className="editor-container" style={{ position: "relative" }}>
-      <div ref={menuContainerRef}>
-        <EditorContent editor={editor} />
+    <div
+      className="editor-container"
+      style={{ position: "relative" }}
+      ref={menuContainerRef}
+    >
+      <EditorContent editor={editor} />
 
-        {editor && (
-          <SearchAndReplaceDialog editor={editor} editable={editable} />
-        )}
+      {editor && (
+        <SearchAndReplaceDialog editor={editor} editable={editable} />
+      )}
 
-        {editor && editorIsEditable && (
-          <div>
-            <EditorAiMenu editor={editor} />
-            <EditorBubbleMenu editor={editor} />
-            <TableMenu editor={editor} />
-            <TableCellMenu editor={editor} appendTo={menuContainerRef} />
-            <ImageMenu editor={editor} />
-            <VideoMenu editor={editor} />
-            <CalloutMenu editor={editor} />
-            <SubpagesMenu editor={editor} />
-            <ExcalidrawMenu editor={editor} />
-            <DrawioMenu editor={editor} />
-            <LinkMenu editor={editor} appendTo={menuContainerRef} />
-          </div>
-        )}
-        {showCommentPopup && <CommentDialog editor={editor} pageId={pageId} />}
-      </div>
+      {editor && editorIsEditable && (
+        <div>
+          <EditorAiMenu editor={editor} />
+          <EditorBubbleMenu editor={editor} />
+          <TableMenu editor={editor} />
+          <TableCellMenu editor={editor} appendTo={menuContainerRef} />
+          <ImageMenu editor={editor} />
+          <VideoMenu editor={editor} />
+          <CalloutMenu editor={editor} />
+          <SubpagesMenu editor={editor} />
+          <ExcalidrawMenu editor={editor} />
+          <DrawioMenu editor={editor} />
+          <LinkMenu editor={editor} appendTo={menuContainerRef} />
+        </div>
+      )}
+      {showCommentPopup && <CommentDialog editor={editor} pageId={pageId} />}
       <div
         onClick={() => editor.commands.focus("end")}
         style={{ paddingBottom: "20vh" }}

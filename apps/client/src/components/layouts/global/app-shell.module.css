@@ -15,7 +15,9 @@
   border-inline-end: 1px solid var(--ui-border-default);
 }
 
-.pageMain {
+/* Override global .mantine-AppShell-main (--ui-bg-canvas) so the 56px margin
+   below the editor shows the same surface; otherwise a gray strip appears. */
+:global(.mantine-AppShell-main).pageMain {
   background-color: var(--ui-bg-surface);
 }
 

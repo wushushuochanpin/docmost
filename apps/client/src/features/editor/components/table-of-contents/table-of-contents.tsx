@@ -1,6 +1,6 @@
 import { NodePos, useEditor } from "@tiptap/react";
 import { TextSelection } from "@tiptap/pm/state";
-import React, { FC, useEffect, useRef, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import classes from "./table-of-contents.module.css";
 import clsx from "clsx";
 import { Box, Text } from "@mantine/core";
@@ -16,6 +16,44 @@ export type HeadingLink = {
   level: number;
   element: HTMLElement;
   position: number;
+};
+
+const PAGE_HEADER_HEIGHT_PX = 45;
+
+const parseCssLengthToPx = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return NaN;
+  }
+
+  if (trimmed.endsWith("px")) {
+    return parseFloat(trimmed);
+  }
+
+  if (trimmed.endsWith("rem")) {
+    const rootFontSize = parseFloat(
+      window.getComputedStyle(document.documentElement).fontSize,
+    );
+    return parseFloat(trimmed) * (Number.isFinite(rootFontSize) ? rootFontSize : 16);
+  }
+
+  return parseFloat(trimmed);
+};
+
+const getEditorStickyOffset = () => {
+  const rootStyles = window.getComputedStyle(document.documentElement);
+  const rawHeaderOffset = rootStyles.getPropertyValue("--app-shell-header-offset");
+  const rawHeaderHeight = rootStyles.getPropertyValue("--app-shell-header-height");
+
+  const headerOffsetPx = parseCssLengthToPx(rawHeaderOffset);
+  const headerHeightPx = parseCssLengthToPx(rawHeaderHeight);
+  const resolvedHeaderOffset = Number.isFinite(headerOffsetPx)
+    ? headerOffsetPx
+    : Number.isFinite(headerHeightPx)
+      ? headerHeightPx
+      : PAGE_HEADER_HEIGHT_PX;
+
+  return resolvedHeaderOffset + PAGE_HEADER_HEIGHT_PX;
 };
 
 const recalculateLinks = (nodePos?: NodePos[] | null) => {
@@ -48,7 +86,6 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
   const [links, setLinks] = useState<HeadingLink[]>([]);
   const [headingDOMNodes, setHeadingDOMNodes] = useState<HTMLElement[]>([]);
   const [activeElement, setActiveElement] = useState<HTMLElement | null>(null);
-  const headerPaddingRef = useRef<HTMLDivElement | null>(null);
 
   const handleScrollToHeading = (position: number) => {
     if (!props.editor) {
@@ -56,15 +93,7 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
     }
 
     const { view } = props.editor;
-
-    const headerOffset = headerPaddingRef.current
-      ? parseInt(
-          window
-            .getComputedStyle(headerPaddingRef.current)
-            .getPropertyValue("top"),
-          10,
-        ) || 0
-      : 0;
+    const headerOffset = getEditorStickyOffset();
 
     const { node } = view.domAtPos(position);
     const element = node as HTMLElement;
@@ -106,6 +135,8 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
 
   useEffect(() => {
     try {
+      const headerOffset = getEditorStickyOffset();
+
       const observeHandler = (entries: IntersectionObserverEntry[]) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
@@ -114,14 +145,6 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
         });
       };
 
-      let headerOffset = 0;
-      if (headerPaddingRef.current) {
-        headerOffset = parseInt(
-          window
-            .getComputedStyle(headerPaddingRef.current)
-            .getPropertyValue("top"),
-        );
-      }
       const observerOptions: IntersectionObserverInit = {
         rootMargin: `-${headerOffset}px 0px -85% 0px`,
         threshold: 0,
@@ -187,7 +210,6 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
           </Box>
         ))}
       </div>
-      <div ref={headerPaddingRef} className={classes.headerPadding} />
     </>
   );
 };

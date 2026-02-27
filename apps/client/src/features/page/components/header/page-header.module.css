@@ -4,7 +4,7 @@
   border-bottom: rem(1px) solid var(--ui-border-default);
   position: sticky;
   z-index: 220;
-  top: 0;
+  top: var(--app-shell-header-offset, var(--app-shell-header-height, 45px));
   display: flex;
   align-items: center;
 
