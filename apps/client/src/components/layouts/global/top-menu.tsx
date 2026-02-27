@@ -26,12 +26,32 @@ import useAuth from "@/features/auth/hooks/use-auth.ts";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
 import { useTranslation } from "react-i18next";
 import { AvatarIconType } from "@/features/attachments/types/attachment.types.ts";
+import { useThemePalette } from "@/features/theme/theme-palette-provider.tsx";
+import {
+  getCurrentThemeOption,
+  setStoredThemeOption,
+  THEME_OPTIONS,
+  type ThemeOptionValue,
+} from "@/features/theme/theme-options.ts";
+
+const THEME_OPTION_LABEL_KEYS: Record<ThemeOptionValue, string> = {
+  light: "Light",
+  "light-soft": "ThemeLightSoft",
+  dark: "Dark",
+  "dark-gray": "ThemeDarkGray",
+  "dark-blue": "ThemeDarkBlue",
+  "dark-warm": "ThemeDarkWarm",
+  "dark-green": "ThemeDarkGreen",
+  auto: "System settings",
+};
 
 export default function TopMenu() {
   const { t } = useTranslation();
   const [currentUser] = useAtom(currentUserAtom);
   const { logout } = useAuth();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const { palette, setPalette } = useThemePalette();
+  const currentOption = getCurrentThemeOption(colorScheme, palette);
 
   const user = currentUser?.user;
   const workspace = currentUser?.workspace;
@@ -130,41 +150,33 @@ export default function TopMenu() {
           </Menu.Sub.Target>
 
           <Menu.Sub.Dropdown>
-            <Menu.Item
-              onClick={() => setColorScheme("light")}
-              leftSection={<IconSun size={iconSize} stroke={iconStroke} />}
-              rightSection={
-                colorScheme === "light" ? (
-                  <IconCheck size={iconSize} stroke={iconStroke} />
-                ) : null
-              }
-            >
-              {t("Light")}
-            </Menu.Item>
-            <Menu.Item
-              onClick={() => setColorScheme("dark")}
-              leftSection={<IconMoon size={iconSize} stroke={iconStroke} />}
-              rightSection={
-                colorScheme === "dark" ? (
-                  <IconCheck size={iconSize} stroke={iconStroke} />
-                ) : null
-              }
-            >
-              {t("Dark")}
-            </Menu.Item>
-            <Menu.Item
-              onClick={() => setColorScheme("auto")}
-              leftSection={
-                <IconDeviceDesktop size={iconSize} stroke={iconStroke} />
-              }
-              rightSection={
-                colorScheme === "auto" ? (
-                  <IconCheck size={iconSize} stroke={iconStroke} />
-                ) : null
-              }
-            >
-              {t("System settings")}
-            </Menu.Item>
+            {THEME_OPTIONS.map((opt) => {
+              const isSelected = currentOption === opt.value;
+              const Icon =
+                opt.value === "auto"
+                  ? IconDeviceDesktop
+                  : opt.colorScheme === "dark"
+                    ? IconMoon
+                    : IconSun;
+              return (
+                <Menu.Item
+                  key={opt.value}
+                  onClick={() => {
+                    setColorScheme(opt.colorScheme);
+                    setPalette(opt.palette);
+                    setStoredThemeOption(opt.value);
+                  }}
+                  leftSection={<Icon size={iconSize} stroke={iconStroke} />}
+                  rightSection={
+                    isSelected ? (
+                      <IconCheck size={iconSize} stroke={iconStroke} />
+                    ) : null
+                  }
+                >
+                  {t(THEME_OPTION_LABEL_KEYS[opt.value])}
+                </Menu.Item>
+              );
+            })}
           </Menu.Sub.Dropdown>
         </Menu.Sub>
 

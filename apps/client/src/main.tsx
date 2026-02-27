@@ -3,6 +3,7 @@ import "@mantine/spotlight/styles.css";
 import "@mantine/notifications/styles.css";
 import '@mantine/dates/styles.css';
 import "./styles/ui-refresh.css";
+import "./styles/theme-palettes.css";
 
 import ReactDOM from "react-dom/client";
 import { ErrorBoundary } from "react-error-boundary";
@@ -23,6 +24,13 @@ import {
   isPostHogEnabled,
 } from "@/lib/config.ts";
 import posthog from "posthog-js";
+import {
+  getStoredPalette,
+  syncPaletteToDocument,
+} from "@/features/theme/theme-palette.ts";
+import { ThemePaletteProvider } from "@/features/theme/theme-palette-provider.tsx";
+
+syncPaletteToDocument(getStoredPalette());
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -109,7 +117,9 @@ root.render(
                 FallbackComponent={AppErrorFallback}
                 onReset={() => {}}
               >
-                <App />
+                <ThemePaletteProvider>
+                  <App />
+                </ThemePaletteProvider>
               </ErrorBoundary>
             </PostHogProvider>
           </HelmetProvider>

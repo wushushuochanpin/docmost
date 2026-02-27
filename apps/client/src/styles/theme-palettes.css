@@ -1,0 +1,92 @@
+/* Palette overrides: apply when data-app-palette is set. Default uses theme.ts resolver.
+   Use :root prefix so we beat Mantine's :root[data-mantine-color-scheme] injected style. */
+
+/* --- Light: Soft (softer background) --- */
+:root[data-mantine-color-scheme="light"][data-app-palette="soft"] {
+  --ui-bg-canvas: #f8fafc;
+  --ui-bg-surface: #f1f5f9;
+  --ui-bg-subtle: #e2e8f0;
+  --ui-text-primary: #0f172a;
+  --ui-text-secondary: #475569;
+  --ui-text-tertiary: #64748b;
+  --ui-border-default: #cbd5e1;
+  --ui-border-hover: #94a3b8;
+  --ui-border-active: #64748b;
+  --ui-accent-primary: #2563eb;
+  --ui-accent-hover: #1d4ed8;
+  --ui-shadow-sm: 0 4px 16px rgba(15, 23, 42, 0.06);
+  --mantine-color-body: var(--ui-bg-canvas);
+  --mantine-color-default-border: var(--ui-border-default);
+}
+
+/* --- Dark: Gray (neutral gray, distinct from default dark) --- */
+:root[data-mantine-color-scheme="dark"][data-app-palette="gray"] {
+  --ui-bg-canvas: #212124;
+  --ui-bg-surface: #2a2a2b;
+  --ui-bg-subtle: #353536;
+  --ui-text-primary: #e8e8e8;
+  --ui-text-secondary: #a0a0a0;
+  --ui-text-tertiary: #6e6e6e;
+  --ui-border-default: #3a3a3c;
+  --ui-border-hover: #4c4c4e;
+  --ui-border-active: #5e5e60;
+  --ui-accent-primary: #3b82f6;
+  --ui-accent-hover: #60a5fa;
+  --ui-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.22);
+  --mantine-color-body: var(--ui-bg-canvas);
+  --mantine-color-default-border: var(--ui-border-default);
+}
+
+/* --- Dark: Blue-gray (Slack/GitHub style) --- */
+:root[data-mantine-color-scheme="dark"][data-app-palette="blue-gray"] {
+  --ui-bg-canvas: #1a1d23;
+  --ui-bg-surface: #22262e;
+  --ui-bg-subtle: #2c313a;
+  --ui-text-primary: #e6edf3;
+  --ui-text-secondary: #8b949e;
+  --ui-text-tertiary: #6e7681;
+  --ui-border-default: #30363d;
+  --ui-border-hover: #424a53;
+  --ui-border-active: #57606a;
+  --ui-accent-primary: #58a6ff;
+  --ui-accent-hover: #79b8ff;
+  --ui-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --mantine-color-body: var(--ui-bg-canvas);
+  --mantine-color-default-border: var(--ui-border-default);
+}
+
+/* --- Dark: Warm / Amber (eye-friendly) --- */
+:root[data-mantine-color-scheme="dark"][data-app-palette="warm"] {
+  --ui-bg-canvas: #1c1917;
+  --ui-bg-surface: #292524;
+  --ui-bg-subtle: #44403c;
+  --ui-text-primary: #fafaf9;
+  --ui-text-secondary: #a8a29e;
+  --ui-text-tertiary: #78716c;
+  --ui-border-default: #3f3f46;
+  --ui-border-hover: #52525b;
+  --ui-border-active: #71717a;
+  --ui-accent-primary: #f59e0b;
+  --ui-accent-hover: #fbbf24;
+  --ui-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.28);
+  --mantine-color-body: var(--ui-bg-canvas);
+  --mantine-color-default-border: var(--ui-border-default);
+}
+
+/* --- Dark: Green (terminal style) --- */
+:root[data-mantine-color-scheme="dark"][data-app-palette="green"] {
+  --ui-bg-canvas: #1e1e1e;
+  --ui-bg-surface: #252526;
+  --ui-bg-subtle: #2d2d2d;
+  --ui-text-primary: #9ece6a;
+  --ui-text-secondary: #7dc777;
+  --ui-text-tertiary: #6a9955;
+  --ui-border-default: #4a5d4a;
+  --ui-border-hover: #5a6d5a;
+  --ui-border-active: #6b7c6b;
+  --ui-accent-primary: #9ece6a;
+  --ui-accent-hover: #b9f27c;
+  --ui-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.24);
+  --mantine-color-body: var(--ui-bg-canvas);
+  --mantine-color-default-border: var(--ui-border-default);
+}

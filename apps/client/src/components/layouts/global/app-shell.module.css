@@ -1,4 +1,9 @@
-.header, .navbar {
+/* Header must be opaque so scrolling content does not show through (sticky best practice). */
+.header {
+  background-color: var(--ui-bg-surface);
+}
+
+.navbar {
   background-color: transparent; /* body is the single layer */
 }
 

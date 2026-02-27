@@ -1,7 +1,7 @@
 # PRD：全站深色/浅色主题
 
 **成文日期**：2026-02-28 02:00:00 UTC+8  
-**最后修订**：2026-02-28 02:00:00 UTC+8  
+**最后修订**：2026-02-28 12:00:00 UTC+8  
 
 本文档用于记录本次需求或开发交付。阅读时当前系统实现可能已发生变化，请以实际代码与产品行为为准，谨慎参考。
 
@@ -28,9 +28,9 @@
 
 ### 目标指标
 
-- 浅色：全站统一浅色（白/浅灰底、深色字、浅色边框）。
-- 深色：全站统一 IDE 风格深色（黑灰底、白/浅灰字、深色边框），与编辑区视觉一致。
-- 切换入口与持久化：保持现有入口（顶部菜单 Theme、账户偏好）与 Mantine 默认 localStorage 持久化，无需新增入口。
+- 浅色：全站统一浅色（白/浅灰底、深色字、浅色边框）；可选「柔和浅色」变体（更柔背景）。
+- 深色：全站多种色系可选：默认黑灰（IDE 风）、蓝灰（Slack/GitHub 风）、暖灰/琥珀（护眼）、绿色终端风；与编辑区视觉一致。
+- 切换入口与持久化：顶部菜单 Theme、账户偏好中提供「主题 + 色系」联合选项（Light / Light (Soft) / Dark / Dark (Gray) / Dark (Blue) / Dark (Warm) / Dark (Green) / System），偏好持久化到 localStorage（Mantine 存 colorScheme，应用存 app-palette）。
 
 ## 现状审计（As-Is）
 
@@ -72,20 +72,26 @@
 
 ## 实施要点（开发清单）
 
-1. **theme.ts**：在 `mantineCssResolver` 的 `dark` 中补全与 `variables` 同名的 token，取 IDE 风格深色值（示例）：
-   - `--ui-bg-canvas` / `--ui-bg-surface` / `--ui-bg-subtle`：如 #1e1e1e、#252526、#2d2d2d
-   - `--ui-text-primary` / `--ui-text-secondary` / `--ui-text-tertiary`：白/浅灰阶梯
-   - `--ui-border-default` / `--ui-border-hover` / `--ui-border-active`：如 #3c3c3c、#505050
-   - `--ui-accent-*`、`--ui-shadow-sm`：适配深色背景
-   - `--mantine-color-body`、`--mantine-color-default-border`：与上述 token 或同值对齐
-2. **ui-refresh.css**：保留 `:root { color-scheme: light; }`（或按需调整）；增加 `[data-mantine-color-scheme="dark"] { color-scheme: dark; }`。
-3. 禁止在本次范围内在组件内写死色值；已使用 `var(--ui-*)` 的无需改动。
+1. **theme.ts**（已完成）：在 `mantineCssResolver` 的 `dark` 中补全默认黑灰 token；`light` 保持现状。
+2. **ui-refresh.css**（已完成）：`:root { color-scheme: light; }`；`[data-mantine-color-scheme="dark"] { color-scheme: dark; }`。
+3. **多色系扩展**：
+   - **palette 状态**：新增 `app-palette` localStorage 与 React 状态，取值 `default` | `soft` | `blue-gray` | `warm` | `green`。`default` 时不设置 `data-app-palette`（沿用 resolver 的 light/dark）；其它值时在 `:root` 上设置 `data-app-palette="<value>"`。
+   - **theme-palettes.css**（或并入 ui-refresh）：用选择器 `[data-mantine-color-scheme="light"][data-app-palette="soft"]` 与 `[data-mantine-color-scheme="dark"][data-app-palette="blue-gray"]` 等，对各色系覆盖同一套 `--ui-*` 与 `--mantine-color-body`、`--mantine-color-default-border`。色值见下表示例。
+   - **入口**：Theme 子菜单与账户偏好「主题」由 3 项改为 7 项：Light、Light (Soft)、Dark、Dark (Gray)、Dark (Blue)、Dark (Warm)、Dark (Green)、System。选择时同时设置 Mantine `colorScheme` 与 `app-palette`；System 对应 colorScheme=auto、palette=default。
+4. **色系 token 示例**（仅作参考，以实际实现为准）：
+   - **Light (Soft)**：bg #f8fafc / #f1f5f9 / #e2e8f0；text #0f172a / #475569 / #64748b；border 同色阶。
+   - **Dark (Gray)**：沿用 theme.ts 现有 dark（#1e1e1e 等）。
+   - **Dark (Blue)**：bg #1a1d23 / #22262e / #2c313a；text #e6edf3 / #8b949e / #6e7681；border #30363d / #424a53。
+   - **Dark (Warm)**：bg #1c1917 / #292524 / #44403c；text #fafaf9 / #a8a29e / #78716c；border #3f3f46 / #52525b。
+   - **Dark (Green)**：bg 保持 #1e1e1e / #252526；text #c6e2c6 或 #9ece6a；border #4a5d4a / #6b7c6b。
+5. 禁止在本次范围内在组件内写死色值；已使用 `var(--ui-*)` 的无需改动。
 
 ## 验收标准
 
-- 功能验收：在 Light/Dark/System 三种设置下，全站（含侧栏、Header、设置、编辑区、按钮、输入框、Modal、Menu）背景/文字/边框与所选主题一致；深色下为 IDE 风格黑灰底与白/浅灰字。
-- 回归验收：浅色模式下视觉与改造前一致；切换主题无控制台报错；主题偏好刷新后保持。
+- 功能验收：在 Light / Light (Soft) / Dark / Dark (Gray/Blue/Warm/Green) / System 下，全站背景/文字/边框与所选主题+色系一致；深色多种色系可区分；柔和浅色与默认浅色可区分。
+- 回归验收：默认 Light、默认 Dark 与改造前一致；切换主题与色系无控制台报错；主题+色系偏好刷新后保持。
 
 ## 修改日志
 
 - 2026-02-28 UTC+8：初始化文档骨架并补全 PRD 正文（背景、As-Is、影响矩阵、实施要点、验收标准）。
+- 2026-02-28 12:00:00 UTC+8：扩展多色系（柔和浅色、蓝灰/暖/绿深色）；补充实施要点与色系 token 示例、验收标准。
