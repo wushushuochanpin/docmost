@@ -9,7 +9,7 @@ export default function ShareBranding() {
         target="_blank"
         href="https://docmost.com?ref=public-share"
       >
-        Powered by Docmost
+        Powered by SuperChat
       </Button>
     </Affix>
   );

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Docmost 完整还原：从 backup.sh 产生的目录还原
+# SuperChat 完整还原：从 backup.sh 产生的目录还原
 # 用法: ./scripts/restore.sh <备份目录路径>
 # 例:   ./scripts/restore.sh ./backups/docmost_20260221_120000
 

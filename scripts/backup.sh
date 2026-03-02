@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Docmost 完整备份：PostgreSQL + docmost 存储卷
+# SuperChat 完整备份：PostgreSQL + docmost 存储卷
 # 用法: ./scripts/backup.sh [输出目录，默认 ./backups]
 # 还原见同目录 restore.sh 或下方注释
 

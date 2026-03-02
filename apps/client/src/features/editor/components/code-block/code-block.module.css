@@ -17,6 +17,96 @@
     justify-content: center;
 }
 
+.mermaidClickable {
+    cursor: zoom-in;
+}
+
+.mermaid :global(svg) {
+    max-width: 100%;
+    height: auto;
+}
+
+.mermaidPreviewOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 350;
+    background: rgba(0, 0, 0, 0.62);
+}
+
+.mermaidPreviewCloseButton {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2;
+    background: rgba(10, 10, 10, 0.92);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.mermaidPreviewViewport {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.12);
+    touch-action: none;
+}
+
+.mermaidPreviewStage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    padding: 14px;
+    border-radius: 6px;
+    background: light-dark(#ffffff, var(--mantine-color-dark-7));
+    border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28);
+    transform-origin: center center;
+    will-change: transform;
+}
+
+.mermaidPreviewStage :global(svg) {
+    display: block;
+    max-width: none;
+    max-height: none;
+}
+
+.mermaidPreviewToolbar {
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    z-index: 2;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(22, 22, 22, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.mermaidPreviewToolbarIcon {
+    color: rgba(255, 255, 255, 0.94);
+    border-radius: 8px;
+}
+
+.mermaidPreviewToolbarIcon:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.mermaidPreviewZoomValue {
+    min-width: 52px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.mermaidPreviewToolbarDivider {
+    width: 1px;
+    height: 16px;
+    margin: 0 2px;
+    background: rgba(255, 255, 255, 0.18);
+}
+
 .menuGroup {
     @media print {
         display: none;

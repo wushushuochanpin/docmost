@@ -35,7 +35,7 @@ export default function AiSettings() {
           mb="lg"
         >
           {t(
-            "AI is only available in the Docmost enterprise edition. Contact sales@docmost.com.",
+            "AI is only available in the SuperChat enterprise edition. Contact sales@docmost.com.",
           )}
         </Alert>
       )}

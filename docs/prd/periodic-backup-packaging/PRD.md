@@ -1,4 +1,7 @@
-# PRD：Docmost 定期备份打包文件能力
+# PRD：SuperChat 定期备份打包文件能力
+
+**最后修订**：2026-03-03 01:54:48 UTC+8
+**免责声明**：阅读时系统实现与产品行为可能已发生变化，请以当前代码与实际产品为准，谨慎参考。
 
 ## 0. 文档信息
 
@@ -6,11 +9,11 @@
 - 文档版本：v1.0
 - 文档日期：2026-02-17
 - 状态：Draft for Review
-- 适用版本：Docmost self-hosted（开源版优先，企业版兼容）
+- 适用版本：SuperChat self-hosted（开源版优先，企业版兼容）
 
 ## 1. 背景与问题
 
-当前 Docmost 具备页面/空间导出能力，但缺少“实例级、可定时、可审计、可验证恢复”的备份机制。自托管用户通常需要：
+当前 SuperChat 具备页面/空间导出能力，但缺少“实例级、可定时、可审计、可验证恢复”的备份机制。自托管用户通常需要：
 
 - 定期生成可离线保存的备份包；
 - 覆盖数据库与附件文件，避免“只备份库不备份文件”导致恢复不完整；
@@ -71,9 +74,9 @@
 - 数据库快照（PostgreSQL dump，压缩存储）。
 - 文件存储快照：
   - `STORAGE_DRIVER=local`：打包 `/app/data/storage` 对应内容；
-  - `STORAGE_DRIVER=s3`：打包配置 bucket/prefix 下 Docmost 对象。
+  - `STORAGE_DRIVER=s3`：打包配置 bucket/prefix 下 SuperChat 对象。
 - 备份元数据（`manifest.json`）：
-  - Docmost 版本、创建时间、实例标识、存储驱动、备份策略 ID、文件清单与 checksum。
+  - SuperChat 版本、创建时间、实例标识、存储驱动、备份策略 ID、文件清单与 checksum。
 
 建议打包格式：`tar.zst`（或 `tar.gz` 作为兼容回退）。
 

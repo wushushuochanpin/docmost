@@ -77,14 +77,19 @@ export default function ReadonlyPageEditor({
   ];
 
   return (
-    <div style={{ "--editor-font-scale": editorFontScale } as React.CSSProperties}>
-      <div className={classes.surfaceTitle}>
-        <EditorProvider
-          editable={false}
-          immediatelyRender={true}
-          extensions={titleExtensions}
-          content={title}
-        ></EditorProvider>
+    <div
+      className={classes.docLayout}
+      style={{ "--editor-font-scale": editorFontScale } as React.CSSProperties}
+    >
+      <div className={classes.readonlyTitleSection}>
+        <div className={classes.surfaceTitle}>
+          <EditorProvider
+            editable={false}
+            immediatelyRender={true}
+            extensions={titleExtensions}
+            content={title}
+          ></EditorProvider>
+        </div>
       </div>
 
       <EditorProvider

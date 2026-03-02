@@ -6,6 +6,8 @@ import classes from "./code-block.module.css";
 import { useTranslation } from "react-i18next";
 import { useComputedColorScheme } from "@mantine/core";
 import DOMPurify from "dompurify";
+import { useDisclosure } from "@mantine/hooks";
+import MermaidPreviewModal from "./mermaid-preview-modal.tsx";
 
 interface MermaidViewProps {
   props: NodeViewProps;
@@ -16,6 +18,8 @@ export default function MermaidView({ props }: MermaidViewProps) {
   const computedColorScheme = useComputedColorScheme();
   const { node } = props;
   const [preview, setPreview] = useState<string>("");
+  const [diagramSvg, setDiagramSvg] = useState<string>("");
+  const [opened, { open, close }] = useDisclosure(false);
 
   // Update Mermaid config when theme changes.
   useEffect(() => {
@@ -34,8 +38,10 @@ export default function MermaidView({ props }: MermaidViewProps) {
         .render(id, node.textContent)
         .then((item) => {
           setPreview(item.svg);
+          setDiagramSvg(item.svg);
         })
         .catch((err) => {
+          setDiagramSvg("");
           if (props.editor.isEditable) {
             setPreview(
               `<div class="${classes.error}">${t("Mermaid diagram error:")} ${DOMPurify.sanitize(err)}</div>`,
@@ -46,14 +52,33 @@ export default function MermaidView({ props }: MermaidViewProps) {
             );
           }
         });
+    } else {
+      setPreview("");
+      setDiagramSvg("");
     }
   }, [node.textContent, computedColorScheme]);
 
+  useEffect(() => {
+    if (!diagramSvg && opened) {
+      close();
+    }
+  }, [diagramSvg, opened, close]);
+
   return (
-    <div
-      className={classes.mermaid}
-      contentEditable={false}
-      dangerouslySetInnerHTML={{ __html: preview }}
-    ></div>
+    <>
+      <div
+        className={`${classes.mermaid} ${diagramSvg ? classes.mermaidClickable : ""}`}
+        contentEditable={false}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!diagramSvg) return;
+          open();
+        }}
+        dangerouslySetInnerHTML={{ __html: preview }}
+      ></div>
+
+      <MermaidPreviewModal opened={opened} onClose={close} svg={diagramSvg} />
+    </>
   );
 }

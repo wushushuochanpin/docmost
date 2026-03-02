@@ -45,7 +45,7 @@ export function FullEditor({
       fluid={fullPageWidth}
       size={!fullPageWidth && 900}
       p={0}
-      className={classes.editor}
+      className={`${classes.editor} ${classes.docLayout}`}
       style={{ "--editor-font-scale": editorFontScale } as React.CSSProperties}
     >
       <div id="page-content-rail-anchor" className={classes.titleSection}>

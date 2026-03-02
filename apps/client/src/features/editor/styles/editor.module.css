@@ -1,3 +1,11 @@
+.docLayout {
+    --doc-content-gutter-x: 3rem;
+
+    @media (max-width: $mantine-breakpoint-sm) {
+        --doc-content-gutter-x: 1rem;
+    }
+}
+
 .editor {
     height: 100%;
     padding: 0 0 28px;
@@ -23,14 +31,14 @@
 }
 
 .titleSection {
-    padding: 14px 3rem 10px;
+    padding: 14px var(--doc-content-gutter-x, 3rem) 10px;
     border-bottom: 1px solid var(--ui-border-default);
     background: transparent;
+}
 
-    @media (max-width: $mantine-breakpoint-sm) {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
+.readonlyTitleSection {
+    padding-left: var(--doc-content-gutter-x, 3rem);
+    padding-right: var(--doc-content-gutter-x, 3rem);
 }
 
 .titleRow {

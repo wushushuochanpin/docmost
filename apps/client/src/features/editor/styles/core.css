@@ -13,12 +13,12 @@
   --doc-h2-font-size: calc(22px * var(--editor-font-scale, 1));
   --doc-h3-font-size: calc(20px * var(--editor-font-scale, 1));
 
-  padding-left: 3rem;
-  padding-right: 3rem;
+  padding-left: var(--doc-content-gutter-x, 3rem);
+  padding-right: var(--doc-content-gutter-x, 3rem);
 
   @media (max-width: $mantine-breakpoint-sm) {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: var(--doc-content-gutter-x, 1rem);
+    padding-right: var(--doc-content-gutter-x, 1rem);
   }
 
   @media print {

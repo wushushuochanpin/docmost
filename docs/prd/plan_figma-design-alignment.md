@@ -1,6 +1,6 @@
 ---
 name: Figma 设计稿引用方案包与施工
-overview: 在现有 folder-tree-ux-polish PRD 包基础上，新增「Figma 设计对照」文档形成完整方案包，再按该方案实施：不删减任何现有 Docmost 功能，仅在前端对齐 Figma 设计并落地 01/02 已定义需求。
+overview: 在现有 folder-tree-ux-polish PRD 包基础上，新增「Figma 设计对照」文档形成完整方案包，再按该方案实施：不删减任何现有 SuperChat 功能，仅在前端对齐 Figma 设计并落地 01/02 已定义需求。
 todos: []
 isProject: false
 ---
@@ -8,7 +8,7 @@ isProject: false
 # Figma 设计稿引用方案包与施工计划
 
 **成文日期**：2026-02-20 02:26:00 UTC+8
-**最后修订**：2026-02-20 02:57:28 UTC+8
+**最后修订**：2026-03-03 01:54:48 UTC+8
 
 本计划用于说明 Figma 对齐方案与实施步骤。阅读时当前系统实现可能已发生变化，请以实际代码与产品行为为准，谨慎参考。
 
@@ -16,7 +16,7 @@ isProject: false
 
 ## 约束与目标
 
-- **不删减现有功能**：所有当前 Docmost 行为（侧边树点击、重命名、新建、拖拽、目录浏览、权限与接口）保持不变；**左侧树区域自定义宽度（拖拽调整侧边栏宽度）必须保留**；仅做 UI/交互增强与视觉对齐。
+- **不删减现有功能**：所有当前 SuperChat 行为（侧边树点击、重命名、新建、拖拽、目录浏览、权限与接口）保持不变；**左侧树区域自定义宽度（拖拽调整侧边栏宽度）必须保留**；仅做 UI/交互增强与视觉对齐。
 - **尽可能引用 Figma**：以 [UI Design Improvement Proposal](https://www.figma.com/make/JFwYRqSb1UmrhU3tojIugP/UI-Design-Improvement-Proposal) 为设计依据（设计稿已更新，三点与加号已包含）；在方案包中显式映射设计稿与实现，施工时通过 Figma MCP 拉取细节。
 - **优先使用现有依赖库**：能通过现有依赖（Mantine、项目内组件或成熟 npm 库）实现的，优先直接引用或封装，尽量不从零手写。
 - **先方案包、后施工**：按 PRD skill 在既有 PRD 包内补充「设计稿对照」文档，再按 01/02/06 + 新文档实施。
@@ -35,7 +35,7 @@ isProject: false
   - **设计稿来源**：Figma 文件链接（上述 UI Design Improvement Proposal）、适用范围（侧边树 + 目录页）。
   - **设计稿 ↔ 实现映射表**：  
 
-    | Figma 帧/组件/页面 | Docmost 页面/组件 | 说明 |
+    | Figma 帧/组件/页面 | SuperChat 页面/组件 | 说明 |
     |-------------------|-------------------|------|
     | （由实施时用 MCP 补充或文档中写“见 Figma 节点 xxx”） | SpaceTree / space-tree.tsx | 置顶徽标、名称与操作区水平对齐 |
     | （同上） | FolderView / folder-view.tsx | 顶部 folder/file 统计、布局与视觉 |

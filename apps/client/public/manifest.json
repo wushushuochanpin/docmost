@@ -1,6 +1,6 @@
 {
-  "name": "Docmost",
-  "short_name": "Docmost",
+  "name": "SuperChat",
+  "short_name": "SuperChat",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#222",
