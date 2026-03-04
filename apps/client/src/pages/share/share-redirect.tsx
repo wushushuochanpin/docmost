@@ -8,7 +8,11 @@ export default function ShareRedirect() {
   const { shareId } = useParams();
   const navigate = useNavigate();
 
-  const { data: share, isLoading, isError } = useGetShareByIdQuery(shareId);
+  const { data: share, isLoading, isError } = useGetShareByIdQuery(
+    shareId,
+    undefined,
+    true,
+  );
 
   useEffect(() => {
     if (share) {

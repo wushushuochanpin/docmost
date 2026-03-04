@@ -4,3 +4,4 @@ import { SharedPageTreeNode } from "@/features/share/utils";
 
 export const sharedPageTreeAtom = atom<ISharedPageTree | null>(null);
 export const sharedTreeDataAtom = atom<SharedPageTreeNode[] | null>(null);
+export const sharedAccessTokenAtom = atom<Record<string, string>>({});

@@ -92,7 +92,10 @@ export class SearchController {
   ) {
     delete searchDto.spaceId;
     if (!searchDto.shareId) {
-      throw new BadRequestException('shareId is required');
+      throw new BadRequestException({
+        code: 'SHARE_ID_REQUIRED',
+        message: 'shareId is required',
+      });
     }
 
     if (this.environmentService.getSearchDriver() === 'typesense') {

@@ -7,6 +7,7 @@ import {
   HttpStatus,
   NotFoundException,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
@@ -20,10 +21,12 @@ import SpaceAbilityFactory from '../casl/abilities/space-ability.factory';
 import { ShareService } from './share.service';
 import {
   CreateShareDto,
+  RegenerateProtectedShareDto,
   ShareIdDto,
   ShareInfoDto,
   SharePageIdDto,
   UpdateShareDto,
+  VerifyShareAccessDto,
 } from './dto/share.dto';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -32,6 +35,8 @@ import { ShareRepo } from '@docmost/db/repos/share/share.repo';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 import { hasLicenseOrEE } from '../../common/helpers';
+import { FastifyRequest } from 'fastify';
+import { ShareErrorCode } from './share.constants';
 
 @UseGuards(JwtAuthGuard)
 @Controller('shares')
@@ -72,7 +77,7 @@ export class ShareController {
       shareData.share.spaceId,
     );
     if (!sharingAllowed) {
-      throw new NotFoundException('Shared page not found');
+      throw this.shareNotFoundException();
     }
 
     return {
@@ -98,7 +103,7 @@ export class ShareController {
     });
 
     if (!share) {
-      throw new NotFoundException('Share not found');
+      throw this.shareNotFoundException();
     }
 
     const sharingAllowed = await this.shareService.isSharingAllowed(
@@ -106,7 +111,13 @@ export class ShareController {
       share.spaceId,
     );
     if (!sharingAllowed) {
-      throw new NotFoundException('Share not found');
+      throw this.shareNotFoundException();
+    }
+
+    if (!dto.metadataOnly) {
+      await this.shareService.assertShareAccess(share, dto.accessToken, {
+        hasShareId: true,
+      });
     }
 
     return share;
@@ -123,7 +134,7 @@ export class ShareController {
       workspaceId: workspace.id,
     });
     if (!page) {
-      throw new NotFoundException('Shared page not found');
+      throw this.shareNotFoundException();
     }
 
     const ability = await this.spaceAbility.createForUser(user, page.spaceId);
@@ -182,7 +193,7 @@ export class ShareController {
     });
 
     if (!share) {
-      throw new NotFoundException('Share not found');
+      throw this.shareNotFoundException();
     }
 
     const ability = await this.spaceAbility.createForUser(user, share.spaceId);
@@ -191,6 +202,55 @@ export class ShareController {
     }
 
     return this.shareService.updateShare(share.id, updateShareDto, workspace.id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('regenerate-protected')
+  async regenerateProtectedShare(
+    @Body() dto: RegenerateProtectedShareDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    return this.handleReshare(dto, user, workspace);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('reshare')
+  async reShare(
+    @Body() dto: RegenerateProtectedShareDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    return this.handleReshare(dto, user, workspace);
+  }
+
+  private async handleReshare(
+    dto: RegenerateProtectedShareDto,
+    user: User,
+    workspace: Workspace,
+  ) {
+    const share = await this.shareRepo.findById(dto.shareId, {
+      workspaceId: workspace.id,
+    });
+
+    if (!share) {
+      throw this.shareNotFoundException();
+    }
+
+    const ability = await this.spaceAbility.createForUser(user, share.spaceId);
+    if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Share)) {
+      throw new ForbiddenException();
+    }
+
+    return this.shareService.regenerateProtectedShare({
+      shareId: share.id,
+      accessMode: dto.accessMode,
+      includeSubPages: dto.includeSubPages,
+      searchIndexing: dto.searchIndexing,
+      keepLink: dto.keepLink,
+      expiresInMinutes: dto.expiresInMinutes,
+      workspaceId: workspace.id,
+    });
   }
 
   @HttpCode(HttpStatus.OK)
@@ -205,7 +265,7 @@ export class ShareController {
     });
 
     if (!share) {
-      throw new NotFoundException('Share not found');
+      throw this.shareNotFoundException();
     }
 
     const ability = await this.spaceAbility.createForUser(user, share.spaceId);
@@ -214,6 +274,42 @@ export class ShareController {
     }
 
     await this.shareRepo.deleteShare(share.id, workspace.id);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('/verify-access')
+  async verifyShareAccess(
+    @Body() dto: VerifyShareAccessDto,
+    @AuthWorkspace() workspace: Workspace,
+    @Req() req: FastifyRequest,
+  ) {
+    const ip = req.ip ?? req.raw?.socket?.remoteAddress ?? 'unknown';
+    const rateLimitKey = `${workspace.id}:${dto.shareId}:${ip}`;
+    this.shareService.assertVerifyRateLimit(rateLimitKey);
+
+    const share = await this.shareRepo.findById(dto.shareId, {
+      workspaceId: workspace.id,
+    });
+    if (!share) {
+      throw this.shareNotFoundException();
+    }
+
+    const sharingAllowed = await this.shareService.isSharingAllowed(
+      workspace.id,
+      share.spaceId,
+    );
+    if (!sharingAllowed) {
+      throw this.shareNotFoundException();
+    }
+
+    const verified = await this.shareService.verifyProtectedShareAccess(
+      share.id,
+      dto.password,
+      workspace.id,
+    );
+    this.shareService.clearVerifyRateLimit(rateLimitKey);
+    return verified;
   }
 
   @Public()
@@ -233,8 +329,12 @@ export class ShareController {
       treeData.share.spaceId,
     );
     if (!sharingAllowed) {
-      throw new NotFoundException('Share not found');
+      throw this.shareNotFoundException();
     }
+
+    await this.shareService.assertShareAccess(treeData.share, dto.accessToken, {
+      hasShareId: true,
+    });
 
     return {
       ...treeData,
@@ -244,5 +344,12 @@ export class ShareController {
         plan: workspace.plan,
       }),
     };
+  }
+
+  private shareNotFoundException() {
+    return new NotFoundException({
+      code: ShareErrorCode.ShareNotFound,
+      message: 'Share not found',
+    });
   }
 }

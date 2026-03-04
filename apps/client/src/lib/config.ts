@@ -116,6 +116,29 @@ export function getPostHogKey() {
   return getConfigValue("POSTHOG_KEY");
 }
 
+export type ShareLegacyRouteMode =
+  | "observe"
+  | "protected_block"
+  | "redirect_public"
+  | "removed";
+
+export function getShareLegacyRouteMode(): ShareLegacyRouteMode {
+  const mode = (getConfigValue("SHARE_LEGACY_ROUTE_MODE", "observe") || "")
+    .toLowerCase()
+    .trim();
+
+  if (
+    mode === "observe" ||
+    mode === "protected_block" ||
+    mode === "redirect_public" ||
+    mode === "removed"
+  ) {
+    return mode;
+  }
+
+  return "observe";
+}
+
 function getConfigValue(key: string, defaultValue: string = undefined): string {
   const rawValue = import.meta.env.DEV
     ? process?.env?.[key]

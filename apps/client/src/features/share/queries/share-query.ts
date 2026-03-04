@@ -9,6 +9,7 @@ import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
 import {
   ICreateShare,
+  IReshareShareInput,
   IShare,
   ISharedItem,
   ISharedPage,
@@ -16,16 +17,20 @@ import {
   IShareForPage,
   IShareInfoInput,
   IUpdateShare,
+  IVerifyShareAccessInput,
+  IVerifyShareAccessOutput,
 } from "@/features/share/types/share.types.ts";
 import {
   createShare,
   deleteShare,
+  reshareShare,
   getSharedPageTree,
   getShareForPage,
   getShareInfo,
   getSharePageInfo,
   getShares,
   updateShare,
+  verifyShareAccess,
 } from "@/features/share/services/share-service.ts";
 import { IPagination, QueryParams } from "@/lib/types.ts";
 
@@ -41,11 +46,16 @@ export function useGetSharesQuery(
 
 export function useGetShareByIdQuery(
   shareId: string,
+  accessToken?: string,
+  metadataOnly?: boolean,
+  refetchIntervalMs?: number,
 ): UseQueryResult<IShare, Error> {
   const query = useQuery({
-    queryKey: ["share-by-id", shareId],
-    queryFn: () => getShareInfo(shareId),
+    queryKey: ["share-by-id", shareId, accessToken, metadataOnly],
+    queryFn: () => getShareInfo(shareId, accessToken, metadataOnly),
     enabled: !!shareId,
+    retry: false,
+    refetchInterval: refetchIntervalMs || false,
   });
 
   return query;
@@ -58,6 +68,7 @@ export function useSharePageQuery(
     queryKey: ["shares", shareInput],
     queryFn: () => getSharePageInfo(shareInput),
     enabled: !!shareInput.pageId,
+    retry: false,
   });
 
   return query;
@@ -166,12 +177,45 @@ export function useDeleteShareMutation() {
 
 export function useGetSharedPageTreeQuery(
   shareId: string,
+  accessToken?: string,
 ): UseQueryResult<ISharedPageTree, Error> {
   return useQuery({
-    queryKey: ["shared-page-tree", shareId],
-    queryFn: () => getSharedPageTree(shareId),
+    queryKey: ["shared-page-tree", shareId, accessToken],
+    queryFn: () => getSharedPageTree(shareId, accessToken),
     enabled: !!shareId,
     placeholderData: keepPreviousData,
     staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useVerifyShareAccessMutation() {
+  return useMutation<IVerifyShareAccessOutput, Error, IVerifyShareAccessInput>({
+    mutationFn: (data) => verifyShareAccess(data),
+  });
+}
+
+export function useReshareShareMutation() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation<any, Error, IReshareShareInput>({
+    mutationFn: (data) => reshareShare(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (item) =>
+          ["share-for-page", "share-list"].includes(item.queryKey[0] as string),
+      });
+      notifications.show({
+        message: t("Share link regenerated"),
+      });
+    },
+    onError: (error) => {
+      notifications.show({
+        message:
+          error?.["response"]?.data?.message || "Failed to regenerate share",
+        color: "red",
+      });
+    },
   });
 }

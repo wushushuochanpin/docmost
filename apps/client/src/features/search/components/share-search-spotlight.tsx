@@ -13,8 +13,12 @@ import DOMPurify from "dompurify";
 
 interface ShareSearchSpotlightProps {
   shareId?: string;
+  accessToken?: string;
 }
-export function ShareSearchSpotlight({ shareId }: ShareSearchSpotlightProps) {
+export function ShareSearchSpotlight({
+  shareId,
+  accessToken,
+}: ShareSearchSpotlightProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(query, 300);
@@ -22,6 +26,7 @@ export function ShareSearchSpotlight({ shareId }: ShareSearchSpotlightProps) {
   const { data: searchResults } = useShareSearchQuery({
     query: debouncedSearchQuery,
     shareId,
+    accessToken,
   });
 
   const pages = (

@@ -26,6 +26,9 @@ export class ShareRepo {
     'id',
     'key',
     'pageId',
+    'accessMode',
+    'expiresAt',
+    'securityVersion',
     'includeSubPages',
     'searchIndexing',
     'creatorId',
@@ -35,6 +38,7 @@ export class ShareRepo {
     'updatedAt',
     'deletedAt',
   ];
+  private sensitiveFields: Array<keyof Share> = ['passwordHash'];
 
   async findById(
     shareId: string,
@@ -42,6 +46,7 @@ export class ShareRepo {
       workspaceId?: string;
       includeSharedPage?: boolean;
       includeCreator?: boolean;
+      includeSensitive?: boolean;
       withLock?: boolean;
       trx?: KyselyTransaction;
     },
@@ -63,6 +68,10 @@ export class ShareRepo {
       query = query.select((eb) => this.withCreator(eb));
     }
 
+    if (opts?.includeSensitive) {
+      query = query.select(this.sensitiveFields);
+    }
+
     if (opts?.withLock && opts?.trx) {
       query = query.forUpdate();
     }
@@ -81,6 +90,7 @@ export class ShareRepo {
     opts?: {
       workspaceId?: string;
       includeCreator?: boolean;
+      includeSensitive?: boolean;
       withLock?: boolean;
       trx?: KyselyTransaction;
     },
@@ -97,6 +107,10 @@ export class ShareRepo {
 
     if (opts?.includeCreator) {
       query = query.select((eb) => this.withCreator(eb));
+    }
+
+    if (opts?.includeSensitive) {
+      query = query.select(this.sensitiveFields);
     }
 
     if (opts?.withLock && opts?.trx) {

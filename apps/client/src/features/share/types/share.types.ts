@@ -1,9 +1,14 @@
 import { IPage } from "@/features/page/types/page.types.ts";
 
+export type ShareAccessMode = "public" | "password_expiring";
+
 export interface IShare {
   id: string;
   key: string;
   pageId: string;
+  accessMode: ShareAccessMode;
+  expiresAt: string | null;
+  securityVersion: number;
   includeSubPages: boolean;
   searchIndexing: boolean;
   creatorId: string;
@@ -12,6 +17,7 @@ export interface IShare {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  generatedPassword?: string | null;
   sharedPage?: ISharePage;
 }
 
@@ -60,12 +66,35 @@ export interface ICreateShare {
   pageId?: string;
   includeSubPages?: boolean;
   searchIndexing?: boolean;
+  accessMode?: ShareAccessMode;
+  expiresInMinutes?: number;
 }
 
 export type IUpdateShare = ICreateShare & { shareId: string; pageId?: string };
 
 export interface IShareInfoInput {
   pageId: string;
+  shareId?: string;
+  accessToken?: string;
+}
+
+export interface IVerifyShareAccessInput {
+  shareId: string;
+  password: string;
+}
+
+export interface IVerifyShareAccessOutput {
+  accessToken: string;
+  expiresAt: string;
+}
+
+export interface IReshareShareInput {
+  shareId: string;
+  accessMode: ShareAccessMode;
+  includeSubPages?: boolean;
+  searchIndexing?: boolean;
+  keepLink?: boolean;
+  expiresInMinutes?: number;
 }
 
 export interface ISharedPageTree {

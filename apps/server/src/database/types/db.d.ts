@@ -281,14 +281,18 @@ export interface Pages {
 }
 
 export interface Shares {
+  accessMode: Generated<string>;
   createdAt: Generated<Timestamp>;
   creatorId: string | null;
   deletedAt: Timestamp | null;
+  expiresAt: Timestamp | null;
   id: Generated<string>;
   includeSubPages: Generated<boolean | null>;
   key: string;
+  passwordHash: string | null;
   pageId: string | null;
   searchIndexing: Generated<boolean | null>;
+  securityVersion: Generated<number>;
   spaceId: string;
   updatedAt: Generated<Timestamp>;
   workspaceId: string;

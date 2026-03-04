@@ -42,6 +42,7 @@ export function useShareSearchQuery(
     queryKey: ["share-search", params],
     queryFn: () => searchShare(params),
     enabled: !!params.query,
+    retry: false,
   });
 }
 

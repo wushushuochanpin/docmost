@@ -1,13 +1,26 @@
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  GoneException,
+  HttpException,
   Injectable,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { CreateShareDto, ShareInfoDto, UpdateShareDto } from './dto/share.dto';
+import {
+  CreateShareDto,
+  UpdateShareDto,
+  ShareInfoDto,
+} from './dto/share.dto';
 import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB } from '@docmost/db/types/kysely.types';
-import { nanoIdGen } from '../../common/helpers';
+import {
+  comparePasswordHash,
+  hashPassword,
+  nanoIdGen,
+} from '../../common/helpers';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { TokenService } from '../auth/services/token.service';
 import { jsonToNode } from '../../collaboration/collaboration.util';
@@ -20,25 +33,45 @@ import {
 import { Node } from '@tiptap/pm/model';
 import { ShareRepo } from '@docmost/db/repos/share/share.repo';
 import { updateAttachmentAttr } from './share.util';
-import { Page } from '@docmost/db/types/entity.types';
+import { Page, Share } from '@docmost/db/types/entity.types';
 import { validate as isValidUUID } from 'uuid';
 import { sql } from 'kysely';
+import { JwtShareAccessPayload, JwtType } from '../auth/dto/jwt-payload';
+import {
+  MAX_PROTECTED_SHARE_TTL_MINUTES,
+  MIN_PROTECTED_SHARE_TTL_MINUTES,
+  ShareAccessMode,
+  ShareErrorCode,
+  ShareLegacyRouteMode,
+} from './share.constants';
+import { EnvironmentService } from '../../integrations/environment/environment.service';
+import {
+  ShareVerifyRateLimitedError,
+  ShareVerifyRateLimiter,
+} from './share-rate-limit';
+import { randomInt } from 'crypto';
+
+const PROTECTED_SHARE_PASSWORD_LENGTH = 8;
+const PROTECTED_SHARE_PASSWORD_CHARSET =
+  'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 
 @Injectable()
 export class ShareService {
   private readonly logger = new Logger(ShareService.name);
+  private readonly verifyRateLimiter = new ShareVerifyRateLimiter();
 
   constructor(
     private readonly shareRepo: ShareRepo,
     private readonly pageRepo: PageRepo,
     @InjectKysely() private readonly db: KyselyDB,
     private readonly tokenService: TokenService,
+    private readonly environmentService: EnvironmentService,
   ) {}
 
   async getShareTree(shareId: string, workspaceId: string) {
     const share = await this.shareRepo.findById(shareId, { workspaceId });
     if (!share) {
-      throw new NotFoundException('Share not found');
+      throw this.shareNotFoundException();
     }
 
     if (share.includeSubPages) {
@@ -62,22 +95,71 @@ export class ShareService {
     const { authUserId, workspaceId, page, createShareDto } = opts;
 
     try {
+      const requestedAccessMode = this.getAccessMode(createShareDto.accessMode);
       const shares = await this.shareRepo.findByPageId(page.id, { workspaceId });
       if (shares) {
+        if (
+          requestedAccessMode !== shares.accessMode ||
+          requestedAccessMode === ShareAccessMode.PasswordExpiring
+        ) {
+          return this.regenerateProtectedShare({
+            shareId: shares.id,
+            workspaceId,
+            accessMode: requestedAccessMode,
+            includeSubPages: createShareDto.includeSubPages,
+            searchIndexing: createShareDto.searchIndexing,
+            expiresInMinutes: createShareDto.expiresInMinutes,
+          });
+        }
+
+        const needsPreferenceUpdate =
+          (typeof createShareDto.includeSubPages === 'boolean' &&
+            createShareDto.includeSubPages !== shares.includeSubPages) ||
+          (typeof createShareDto.searchIndexing === 'boolean' &&
+            createShareDto.searchIndexing !== shares.searchIndexing);
+
+        if (needsPreferenceUpdate) {
+          return this.shareRepo.updateShare(
+            {
+              includeSubPages: createShareDto.includeSubPages,
+              searchIndexing: createShareDto.searchIndexing,
+            },
+            shares.id,
+            { workspaceId },
+          );
+        }
+
         return shares;
       }
 
-      return await this.shareRepo.insertShare({
+      const protectedShareData = await this.buildProtectedShareData({
+        accessMode: requestedAccessMode,
+        expiresInMinutes: createShareDto.expiresInMinutes,
+      });
+
+      const createdShare = await this.shareRepo.insertShare({
         key: nanoIdGen().toLowerCase(),
         pageId: page.id,
+        accessMode: requestedAccessMode,
+        passwordHash: protectedShareData.passwordHash,
+        expiresAt: protectedShareData.expiresAt,
+        securityVersion: 1,
         includeSubPages: createShareDto.includeSubPages ?? false,
         searchIndexing: createShareDto.searchIndexing ?? false,
         creatorId: authUserId,
         spaceId: page.spaceId,
         workspaceId,
       });
+
+      return {
+        ...createdShare,
+        generatedPassword: protectedShareData.generatedPassword,
+      };
     } catch (err) {
       this.logger.error(err);
+      if (err instanceof HttpException) {
+        throw err;
+      }
       throw new BadRequestException('Failed to share page');
     }
   }
@@ -88,6 +170,14 @@ export class ShareService {
     workspaceId?: string,
   ) {
     try {
+      // Keep security-sensitive changes in explicit rotate/regenerate flow.
+      if (
+        updateShareDto.accessMode ||
+        updateShareDto.expiresInMinutes
+      ) {
+        throw this.shareRegenerateRequiredException();
+      }
+
       return this.shareRepo.updateShare(
         {
           includeSubPages: updateShareDto.includeSubPages,
@@ -100,16 +190,184 @@ export class ShareService {
       );
     } catch (err) {
       this.logger.error(err);
+      if (err instanceof HttpException) {
+        throw err;
+      }
       throw new BadRequestException('Failed to update share');
     }
   }
 
+  async regenerateProtectedShare(opts: {
+    shareId: string;
+    workspaceId: string;
+    accessMode: ShareAccessMode;
+    includeSubPages?: boolean;
+    searchIndexing?: boolean;
+    keepLink?: boolean;
+    expiresInMinutes?: number;
+  }) {
+    const {
+      shareId,
+      workspaceId,
+      accessMode,
+      includeSubPages,
+      searchIndexing,
+      keepLink,
+      expiresInMinutes,
+    } = opts;
+
+    const share = await this.shareRepo.findById(shareId, { workspaceId });
+    if (!share) {
+      throw this.shareNotFoundException();
+    }
+
+    const { passwordHash, expiresAt, generatedPassword } =
+      await this.buildProtectedShareData({
+        accessMode,
+        expiresInMinutes,
+      });
+
+    const canKeepCurrentLink =
+      keepLink === true &&
+      this.isProtectedShare(share) &&
+      accessMode === ShareAccessMode.Public;
+
+    const reshared = await this.shareRepo.updateShare(
+      {
+        ...(canKeepCurrentLink ? {} : { key: nanoIdGen().toLowerCase() }),
+        passwordHash,
+        expiresAt,
+        securityVersion: (share.securityVersion ?? 1) + 1,
+        accessMode,
+        includeSubPages: includeSubPages ?? share.includeSubPages,
+        searchIndexing: searchIndexing ?? share.searchIndexing,
+      },
+      share.id,
+      {
+        workspaceId,
+      },
+    );
+
+    return {
+      ...reshared,
+      generatedPassword,
+    };
+  }
+
+  async verifyProtectedShareAccess(
+    shareId: string,
+    password: string,
+    workspaceId: string,
+  ) {
+    const share = await this.shareRepo.findById(shareId, {
+      workspaceId,
+      includeSensitive: true,
+    });
+    if (!share) {
+      throw this.shareNotFoundException();
+    }
+
+    if (!this.isProtectedShare(share)) {
+      throw this.shareAccessModeForbiddenException();
+    }
+
+    this.assertNotExpired(share);
+
+    if (!share.passwordHash) {
+      throw this.sharePasswordInvalidException();
+    }
+
+    const isValidPassword = await comparePasswordHash(
+      password,
+      share.passwordHash,
+    );
+
+    if (!isValidPassword) {
+      throw this.sharePasswordInvalidException();
+    }
+
+    const expiresInSeconds = Math.max(
+      1,
+      Math.floor((share.expiresAt.getTime() - Date.now()) / 1000),
+    );
+
+    const accessToken = await this.tokenService.generateShareAccessToken({
+      shareId: share.id,
+      workspaceId: share.workspaceId,
+      securityVersion: share.securityVersion ?? 1,
+      expiresIn: expiresInSeconds,
+    });
+
+    return {
+      accessToken,
+      expiresAt: share.expiresAt,
+    };
+  }
+
+  async assertShareAccess(
+    share: Pick<
+      Share,
+      'id' | 'workspaceId' | 'accessMode' | 'expiresAt' | 'securityVersion'
+    >,
+    accessToken?: string,
+    opts?: {
+      hasShareId?: boolean;
+    },
+  ) {
+    if (!this.isProtectedShare(share)) {
+      return;
+    }
+
+    // Prevent weak pageId-only access for protected shares.
+    if (
+      !opts?.hasShareId &&
+      this.environmentService.getShareLegacyRouteMode() !==
+        ShareLegacyRouteMode.Observe
+    ) {
+      throw this.shareNotFoundException();
+    }
+
+    this.assertNotExpired(share);
+
+    if (!accessToken) {
+      throw this.sharePasswordRequiredException();
+    }
+
+    let payload: JwtShareAccessPayload;
+    try {
+      payload = (await this.tokenService.verifyJwt(
+        accessToken,
+        JwtType.SHARE_ACCESS,
+      )) as JwtShareAccessPayload;
+    } catch (err) {
+      throw this.shareAccessTokenInvalidException();
+    }
+
+    if (
+      payload.shareId !== share.id ||
+      payload.workspaceId !== share.workspaceId ||
+      payload.securityVersion !== (share.securityVersion ?? 1)
+    ) {
+      throw this.shareAccessTokenInvalidException();
+    }
+  }
+
   async getSharedPage(dto: ShareInfoDto, workspaceId: string) {
-    const share = await this.getShareForPage(dto.pageId, workspaceId);
+    if (!dto.pageId) {
+      throw new BadRequestException('pageId is required');
+    }
+
+    const share = await this.getShareForPage(dto.pageId, workspaceId, {
+      shareId: dto.shareId,
+    });
 
     if (!share) {
-      throw new NotFoundException('Shared page not found');
+      throw this.shareNotFoundException();
     }
+
+    await this.assertShareAccess(share, dto.accessToken, {
+      hasShareId: Boolean(dto.shareId),
+    });
 
     const page = await this.pageRepo.findById(dto.pageId, {
       workspaceId,
@@ -118,7 +376,7 @@ export class ShareService {
     });
 
     if (!page || page.deletedAt) {
-      throw new NotFoundException('Shared page not found');
+      throw this.shareNotFoundException();
     }
 
     page.content = await this.updatePublicAttachments(page);
@@ -126,7 +384,17 @@ export class ShareService {
     return { page, share };
   }
 
-  async getShareForPage(pageId: string, workspaceId: string) {
+  async getShareForPage(
+    pageId: string,
+    workspaceId: string,
+    opts?: {
+      shareId?: string;
+    },
+  ) {
+    if (opts?.shareId) {
+      return this.getShareForPageByShareId(pageId, workspaceId, opts.shareId);
+    }
+
     // here we try to check if a page was shared directly or if it inherits the share from its closest shared ancestor
     const share = await this.db
       .withRecursive('page_hierarchy', (cte) =>
@@ -142,12 +410,16 @@ export class ShareService {
             sql`0`.as('level'),
             'shares.id as shareId',
             'shares.key as shareKey',
+            'shares.accessMode',
+            'shares.expiresAt',
+            'shares.securityVersion',
             'shares.includeSubPages',
             'shares.searchIndexing',
             'shares.creatorId',
             'shares.spaceId',
             'shares.workspaceId',
             'shares.createdAt',
+            'shares.updatedAt',
           ])
           .where(isValidUUID(pageId) ? 'pages.id' : 'pages.slugId', '=', pageId)
           .where('pages.workspaceId', '=', workspaceId)
@@ -167,12 +439,16 @@ export class ShareService {
                   sql`ph.level + 1`.as('level'),
                   's.id as shareId',
                   's.key as shareKey',
+                  's.accessMode',
+                  's.expiresAt',
+                  's.securityVersion',
                   's.includeSubPages',
                   's.searchIndexing',
                   's.creatorId',
                   's.spaceId',
                   's.workspaceId',
                   's.createdAt',
+                  's.updatedAt',
                 ])
                 .where('p.deletedAt', 'is', null)
                 .where('p.workspaceId', '=', workspaceId)
@@ -197,6 +473,9 @@ export class ShareService {
     return {
       id: share.shareId,
       key: share.shareKey,
+      accessMode: share.accessMode,
+      expiresAt: share.expiresAt,
+      securityVersion: share.securityVersion,
       includeSubPages: share.includeSubPages,
       searchIndexing: share.searchIndexing,
       pageId: share.id,
@@ -204,6 +483,7 @@ export class ShareService {
       spaceId: share.spaceId,
       workspaceId: share.workspaceId,
       createdAt: share.createdAt,
+      updatedAt: share.updatedAt,
       level: share.level,
       sharedPage: {
         id: share.id,
@@ -294,8 +574,7 @@ export class ShareService {
 
     const workspaceDisabled =
       (result.workspaceSettings as any)?.sharing?.disabled === true;
-    const spaceDisabled =
-      (result.spaceSettings as any)?.sharing?.disabled === true;
+    const spaceDisabled = (result.spaceSettings as any)?.sharing?.disabled === true;
 
     return !workspaceDisabled && !spaceDisabled;
   }
@@ -331,5 +610,230 @@ export class ShareService {
 
     const removeCommentMarks = removeMarkTypeFromDoc(doc, 'comment');
     return removeCommentMarks.toJSON();
+  }
+
+  private async getShareForPageByShareId(
+    pageId: string,
+    workspaceId: string,
+    shareId: string,
+  ) {
+    const share = await this.shareRepo.findById(shareId, {
+      workspaceId,
+    });
+
+    if (!share) {
+      return undefined;
+    }
+
+    const requestedPage = await this.pageRepo.findById(pageId, {
+      workspaceId,
+      includeContent: false,
+    });
+
+    if (!requestedPage || requestedPage.deletedAt) {
+      return undefined;
+    }
+
+    const sharedPage = await this.pageRepo.findById(share.pageId, {
+      workspaceId,
+      includeContent: false,
+    });
+
+    if (!sharedPage || sharedPage.deletedAt) {
+      return undefined;
+    }
+
+    if (requestedPage.id === share.pageId) {
+      return this.toShareForPage(share, sharedPage, 0);
+    }
+
+    if (!share.includeSubPages) {
+      return undefined;
+    }
+
+    const isDescendant = await this.getShareAncestorPage(share.pageId, pageId);
+    if (!isDescendant) {
+      return undefined;
+    }
+
+    return this.toShareForPage(share, sharedPage, 1);
+  }
+
+  private toShareForPage(share: Share, sharedPage: Page, level: number) {
+    return {
+      id: share.id,
+      key: share.key,
+      accessMode: share.accessMode,
+      expiresAt: share.expiresAt,
+      securityVersion: share.securityVersion,
+      includeSubPages: share.includeSubPages,
+      searchIndexing: share.searchIndexing,
+      pageId: share.pageId,
+      creatorId: share.creatorId,
+      spaceId: share.spaceId,
+      workspaceId: share.workspaceId,
+      createdAt: share.createdAt,
+      updatedAt: share.updatedAt,
+      level,
+      sharedPage: {
+        id: sharedPage.id,
+        slugId: sharedPage.slugId,
+        title: sharedPage.title,
+        icon: sharedPage.icon,
+      },
+    };
+  }
+
+  private getAccessMode(accessMode?: string): ShareAccessMode {
+    if (!accessMode) {
+      return ShareAccessMode.Public;
+    }
+
+    return accessMode as ShareAccessMode;
+  }
+
+  private async buildProtectedShareData(opts: {
+    accessMode: ShareAccessMode;
+    expiresInMinutes?: number;
+  }): Promise<{
+    passwordHash: string | null;
+    expiresAt: Date | null;
+    generatedPassword: string | null;
+  }> {
+    if (opts.accessMode !== ShareAccessMode.PasswordExpiring) {
+      return {
+        passwordHash: null,
+        expiresAt: null,
+        generatedPassword: null,
+      };
+    }
+
+    if (
+      !opts.expiresInMinutes ||
+      opts.expiresInMinutes < MIN_PROTECTED_SHARE_TTL_MINUTES ||
+      opts.expiresInMinutes > MAX_PROTECTED_SHARE_TTL_MINUTES
+    ) {
+      throw this.shareTtlInvalidException();
+    }
+
+    const generatedPassword = this.generateProtectedSharePassword();
+    const passwordHash = await hashPassword(generatedPassword);
+    const expiresAt = new Date(Date.now() + opts.expiresInMinutes * 60 * 1000);
+
+    return {
+      passwordHash,
+      expiresAt,
+      generatedPassword,
+    };
+  }
+
+  private generateProtectedSharePassword(): string {
+    let password = '';
+
+    for (let i = 0; i < PROTECTED_SHARE_PASSWORD_LENGTH; i += 1) {
+      const nextIndex = randomInt(0, PROTECTED_SHARE_PASSWORD_CHARSET.length);
+      password += PROTECTED_SHARE_PASSWORD_CHARSET[nextIndex];
+    }
+
+    return password;
+  }
+
+  private assertNotExpired(
+    share: Pick<Share, 'accessMode' | 'expiresAt'>,
+  ): void {
+    if (!this.isProtectedShare(share)) {
+      return;
+    }
+
+    if (!share.expiresAt || share.expiresAt.getTime() <= Date.now()) {
+      throw this.shareExpiredException();
+    }
+  }
+
+  private isProtectedShare(
+    share: Pick<Share, 'accessMode'> | { accessMode?: string },
+  ): boolean {
+    return share?.accessMode === ShareAccessMode.PasswordExpiring;
+  }
+
+  private shareNotFoundException() {
+    return new NotFoundException({
+      code: ShareErrorCode.ShareNotFound,
+      message: 'Share not found',
+    });
+  }
+
+  private shareExpiredException() {
+    return new GoneException({
+      code: ShareErrorCode.ShareExpired,
+      message: 'Share link has expired',
+    });
+  }
+
+  private sharePasswordRequiredException() {
+    return new UnauthorizedException({
+      code: ShareErrorCode.SharePasswordRequired,
+      message: 'Share password required',
+    });
+  }
+
+  private sharePasswordInvalidException() {
+    return new UnauthorizedException({
+      code: ShareErrorCode.SharePasswordInvalid,
+      message: 'Share password invalid',
+    });
+  }
+
+  private shareAccessTokenInvalidException() {
+    return new UnauthorizedException({
+      code: ShareErrorCode.ShareAccessTokenInvalid,
+      message: 'Share access token invalid',
+    });
+  }
+
+  private shareAccessModeForbiddenException() {
+    return new ForbiddenException({
+      code: ShareErrorCode.ShareAccessModeForbidden,
+      message: 'Protected share mode required',
+    });
+  }
+
+  private shareTtlInvalidException() {
+    return new BadRequestException({
+      code: ShareErrorCode.ShareTtlInvalid,
+      message: 'Share expiry must be between 1 and 30 minutes',
+    });
+  }
+
+  private shareRegenerateRequiredException() {
+    return new ConflictException({
+      code: ShareErrorCode.ShareRegenerateRequired,
+      message: 'Please regenerate protected share link',
+    });
+  }
+
+  assertVerifyRateLimit(key: string) {
+    try {
+      this.verifyRateLimiter.assertAllowed(key);
+    } catch (err) {
+      if (err instanceof ShareVerifyRateLimitedError) {
+        throw this.shareVerifyRateLimitedException();
+      }
+      throw err;
+    }
+  }
+
+  clearVerifyRateLimit(key: string) {
+    this.verifyRateLimiter.clear(key);
+  }
+
+  private shareVerifyRateLimitedException() {
+    return new HttpException(
+      {
+        code: ShareErrorCode.ShareVerifyRateLimited,
+        message: 'Too many verification attempts. Please try later.',
+      },
+      429,
+    );
   }
 }

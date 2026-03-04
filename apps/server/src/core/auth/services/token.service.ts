@@ -12,6 +12,7 @@ import {
   JwtExchangePayload,
   JwtMfaTokenPayload,
   JwtPayload,
+  JwtShareAccessPayload,
   JwtType,
 } from '../dto/jwt-payload';
 import { User } from '@docmost/db/types/entity.types';
@@ -89,6 +90,23 @@ export class TokenService {
       type: JwtType.MFA_TOKEN,
     };
     return this.jwtService.sign(payload, { expiresIn: '5m' });
+  }
+
+  async generateShareAccessToken(opts: {
+    shareId: string;
+    workspaceId: string;
+    securityVersion: number;
+    expiresIn: string | number;
+  }): Promise<string> {
+    const { shareId, workspaceId, securityVersion, expiresIn } = opts;
+    const payload: JwtShareAccessPayload = {
+      shareId,
+      workspaceId,
+      securityVersion,
+      type: JwtType.SHARE_ACCESS,
+    };
+
+    return this.jwtService.sign(payload, { expiresIn });
   }
 
   async generateApiToken(opts: {

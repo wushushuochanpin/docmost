@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as path from 'path';
 import ms, { StringValue } from 'ms';
+import { ShareLegacyRouteMode } from '../../core/share/share.constants';
 
 @Injectable()
 export class EnvironmentService {
@@ -255,6 +256,22 @@ export class EnvironmentService {
     return this.configService
       .get<string>('SEARCH_DRIVER', 'database')
       .toLowerCase();
+  }
+
+  getShareLegacyRouteMode(): ShareLegacyRouteMode {
+    const mode = this.configService
+      .get<string>('SHARE_LEGACY_ROUTE_MODE', ShareLegacyRouteMode.Observe)
+      .toLowerCase();
+
+    switch (mode) {
+      case ShareLegacyRouteMode.Observe:
+      case ShareLegacyRouteMode.ProtectedBlock:
+      case ShareLegacyRouteMode.RedirectPublic:
+      case ShareLegacyRouteMode.Removed:
+        return mode;
+      default:
+        return ShareLegacyRouteMode.Observe;
+    }
   }
 
   getTypesenseUrl(): string {

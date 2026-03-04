@@ -1,18 +1,28 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { EnvironmentService } from './environment.service';
+import { ShareLegacyRouteMode } from '../../core/share/share.constants';
 
 describe('EnvironmentService', () => {
-  let service: EnvironmentService;
+  function buildService(config: Record<string, string>) {
+    const configService = new ConfigService(config);
+    return new EnvironmentService(configService);
+  }
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [EnvironmentService],
-    }).compile();
+  it('returns valid share legacy route mode from config', () => {
+    const service = buildService({
+      SHARE_LEGACY_ROUTE_MODE: ShareLegacyRouteMode.RedirectPublic,
+    });
 
-    service = module.get<EnvironmentService>(EnvironmentService);
+    expect(service.getShareLegacyRouteMode()).toBe(
+      ShareLegacyRouteMode.RedirectPublic,
+    );
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('falls back to observe for invalid share legacy route mode', () => {
+    const service = buildService({
+      SHARE_LEGACY_ROUTE_MODE: 'unknown_mode',
+    });
+
+    expect(service.getShareLegacyRouteMode()).toBe(ShareLegacyRouteMode.Observe);
   });
 });

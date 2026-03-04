@@ -3,6 +3,7 @@ import { IPage } from "@/features/page/types/page.types";
 
 import {
   ICreateShare,
+  IReshareShareInput,
   IShare,
   ISharedItem,
   ISharedPage,
@@ -10,6 +11,8 @@ import {
   IShareForPage,
   IShareInfoInput,
   IUpdateShare,
+  IVerifyShareAccessInput,
+  IVerifyShareAccessOutput,
 } from "@/features/share/types/share.types.ts";
 import { IPagination, QueryParams } from "@/lib/types.ts";
 
@@ -25,8 +28,16 @@ export async function createShare(data: ICreateShare): Promise<any> {
   return req.data;
 }
 
-export async function getShareInfo(shareId: string): Promise<IShare> {
-  const req = await api.post<IShare>("/shares/info", { shareId });
+export async function getShareInfo(
+  shareId: string,
+  accessToken?: string,
+  metadataOnly?: boolean,
+): Promise<IShare> {
+  const req = await api.post<IShare>("/shares/info", {
+    shareId,
+    accessToken,
+    metadataOnly,
+  });
   return req.data;
 }
 
@@ -53,7 +64,41 @@ export async function deleteShare(shareId: string): Promise<void> {
 
 export async function getSharedPageTree(
   shareId: string,
+  accessToken?: string,
 ): Promise<ISharedPageTree> {
-  const req = await api.post<ISharedPageTree>("/shares/tree", { shareId });
+  const req = await api.post<ISharedPageTree>("/shares/tree", {
+    shareId,
+    accessToken,
+  });
   return req.data;
+}
+
+export async function verifyShareAccess(
+  data: IVerifyShareAccessInput,
+): Promise<IVerifyShareAccessOutput> {
+  const req = await api.post<IVerifyShareAccessOutput>(
+    "/shares/verify-access",
+    data,
+  );
+  return req.data;
+}
+
+export async function reshareShare(
+  data: IReshareShareInput,
+): Promise<IShare> {
+  try {
+    const req = await api.post<IShare>("/shares/reshare", data);
+    return req.data;
+  } catch (error: any) {
+    const status = error?.response?.status ?? error?.status;
+    if (status !== 404) {
+      throw error;
+    }
+
+    const fallbackReq = await api.post<IShare>(
+      "/shares/regenerate-protected",
+      data,
+    );
+    return fallbackReq.data;
+  }
 }

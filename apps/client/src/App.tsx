@@ -17,6 +17,7 @@ import {
   APP_NAVIGATE_EVENT,
   AUTH_UNAUTHORIZED_EVENT,
 } from "@/lib/api-client.ts";
+import { getShareLegacyRouteMode } from "@/lib/config.ts";
 
 const SetupWorkspace = lazy(() => import("@/pages/auth/setup-workspace.tsx"));
 const LoginPage = lazy(() => import("@/pages/auth/login"));
@@ -75,6 +76,7 @@ const MfaSetupRequiredPage = lazy(() =>
 
 export default function App() {
   const { t } = useTranslation();
+  const shareLegacyRouteMode = getShareLegacyRouteMode();
   const navigate = useNavigate();
   const location = useLocation();
   useRedirectToCloudSelect();
@@ -153,7 +155,9 @@ export default function App() {
             path={"/share/:shareId/p/:pageSlug"}
             element={<SharedPage />}
           />
-          <Route path={"/share/p/:pageSlug"} element={<SharedPage />} />
+          {shareLegacyRouteMode !== "removed" && (
+            <Route path={"/share/p/:pageSlug"} element={<SharedPage />} />
+          )}
         </Route>
 
         <Route path={"/share/:shareId"} element={<ShareRedirect />} />

@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  GoneException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { SearchDTO, SearchSuggestionDTO } from './dto/search.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
 import { InjectKysely } from 'nestjs-kysely';
@@ -7,6 +12,9 @@ import { sql } from 'kysely';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
 import { ShareRepo } from '@docmost/db/repos/share/share.repo';
+import { TokenService } from '../auth/services/token.service';
+import { JwtShareAccessPayload, JwtType } from '../auth/dto/jwt-payload';
+import { ShareAccessMode, ShareErrorCode } from '../share/share.constants';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const tsquery = require('pg-tsquery')();
@@ -18,6 +26,7 @@ export class SearchService {
     private pageRepo: PageRepo,
     private shareRepo: ShareRepo,
     private spaceMemberRepo: SpaceMemberRepo,
+    private tokenService: TokenService,
   ) {}
 
   async searchPage(
@@ -93,8 +102,13 @@ export class SearchService {
         workspaceId: opts.workspaceId,
       });
       if (!share) {
-        return { items: [] };
+        throw new NotFoundException({
+          code: ShareErrorCode.ShareNotFound,
+          message: 'Share not found',
+        });
       }
+
+      await this.assertPublicShareAccess(share, searchParams.accessToken);
 
       const pageIdsToSearch = [];
       if (share.includeSubPages) {
@@ -221,5 +235,58 @@ export class SearchService {
     }
 
     return { users, groups, pages };
+  }
+
+  private async assertPublicShareAccess(
+    share: {
+      id: string;
+      workspaceId: string;
+      accessMode: string;
+      expiresAt: Date | null;
+      securityVersion: number;
+    },
+    accessToken?: string,
+  ) {
+    if (share.accessMode !== ShareAccessMode.PasswordExpiring) {
+      return;
+    }
+
+    if (!share.expiresAt || share.expiresAt.getTime() <= Date.now()) {
+      throw new GoneException({
+        code: ShareErrorCode.ShareExpired,
+        message: 'Share link has expired',
+      });
+    }
+
+    if (!accessToken) {
+      throw new UnauthorizedException({
+        code: ShareErrorCode.SharePasswordRequired,
+        message: 'Share password required',
+      });
+    }
+
+    let payload: JwtShareAccessPayload;
+    try {
+      payload = (await this.tokenService.verifyJwt(
+        accessToken,
+        JwtType.SHARE_ACCESS,
+      )) as JwtShareAccessPayload;
+    } catch (err) {
+      throw new UnauthorizedException({
+        code: ShareErrorCode.ShareAccessTokenInvalid,
+        message: 'Share access token invalid',
+      });
+    }
+
+    if (
+      payload.shareId !== share.id ||
+      payload.workspaceId !== share.workspaceId ||
+      payload.securityVersion !== (share.securityVersion ?? 1)
+    ) {
+      throw new UnauthorizedException({
+        code: ShareErrorCode.ShareAccessTokenInvalid,
+        message: 'Share access token invalid',
+      });
+    }
   }
 }

@@ -8,6 +8,7 @@ import { WorkspaceRepo } from '@docmost/db/repos/workspace/workspace.repo';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 import { Workspace } from '@docmost/db/types/entity.types';
 import { htmlEscape } from '../../common/helpers/html-escaper';
+import { ShareAccessMode, ShareLegacyRouteMode } from './share.constants';
 
 @Controller('share')
 export class ShareSeoController {
@@ -59,13 +60,44 @@ export class ShareSeoController {
       }
 
       const pageId = this.extractPageSlugId(pageSlug);
+      const hasShareId = Boolean(shareId);
+      const legacyMode = this.environmentService.getShareLegacyRouteMode();
+
+      if (!hasShareId && legacyMode === ShareLegacyRouteMode.Removed) {
+        return res.code(404).send('');
+      }
 
       const share = await this.shareService.getShareForPage(
         pageId,
         workspace.id,
+        hasShareId ? { shareId } : undefined,
       );
 
       if (!share) {
+        return this.sendIndex(indexFilePath, res);
+      }
+
+      if (!hasShareId) {
+        if (share.accessMode === ShareAccessMode.PasswordExpiring) {
+          if (
+            legacyMode === ShareLegacyRouteMode.ProtectedBlock ||
+            legacyMode === ShareLegacyRouteMode.RedirectPublic ||
+            legacyMode === ShareLegacyRouteMode.Removed
+          ) {
+            return res.code(404).send('');
+          }
+        }
+
+        if (
+          legacyMode === ShareLegacyRouteMode.RedirectPublic &&
+          share.accessMode === ShareAccessMode.Public
+        ) {
+          return res.redirect(`/share/${share.key}/p/${pageSlug}`, 302);
+        }
+      }
+
+      // Avoid leaking protected page metadata in public SEO payload.
+      if (share.accessMode === ShareAccessMode.PasswordExpiring) {
         return this.sendIndex(indexFilePath, res);
       }
 

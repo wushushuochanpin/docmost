@@ -21,6 +21,10 @@ export class SearchDTO {
 
   @IsOptional()
   @IsString()
+  accessToken?: string;
+
+  @IsOptional()
+  @IsString()
   creatorId?: string;
 
   @IsOptional()

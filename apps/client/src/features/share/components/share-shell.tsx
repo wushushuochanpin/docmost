@@ -14,7 +14,11 @@ import { readOnlyEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
 import { ThemeToggle } from "@/components/theme-toggle.tsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useAtom } from "jotai";
-import { sharedPageTreeAtom, sharedTreeDataAtom } from "@/features/share/atoms/shared-page-atom";
+import {
+  sharedAccessTokenAtom,
+  sharedPageTreeAtom,
+  sharedTreeDataAtom,
+} from "@/features/share/atoms/shared-page-atom";
 import { buildSharedPageTree } from "@/features/share/utils";
 import {
   desktopSidebarAtom,
@@ -57,7 +61,9 @@ export default function ShareShell({
   const toggleToc = useToggleToc(tableOfContentAsideAtom);
 
   const { shareId } = useParams();
-  const { data } = useGetSharedPageTreeQuery(shareId);
+  const accessTokens = useAtomValue(sharedAccessTokenAtom);
+  const accessToken = shareId ? accessTokens[shareId] : undefined;
+  const { data } = useGetSharedPageTreeQuery(shareId, accessToken);
   const readOnlyEditor = useAtomValue(readOnlyEditorAtom);
 
   // @ts-ignore
@@ -195,7 +201,7 @@ export default function ShareShell({
         </ScrollArea>
       </AppShell.Aside>
 
-      <ShareSearchSpotlight shareId={shareId} />
+      <ShareSearchSpotlight shareId={shareId} accessToken={accessToken} />
     </AppShell>
   );
 }
