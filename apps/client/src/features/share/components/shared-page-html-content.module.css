@@ -26,6 +26,10 @@
   word-break: break-word;
 }
 
+.segment {
+  display: contents;
+}
+
 .article :global(*) {
   box-sizing: border-box;
 }
@@ -257,6 +261,46 @@
 .article :global([data-type="callout"][data-callout-type="success"]) {
   border-color: #9dd6b5;
   background: #f2fcf5;
+}
+
+.segmentStatus {
+  display: flex;
+  justify-content: center;
+  min-height: 20px;
+  padding: 0 var(--share-content-padding-x);
+}
+
+.segmentLoader,
+.segmentError {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--ui-border-default);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 88%);
+  color: var(--ui-text-secondary);
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.segmentLoader {
+  font-size: 0.92rem;
+}
+
+.segmentError {
+  font-size: 0.9rem;
+}
+
+.segmentRetryButton {
+  appearance: none;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--ui-accent-primary);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .article :global([data-type="callout"] > :first-child) {

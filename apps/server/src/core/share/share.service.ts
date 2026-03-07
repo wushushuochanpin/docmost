@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import {
   CreateShareDto,
+  SharePageSegmentDto,
   UpdateShareDto,
   ShareInfoDto,
 } from './dto/share.dto';
@@ -55,6 +56,13 @@ import { ShareStaticRendererService } from './share-static-renderer.service';
 const PROTECTED_SHARE_PASSWORD_LENGTH = 8;
 const PROTECTED_SHARE_PASSWORD_CHARSET =
   'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+export interface SharedPageResponsePage {
+  id: string;
+  slugId: string;
+  title: string;
+  content?: unknown;
+}
 
 @Injectable()
 export class ShareService {
@@ -367,6 +375,14 @@ export class ShareService {
       throw this.shareNotFoundException();
     }
 
+    const sharingAllowed = await this.isSharingAllowed(
+      share.workspaceId,
+      share.spaceId,
+    );
+    if (!sharingAllowed) {
+      throw this.shareNotFoundException();
+    }
+
     await this.assertShareAccess(share, dto.accessToken, {
       hasShareId: Boolean(dto.shareId),
     });
@@ -374,7 +390,6 @@ export class ShareService {
     const page = await this.pageRepo.findById(dto.pageId, {
       workspaceId,
       includeContent: true,
-      includeCreator: true,
     });
 
     if (!page || page.deletedAt) {
@@ -382,12 +397,63 @@ export class ShareService {
     }
 
     page.content = await this.updatePublicAttachments(page);
+    const rendered = this.shareStaticRendererService.render(page.content);
+    const hasStaticRenderableOutput = Boolean(rendered.html || rendered.headHtml);
+    const responsePage: SharedPageResponsePage = {
+      id: page.id,
+      slugId: page.slugId,
+      title: page.title,
+      ...(hasStaticRenderableOutput ? {} : { content: page.content }),
+    };
 
     return {
-      page,
+      page: responsePage,
       share,
-      rendered: this.shareStaticRendererService.render(page.content),
+      rendered,
     };
+  }
+
+  async getSharedPageSegment(dto: SharePageSegmentDto, workspaceId: string) {
+    const share = await this.getShareForPage(dto.pageId, workspaceId, {
+      shareId: dto.shareId,
+    });
+
+    if (!share) {
+      throw this.shareNotFoundException();
+    }
+
+    const sharingAllowed = await this.isSharingAllowed(
+      share.workspaceId,
+      share.spaceId,
+    );
+    if (!sharingAllowed) {
+      throw this.shareNotFoundException();
+    }
+
+    await this.assertShareAccess(share, dto.accessToken, {
+      hasShareId: Boolean(dto.shareId),
+    });
+
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId,
+      includeContent: true,
+    });
+
+    if (!page || page.deletedAt) {
+      throw this.shareNotFoundException();
+    }
+
+    page.content = await this.updatePublicAttachments(page);
+    const segment = this.shareStaticRendererService.getSegment(
+      page.content,
+      dto.cursor,
+    );
+
+    if (!segment) {
+      throw new BadRequestException('Invalid share page segment cursor');
+    }
+
+    return segment;
   }
 
   async getShareForPage(

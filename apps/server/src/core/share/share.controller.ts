@@ -24,6 +24,7 @@ import {
   RegenerateProtectedShareDto,
   ShareIdDto,
   ShareInfoDto,
+  SharePageSegmentDto,
   SharePageIdDto,
   UpdateShareDto,
   VerifyShareAccessDto,
@@ -88,6 +89,25 @@ export class ShareController {
         plan: workspace.plan,
       }),
     };
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('/page-segment')
+  async getSharedPageSegment(
+    @Body() dto: SharePageSegmentDto,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    if (!dto.pageId || !dto.cursor) {
+      throw new BadRequestException();
+    }
+
+    const segment = await this.shareService.getSharedPageSegment(
+      dto,
+      workspace.id,
+    );
+
+    return segment;
   }
 
   @Public()

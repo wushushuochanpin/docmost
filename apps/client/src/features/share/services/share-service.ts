@@ -7,8 +7,10 @@ import {
   IShare,
   ISharedItem,
   ISharedPage,
+  ISharedPageRenderedSegment,
   ISharedPageTree,
   IShareForPage,
+  ISharePageSegmentInput,
   IShareInfoInput,
   IUpdateShare,
   IVerifyShareAccessInput,
@@ -68,6 +70,16 @@ export async function getSharePageInfo(
 ): Promise<ISharedPage> {
   const req = await api.post<ISharedPage>("/shares/page-info", shareInput);
   return unwrapApiData<ISharedPage>(req);
+}
+
+export async function getSharePageSegment(
+  shareInput: Partial<ISharePageSegmentInput>,
+): Promise<ISharedPageRenderedSegment> {
+  const req = await api.post<ISharedPageRenderedSegment>(
+    "/shares/page-segment",
+    shareInput,
+  );
+  return unwrapApiData<ISharedPageRenderedSegment>(req);
 }
 
 export async function deleteShare(shareId: string): Promise<void> {

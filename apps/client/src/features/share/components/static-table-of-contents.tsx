@@ -2,6 +2,10 @@ import React, { useEffect, useState } from "react";
 import { ISharedPageRenderedTocItem } from "@/features/share/types/share.types.ts";
 import { cx } from "@/features/share/classnames.ts";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
+import {
+  requestShareScrollToHeading,
+  SHARE_CONTENT_UPDATED_EVENT,
+} from "@/features/share/share-navigation.ts";
 import classes from "./static-table-of-contents.module.css";
 
 interface StaticTableOfContentsProps {
@@ -58,6 +62,25 @@ export default function StaticTableOfContents({
 }: StaticTableOfContentsProps) {
   const { t } = useShareTranslation();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [contentVersion, setContentVersion] = useState(0);
+
+  useEffect(() => {
+    const onContentUpdated = () => {
+      setContentVersion((prev) => prev + 1);
+    };
+
+    window.addEventListener(
+      SHARE_CONTENT_UPDATED_EVENT,
+      onContentUpdated as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        SHARE_CONTENT_UPDATED_EVENT,
+        onContentUpdated as EventListener,
+      );
+    };
+  }, []);
 
   useEffect(() => {
     if (!items.length || typeof window.IntersectionObserver !== "function") {
@@ -88,11 +111,17 @@ export default function StaticTableOfContents({
     return () => {
       observer.disconnect();
     };
-  }, [items]);
+  }, [items, contentVersion]);
 
-  const handleScrollToHeading = (id: string) => {
+  const handleScrollToHeading = (item: ISharedPageRenderedTocItem) => {
+    const id = item.id;
     const target = document.getElementById(id);
     if (!target) {
+      requestShareScrollToHeading({
+        id,
+        segmentIndex: item.segmentIndex,
+        behavior: "smooth",
+      });
       return;
     }
 
@@ -114,7 +143,7 @@ export default function StaticTableOfContents({
         {items.map((item) => (
           <button
             type="button"
-            onClick={() => handleScrollToHeading(item.id)}
+            onClick={() => handleScrollToHeading(item)}
             key={item.id}
             className={cx(classes.link, {
               [classes.active]: item.id === activeId,

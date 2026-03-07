@@ -87,6 +87,12 @@ export class ShareInfoDto {
   accessToken?: string;
 }
 
+export class SharePageSegmentDto extends ShareInfoDto {
+  @IsString()
+  @IsNotEmpty()
+  cursor: string;
+}
+
 export class SharePageIdDto {
   @IsString()
   @IsNotEmpty()

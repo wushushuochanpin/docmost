@@ -10,6 +10,7 @@ export interface ShareRenderedTocItem {
   id: string;
   text: string;
   level: number;
+  segmentIndex?: number;
 }
 
 export interface ShareRenderedInteractiveBlock {
@@ -17,8 +18,19 @@ export interface ShareRenderedInteractiveBlock {
   type: 'drawio' | 'excalidraw' | 'embed';
 }
 
-export interface ShareRenderedPayload {
+export interface ShareRenderedSegmentPayload {
   html: string;
+  nextCursor?: string | null;
+  segmentIndex: number;
+  interactiveBlocks: ShareRenderedInteractiveBlock[];
+}
+
+export interface ShareRenderedPayload {
+  html?: string | null;
+  headHtml?: string | null;
+  deliveryMode: 'full' | 'segmented';
+  nextCursor?: string | null;
+  segmentCount?: number;
   generatedAt: string;
   contentHash: string;
   toc: ShareRenderedTocItem[];
@@ -37,12 +49,22 @@ const URL_ATTRIBUTES = new Set([
   'data-src',
   'data-attachment-url',
 ]);
-const RENDERER_VERSION = 'share-static-v1';
+const RENDERER_VERSION = 'share-static-v2';
 const RENDER_CACHE_TTL_MS = 5 * 60 * 1000;
 const RENDER_CACHE_MAX_ENTRIES = 200;
+const SEGMENT_TRIGGER_BLOCK_COUNT = 60;
+const SEGMENT_TRIGGER_HTML_LENGTH = 90000;
+const SEGMENT_MAX_BLOCK_COUNT = 24;
+const SEGMENT_MAX_HTML_LENGTH = 36000;
+const SEGMENT_CURSOR_PREFIX = 'seg:';
+
+interface ShareRenderedSegmentCacheEntry extends ShareRenderedSegmentPayload {
+  headingIds: string[];
+}
 
 interface ShareRenderedCacheEntry {
   payload: ShareRenderedPayload;
+  segments: ShareRenderedSegmentCacheEntry[];
   expiresAt: number;
 }
 
@@ -51,28 +73,51 @@ export class ShareStaticRendererService {
   private readonly renderCache = new Map<string, ShareRenderedCacheEntry>();
 
   render(content: any): ShareRenderedPayload {
+    return this.clonePayload(this.getOrCreateRenderCacheEntry(content).payload);
+  }
+
+  getSegment(
+    content: any,
+    cursor: string,
+  ): ShareRenderedSegmentPayload | null {
+    const cacheEntry = this.getOrCreateRenderCacheEntry(content);
+    const segmentIndex = this.parseSegmentCursor(cursor);
+
+    if (segmentIndex == null) {
+      return null;
+    }
+
+    const segment = cacheEntry.segments[segmentIndex];
+    if (!segment) {
+      return null;
+    }
+
+    return this.cloneSegment(segment);
+  }
+
+  private getOrCreateRenderCacheEntry(content: any): ShareRenderedCacheEntry {
     const normalizedContent = getProsemirrorContent(content);
     const contentHash = `sha256:${createHash('sha256')
       .update(JSON.stringify(normalizedContent))
       .digest('hex')}`;
     const cacheKey = `${RENDERER_VERSION}:${contentHash}`;
-    const cachedPayload = this.getCachedPayload(cacheKey);
+    const cachedEntry = this.getCachedEntry(cacheKey);
 
-    if (cachedPayload) {
-      return cachedPayload;
+    if (cachedEntry) {
+      return cachedEntry;
     }
 
     const html = jsonToHtml(normalizedContent);
-    const payload = this.postProcess(html, contentHash);
-    this.setCachedPayload(cacheKey, payload);
+    const cacheEntry = this.buildRenderCacheEntry(html, contentHash);
+    this.setCachedEntry(cacheKey, cacheEntry);
 
-    return this.clonePayload(payload);
+    return this.cloneCacheEntry(cacheEntry);
   }
 
-  private postProcess(
+  private buildRenderCacheEntry(
     html: string,
     contentHash: string,
-  ): ShareRenderedPayload {
+  ): ShareRenderedCacheEntry {
     const $ = load(`<div id="share-render-root">${html}</div>`, null, false);
     const root = $('#share-render-root');
     let interactiveIndex = 0;
@@ -132,18 +177,42 @@ export class ShareStaticRendererService {
     this.decorateCodeBlocks($, root);
 
     const toc = this.collectToc($, root);
-    const interactiveBlocks = this.collectInteractiveBlocks($, root);
+    const segments = this.buildSegments($, root);
+    const headingSegmentMap = new Map<string, number>();
 
-    return {
-      html: root.html() ?? '',
+    for (const segment of segments) {
+      for (const headingId of segment.headingIds) {
+        if (!headingSegmentMap.has(headingId)) {
+          headingSegmentMap.set(headingId, segment.segmentIndex);
+        }
+      }
+    }
+
+    const deliveryMode = segments.length > 1 ? 'segmented' : 'full';
+    const payload: ShareRenderedPayload = {
+      html: deliveryMode === 'full' ? (root.html() ?? '') : null,
+      headHtml: deliveryMode === 'segmented' ? segments[0]?.html ?? '' : null,
+      deliveryMode,
+      nextCursor: segments.length > 1 ? this.createSegmentCursor(1) : null,
+      segmentCount: segments.length,
       generatedAt: new Date().toISOString(),
       contentHash,
-      toc,
-      interactiveBlocks,
+      toc: toc.map((item) => ({
+        ...item,
+        segmentIndex: headingSegmentMap.get(item.id) ?? 0,
+      })),
+      interactiveBlocks:
+        segments[0]?.interactiveBlocks.map((item) => ({ ...item })) ?? [],
       rendererVersion: RENDERER_VERSION,
       legacyFallbackReason: hasUnsupportedBlock
         ? 'contains_unsupported_blocks'
         : null,
+    };
+
+    return {
+      payload,
+      segments,
+      expiresAt: Date.now() + RENDER_CACHE_TTL_MS,
     };
   }
 
@@ -219,6 +288,95 @@ export class ShareStaticRendererService {
     });
   }
 
+  private buildSegments(
+    $: ReturnType<typeof load>,
+    root: ReturnType<typeof $>,
+  ): ShareRenderedSegmentCacheEntry[] {
+    const fullHtml = root.html() ?? '';
+    const topLevelNodes = root.children().toArray();
+
+    if (!this.shouldSegment(topLevelNodes.length, fullHtml.length)) {
+      return [this.createSegmentEntry(fullHtml, 0, null)];
+    }
+
+    const segmentHtmlParts: string[] = [];
+    let currentSegment: string[] = [];
+    let currentBlockCount = 0;
+    let currentHtmlLength = 0;
+
+    const flushCurrentSegment = () => {
+      if (!currentSegment.length) {
+        return;
+      }
+
+      segmentHtmlParts.push(currentSegment.join(''));
+      currentSegment = [];
+      currentBlockCount = 0;
+      currentHtmlLength = 0;
+    };
+
+    for (const node of topLevelNodes) {
+      const nodeHtml = $.html(node) ?? '';
+      if (!nodeHtml.trim()) {
+        continue;
+      }
+
+      const shouldFlush =
+        currentSegment.length > 0 &&
+        (currentBlockCount >= SEGMENT_MAX_BLOCK_COUNT ||
+          currentHtmlLength + nodeHtml.length > SEGMENT_MAX_HTML_LENGTH);
+
+      if (shouldFlush) {
+        flushCurrentSegment();
+      }
+
+      currentSegment.push(nodeHtml);
+      currentBlockCount += 1;
+      currentHtmlLength += nodeHtml.length;
+    }
+
+    flushCurrentSegment();
+
+    if (!segmentHtmlParts.length) {
+      return [this.createSegmentEntry(fullHtml, 0, null)];
+    }
+
+    return segmentHtmlParts.map((segmentHtml, index) =>
+      this.createSegmentEntry(
+        segmentHtml,
+        index,
+        index + 1 < segmentHtmlParts.length
+          ? this.createSegmentCursor(index + 1)
+          : null,
+      ),
+    );
+  }
+
+  private createSegmentEntry(
+    html: string,
+    segmentIndex: number,
+    nextCursor: string | null,
+  ): ShareRenderedSegmentCacheEntry {
+    const $ = load(`<div id="share-segment-root">${html}</div>`, null, false);
+    const root = $('#share-segment-root');
+    const headingIds = root
+      .find('h1, h2, h3')
+      .map((_, element) => {
+        const id = $(element).attr('id');
+        return typeof id === 'string' ? id.trim() : '';
+      })
+      .get()
+      .filter(Boolean);
+
+    return {
+      html: root.html() ?? '',
+      nextCursor,
+      segmentIndex,
+      headingIds,
+      interactiveBlocks: this.collectInteractiveBlocks($, root),
+    };
+  }
+
   private collectInteractiveBlocks(
     $: ReturnType<typeof load>,
     root: ReturnType<typeof $>,
@@ -241,6 +399,13 @@ export class ShareStaticRendererService {
     });
 
     return blocks;
+  }
+
+  private shouldSegment(topLevelBlockCount: number, htmlLength: number): boolean {
+    return (
+      topLevelBlockCount > SEGMENT_TRIGGER_BLOCK_COUNT ||
+      htmlLength > SEGMENT_TRIGGER_HTML_LENGTH
+    );
   }
 
   private createHeadingId(text: string, index: number): string {
@@ -277,7 +442,7 @@ export class ShareStaticRendererService {
       .join(' ');
   }
 
-  private getCachedPayload(cacheKey: string): ShareRenderedPayload | null {
+  private getCachedEntry(cacheKey: string): ShareRenderedCacheEntry | null {
     const cachedEntry = this.renderCache.get(cacheKey);
 
     if (!cachedEntry) {
@@ -292,12 +457,12 @@ export class ShareStaticRendererService {
     this.renderCache.delete(cacheKey);
     this.renderCache.set(cacheKey, cachedEntry);
 
-    return this.clonePayload(cachedEntry.payload);
+    return this.cloneCacheEntry(cachedEntry);
   }
 
-  private setCachedPayload(
+  private setCachedEntry(
     cacheKey: string,
-    payload: ShareRenderedPayload,
+    cacheEntry: ShareRenderedCacheEntry,
   ): void {
     this.pruneExpiredCacheEntries();
 
@@ -315,10 +480,7 @@ export class ShareStaticRendererService {
       this.renderCache.delete(oldestKey);
     }
 
-    this.renderCache.set(cacheKey, {
-      payload: this.clonePayload(payload),
-      expiresAt: Date.now() + RENDER_CACHE_TTL_MS,
-    });
+    this.renderCache.set(cacheKey, this.cloneCacheEntry(cacheEntry));
   }
 
   private pruneExpiredCacheEntries(): void {
@@ -331,6 +493,19 @@ export class ShareStaticRendererService {
     }
   }
 
+  private cloneCacheEntry(
+    cacheEntry: ShareRenderedCacheEntry,
+  ): ShareRenderedCacheEntry {
+    return {
+      payload: this.clonePayload(cacheEntry.payload),
+      segments: cacheEntry.segments.map((segment) => ({
+        ...this.cloneSegment(segment),
+        headingIds: [...segment.headingIds],
+      })),
+      expiresAt: cacheEntry.expiresAt,
+    };
+  }
+
   private clonePayload(payload: ShareRenderedPayload): ShareRenderedPayload {
     return {
       ...payload,
@@ -339,6 +514,35 @@ export class ShareStaticRendererService {
         ...item,
       })),
     };
+  }
+
+  private cloneSegment(
+    segment: ShareRenderedSegmentPayload,
+  ): ShareRenderedSegmentPayload {
+    return {
+      ...segment,
+      interactiveBlocks: segment.interactiveBlocks.map((item) => ({
+        ...item,
+      })),
+    };
+  }
+
+  private parseSegmentCursor(cursor: string): number | null {
+    const match = cursor.match(/^seg:(\d+)$/);
+    if (!match) {
+      return null;
+    }
+
+    const segmentIndex = Number.parseInt(match[1], 10);
+    if (!Number.isFinite(segmentIndex) || segmentIndex < 1) {
+      return null;
+    }
+
+    return segmentIndex;
+  }
+
+  private createSegmentCursor(segmentIndex: number): string {
+    return `${SEGMENT_CURSOR_PREFIX}${segmentIndex}`;
   }
 
   private ensureUniqueHeadingId(id: string, seenIds: Set<string>): string {

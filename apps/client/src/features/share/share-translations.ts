@@ -38,6 +38,7 @@ const DEFAULT_SHARE_MESSAGES = {
   "Load preview": "Load preview",
   "Open original": "Open original",
   "Close preview": "Close preview",
+  "Loading remaining content...": "Loading remaining content...",
   "Page failed to load": "Page failed to load",
   Reload: "Reload",
 } as const;
@@ -205,6 +206,7 @@ const SHARE_MESSAGES: Partial<
     "Sidebar toggle": "切换侧边栏",
     Search: "搜索",
     "Table of contents": "目录",
+    "Loading remaining content...": "正在加载剩余内容...",
     "Page failed to load": "页面加载失败",
     Reload: "重新加载",
   },

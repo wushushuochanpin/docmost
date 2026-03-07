@@ -1,12 +1,31 @@
 import { useEffect, useRef, useState } from "react";
-import type { ISharedPageRenderedBlock } from "@/features/share/types/share.types.ts";
+import type {
+  ISharedPageRendered,
+  ISharedPageRenderedBlock,
+  ISharedPageRenderedSegment,
+} from "@/features/share/types/share.types.ts";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
+import { getSharePageSegment } from "@/features/share/services/share-service.ts";
+import {
+  SHARE_SCROLL_TO_HEADING_EVENT,
+  type ShareScrollToHeadingDetail,
+  notifyShareContentUpdated,
+} from "@/features/share/share-navigation.ts";
 import contentClasses from "./shared-page-html-content.module.css";
 
 interface SharedPageHtmlContentProps {
   title: string;
+  pageId: string;
+  rendered: ISharedPageRendered;
+  shareId?: string;
+  accessToken?: string;
+}
+
+interface HtmlSegmentState {
+  key: string;
   html: string;
   interactiveBlocks: ISharedPageRenderedBlock[];
+  segmentIndex: number;
 }
 
 const PAGE_HEADER_HEIGHT_PX = 45;
@@ -14,6 +33,8 @@ const EMBED_DEFAULT_HEIGHT_PX = 480;
 const EMBED_MIN_HEIGHT_PX = 240;
 const EMBED_MAX_HEIGHT_PX = 720;
 const EMBED_PREFETCH_ROOT_MARGIN = "320px 0px";
+const SEGMENT_PREFETCH_ROOT_MARGIN = "1400px 0px";
+const SEGMENT_IDLE_PREFETCH_DELAY_MS = 360;
 
 let embedRuntimePromise:
   | Promise<{
@@ -136,39 +157,293 @@ const loadEmbedRuntime = async () => {
   return embedRuntimePromise;
 };
 
+const createInitialSegments = (
+  rendered: ISharedPageRendered,
+): HtmlSegmentState[] => {
+  const initialHtml = rendered.deliveryMode === "segmented"
+    ? rendered.headHtml || rendered.html || ""
+    : rendered.html || rendered.headHtml || "";
+
+  if (!initialHtml) {
+    return [];
+  }
+
+  return [
+    {
+      key: `${rendered.contentHash}:0`,
+      html: initialHtml,
+      interactiveBlocks: rendered.interactiveBlocks ?? [],
+      segmentIndex: 0,
+    },
+  ];
+};
+
+const getNextLoadedSegmentIndex = (segments: HtmlSegmentState[]) => {
+  if (!segments.length) {
+    return 0;
+  }
+
+  return segments[segments.length - 1].segmentIndex;
+};
+
 export default function SharedPageHtmlContent({
   title,
-  html,
-  interactiveBlocks,
+  pageId,
+  rendered,
+  shareId,
+  accessToken,
 }: SharedPageHtmlContentProps) {
   const { t } = useShareTranslation();
   const articleRef = useRef<HTMLElement | null>(null);
+  const segmentSentinelRef = useRef<HTMLDivElement | null>(null);
+  const nextCursorRef = useRef<string | null>(rendered.nextCursor ?? null);
+  const contentHashRef = useRef(rendered.contentHash);
+  const loadedSegmentIndexRef = useRef(0);
+  const isLoadingSegmentRef = useRef(false);
+  const notifiedSegmentIndexRef = useRef(0);
+  const activeSegmentRequestRef = useRef<Promise<boolean> | null>(null);
   const [previewImage, setPreviewImage] = useState<{
     src: string;
     alt: string;
   } | null>(null);
+  const [segments, setSegments] = useState<HtmlSegmentState[]>(() =>
+    createInitialSegments(rendered),
+  );
+  const [nextCursor, setNextCursor] = useState<string | null>(
+    rendered.nextCursor ?? null,
+  );
+  const [isLoadingSegment, setIsLoadingSegment] = useState(false);
+  const [segmentLoadFailed, setSegmentLoadFailed] = useState(false);
+  const isSegmented = rendered.deliveryMode === "segmented";
+  const loadedInteractiveBlocks = segments.flatMap((segment) => segment.interactiveBlocks);
+  const interactiveBlockCount = loadedInteractiveBlocks.length;
 
   useEffect(() => {
-    const hash = window.location.hash?.slice(1);
-    if (!hash) {
+    const nextSegments = createInitialSegments(rendered);
+    const nextLoadedSegmentIndex = getNextLoadedSegmentIndex(nextSegments);
+
+    setSegments(nextSegments);
+    setNextCursor(rendered.nextCursor ?? null);
+    setIsLoadingSegment(false);
+    setSegmentLoadFailed(false);
+    contentHashRef.current = rendered.contentHash;
+    nextCursorRef.current = rendered.nextCursor ?? null;
+    loadedSegmentIndexRef.current = nextLoadedSegmentIndex;
+    isLoadingSegmentRef.current = false;
+    notifiedSegmentIndexRef.current = nextLoadedSegmentIndex;
+    activeSegmentRequestRef.current = null;
+  }, [
+    rendered.contentHash,
+    rendered.deliveryMode,
+    rendered.headHtml,
+    rendered.html,
+    rendered.interactiveBlocks,
+    rendered.nextCursor,
+  ]);
+
+  useEffect(() => {
+    nextCursorRef.current = nextCursor;
+  }, [nextCursor]);
+
+  useEffect(() => {
+    loadedSegmentIndexRef.current = getNextLoadedSegmentIndex(segments);
+  }, [segments]);
+
+  useEffect(() => {
+    const latestSegmentIndex = getNextLoadedSegmentIndex(segments);
+    if (latestSegmentIndex <= notifiedSegmentIndexRef.current) {
       return;
     }
 
-    const frame = scheduleFrame(() => {
-      const target = document.getElementById(hash);
-      if (!target) {
+    notifiedSegmentIndexRef.current = latestSegmentIndex;
+    notifyShareContentUpdated({
+      contentHash: rendered.contentHash,
+      segmentIndex: latestSegmentIndex,
+    });
+  }, [segments, rendered.contentHash]);
+
+  const appendRenderedSegment = (segment: ISharedPageRenderedSegment) => {
+    setSegments((prev) => {
+      if (prev.some((item) => item.segmentIndex === segment.segmentIndex)) {
+        return prev;
+      }
+
+      return [...prev, {
+        key: `${rendered.contentHash}:${segment.segmentIndex}`,
+        html: segment.html,
+        interactiveBlocks: segment.interactiveBlocks,
+        segmentIndex: segment.segmentIndex,
+      }].sort((left, right) => left.segmentIndex - right.segmentIndex);
+    });
+
+    const resolvedNextCursor = segment.nextCursor ?? null;
+    loadedSegmentIndexRef.current = Math.max(
+      loadedSegmentIndexRef.current,
+      segment.segmentIndex,
+    );
+    nextCursorRef.current = resolvedNextCursor;
+    setNextCursor(resolvedNextCursor);
+    setSegmentLoadFailed(false);
+  };
+
+  const loadNextSegment = async (cursorOverride?: string) => {
+    if (activeSegmentRequestRef.current) {
+      return activeSegmentRequestRef.current;
+    }
+
+    const cursor = cursorOverride ?? nextCursorRef.current;
+    if (!isSegmented || !cursor || isLoadingSegmentRef.current) {
+      return false;
+    }
+
+    const requestPromise = (async () => {
+      const requestContentHash = contentHashRef.current;
+      isLoadingSegmentRef.current = true;
+      setIsLoadingSegment(true);
+
+      try {
+        const segment = await getSharePageSegment({
+          shareId,
+          pageId,
+          accessToken,
+          cursor,
+        });
+        if (contentHashRef.current !== requestContentHash) {
+          return false;
+        }
+        appendRenderedSegment(segment);
+        return true;
+      } catch {
+        setSegmentLoadFailed(true);
+        return false;
+      } finally {
+        isLoadingSegmentRef.current = false;
+        setIsLoadingSegment(false);
+        activeSegmentRequestRef.current = null;
+      }
+    })();
+
+    activeSegmentRequestRef.current = requestPromise;
+    return requestPromise;
+  };
+
+  const ensureSegmentsThrough = async (targetSegmentIndex: number) => {
+    let safetyCounter = 0;
+
+    while (
+      loadedSegmentIndexRef.current < targetSegmentIndex &&
+      nextCursorRef.current &&
+      safetyCounter < 64
+    ) {
+      const loaded = await loadNextSegment(nextCursorRef.current);
+      if (!loaded) {
+        break;
+      }
+
+      safetyCounter += 1;
+    }
+
+    return loadedSegmentIndexRef.current >= targetSegmentIndex;
+  };
+
+  const scrollToHeadingIfPresent = (
+    id: string,
+    behavior: ScrollBehavior = "auto",
+  ) => {
+    const target = document.getElementById(id);
+    if (!target) {
+      return false;
+    }
+
+    const top =
+      target.getBoundingClientRect().top + window.scrollY - getStickyOffset();
+    scrollWindowTo(top, behavior);
+    if (typeof window.history?.replaceState === "function") {
+      window.history.replaceState(null, "", `#${id}`);
+    }
+
+    return true;
+  };
+
+  const ensureHeadingVisible = async (
+    id: string,
+    behavior: ScrollBehavior = "auto",
+    segmentIndex?: number,
+  ) => {
+    if (scrollToHeadingIfPresent(id, behavior)) {
+      return true;
+    }
+
+    const targetSegmentIndex =
+      typeof segmentIndex === "number"
+        ? segmentIndex
+        : rendered.toc.find((item) => item.id === id)?.segmentIndex;
+
+    if (typeof targetSegmentIndex !== "number") {
+      return false;
+    }
+
+    const loaded = await ensureSegmentsThrough(targetSegmentIndex);
+    if (!loaded) {
+      return false;
+    }
+
+    await new Promise<void>((resolve) => {
+      const frame = scheduleFrame(() => {
+        scrollToHeadingIfPresent(id, behavior);
+        resolve();
+      });
+
+      if (typeof frame === "number") {
+        void frame;
+      }
+    });
+
+    return true;
+  };
+
+  useEffect(() => {
+    const hash = window.location.hash?.slice(1);
+    if (hash) {
+      void ensureHeadingVisible(hash, "auto");
+    }
+
+    const onHashChange = () => {
+      const nextHash = window.location.hash?.slice(1);
+      if (!nextHash) {
         return;
       }
 
-      const top =
-        target.getBoundingClientRect().top + window.scrollY - getStickyOffset();
-      scrollWindowTo(top, "auto");
-    });
+      void ensureHeadingVisible(nextHash, "auto");
+    };
+
+    const onShareScrollRequest = (event: Event) => {
+      const detail = (event as CustomEvent<ShareScrollToHeadingDetail>).detail;
+      if (!detail?.id) {
+        return;
+      }
+
+      void ensureHeadingVisible(
+        detail.id,
+        detail.behavior ?? "smooth",
+        detail.segmentIndex,
+      );
+    };
+
+    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener(
+      SHARE_SCROLL_TO_HEADING_EVENT,
+      onShareScrollRequest as EventListener,
+    );
 
     return () => {
-      cancelScheduledFrame(frame);
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener(
+        SHARE_SCROLL_TO_HEADING_EVENT,
+        onShareScrollRequest as EventListener,
+      );
     };
-  }, [html]);
+  }, [rendered.contentHash, rendered.toc, pageId, shareId, accessToken]);
 
   useEffect(() => {
     if (!previewImage) {
@@ -192,7 +467,7 @@ export default function SharedPageHtmlContent({
   }, [previewImage]);
 
   useEffect(() => {
-    if (!interactiveBlocks.length) {
+    if (!loadedInteractiveBlocks.length) {
       return;
     }
 
@@ -203,7 +478,6 @@ export default function SharedPageHtmlContent({
 
     let cancelled = false;
     let embedObserver: IntersectionObserver | null = null;
-    const cleanups: Array<() => void> = [];
     const embedBlocks = Array.from(
       article.querySelectorAll<HTMLElement>('[data-share-block="embed"]'),
     );
@@ -276,11 +550,16 @@ export default function SharedPageHtmlContent({
     };
 
     for (const block of previewBlocks) {
+      if (block.dataset.sharePreviewBound === "true") {
+        continue;
+      }
+
       const image = block.querySelector<HTMLImageElement>("img");
       if (!image?.src) {
         continue;
       }
 
+      block.dataset.sharePreviewBound = "true";
       block.classList.add(contentClasses.interactivePreviewTrigger);
       block.setAttribute("role", "button");
       block.setAttribute("aria-label", t("Open preview"));
@@ -303,14 +582,13 @@ export default function SharedPageHtmlContent({
 
       block.addEventListener("click", openPreview);
       block.addEventListener("keydown", onKeyDown);
-      cleanups.push(() => {
-        block.removeEventListener("click", openPreview);
-        block.removeEventListener("keydown", onKeyDown);
-      });
     }
 
     for (const block of embedBlocks) {
-      if (block.dataset.shareEmbedMounted === "true") {
+      if (
+        block.dataset.shareEmbedMounted === "true" ||
+        block.dataset.shareEmbedPrepared === "true"
+      ) {
         continue;
       }
 
@@ -358,15 +636,15 @@ export default function SharedPageHtmlContent({
 
       appendChildNodes(placeholder, [titleNode, metaNode, actions]);
       replaceChildNodes(block, [placeholder]);
+      block.dataset.shareEmbedPrepared = "true";
 
-      const onLoadPreview = () => {
-        void mountEmbedBlock(block);
-      };
-
-      loadButton.addEventListener("click", onLoadPreview);
-      cleanups.push(() => {
-        loadButton.removeEventListener("click", onLoadPreview);
-      });
+      loadButton.addEventListener(
+        "click",
+        () => {
+          void mountEmbedBlock(block);
+        },
+        { once: true },
+      );
     }
 
     if (embedBlocks.length && typeof window.IntersectionObserver === "function") {
@@ -394,11 +672,56 @@ export default function SharedPageHtmlContent({
     return () => {
       cancelled = true;
       embedObserver?.disconnect();
-      for (const cleanup of cleanups) {
-        cleanup();
-      }
     };
-  }, [html, interactiveBlocks, t, title]);
+  }, [interactiveBlockCount, rendered.contentHash, t, title]);
+
+  useEffect(() => {
+    if (!isSegmented || !nextCursor || segments.length > 1) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadNextSegment();
+    }, SEGMENT_IDLE_PREFETCH_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isSegmented, nextCursor, segments.length, rendered.contentHash]);
+
+  useEffect(() => {
+    if (!isSegmented || !nextCursor) {
+      return;
+    }
+
+    const sentinel = segmentSentinelRef.current;
+    if (!sentinel) {
+      return;
+    }
+
+    if (typeof window.IntersectionObserver !== "function") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) {
+            continue;
+          }
+
+          void loadNextSegment();
+        }
+      },
+      { rootMargin: SEGMENT_PREFETCH_ROOT_MARGIN },
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isSegmented, nextCursor, segments.length, rendered.contentHash]);
 
   return (
     <>
@@ -407,11 +730,45 @@ export default function SharedPageHtmlContent({
           <h1 className={contentClasses.pageTitle}>{title}</h1>
         </header>
 
-        <article
-          ref={articleRef}
-          className={contentClasses.article}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
+        <article ref={articleRef} className={contentClasses.article}>
+          {segments.map((segment) => (
+            <div
+              key={segment.key}
+              className={contentClasses.segment}
+              data-share-segment={segment.segmentIndex}
+              dangerouslySetInnerHTML={{ __html: segment.html }}
+            />
+          ))}
+        </article>
+
+        {isSegmented && (
+          <div
+            ref={segmentSentinelRef}
+            className={contentClasses.segmentStatus}
+            aria-live="polite"
+          >
+            {isLoadingSegment && (
+              <div className={contentClasses.segmentLoader}>
+                {t("Loading remaining content...")}
+              </div>
+            )}
+
+            {!isLoadingSegment && segmentLoadFailed && (
+              <div className={contentClasses.segmentError}>
+                <span>{t("Error fetching page data.")}</span>
+                <button
+                  type="button"
+                  className={contentClasses.segmentRetryButton}
+                  onClick={() => {
+                    void loadNextSegment();
+                  }}
+                >
+                  {t("Reload")}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className={contentClasses.bottomSpacer} />
       </section>

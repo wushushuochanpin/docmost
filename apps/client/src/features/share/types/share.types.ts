@@ -42,13 +42,20 @@ export interface ISharedItem extends IShare {
 }
 
 export interface ISharedPage extends IShare {
-  page: IPage;
+  page: ISharedPagePage;
   share: IShare & {
     level: number;
     sharedPage: { id: string; slugId: string; title: string; icon: string };
   };
   hasLicenseKey: boolean;
   rendered?: ISharedPageRendered | null;
+}
+
+export interface ISharedPagePage {
+  id: string;
+  slugId: string;
+  title: string;
+  content?: unknown;
 }
 
 export interface IShareForPage extends IShare {
@@ -79,6 +86,10 @@ export interface IShareInfoInput {
   accessToken?: string;
 }
 
+export interface ISharePageSegmentInput extends IShareInfoInput {
+  cursor: string;
+}
+
 export interface IVerifyShareAccessInput {
   shareId: string;
   password: string;
@@ -105,7 +116,11 @@ export interface ISharedPageTree {
 }
 
 export interface ISharedPageRendered {
-  html: string;
+  html?: string | null;
+  headHtml?: string | null;
+  deliveryMode?: "full" | "segmented";
+  nextCursor?: string | null;
+  segmentCount?: number;
   generatedAt: string;
   contentHash: string;
   rendererVersion: string;
@@ -118,9 +133,17 @@ export interface ISharedPageRenderedTocItem {
   id: string;
   text: string;
   level: number;
+  segmentIndex?: number;
 }
 
 export interface ISharedPageRenderedBlock {
   id: string;
   type: "drawio" | "excalidraw" | "embed";
+}
+
+export interface ISharedPageRenderedSegment {
+  html: string;
+  nextCursor?: string | null;
+  segmentIndex: number;
+  interactiveBlocks: ISharedPageRenderedBlock[];
 }

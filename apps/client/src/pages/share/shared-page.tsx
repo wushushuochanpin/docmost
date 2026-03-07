@@ -152,7 +152,9 @@ export default function SharedPage() {
       return;
     }
 
-    const canUseStaticHtml = Boolean(data.rendered?.html);
+    const canUseStaticHtml = Boolean(
+      data.rendered?.html || data.rendered?.headHtml,
+    );
 
     setSharedShellState({
       includeSubPages: Boolean(data.share.includeSubPages),
@@ -350,7 +352,21 @@ export default function SharedPage() {
     );
   }
 
-  const canUseStaticHtml = Boolean(data.rendered?.html);
+  const canUseStaticHtml = Boolean(data.rendered?.html || data.rendered?.headHtml);
+  const canUseLegacyEditor = !canUseStaticHtml && data.page.content != null;
+
+  if (!canUseStaticHtml && !canUseLegacyEditor) {
+    return (
+      <div className={classes.centeredViewport}>
+        <section className={classes.statePanel}>
+          <h1 className={classes.stateTitle}>{t("Unable to load shared page")}</h1>
+          <p className={classes.stateDescription}>
+            {t("Error fetching page data.")}
+          </p>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -358,8 +374,10 @@ export default function SharedPage() {
         {canUseStaticHtml ? (
           <SharedPageHtmlContent
             title={data.page.title}
-            html={data.rendered?.html || ""}
-            interactiveBlocks={data.rendered?.interactiveBlocks || []}
+            pageId={data.page.id}
+            shareId={shareId}
+            accessToken={accessToken}
+            rendered={data.rendered!}
           />
         ) : (
           <Suspense fallback={<SharedPageSkeleton />}>
