@@ -1,12 +1,12 @@
 import "@/features/editor/styles/index.css";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { EditorProvider } from "@tiptap/react";
-import { mainExtensions } from "@/features/editor/extensions/extensions";
+import { getReadonlyExtensions } from "@/features/editor/extensions/readonly-extensions.ts";
 import { Document } from "@tiptap/extension-document";
-import { Heading, UniqueID } from "@docmost/editor-ext";
+import { Heading } from "@docmost/editor-ext/src/lib/heading/heading.ts";
 import { Text } from "@tiptap/extension-text";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { useAtom } from "jotai";
+import { useAtom, useStore } from "jotai";
 import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { readOnlyEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
 import { useEditorScroll } from "./hooks/use-editor-scroll";
@@ -28,9 +28,10 @@ export default function ReadonlyPageEditor({
   content,
   pageId,
 }: PageEditorProps) {
-  const [, setReadOnlyEditor] = useAtom(readOnlyEditorAtom);
+  const store = useStore();
   const isComponentMounted = useRef(false);
   const editorCreated = useRef(false);
+  const [extensions, setExtensions] = useState<any[] | null>(null);
 
   const canScroll = useCallback(
     () => isComponentMounted.current && editorCreated.current,
@@ -50,19 +51,23 @@ export default function ReadonlyPageEditor({
     isComponentMounted.current = true;
   }, []);
 
-  const extensions = useMemo(() => {
-    const filteredExtensions = mainExtensions.filter(
-      (ext) => ext.name !== "uniqueID",
-    );
+  useEffect(() => {
+    let cancelled = false;
+    editorCreated.current = false;
+    setExtensions(null);
+    store.set(readOnlyEditorAtom as any, null);
 
-    return [
-      ...filteredExtensions,
-      UniqueID.configure({
-        types: ["heading", "paragraph"],
-        updateDocument: false,
-      }),
-    ];
-  }, []);
+    void getReadonlyExtensions(content).then((nextExtensions) => {
+      if (!cancelled) {
+        setExtensions(nextExtensions);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      store.set(readOnlyEditorAtom as any, null);
+    };
+  }, [content, store]);
 
   const titleExtensions = [
     Document.extend({
@@ -92,25 +97,65 @@ export default function ReadonlyPageEditor({
         </div>
       </div>
 
-      <EditorProvider
-        editable={false}
-        immediatelyRender={true}
-        extensions={extensions}
-        content={content}
-        onCreate={({ editor }) => {
-          if (editor) {
-            if (pageId) {
+      {extensions ? (
+        <EditorProvider
+          editable={false}
+          immediatelyRender={true}
+          extensions={extensions}
+          content={content}
+          onCreate={({ editor }) => {
+            if (editor) {
+              if (pageId) {
+                // @ts-ignore
+                editor.storage.pageId = pageId;
+              }
               // @ts-ignore
-              editor.storage.pageId = pageId;
-            }
-            // @ts-ignore
-            setReadOnlyEditor(editor);
+              store.set(readOnlyEditorAtom as any, editor);
 
-            handleScrollTo(editor);
-            editorCreated.current = true;
-          }
-        }}
-      ></EditorProvider>
+              handleScrollTo(editor);
+              editorCreated.current = true;
+            }
+          }}
+        ></EditorProvider>
+      ) : (
+        <div style={{ paddingTop: 12 }}>
+          <div
+            style={{
+              height: 18,
+              width: "100%",
+              borderRadius: 999,
+              background: "var(--ui-bg-subtle)",
+              marginBottom: 12,
+            }}
+          />
+          <div
+            style={{
+              height: 18,
+              width: "96%",
+              borderRadius: 999,
+              background: "var(--ui-bg-subtle)",
+              marginBottom: 12,
+            }}
+          />
+          <div
+            style={{
+              height: 18,
+              width: "92%",
+              borderRadius: 999,
+              background: "var(--ui-bg-subtle)",
+              marginBottom: 12,
+            }}
+          />
+          <div
+            style={{
+              height: 18,
+              width: "88%",
+              borderRadius: 999,
+              background: "var(--ui-bg-subtle)",
+            }}
+          />
+        </div>
+      )}
       <div style={{ paddingBottom: "20vh" }}></div>
     </div>
   );

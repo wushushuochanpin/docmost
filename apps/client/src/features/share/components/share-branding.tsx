@@ -1,16 +1,16 @@
-import { Affix, Button } from "@mantine/core";
+import classes from "./share-branding.module.css";
 
 export default function ShareBranding() {
   return (
-    <Affix position={{ bottom: 20, right: 20 }}>
-      <Button
-        variant="default"
-        component="a"
+    <div className={classes.branding}>
+      <a
+        className={classes.brandingLink}
         target="_blank"
+        rel="noreferrer"
         href="https://docmost.com?ref=public-share"
       >
         Powered by SuperChat
-      </Button>
-    </Affix>
+      </a>
+    </div>
   );
 }

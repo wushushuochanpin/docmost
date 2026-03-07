@@ -50,6 +50,7 @@ import {
   ShareVerifyRateLimiter,
 } from './share-rate-limit';
 import { randomInt } from 'crypto';
+import { ShareStaticRendererService } from './share-static-renderer.service';
 
 const PROTECTED_SHARE_PASSWORD_LENGTH = 8;
 const PROTECTED_SHARE_PASSWORD_CHARSET =
@@ -66,6 +67,7 @@ export class ShareService {
     @InjectKysely() private readonly db: KyselyDB,
     private readonly tokenService: TokenService,
     private readonly environmentService: EnvironmentService,
+    private readonly shareStaticRendererService: ShareStaticRendererService,
   ) {}
 
   async getShareTree(shareId: string, workspaceId: string) {
@@ -381,7 +383,11 @@ export class ShareService {
 
     page.content = await this.updatePublicAttachments(page);
 
-    return { page, share };
+    return {
+      page,
+      share,
+      rendered: this.shareStaticRendererService.render(page.content),
+    };
   }
 
   async getShareForPage(

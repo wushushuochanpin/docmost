@@ -57,7 +57,7 @@ import { useCollabToken } from "@/features/auth/queries/auth-query.tsx";
 import SearchAndReplaceDialog from "@/features/editor/components/search-and-replace/search-and-replace-dialog.tsx";
 import { useDebouncedCallback, useDocumentVisibility } from "@mantine/hooks";
 import { useIdle } from "@/hooks/use-idle.ts";
-import { queryClient } from "@/main.tsx";
+import { queryClient } from "@/query-client.ts";
 import { IPage } from "@/features/page/types/page.types.ts";
 import { useParams } from "react-router-dom";
 import { extractPageSlugId } from "@/lib";

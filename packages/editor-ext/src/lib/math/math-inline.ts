@@ -89,7 +89,7 @@ export const MathInline = Node.create<MathInlineOption>({
         find: inputRegex,
         type: this.type,
         getAttributes: (match) => ({
-          text: match[1].replaceAll("$", ""),
+          text: match[1].replace(/\$/g, ""),
         }),
       }),
     ];

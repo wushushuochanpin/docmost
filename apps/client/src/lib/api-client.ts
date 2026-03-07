@@ -39,25 +39,27 @@ api.interceptors.response.use(
           // Handle forbidden error
           break;
         case 404:
-          // Handle not found error
-          if (
-            error.response.data.message
-              .toLowerCase()
-              .includes("workspace not found")
-          ) {
-            console.log("workspace not found");
+          {
+            // Handle not found error
+            const notFoundMessage = error?.response?.data?.message;
             if (
-              !isCloud() &&
-              window.location.pathname != APP_ROUTE.AUTH.SETUP
+              typeof notFoundMessage === "string" &&
+              notFoundMessage.toLowerCase().includes("workspace not found")
             ) {
-              window.dispatchEvent(
-                new CustomEvent(APP_NAVIGATE_EVENT, {
-                  detail: {
-                    to: APP_ROUTE.AUTH.SETUP,
-                    replace: true,
-                  },
-                }),
-              );
+              console.log("workspace not found");
+              if (
+                !isCloud() &&
+                window.location.pathname != APP_ROUTE.AUTH.SETUP
+              ) {
+                window.dispatchEvent(
+                  new CustomEvent(APP_NAVIGATE_EVENT, {
+                    detail: {
+                      to: APP_ROUTE.AUTH.SETUP,
+                      replace: true,
+                    },
+                  }),
+                );
+              }
             }
           }
           break;

@@ -1,0 +1,150 @@
+.interactivePreviewTrigger {
+  position: relative;
+  cursor: zoom-in;
+}
+
+.interactivePreviewTrigger::after {
+  content: attr(data-share-preview-label);
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgb(15 23 42 / 78%);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.interactivePreviewTrigger:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled, #228be6);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+.embedPlaceholder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 12px;
+  background: var(--mantine-color-body);
+}
+
+.embedPlaceholderTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.embedPlaceholderMeta {
+  margin: 0;
+  color: var(--mantine-color-dimmed);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.embedPlaceholderActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.embedLoadButton {
+  appearance: none;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--mantine-primary-color-filled, #228be6);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.embedLoadButton:focus-visible,
+.embedOpenLink:focus-visible,
+.previewCloseButton:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled, #228be6);
+  outline-offset: 3px;
+}
+
+.embedOpenLink {
+  color: var(--mantine-primary-color-filled, #228be6);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.embedFrame {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.previewOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(15 23 42 / 82%);
+}
+
+.previewBackdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: transparent;
+}
+
+.previewDialog {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(1100px, 100%);
+  max-height: 100%;
+}
+
+.previewCloseButton {
+  align-self: flex-end;
+  appearance: none;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 14%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.previewFigure {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.previewImage {
+  display: block;
+  width: 100%;
+  max-height: calc(100vh - 140px);
+  object-fit: contain;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.previewCaption {
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+}

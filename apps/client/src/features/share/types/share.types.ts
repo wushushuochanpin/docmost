@@ -48,6 +48,7 @@ export interface ISharedPage extends IShare {
     sharedPage: { id: string; slugId: string; title: string; icon: string };
   };
   hasLicenseKey: boolean;
+  rendered?: ISharedPageRendered | null;
 }
 
 export interface IShareForPage extends IShare {
@@ -101,4 +102,25 @@ export interface ISharedPageTree {
   share: IShare;
   pageTree: Partial<IPage[]>;
   hasLicenseKey: boolean;
+}
+
+export interface ISharedPageRendered {
+  html: string;
+  generatedAt: string;
+  contentHash: string;
+  rendererVersion: string;
+  legacyFallbackReason?: string | null;
+  toc: ISharedPageRenderedTocItem[];
+  interactiveBlocks: ISharedPageRenderedBlock[];
+}
+
+export interface ISharedPageRenderedTocItem {
+  id: string;
+  text: string;
+  level: number;
+}
+
+export interface ISharedPageRenderedBlock {
+  id: string;
+  type: "drawio" | "excalidraw" | "embed";
 }

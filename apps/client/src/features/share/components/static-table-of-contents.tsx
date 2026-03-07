@@ -1,0 +1,132 @@
+import React, { useEffect, useState } from "react";
+import { ISharedPageRenderedTocItem } from "@/features/share/types/share.types.ts";
+import { cx } from "@/features/share/classnames.ts";
+import { useShareTranslation } from "@/features/share/share-translations.ts";
+import classes from "./static-table-of-contents.module.css";
+
+interface StaticTableOfContentsProps {
+  items: ISharedPageRenderedTocItem[];
+}
+
+const PAGE_HEADER_HEIGHT_PX = 45;
+
+const parseCssLengthToPx = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return Number.NaN;
+  }
+
+  if (trimmed.endsWith("px")) {
+    return Number.parseFloat(trimmed);
+  }
+
+  if (trimmed.endsWith("rem")) {
+    const rootFontSize = Number.parseFloat(
+      window.getComputedStyle(document.documentElement).fontSize,
+    );
+    return Number.parseFloat(trimmed) * (Number.isFinite(rootFontSize) ? rootFontSize : 16);
+  }
+
+  return Number.parseFloat(trimmed);
+};
+
+const scrollWindowTo = (top: number, behavior: ScrollBehavior = "smooth") => {
+  try {
+    window.scrollTo({ top, behavior });
+  } catch {
+    window.scrollTo(0, top);
+  }
+};
+
+const getStickyOffset = () => {
+  const rootStyles = window.getComputedStyle(document.documentElement);
+  const rawHeaderOffset = rootStyles.getPropertyValue("--app-shell-header-offset");
+  const rawHeaderHeight = rootStyles.getPropertyValue("--app-shell-header-height");
+  const headerOffsetPx = parseCssLengthToPx(rawHeaderOffset);
+  const headerHeightPx = parseCssLengthToPx(rawHeaderHeight);
+  const resolvedHeaderOffset = Number.isFinite(headerOffsetPx)
+    ? headerOffsetPx
+    : Number.isFinite(headerHeightPx)
+      ? headerHeightPx
+      : PAGE_HEADER_HEIGHT_PX;
+
+  return resolvedHeaderOffset + PAGE_HEADER_HEIGHT_PX;
+};
+
+export default function StaticTableOfContents({
+  items,
+}: StaticTableOfContentsProps) {
+  const { t } = useShareTranslation();
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!items.length || typeof window.IntersectionObserver !== "function") {
+      return;
+    }
+
+    const headingElements = items
+      .map((item) => document.getElementById(item.id))
+      .filter(Boolean) as HTMLElement[];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveId((entry.target as HTMLElement).id);
+          }
+        }
+      },
+      {
+        rootMargin: `-${getStickyOffset()}px 0px -85% 0px`,
+        threshold: 0,
+      },
+    );
+
+    for (const heading of headingElements) {
+      observer.observe(heading);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [items]);
+
+  const handleScrollToHeading = (id: string) => {
+    const target = document.getElementById(id);
+    if (!target) {
+      return;
+    }
+
+    const top = target.getBoundingClientRect().top + window.scrollY - getStickyOffset();
+    scrollWindowTo(top, "smooth");
+    if (typeof window.history?.replaceState === "function") {
+      window.history.replaceState(null, "", `#${id}`);
+    }
+  };
+
+  if (!items.length) {
+    return <p className={classes.empty}>{t("No table of contents.")}</p>;
+  }
+
+  return (
+    <>
+      <p className={classes.title}>{t("Table of contents")}</p>
+      <div className={classes.list}>
+        {items.map((item) => (
+          <button
+            type="button"
+            onClick={() => handleScrollToHeading(item.id)}
+            key={item.id}
+            className={cx(classes.link, {
+              [classes.active]: item.id === activeId,
+            })}
+            style={{
+              paddingLeft: `${item.level * 16}px`,
+            }}
+          >
+            {item.text}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}

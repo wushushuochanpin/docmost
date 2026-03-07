@@ -34,6 +34,10 @@ import {
 } from "@/features/share/services/share-service.ts";
 import { IPagination, QueryParams } from "@/lib/types.ts";
 
+interface ShareQueryOptions {
+  enabled?: boolean;
+}
+
 export function useGetSharesQuery(
   params?: QueryParams,
 ): UseQueryResult<IPagination<ISharedItem>, Error> {
@@ -45,15 +49,16 @@ export function useGetSharesQuery(
 }
 
 export function useGetShareByIdQuery(
-  shareId: string,
+  shareId?: string,
   accessToken?: string,
   metadataOnly?: boolean,
   refetchIntervalMs?: number,
+  options?: ShareQueryOptions,
 ): UseQueryResult<IShare, Error> {
   const query = useQuery({
     queryKey: ["share-by-id", shareId, accessToken, metadataOnly],
-    queryFn: () => getShareInfo(shareId, accessToken, metadataOnly),
-    enabled: !!shareId,
+    queryFn: () => getShareInfo(shareId!, accessToken, metadataOnly),
+    enabled: (options?.enabled ?? true) && !!shareId,
     retry: false,
     refetchInterval: refetchIntervalMs || false,
   });
@@ -176,13 +181,14 @@ export function useDeleteShareMutation() {
 }
 
 export function useGetSharedPageTreeQuery(
-  shareId: string,
+  shareId?: string,
   accessToken?: string,
+  options?: ShareQueryOptions,
 ): UseQueryResult<ISharedPageTree, Error> {
   return useQuery({
     queryKey: ["shared-page-tree", shareId, accessToken],
-    queryFn: () => getSharedPageTree(shareId, accessToken),
-    enabled: !!shareId,
+    queryFn: () => getSharedPageTree(shareId!, accessToken),
+    enabled: (options?.enabled ?? true) && !!shareId,
     placeholderData: keepPreviousData,
     staleTime: 60 * 60 * 1000,
     retry: false,

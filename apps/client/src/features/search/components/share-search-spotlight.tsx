@@ -1,33 +1,54 @@
+import "@mantine/spotlight/styles.css";
 import { Group, Center, Text } from "@mantine/core";
-import { Spotlight } from "@mantine/spotlight";
+import { createSpotlight, Spotlight } from "@mantine/spotlight";
 import { IconSearch } from "@tabler/icons-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDebouncedValue } from "@mantine/hooks";
-import { useShareSearchQuery } from "@/features/search/queries/search-query";
 import { buildSharedPageUrl } from "@/features/page/page.utils.ts";
 import { getPageIcon } from "@/lib";
 import { useTranslation } from "react-i18next";
-import { shareSearchSpotlightStore } from "@/features/search/constants.ts";
 import DOMPurify from "dompurify";
+import { searchShare } from "@/features/search/services/search-service.ts";
+import { useShareAsyncResource } from "@/features/share/hooks/use-share-async-resource.ts";
 
 interface ShareSearchSpotlightProps {
   shareId?: string;
   accessToken?: string;
+  openToken?: number;
 }
+
+const [shareSearchSpotlightStore, shareSearchSpotlight] = createSpotlight();
+
 export function ShareSearchSpotlight({
   shareId,
   accessToken,
+  openToken = 0,
 }: ShareSearchSpotlightProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(query, 300);
 
-  const { data: searchResults } = useShareSearchQuery({
-    query: debouncedSearchQuery,
-    shareId,
-    accessToken,
-  });
+  useEffect(() => {
+    if (openToken <= 0) {
+      return;
+    }
+
+    shareSearchSpotlight.open();
+  }, [openToken]);
+
+  const { data: searchResults } = useShareAsyncResource(
+    debouncedSearchQuery
+      ? () =>
+          searchShare({
+            query: debouncedSearchQuery,
+            shareId,
+            accessToken,
+          })
+      : null,
+    [debouncedSearchQuery, shareId, accessToken],
+    { enabled: Boolean(debouncedSearchQuery) },
+  );
 
   const pages = (
     searchResults && searchResults.length > 0 ? searchResults : []

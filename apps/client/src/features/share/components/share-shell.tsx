@@ -1,59 +1,80 @@
-import React, { useEffect, useMemo } from "react";
-import {
-  ActionIcon,
-  AppShell,
-  Group,
-  ScrollArea,
-  Tooltip,
-} from "@mantine/core";
-import { useGetSharedPageTreeQuery } from "@/features/share/queries/share-query.ts";
+import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import SharedTree from "@/features/share/components/shared-tree.tsx";
-import { TableOfContents } from "@/features/editor/components/table-of-contents/table-of-contents.tsx";
 import { readOnlyEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
-import { ThemeToggle } from "@/components/theme-toggle.tsx";
-import { useAtomValue, useSetAtom } from "jotai";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   sharedAccessTokenAtom,
+  sharedShellStateAtom,
   sharedPageTreeAtom,
   sharedTreeDataAtom,
 } from "@/features/share/atoms/shared-page-atom";
 import { buildSharedPageTree } from "@/features/share/utils";
 import {
-  desktopSidebarAtom,
   mobileSidebarAtom,
 } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
-import SidebarToggle from "@/components/ui/sidebar-toggle-button.tsx";
-import { useTranslation } from "react-i18next";
 import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-toggle-sidebar.ts";
 import {
+  shareDesktopSidebarAtom,
   mobileTableOfContentAsideAtom,
   tableOfContentAsideAtom,
 } from "@/features/share/atoms/sidebar-atom.ts";
-import { IconList } from "@tabler/icons-react";
-import { useToggleToc } from "@/features/share/hooks/use-toggle-toc.ts";
-import classes from "./share.module.css";
 import {
-  SearchControl,
-  SearchMobileControl,
-} from "@/features/search/components/search-control.tsx";
-import { ShareSearchSpotlight } from "@/features/search/components/share-search-spotlight.tsx";
-import { shareSearchSpotlight } from "@/features/search/constants";
-import ShareBranding from '@/features/share/components/share-branding.tsx';
+  IconLayoutSidebarRightCollapse,
+  IconLayoutSidebarRightExpand,
+  IconList,
+  IconMoon,
+  IconSearch,
+  IconSun,
+} from "@tabler/icons-react";
+import { useToggleToc } from "@/features/share/hooks/use-toggle-toc.ts";
+import classes from "./share-shell.module.css";
+import ShareBranding from "@/features/share/components/share-branding.tsx";
+import StaticTableOfContents from "@/features/share/components/static-table-of-contents.tsx";
+import { getSharedPageTree } from "@/features/share/services/share-service.ts";
+import { useShareAsyncResource } from "@/features/share/hooks/use-share-async-resource.ts";
+import {
+  getCurrentShareColorScheme,
+  syncShareColorSchemeToDocument,
+  toggleShareColorScheme,
+  type ShareColorScheme,
+} from "@/features/share/share-color-scheme.ts";
+import { cx } from "@/features/share/classnames.ts";
+import { lazyShareMantineComponent } from "./lazy-share-mantine.tsx";
+import { useShareTranslation } from "@/features/share/share-translations.ts";
+import { ShareWidgetBoundary } from "./share-widget-boundary.tsx";
 
-const MemoizedSharedTree = React.memo(SharedTree);
+const LazySharedTree = lazy(() =>
+  lazyShareMantineComponent(
+    () => import("@/features/share/components/shared-tree.tsx"),
+  ),
+);
+const LazyTableOfContents = lazy(() =>
+  lazyShareMantineComponent(async () => {
+    const module = await import(
+      "@/features/editor/components/table-of-contents/table-of-contents.tsx"
+    );
+    return { default: module.TableOfContents };
+  }),
+);
+const LazyShareSearchSpotlight = lazy(() =>
+  lazyShareMantineComponent(async () => {
+    const module = await import(
+      "@/features/search/components/share-search-spotlight.tsx"
+    );
+    return { default: module.ShareSearchSpotlight };
+  }),
+);
 
 export default function ShareShell({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { t } = useTranslation();
+  const { t } = useShareTranslation();
   const [mobileOpened] = useAtom(mobileSidebarAtom);
-  const [desktopOpened] = useAtom(desktopSidebarAtom);
+  const [desktopOpened] = useAtom(shareDesktopSidebarAtom);
   const toggleMobile = useToggleSidebar(mobileSidebarAtom);
-  const toggleDesktop = useToggleSidebar(desktopSidebarAtom);
+  const toggleDesktop = useToggleSidebar(shareDesktopSidebarAtom);
 
   const [tocOpened] = useAtom(tableOfContentAsideAtom);
   const [mobileTocOpened] = useAtom(mobileTableOfContentAsideAtom);
@@ -62,146 +83,308 @@ export default function ShareShell({
 
   const { shareId } = useParams();
   const accessTokens = useAtomValue(sharedAccessTokenAtom);
+  const sharedShellState = useAtomValue(sharedShellStateAtom);
   const accessToken = shareId ? accessTokens[shareId] : undefined;
-  const { data } = useGetSharedPageTreeQuery(shareId, accessToken);
+  const shouldLoadTree = Boolean(shareId && sharedShellState?.includeSubPages);
+  const canUseSearch = Boolean(shareId && sharedShellState?.canUseSearch);
+  const showShareBranding = Boolean(
+    shareId && sharedShellState && !sharedShellState.hasLicenseKey,
+  );
+  const renderMode = sharedShellState?.renderMode ?? "editor";
+  const tocItems = sharedShellState?.toc ?? [];
+  const [colorScheme, setColorScheme] = useState<ShareColorScheme>(() =>
+    getCurrentShareColorScheme(),
+  );
+  const [searchOpenToken, setSearchOpenToken] = useState(0);
+  const [isSearchMounted, setIsSearchMounted] = useState(false);
+  const { data } = useShareAsyncResource(
+    shouldLoadTree && shareId
+      ? () => getSharedPageTree(shareId, accessToken)
+      : null,
+    [shareId, accessToken, shouldLoadTree],
+    { enabled: shouldLoadTree, keepPreviousData: true },
+  );
   const readOnlyEditor = useAtomValue(readOnlyEditorAtom);
+  const sharedPageTree = shouldLoadTree ? data || null : null;
 
-  // @ts-ignore
-  const setSharedPageTree = useSetAtom(sharedPageTreeAtom);
-  // @ts-ignore
-  const setSharedTreeData = useSetAtom(sharedTreeDataAtom);
+  const [, setSharedPageTree] = useAtom(sharedPageTreeAtom);
+  const [, setSharedTreeData] = useAtom(sharedTreeDataAtom);
 
   // Build and set the tree data when it changes
   const treeData = useMemo(() => {
-    if (!data?.pageTree) return null;
-    return buildSharedPageTree(data.pageTree);
-  }, [data?.pageTree]);
+    if (!sharedPageTree?.pageTree) return null;
+    return buildSharedPageTree(sharedPageTree.pageTree);
+  }, [sharedPageTree]);
+  const hasTree = Boolean(
+    sharedPageTree?.pageTree && sharedPageTree.pageTree.length > 1,
+  );
 
   useEffect(() => {
-    setSharedPageTree(data || null);
+    setSharedPageTree(sharedPageTree);
     setSharedTreeData(treeData);
-  }, [data, treeData, setSharedPageTree, setSharedTreeData]);
+  }, [sharedPageTree, treeData, setSharedPageTree, setSharedTreeData]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "mantine-color-scheme-value") {
+        setColorScheme(syncShareColorSchemeToDocument());
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!canUseSearch || typeof window === "undefined") {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setIsSearchMounted(true);
+        setSearchOpenToken((prev) => prev + 1);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [canUseSearch]);
+
+  const desktopHasLeftSidebar = hasTree && desktopOpened;
+  const desktopHasRightSidebar = tocOpened;
+
+  const openShareSearch = () => {
+    setIsSearchMounted(true);
+    setSearchOpenToken((prev) => prev + 1);
+  };
+
+  const renderToc = () => {
+    if (renderMode === "html") {
+      return <StaticTableOfContents items={tocItems} />;
+    }
+
+    return (
+      <Suspense fallback={null}>
+        {readOnlyEditor && (
+          <LazyTableOfContents isShare={true} editor={readOnlyEditor} />
+        )}
+      </Suspense>
+    );
+  };
 
   return (
-    <AppShell
-      header={{ height: 50 }}
-      {...(data?.pageTree?.length > 1 && {
-        navbar: {
-          width: 300,
-          breakpoint: "sm",
-          collapsed: {
-            mobile: !mobileOpened,
-            desktop: !desktopOpened,
-          },
-        },
-      })}
-      aside={{
-        width: 300,
-        breakpoint: "sm",
-        collapsed: {
-          mobile: !mobileTocOpened,
-          desktop: !tocOpened,
-        },
-      }}
-      padding="md"
-    >
-      <AppShell.Header>
-        <Group wrap="nowrap" justify="space-between" py="sm" px="xl">
-          <Group wrap="nowrap">
-            {data?.pageTree?.length > 1 && (
+    <div className={classes.shell}>
+      <header className={classes.header}>
+        <div className={classes.headerInner}>
+          <div className={classes.headerGroup}>
+            {hasTree && (
               <>
-                <Tooltip label={t("Sidebar toggle")}>
-                  <SidebarToggle
-                    aria-label={t("Sidebar toggle")}
-                    opened={mobileOpened}
-                    onClick={toggleMobile}
-                    hiddenFrom="sm"
-                    size="sm"
-                  />
-                </Tooltip>
+                <button
+                  type="button"
+                  className={cx(classes.iconButton, classes.mobileOnly, {
+                    [classes.iconButtonActive]: mobileOpened,
+                  })}
+                  onClick={toggleMobile}
+                  aria-label={t("Sidebar toggle")}
+                  title={t("Sidebar toggle")}
+                >
+                  {mobileOpened ? (
+                    <IconLayoutSidebarRightExpand size={18} stroke={1.75} />
+                  ) : (
+                    <IconLayoutSidebarRightCollapse size={18} stroke={1.75} />
+                  )}
+                </button>
 
-                <Tooltip label={t("Sidebar toggle")}>
-                  <SidebarToggle
-                    aria-label={t("Sidebar toggle")}
-                    opened={desktopOpened}
-                    onClick={toggleDesktop}
-                    visibleFrom="sm"
-                    size="sm"
-                  />
-                </Tooltip>
+                <button
+                  type="button"
+                  className={cx(classes.iconButton, classes.desktopOnly, {
+                    [classes.iconButtonActive]: desktopOpened,
+                  })}
+                  onClick={toggleDesktop}
+                  aria-label={t("Sidebar toggle")}
+                  title={t("Sidebar toggle")}
+                >
+                  {desktopOpened ? (
+                    <IconLayoutSidebarRightExpand size={18} stroke={1.75} />
+                  ) : (
+                    <IconLayoutSidebarRightCollapse size={18} stroke={1.75} />
+                  )}
+                </button>
               </>
             )}
-          </Group>
+          </div>
 
-          {shareId && (
-            <Group visibleFrom="sm">
-              <SearchControl onClick={shareSearchSpotlight.open} />
-            </Group>
-          )}
-
-          <Group>
-            <>
-              {shareId && (
-                <Group hiddenFrom="sm">
-                  <SearchMobileControl onSearch={shareSearchSpotlight.open} />
-                </Group>
-              )}
-
-              <Tooltip label={t("Table of contents")} withArrow>
-                <ActionIcon
-                  variant="subtle"
-                  onClick={toggleTocMobile}
-                  hiddenFrom="sm"
-                  size="sm"
-                >
-                  <IconList size={18} stroke={1.75} />
-                </ActionIcon>
-              </Tooltip>
-
-              <Tooltip label={t("Table of contents")} withArrow>
-                <ActionIcon
-                  variant="subtle"
-                  onClick={toggleToc}
-                  visibleFrom="sm"
-                  size="sm"
-                >
-                  <IconList size={18} stroke={1.75} />
-                </ActionIcon>
-              </Tooltip>
-            </>
-
-            <ThemeToggle />
-          </Group>
-        </Group>
-      </AppShell.Header>
-
-      {data?.pageTree?.length > 1 && (
-        <AppShell.Navbar p="md" className={classes.navbar}>
-          <MemoizedSharedTree sharedPageTree={data} />
-        </AppShell.Navbar>
-      )}
-
-      <AppShell.Main>
-        {children}
-
-        {data && shareId && !data.hasLicenseKey && <ShareBranding />}
-      </AppShell.Main>
-
-      <AppShell.Aside
-        p="md"
-        withBorder={mobileTocOpened}
-        className={classes.aside}
-      >
-        <ScrollArea style={{ height: "80vh" }} scrollbarSize={5} type="scroll">
-          <div style={{ paddingBottom: "50px" }}>
-            {readOnlyEditor && (
-              <TableOfContents isShare={true} editor={readOnlyEditor} />
+          <div className={cx(classes.headerGroup, classes.headerGroupCenter)}>
+            {canUseSearch && (
+              <button
+                type="button"
+                className={cx(classes.searchControl, classes.desktopOnly)}
+                onClick={openShareSearch}
+                aria-label={t("Search")}
+              >
+                <IconSearch size={16} stroke={1.75} />
+                <span className={classes.searchLabel}>{t("Search")}</span>
+                <span className={classes.shortcut}>Ctrl + K</span>
+              </button>
             )}
           </div>
-        </ScrollArea>
-      </AppShell.Aside>
 
-      <ShareSearchSpotlight shareId={shareId} accessToken={accessToken} />
-    </AppShell>
+          <div className={cx(classes.headerGroup, classes.headerGroupEnd)}>
+            {canUseSearch && (
+              <button
+                type="button"
+                className={cx(classes.iconButton, classes.mobileOnly)}
+                onClick={openShareSearch}
+                aria-label={t("Search")}
+                title={t("Search")}
+              >
+                <IconSearch size={18} stroke={1.75} />
+              </button>
+            )}
+
+            <button
+              type="button"
+              className={cx(classes.iconButton, classes.mobileOnly, {
+                [classes.iconButtonActive]: mobileTocOpened,
+              })}
+              onClick={toggleTocMobile}
+              aria-label={t("Table of contents")}
+              title={t("Table of contents")}
+            >
+              <IconList size={18} stroke={1.75} />
+            </button>
+
+            <button
+              type="button"
+              className={cx(classes.iconButton, classes.desktopOnly, {
+                [classes.iconButtonActive]: desktopHasRightSidebar,
+              })}
+              onClick={toggleToc}
+              aria-label={t("Table of contents")}
+              title={t("Table of contents")}
+            >
+              <IconList size={18} stroke={1.75} />
+            </button>
+
+            <button
+              type="button"
+              className={classes.iconButton}
+              onClick={() => {
+                setColorScheme(toggleShareColorScheme());
+              }}
+              aria-label={t("Toggle Color Scheme")}
+              title={t("Toggle Color Scheme")}
+            >
+              {colorScheme === "dark" ? (
+                <IconSun size={18} stroke={1.75} />
+              ) : (
+                <IconMoon size={18} stroke={1.75} />
+              )}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div
+        className={cx(classes.body, {
+          [classes.bodyWithLeft]: desktopHasLeftSidebar && !desktopHasRightSidebar,
+          [classes.bodyWithRight]:
+            !desktopHasLeftSidebar && desktopHasRightSidebar,
+          [classes.bodyWithBoth]:
+            desktopHasLeftSidebar && desktopHasRightSidebar,
+        })}
+      >
+        {desktopHasLeftSidebar && (
+          <aside className={cx(classes.sidebar, classes.desktopNav)}>
+            <div className={classes.sidebarInner}>
+              <ShareWidgetBoundary area="desktop-shared-tree">
+                <Suspense fallback={null}>
+                  {sharedPageTree && (
+                    <LazySharedTree sharedPageTree={sharedPageTree} />
+                  )}
+                </Suspense>
+              </ShareWidgetBoundary>
+            </div>
+          </aside>
+        )}
+
+        <main className={classes.main}>
+          {children}
+          {showShareBranding && <ShareBranding />}
+        </main>
+
+        {desktopHasRightSidebar && (
+          <aside className={cx(classes.sidebar, classes.desktopAside)}>
+            <div className={classes.sidebarInner}>
+              <ShareWidgetBoundary area="desktop-table-of-contents">
+                {renderToc()}
+              </ShareWidgetBoundary>
+            </div>
+          </aside>
+        )}
+      </div>
+
+      {hasTree && mobileOpened && (
+        <>
+          <button
+            type="button"
+            className={classes.drawerBackdrop}
+            onClick={toggleMobile}
+            aria-label={t("Close sidebar")}
+          />
+          <aside className={cx(classes.drawer, classes.drawerLeft)}>
+            <div className={classes.drawerInner}>
+              <ShareWidgetBoundary area="mobile-shared-tree">
+                <Suspense fallback={null}>
+                  {sharedPageTree && (
+                    <LazySharedTree sharedPageTree={sharedPageTree} />
+                  )}
+                </Suspense>
+              </ShareWidgetBoundary>
+            </div>
+          </aside>
+        </>
+      )}
+
+      {mobileTocOpened && (
+        <>
+          <button
+            type="button"
+            className={classes.drawerBackdrop}
+            onClick={toggleTocMobile}
+            aria-label={t("Close table of contents")}
+          />
+          <aside className={cx(classes.drawer, classes.drawerRight)}>
+            <div className={classes.drawerInner}>
+              <ShareWidgetBoundary area="mobile-table-of-contents">
+                {renderToc()}
+              </ShareWidgetBoundary>
+            </div>
+          </aside>
+        </>
+      )}
+
+      {canUseSearch && isSearchMounted && (
+        <ShareWidgetBoundary area="share-search">
+          <Suspense fallback={null}>
+            <LazyShareSearchSpotlight
+              shareId={shareId}
+              accessToken={accessToken}
+              openToken={searchOpenToken}
+            />
+          </Suspense>
+        </ShareWidgetBoundary>
+      )}
+    </div>
   );
 }

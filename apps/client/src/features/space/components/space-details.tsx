@@ -12,7 +12,7 @@ import {
 } from "@/features/attachments/services/attachment-service.ts";
 import { useTranslation } from "react-i18next";
 import { AvatarIconType } from "@/features/attachments/types/attachment.types.ts";
-import { queryClient } from "@/main.tsx";
+import { queryClient } from "@/query-client.ts";
 import {
   ResponsiveSettingsContent,
   ResponsiveSettingsControl,

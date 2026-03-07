@@ -32,7 +32,7 @@ import { getFileImportSizeLimit, isCloud } from "@/lib/config.ts";
 import { formatBytes } from "@/lib";
 import { workspaceAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { getFileTaskById } from "@/features/file-task/services/file-task-service.ts";
-import { queryClient } from "@/main.tsx";
+import { queryClient } from "@/query-client.ts";
 import { useQueryEmit } from "@/features/websocket/use-query-emit.ts";
 
 interface PageImportModalProps {

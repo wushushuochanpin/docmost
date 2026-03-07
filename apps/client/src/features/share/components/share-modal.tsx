@@ -12,7 +12,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
-import { IconExternalLink, IconWorld, IconLock } from "@tabler/icons-react";
+import { IconExternalLink, IconWorld, IconLock, IconCopy } from "@tabler/icons-react";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   useCreateShareMutation,
@@ -25,6 +25,7 @@ import { extractPageSlugId, getPageIcon } from "@/lib";
 import { useTranslation } from "react-i18next";
 import { usePageQuery } from "@/features/page/queries/page-query.ts";
 import CopyTextButton from "@/components/common/copy.tsx";
+import { CopyButton } from "@/components/common/copy-button";
 import { getAppUrl, isCloud } from "@/lib/config.ts";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import classes from "@/features/share/components/share.module.css";
@@ -33,6 +34,7 @@ import { useAtom } from "jotai";
 import { workspaceAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { useSpaceQuery } from "@/features/space/queries/space-query.ts";
 import { ShareAccessMode } from "@/features/share/types/share.types.ts";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ShareModalProps {
   readOnly?: boolean;
@@ -49,6 +51,7 @@ const MASKED_PASSWORD = "********";
 function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { pageSlug } = useParams();
   const pageSlugId = extractPageSlugId(pageSlug);
   const { data: page } = usePageQuery({ pageId: pageSlugId });
@@ -57,6 +60,7 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
     data: share,
     isLoading: isShareForPageLoading,
     isFetching: isShareForPageFetching,
+    refetch: refetchShareForPage,
   } = useShareForPageQuery(pageId);
   const { spaceSlug } = useParams();
   const { isTrial } = useTrial();
@@ -144,6 +148,18 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
     return `${getAppUrl()}/share/${share.key}/p/${pageSlug}`;
   }, [share?.key, pageSlug]);
 
+  const shareCopyValue = useMemo(() => {
+    if (!shareLink) {
+      return "";
+    }
+
+    if (share?.accessMode !== "password_expiring" || !oneTimePassword) {
+      return shareLink;
+    }
+
+    return `${shareLink}\n${t("Password")}: ${oneTimePassword}`;
+  }, [shareLink, share?.accessMode, oneTimePassword, t]);
+
   const submitShare = async () => {
     if (!pageId) {
       return;
@@ -172,6 +188,8 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
     }
 
     setOneTimePassword(result?.generatedPassword ?? null);
+    await queryClient.invalidateQueries({ queryKey: ["share-for-page", pageId] });
+    await refetchShareForPage();
     setIsReshareDraft(false);
   };
 
@@ -331,7 +349,7 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
                 variant="default"
                 value={shareLink}
                 readOnly
-                rightSection={<CopyTextButton text={shareLink} />}
+                rightSection={<CopyTextButton text={shareCopyValue} />}
                 style={{ width: "100%" }}
               />
               <ActionIcon
@@ -457,7 +475,7 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
                 variant="default"
                 value={shareLink}
                 readOnly
-                rightSection={<CopyTextButton text={shareLink} />}
+                rightSection={<CopyTextButton text={shareCopyValue} />}
                 style={{ width: "100%" }}
               />
               <ActionIcon
@@ -494,10 +512,21 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
                 value={oneTimePassword || MASKED_PASSWORD}
                 readOnly
                 mb="xs"
-                rightSection={
-                  oneTimePassword ? <CopyTextButton text={oneTimePassword} /> : undefined
-                }
               />
+              {oneTimePassword && (
+                <CopyButton value={shareCopyValue} timeout={2000}>
+                  {({ copied, copy }) => (
+                    <Button
+                      variant="light"
+                      leftSection={<IconCopy size={14} />}
+                      onClick={copy}
+                      mb="xs"
+                    >
+                      {copied ? t("Copied") : t("Copy link and password")}
+                    </Button>
+                  )}
+                </CopyButton>
+              )}
               <Text size="xs" c="dimmed" mb="sm">
                 {oneTimePassword
                   ? t("Shown once. Save it now.")

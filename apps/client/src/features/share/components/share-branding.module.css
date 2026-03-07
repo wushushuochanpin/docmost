@@ -1,0 +1,43 @@
+.branding {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 30;
+}
+
+.brandingLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border-default);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 88%);
+  color: var(--ui-text-primary);
+  box-shadow: var(--ui-shadow-sm);
+  backdrop-filter: blur(10px);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.brandingLink:hover,
+.brandingLink:focus-visible {
+  border-color: var(--ui-border-hover);
+  background: var(--ui-bg-surface);
+}
+
+:global(:root[data-mantine-color-scheme="dark"]) .brandingLink {
+  background: rgb(37 37 38 / 88%);
+}
+
+@media (max-width: 48em) {
+  .branding {
+    right: 16px;
+    bottom: 16px;
+  }
+}

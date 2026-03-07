@@ -26,7 +26,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IPagination, QueryParams } from "@/lib/types.ts";
 import { useTranslation } from "react-i18next";
-import { queryClient } from "@/main.tsx";
+import { queryClient } from "@/query-client.ts";
 import { getRecentChanges } from "@/features/page/services/page-service.ts";
 import { useEffect } from "react";
 import { validate as isValidUuid } from "uuid";

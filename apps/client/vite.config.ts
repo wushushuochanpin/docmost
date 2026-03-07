@@ -4,6 +4,40 @@ import * as path from "path";
 
 export const envPath = path.resolve(process.cwd(), "..", "..");
 
+const manualChunkGroups = [
+  {
+    name: "react-vendor",
+    matchers: [
+      "/node_modules/react/",
+      "/node_modules/react-dom/",
+      "/node_modules/scheduler/",
+    ],
+  },
+  {
+    name: "mantine-vendor",
+    matchers: [
+      "/@mantine/core/",
+      "/@mantine/hooks/",
+      "/@mantine/spotlight/",
+      "/@floating-ui/",
+    ],
+  },
+];
+
+function resolveManualChunk(id: string) {
+  if (!id.includes("node_modules")) {
+    return undefined;
+  }
+
+  for (const group of manualChunkGroups) {
+    if (group.matchers.some((matcher) => id.includes(matcher))) {
+      return group.name;
+    }
+  }
+
+  return undefined;
+}
+
 export default defineConfig(({ mode }) => {
   const {
     APP_URL,
@@ -60,6 +94,13 @@ export default defineConfig(({ mode }) => {
           target: proxyTarget,
           ws: true,
           rewriteWsOrigin: true,
+        },
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: resolveManualChunk,
         },
       },
     },

@@ -68,7 +68,7 @@ import {
   getPageById,
 } from "@/features/page/services/page-service.ts";
 import { IPage, SidebarPagesParams } from "@/features/page/types/page.types.ts";
-import { queryClient } from "@/main.tsx";
+import { queryClient } from "@/query-client.ts";
 import { OpenMap } from "react-arborist/dist/main/state/open-slice";
 import {
   useDisclosure,

@@ -1,4 +1,4 @@
-import { queryClient } from "@/main.tsx";
+import { queryClient } from "@/query-client.ts";
 import {
   getBilling,
   getBillingPlans,

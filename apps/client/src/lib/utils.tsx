@@ -1,8 +1,7 @@
 import { validate as isValidUUID } from "uuid";
-import { ActionIcon } from "@mantine/core";
 import { IconFileDescription } from "@tabler/icons-react";
-import { ReactNode } from "react";
-import { TFunction } from "i18next";
+import type { ReactNode } from "react";
+import type { TFunction } from "i18next";
 
 export function formatMemberCount(memberCount: number, t: TFunction): string {
   if (memberCount === 1) {
@@ -85,13 +84,7 @@ export function capitalizeFirstChar(string: string) {
 }
 
 export function getPageIcon(icon: string, size = 18): string | ReactNode {
-  return (
-    icon || (
-      <ActionIcon variant="transparent" color="gray" size={size}>
-        <IconFileDescription size={size} />
-      </ActionIcon>
-    )
-  );
+  return icon || <IconFileDescription size={size} />;
 }
 
 export function castToBoolean(value: unknown): boolean {

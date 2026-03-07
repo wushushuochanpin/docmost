@@ -12,7 +12,7 @@ import {
   invalidateOnUpdatePage,
 } from "../page/queries/page-query";
 import { RQ_KEY } from "../comment/queries/comment-query";
-import { queryClient } from "@/main.tsx";
+import { queryClient } from "@/query-client.ts";
 import { IComment } from "@/features/comment/types/comment.types";
 
 export const useQuerySubscription = () => {

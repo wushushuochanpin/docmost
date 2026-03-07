@@ -1,0 +1,43 @@
+.empty {
+  color: var(--ui-text-secondary);
+  font-size: 0.9rem;
+}
+
+.title {
+  margin: 0 0 16px;
+  color: var(--ui-text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.list {
+  border-left: 1px solid var(--ui-border-default);
+}
+
+.link {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 0 10px 10px 0;
+  background: transparent;
+  color: var(--ui-text-secondary);
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.5;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.link:hover,
+.link:focus-visible {
+  background: var(--ui-bg-subtle);
+  color: var(--ui-text-primary);
+}
+
+.active {
+  background: var(--ui-bg-subtle);
+  color: var(--ui-text-primary);
+  font-weight: 600;
+}

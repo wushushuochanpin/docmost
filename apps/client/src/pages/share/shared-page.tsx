@@ -1,63 +1,97 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
-import { useTranslation } from "react-i18next";
-import {
-  useGetShareByIdQuery,
-  useSharePageQuery,
-  useVerifyShareAccessMutation,
-} from "@/features/share/queries/share-query.ts";
-import {
-  Alert,
-  Button,
-  Container,
-  Group,
-  PasswordInput,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import React, { useEffect, useMemo, useState } from "react";
-import ReadonlyPageEditor from "@/features/editor/readonly-page-editor.tsx";
+import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { extractPageSlugId } from "@/lib";
-import { Error404 } from "@/components/ui/error-404.tsx";
 import ShareBranding from "@/features/share/components/share-branding.tsx";
 import { useAtom } from "jotai";
-import { sharedAccessTokenAtom } from "@/features/share/atoms/shared-page-atom.ts";
-import useCurrentUser from "@/features/user/hooks/use-current-user.ts";
+import {
+  sharedAccessTokenAtom,
+  sharedShellStateAtom,
+} from "@/features/share/atoms/shared-page-atom.ts";
 import { getShareLegacyRouteMode } from "@/lib/config.ts";
+import SharedPageSkeleton from "@/features/share/components/shared-page-skeleton.tsx";
+import SharedPageHtmlContent from "@/features/share/components/shared-page-html-content.tsx";
+import {
+  getShareInfo,
+  getSharePageInfo,
+  verifyShareAccess,
+} from "@/features/share/services/share-service.ts";
+import { useShareAsyncResource } from "@/features/share/hooks/use-share-async-resource.ts";
+import { getMyInfo } from "@/features/user/services/user-service.ts";
+import ShareNotFound from "@/features/share/components/share-not-found.tsx";
+import { lazyShareMantineComponent } from "@/features/share/components/lazy-share-mantine.tsx";
+import {
+  useShareDocumentTitle,
+  useShareRobotsMeta,
+} from "@/features/share/hooks/use-share-document-title.ts";
+import { useShareTranslation } from "@/features/share/share-translations.ts";
+import classes from "@/features/share/components/share-page-state.module.css";
+
+const LazyReadonlyPageEditor = lazy(() =>
+  lazyShareMantineComponent(
+    () => import("@/features/editor/readonly-page-editor.tsx"),
+  ),
+);
 
 const SHARE_PASSWORD_REQUIRED = "SHARE_PASSWORD_REQUIRED";
 const SHARE_ACCESS_TOKEN_INVALID = "SHARE_ACCESS_TOKEN_INVALID";
 const SHARE_PASSWORD_INVALID = "SHARE_PASSWORD_INVALID";
 const SHARE_EXPIRED = "SHARE_EXPIRED";
+const SHARE_NOT_FOUND = "SHARE_NOT_FOUND";
 const SHARE_VERIFY_RATE_LIMITED = "SHARE_VERIFY_RATE_LIMITED";
 
 function getErrorCode(error: any): string | undefined {
-  return error?.response?.data?.code;
+  const code = error?.response?.data?.code ?? error?.data?.code;
+  return typeof code === "string" ? code : undefined;
+}
+
+function getErrorStatus(error: any): number | undefined {
+  const status =
+    error?.status ??
+    error?.response?.status ??
+    error?.data?.statusCode ??
+    error?.response?.data?.statusCode;
+
+  if (typeof status === "number") {
+    return status;
+  }
+
+  if (typeof status === "string") {
+    const parsed = Number(status);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+}
+
+function getErrorMessage(error: any): string | undefined {
+  const message = error?.response?.data?.message ?? error?.data?.message;
+  if (typeof message === "string") {
+    return message;
+  }
+
+  if (Array.isArray(message)) {
+    const normalized = message
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter(Boolean)
+      .join(", ");
+    return normalized || undefined;
+  }
+
+  return typeof error?.message === "string" ? error.message : undefined;
 }
 
 export default function SharedPage() {
-  const { t } = useTranslation();
+  const { t } = useShareTranslation();
   const { pageSlug } = useParams();
   const { shareId } = useParams();
   const shareLegacyRouteMode = getShareLegacyRouteMode();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
   const [accessTokens, setAccessTokens] = useAtom(sharedAccessTokenAtom);
+  const [, setSharedShellState] = useAtom(sharedShellStateAtom);
   const accessToken = shareId ? accessTokens[shareId] : undefined;
-  const verifyShareAccessMutation = useVerifyShareAccessMutation();
-  const { data: currentUser } = useCurrentUser();
-  const {
-    data: shareMeta,
-    error: shareMetaError,
-    isError: isShareMetaError,
-  } = useGetShareByIdQuery(
-    shareId,
-    undefined,
-    true,
-    60 * 1000,
-  );
 
   const shareInput = useMemo(
     () => ({
@@ -67,12 +101,31 @@ export default function SharedPage() {
     }),
     [accessToken, pageSlug, shareId],
   );
-
-  const { data, isLoading, isError, error } = useSharePageQuery(shareInput);
-  const shareMetaStatus =
-    (shareMetaError as any)?.["status"] ??
-    (shareMetaError as any)?.response?.status;
-  const isShareLinkRevoked = Boolean(shareId && isShareMetaError && shareMetaStatus === 404);
+  const { data, isLoading, isError, error } = useShareAsyncResource(
+    shareInput.pageId ? () => getSharePageInfo(shareInput) : null,
+    [shareInput.pageId, shareInput.shareId, shareInput.accessToken],
+    { enabled: Boolean(shareInput.pageId) },
+  );
+  const mainErrorStatus = getErrorStatus(error);
+  const mainErrorCode = getErrorCode(error);
+  const shouldLoadExpiredShareMeta =
+    Boolean(shareId) &&
+    isError &&
+    (mainErrorCode === SHARE_EXPIRED || mainErrorStatus === 410);
+  const { data: currentUser } = useShareAsyncResource(
+    shouldLoadExpiredShareMeta ? () => getMyInfo() : null,
+    [shouldLoadExpiredShareMeta],
+    { enabled: shouldLoadExpiredShareMeta },
+  );
+  const { data: shareMeta } = useShareAsyncResource(
+    shouldLoadExpiredShareMeta && shareId
+      ? () => getShareInfo(shareId, undefined, true)
+      : null,
+    [shareId, shouldLoadExpiredShareMeta],
+    { enabled: shouldLoadExpiredShareMeta },
+  );
+  useShareDocumentTitle(data ? `${data.page?.title || t("untitled")}` : undefined);
+  useShareRobotsMeta(Boolean(data && !data.share.searchIndexing));
 
   useEffect(() => {
     if (!data) return;
@@ -94,7 +147,34 @@ export default function SharedPage() {
   }, [shareId, data, pageSlug, navigate, shareLegacyRouteMode]);
 
   useEffect(() => {
-    if (!isShareLinkRevoked || !shareId) {
+    if (!data) {
+      setSharedShellState(null);
+      return;
+    }
+
+    const canUseStaticHtml = Boolean(data.rendered?.html);
+
+    setSharedShellState({
+      includeSubPages: Boolean(data.share.includeSubPages),
+      hasLicenseKey: data.hasLicenseKey,
+      canUseSearch: Boolean(shareId),
+      renderMode: canUseStaticHtml ? "html" : "editor",
+      toc: canUseStaticHtml ? (data.rendered?.toc ?? []) : [],
+    });
+  }, [data, setSharedShellState, shareId]);
+
+  useEffect(() => {
+    return () => {
+      setSharedShellState(null);
+    };
+  }, [setSharedShellState]);
+
+  useEffect(() => {
+    if (
+      !shareId ||
+      !accessToken ||
+      mainErrorCode !== SHARE_ACCESS_TOKEN_INVALID
+    ) {
       return;
     }
 
@@ -107,7 +187,7 @@ export default function SharedPage() {
       delete next[shareId];
       return next;
     });
-  }, [isShareLinkRevoked, shareId, setAccessTokens]);
+  }, [accessToken, mainErrorCode, shareId, setAccessTokens]);
 
   const onVerifyShareAccess = async () => {
     if (!shareId) {
@@ -115,8 +195,9 @@ export default function SharedPage() {
     }
 
     setPasswordError(null);
+    setIsVerifyingPassword(true);
     try {
-      const result = await verifyShareAccessMutation.mutateAsync({
+      const result = await verifyShareAccess({
         shareId,
         password,
       });
@@ -127,13 +208,14 @@ export default function SharedPage() {
       }));
       setPassword("");
     } catch (err) {
+      const status = getErrorStatus(err);
       const code = getErrorCode(err);
       if (code === SHARE_PASSWORD_INVALID) {
         setPasswordError(t("Incorrect password"));
         return;
       }
 
-      if (code === SHARE_EXPIRED) {
+      if (code === SHARE_EXPIRED || status === 410) {
         setPasswordError(t("Share link has expired"));
         return;
       }
@@ -143,21 +225,21 @@ export default function SharedPage() {
         return;
       }
 
-      setPasswordError(t("Failed to verify share password"));
+      setPasswordError(
+        getErrorMessage(err) || t("Failed to verify share password"),
+      );
+    } finally {
+      setIsVerifyingPassword(false);
     }
   };
 
   if (isLoading) {
-    return <></>;
-  }
-
-  if (isShareLinkRevoked) {
-    return <Error404 />;
+    return <SharedPageSkeleton />;
   }
 
   if (isError || !data) {
-    const status = (error as any)?.["status"] ?? (error as any)?.response?.status;
-    const code = getErrorCode(error);
+    const status = mainErrorStatus;
+    const code = mainErrorCode;
     const canRegenerateLink =
       Boolean(shareId) &&
       Boolean(currentUser?.user?.id) &&
@@ -166,96 +248,130 @@ export default function SharedPage() {
 
     if (code === SHARE_EXPIRED || status === 410) {
       return (
-        <Container size={560} py={80}>
-          <Stack gap="md" align="center">
-            <Title order={3}>{t("Share link has expired")}</Title>
-            <Text c="dimmed">{t("Ask the owner to regenerate a new link.")}</Text>
+        <div className={classes.centeredViewport}>
+          <section className={classes.statePanel}>
+            <h1 className={classes.stateTitle}>{t("Share link has expired")}</h1>
+            <p className={classes.stateDescription}>
+              {t("Ask the owner to regenerate a new link.")}
+            </p>
             {canRegenerateLink && (
-              <Button
-                variant="light"
-                onClick={() => navigate("/settings/sharing")}
-              >
-                {t("Regenerate share link")}
-              </Button>
+              <div className={classes.stateActions}>
+                <a className={classes.secondaryButton} href="/settings/sharing">
+                  {t("Regenerate share link")}
+                </a>
+              </div>
             )}
-          </Stack>
-        </Container>
+          </section>
+        </div>
       );
     }
 
-    if (code === SHARE_PASSWORD_REQUIRED || code === SHARE_ACCESS_TOKEN_INVALID) {
+    if (
+      code === SHARE_PASSWORD_REQUIRED ||
+      code === SHARE_ACCESS_TOKEN_INVALID
+    ) {
       if (!shareId) {
         return (
-          <Container size={560} py={80}>
-            <Stack gap="md" align="center">
-              <Title order={3}>{t("Use full share link")}</Title>
-              <Text c="dimmed">
+          <div className={classes.centeredViewport}>
+            <section className={classes.statePanel}>
+              <h1 className={classes.stateTitle}>{t("Use full share link")}</h1>
+              <p className={classes.stateDescription}>
                 {t("This shared page requires the full link with share ID.")}
-              </Text>
-            </Stack>
-          </Container>
+              </p>
+            </section>
+          </div>
         );
       }
 
       return (
-        <Container size={420} py={80}>
-          <Stack gap="md">
-            <Title order={3}>{t("Password required")}</Title>
-            <Text c="dimmed">
+        <div className={classes.centeredViewport}>
+          <section
+            className={`${classes.statePanel} ${classes.statePanelNarrow}`}
+          >
+            <h1 className={classes.stateTitle}>{t("Password required")}</h1>
+            <p className={classes.stateDescription}>
               {t("Enter the password to access this shared page.")}
-            </Text>
-            <PasswordInput
-              label={t("Password")}
-              value={password}
-              onChange={(event) => setPassword(event.currentTarget.value)}
-              error={passwordError}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  onVerifyShareAccess();
-                }
-              }}
-            />
-            <Group>
-              <Button
+            </p>
+
+            <div className={classes.field}>
+              <label className={classes.label} htmlFor="share-password">
+                {t("Password")}
+              </label>
+              <input
+                id="share-password"
+                className={`${classes.input} ${
+                  passwordError ? classes.inputError : ""
+                }`}
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    onVerifyShareAccess();
+                  }
+                }}
+                aria-invalid={Boolean(passwordError)}
+              />
+            </div>
+
+            <div className={classes.stateActions}>
+              <button
+                type="button"
+                className={classes.primaryButton}
                 onClick={onVerifyShareAccess}
-                loading={verifyShareAccessMutation.isPending}
+                disabled={isVerifyingPassword}
               >
                 {t("Verify password")}
-              </Button>
-            </Group>
+              </button>
+            </div>
+
             {passwordError && (
-              <Alert color="red" variant="light">
-                {passwordError}
-              </Alert>
+              <div className={classes.alert}>{passwordError}</div>
             )}
-          </Stack>
-        </Container>
+          </section>
+        </div>
       );
     }
 
-    if ([401, 403, 404].includes(status)) {
-      return <Error404 />;
+    if (code === SHARE_NOT_FOUND || [401, 403, 404].includes(status || 0)) {
+      return <ShareNotFound />;
     }
-    return <div>{t("Error fetching page data.")}</div>;
+
+    return (
+      <div className={classes.centeredViewport}>
+        <section className={classes.statePanel}>
+          <h1 className={classes.stateTitle}>{t("Unable to load shared page")}</h1>
+          <p className={classes.stateDescription}>
+            {getErrorMessage(error) || t("Error fetching page data.")}
+          </p>
+        </section>
+      </div>
+    );
   }
+
+  const canUseStaticHtml = Boolean(data.rendered?.html);
 
   return (
     <div>
-      <Helmet>
-        <title>{`${data?.page?.title || t("untitled")}`}</title>
-        {!data?.share.searchIndexing && (
-          <meta name="robots" content="noindex" />
+      <div className={classes.pageFrame}>
+        {canUseStaticHtml ? (
+          <SharedPageHtmlContent
+            title={data.page.title}
+            html={data.rendered?.html || ""}
+            interactiveBlocks={data.rendered?.interactiveBlocks || []}
+          />
+        ) : (
+          <Suspense fallback={<SharedPageSkeleton />}>
+            <LazyReadonlyPageEditor
+              key={data.page.id}
+              title={data.page.title}
+              content={data.page.content}
+              pageId={data.page.id}
+            />
+          </Suspense>
         )}
-      </Helmet>
-
-      <Container size={900} p={0}>
-        <ReadonlyPageEditor
-          key={data.page.id}
-          title={data.page.title}
-          content={data.page.content}
-          pageId={data.page.id}
-        />
-      </Container>
+      </div>
 
       {data && !shareId && !data.hasLicenseKey && <ShareBranding />}
     </div>
