@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { readOnlyEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   sharedAccessTokenAtom,
   sharedShellStateAtom,
@@ -72,6 +72,7 @@ export default function ShareShell({
   const [mobileTocOpened] = useAtom(mobileTableOfContentAsideAtom);
   const toggleTocMobile = useToggleToc(mobileTableOfContentAsideAtom);
   const toggleToc = useToggleToc(tableOfContentAsideAtom);
+  const setMobileTocOpened = useSetAtom(mobileTableOfContentAsideAtom);
 
   const { shareId } = useParams();
   const accessTokens = useAtomValue(sharedAccessTokenAtom);
@@ -140,15 +141,28 @@ export default function ShareShell({
     setSearchOpenToken((prev) => prev + 1);
   };
 
-  const renderToc = () => {
+  const closeMobileToc = () => {
+    setMobileTocOpened(false);
+  };
+
+  const renderToc = (options?: { onNavigate?: () => void }) => {
     if (renderMode === "html") {
-      return <StaticTableOfContents items={tocItems} />;
+      return (
+        <StaticTableOfContents
+          items={tocItems}
+          onNavigate={options?.onNavigate}
+        />
+      );
     }
 
     return (
       <Suspense fallback={null}>
         {readOnlyEditor && (
-          <LazyTableOfContents isShare={true} editor={readOnlyEditor} />
+          <LazyTableOfContents
+            isShare={true}
+            editor={readOnlyEditor}
+            onNavigate={options?.onNavigate}
+          />
         )}
       </Suspense>
     );
@@ -323,7 +337,7 @@ export default function ShareShell({
           <aside className={cx(classes.drawer, classes.drawerRight)}>
             <div className={classes.drawerInner}>
               <ShareWidgetBoundary area="mobile-table-of-contents">
-                {renderToc()}
+                {renderToc({ onNavigate: closeMobileToc })}
               </ShareWidgetBoundary>
             </div>
           </aside>

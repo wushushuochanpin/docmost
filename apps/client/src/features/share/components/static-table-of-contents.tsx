@@ -10,6 +10,7 @@ import classes from "./static-table-of-contents.module.css";
 
 interface StaticTableOfContentsProps {
   items: ISharedPageRenderedTocItem[];
+  onNavigate?: () => void;
 }
 
 const PAGE_HEADER_HEIGHT_PX = 45;
@@ -42,6 +43,21 @@ const scrollWindowTo = (top: number, behavior: ScrollBehavior = "smooth") => {
   }
 };
 
+const queueAfterNavigation = (callback?: () => void) => {
+  if (!callback) {
+    return;
+  }
+
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => {
+      window.setTimeout(callback, 0);
+    });
+    return;
+  }
+
+  window.setTimeout(callback, 0);
+};
+
 const getStickyOffset = () => {
   const rootStyles = window.getComputedStyle(document.documentElement);
   const rawHeaderOffset = rootStyles.getPropertyValue("--app-shell-header-offset");
@@ -59,6 +75,7 @@ const getStickyOffset = () => {
 
 export default function StaticTableOfContents({
   items,
+  onNavigate,
 }: StaticTableOfContentsProps) {
   const { t } = useShareTranslation();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -115,21 +132,24 @@ export default function StaticTableOfContents({
 
   const handleScrollToHeading = (item: ISharedPageRenderedTocItem) => {
     const id = item.id;
+    const scrollBehavior: ScrollBehavior = onNavigate ? "auto" : "smooth";
     const target = document.getElementById(id);
     if (!target) {
       requestShareScrollToHeading({
         id,
         segmentIndex: item.segmentIndex,
-        behavior: "smooth",
+        behavior: scrollBehavior,
       });
+      queueAfterNavigation(onNavigate);
       return;
     }
 
     const top = target.getBoundingClientRect().top + window.scrollY - getStickyOffset();
-    scrollWindowTo(top, "smooth");
+    scrollWindowTo(top, scrollBehavior);
     if (typeof window.history?.replaceState === "function") {
       window.history.replaceState(null, "", `#${id}`);
     }
+    queueAfterNavigation(onNavigate);
   };
 
   if (!items.length) {

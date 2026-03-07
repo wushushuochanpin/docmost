@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 type TableOfContentsProps = {
   editor: ReturnType<typeof useEditor>;
   isShare?: boolean;
+  onNavigate?: () => void;
 };
 
 export type HeadingLink = {
@@ -56,6 +57,21 @@ const getEditorStickyOffset = () => {
   return resolvedHeaderOffset + PAGE_HEADER_HEIGHT_PX;
 };
 
+const queueAfterNavigation = (callback?: () => void) => {
+  if (!callback) {
+    return;
+  }
+
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => {
+      window.setTimeout(callback, 0);
+    });
+    return;
+  }
+
+  window.setTimeout(callback, 0);
+};
+
 const recalculateLinks = (nodePos?: NodePos[] | null) => {
   const safeNodePos = Array.isArray(nodePos) ? nodePos : [];
   const nodes: HTMLElement[] = [];
@@ -94,6 +110,7 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
 
     const { view } = props.editor;
     const headerOffset = getEditorStickyOffset();
+    const scrollBehavior: ScrollBehavior = props.onNavigate ? "auto" : "smooth";
 
     const { node } = view.domAtPos(position);
     const element = node as HTMLElement;
@@ -102,13 +119,14 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
 
     window.scrollTo({
       top: scrollPosition,
-      behavior: "smooth",
+      behavior: scrollBehavior,
     });
 
     const tr = view.state.tr;
     tr.setSelection(new TextSelection(tr.doc.resolve(position)));
     view.dispatch(tr);
     view.focus();
+    queueAfterNavigation(props.onNavigate);
   };
 
   const handleUpdate = () => {

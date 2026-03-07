@@ -223,14 +223,51 @@
 }
 
 .article :global(details > summary) {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 24px;
   cursor: pointer;
   color: var(--ui-text-primary);
   font-weight: 700;
   list-style: none;
 }
 
+.article :global(details > summary::before) {
+  content: "";
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin-top: 0.35rem;
+  border-right: 2px solid #64748b;
+  border-bottom: 2px solid #64748b;
+  transform: rotate(-45deg);
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease;
+}
+
+.article :global(details[open] > summary::before) {
+  transform: rotate(45deg);
+}
+
+.article :global(details > summary:hover::before),
+.article :global(details > summary:focus-visible::before) {
+  border-color: var(--ui-text-primary);
+}
+
+.article :global(details > summary:focus-visible) {
+  outline: 2px solid rgb(37 99 235 / 28%);
+  outline-offset: 4px;
+  border-radius: 10px;
+}
+
 .article :global(details > summary::-webkit-details-marker) {
   display: none;
+}
+
+.article :global(details > summary > *) {
+  margin: 0;
 }
 
 .article :global(details > [data-type="detailsContent"]) {
