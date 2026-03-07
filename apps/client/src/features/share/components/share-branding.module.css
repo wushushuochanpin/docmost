@@ -31,10 +31,6 @@
   background: var(--ui-bg-surface);
 }
 
-:global(:root[data-mantine-color-scheme="dark"]) .brandingLink {
-  background: rgb(37 37 38 / 88%);
-}
-
 @media (max-width: 48em) {
   .branding {
     right: 16px;

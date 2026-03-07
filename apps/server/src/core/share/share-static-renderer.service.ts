@@ -129,6 +129,8 @@ export class ShareStaticRendererService {
       }
     });
 
+    this.decorateCodeBlocks($, root);
+
     const toc = this.collectToc($, root);
     const interactiveBlocks = this.collectInteractiveBlocks($, root);
 
@@ -182,6 +184,41 @@ export class ShareStaticRendererService {
     return toc;
   }
 
+  private decorateCodeBlocks(
+    $: ReturnType<typeof load>,
+    root: ReturnType<typeof $>,
+  ): void {
+    root.find('pre').each((_, element) => {
+      const $pre = $(element);
+
+      if ($pre.parent().hasClass('share-code-block')) {
+        return;
+      }
+
+      const $code = $pre.children('code').first();
+      if (!$code.length) {
+        return;
+      }
+
+      const language = this.getCodeBlockLanguage($code.attr('class'));
+      const label = this.getCodeBlockLabel(language);
+      const $wrapper = $('<section></section>')
+        .addClass('share-code-block')
+        .attr('data-language', language || 'plain-text');
+      const $meta = $('<div></div>')
+        .addClass('share-code-block__meta')
+        .text(label);
+      const $content = $pre.clone();
+
+      $content
+        .children('code')
+        .first()
+        .attr('data-language', language || 'plain-text');
+      $wrapper.append($meta, $content);
+      $pre.replaceWith($wrapper);
+    });
+  }
+
   private collectInteractiveBlocks(
     $: ReturnType<typeof load>,
     root: ReturnType<typeof $>,
@@ -209,6 +246,35 @@ export class ShareStaticRendererService {
   private createHeadingId(text: string, index: number): string {
     const base = slugify(text).trim() || `section-${index + 1}`;
     return base;
+  }
+
+  private getCodeBlockLanguage(className?: string): string | null {
+    if (!className) {
+      return null;
+    }
+
+    const match = className.match(/language-([a-z0-9_-]+)/i);
+    return match?.[1]?.toLowerCase() || null;
+  }
+
+  private getCodeBlockLabel(language: string | null): string {
+    if (!language) {
+      return 'Code';
+    }
+
+    if (language === 'mermaid') {
+      return 'Mermaid source';
+    }
+
+    if (language === 'plaintext' || language === 'text') {
+      return 'Plain text';
+    }
+
+    return language
+      .split(/[-_]/g)
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ');
   }
 
   private getCachedPayload(cacheKey: string): ShareRenderedPayload | null {

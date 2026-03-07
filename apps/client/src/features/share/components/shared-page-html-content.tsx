@@ -1,6 +1,4 @@
-import "@/features/editor/styles/index.css";
-import React, { useEffect, useRef, useState } from "react";
-import classes from "@/features/editor/styles/editor.module.css";
+import { useEffect, useRef, useState } from "react";
 import type { ISharedPageRenderedBlock } from "@/features/share/types/share.types.ts";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
 import contentClasses from "./shared-page-html-content.module.css";
@@ -404,28 +402,19 @@ export default function SharedPageHtmlContent({
 
   return (
     <>
-      <div
-        className={classes.docLayout}
-        style={{ "--editor-font-scale": 1 } as React.CSSProperties}
-      >
-        <div className={classes.readonlyTitleSection}>
-          <div className={classes.surfaceTitle}>
-            <div className="ProseMirror">
-              <h1>{title}</h1>
-            </div>
-          </div>
-        </div>
+      <section className={contentClasses.docLayout}>
+        <header className={contentClasses.titleSection}>
+          <h1 className={contentClasses.pageTitle}>{title}</h1>
+        </header>
 
-        <div className={classes.editor}>
-          <article
-            ref={articleRef}
-            className="ProseMirror"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
-        </div>
+        <article
+          ref={articleRef}
+          className={contentClasses.article}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
 
-        <div style={{ paddingBottom: "20vh" }} />
-      </div>
+        <div className={contentClasses.bottomSpacer} />
+      </section>
 
       {previewImage && (
         <div

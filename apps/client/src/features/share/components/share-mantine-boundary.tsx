@@ -12,7 +12,7 @@ export function ShareMantineBoundary({
     <MantineProvider
       theme={theme}
       cssVariablesResolver={mantineCssResolver}
-      defaultColorScheme="auto"
+      defaultColorScheme="light"
     >
       {children}
     </MantineProvider>

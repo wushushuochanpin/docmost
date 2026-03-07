@@ -22,9 +22,7 @@ import {
   IconLayoutSidebarRightCollapse,
   IconLayoutSidebarRightExpand,
   IconList,
-  IconMoon,
   IconSearch,
-  IconSun,
 } from "@tabler/icons-react";
 import { useToggleToc } from "@/features/share/hooks/use-toggle-toc.ts";
 import classes from "./share-shell.module.css";
@@ -32,12 +30,6 @@ import ShareBranding from "@/features/share/components/share-branding.tsx";
 import StaticTableOfContents from "@/features/share/components/static-table-of-contents.tsx";
 import { getSharedPageTree } from "@/features/share/services/share-service.ts";
 import { useShareAsyncResource } from "@/features/share/hooks/use-share-async-resource.ts";
-import {
-  getCurrentShareColorScheme,
-  syncShareColorSchemeToDocument,
-  toggleShareColorScheme,
-  type ShareColorScheme,
-} from "@/features/share/share-color-scheme.ts";
 import { cx } from "@/features/share/classnames.ts";
 import { lazyShareMantineComponent } from "./lazy-share-mantine.tsx";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
@@ -92,9 +84,6 @@ export default function ShareShell({
   );
   const renderMode = sharedShellState?.renderMode ?? "editor";
   const tocItems = sharedShellState?.toc ?? [];
-  const [colorScheme, setColorScheme] = useState<ShareColorScheme>(() =>
-    getCurrentShareColorScheme(),
-  );
   const [searchOpenToken, setSearchOpenToken] = useState(0);
   const [isSearchMounted, setIsSearchMounted] = useState(false);
   const { data } = useShareAsyncResource(
@@ -123,23 +112,6 @@ export default function ShareShell({
     setSharedPageTree(sharedPageTree);
     setSharedTreeData(treeData);
   }, [sharedPageTree, treeData, setSharedPageTree, setSharedTreeData]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === "mantine-color-scheme-value") {
-        setColorScheme(syncShareColorSchemeToDocument());
-      }
-    };
-
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
 
   useEffect(() => {
     if (!canUseSearch || typeof window === "undefined") {
@@ -274,22 +246,6 @@ export default function ShareShell({
               title={t("Table of contents")}
             >
               <IconList size={18} stroke={1.75} />
-            </button>
-
-            <button
-              type="button"
-              className={classes.iconButton}
-              onClick={() => {
-                setColorScheme(toggleShareColorScheme());
-              }}
-              aria-label={t("Toggle Color Scheme")}
-              title={t("Toggle Color Scheme")}
-            >
-              {colorScheme === "dark" ? (
-                <IconSun size={18} stroke={1.75} />
-              ) : (
-                <IconMoon size={18} stroke={1.75} />
-              )}
             </button>
           </div>
         </div>

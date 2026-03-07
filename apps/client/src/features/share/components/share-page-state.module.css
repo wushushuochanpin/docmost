@@ -91,12 +91,6 @@
   line-height: 1.5;
 }
 
-:global(:root[data-mantine-color-scheme="dark"]) .alert {
-  border-color: rgb(248 113 113 / 18%);
-  background: rgb(69 10 10 / 42%);
-  color: #fecaca;
-}
-
 .primaryButton,
 .secondaryButton {
   display: inline-flex;
@@ -148,10 +142,6 @@
   margin-top: 8px;
   color: #b91c1c;
   font-size: 0.875rem;
-}
-
-:global(:root[data-mantine-color-scheme="dark"]) .errorText {
-  color: #fca5a5;
 }
 
 @media (max-width: 48em) {

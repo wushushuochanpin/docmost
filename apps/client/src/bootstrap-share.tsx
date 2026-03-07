@@ -1,22 +1,16 @@
 import "./styles/ui-refresh.css";
 import "./styles/share-theme.css";
-import "./styles/theme-palettes.css";
 
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import ShareApp from "./ShareApp.tsx";
-import {
-  getStoredPalette,
-  syncPaletteToDocument,
-} from "@/features/theme/theme-palette.ts";
-import { syncShareColorSchemeToDocument } from "@/features/share/share-color-scheme.ts";
+import { applyShareReaderTheme } from "@/features/share/share-color-scheme.ts";
 import { ShareErrorBoundary } from "@/features/share/components/share-error-boundary.tsx";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
 import { queryClient } from "@/query-client.ts";
 
-syncPaletteToDocument(getStoredPalette());
-syncShareColorSchemeToDocument();
+applyShareReaderTheme();
 
 function ShareErrorFallback({
   error,

@@ -14,10 +14,6 @@
   backdrop-filter: blur(12px);
 }
 
-:global(:root[data-mantine-color-scheme="dark"]) .header {
-  background: rgb(37 37 38 / 88%);
-}
-
 .headerInner {
   box-sizing: border-box;
   display: grid;
