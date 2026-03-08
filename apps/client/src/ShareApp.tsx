@@ -11,6 +11,7 @@ export default function ShareApp() {
   return (
     <Routes>
       <Route element={<ShareLayout />}>
+        <Route path={"/share/:shareId/:pageSlug"} element={<SharedPage />} />
         <Route
           path={"/share/:shareId/p/:pageSlug"}
           element={<SharedPage />}

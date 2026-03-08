@@ -27,8 +27,12 @@ import { usePageQuery } from "@/features/page/queries/page-query.ts";
 import CopyTextButton from "@/components/common/copy.tsx";
 import { CopyButton } from "@/components/common/copy-button";
 import { getAppUrl, isCloud } from "@/lib/config.ts";
-import { buildPageUrl } from "@/features/page/page.utils.ts";
+import {
+  buildPageUrl,
+  buildSharedPageUrl,
+} from "@/features/page/page.utils.ts";
 import classes from "@/features/share/components/share.module.css";
+import ShareWechatPanel from "@/features/share/components/share-wechat-panel.tsx";
 import useTrial from "@/ee/hooks/use-trial.tsx";
 import { useAtom } from "jotai";
 import { workspaceAtom } from "@/features/user/atoms/current-user-atom.ts";
@@ -142,11 +146,18 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
     accessMode === "public";
 
   const shareLink = useMemo(() => {
-    if (!share?.key || !pageSlug) {
+    if (!share?.key || !page?.slugId) {
       return "";
     }
-    return `${getAppUrl()}/share/${share.key}/p/${pageSlug}`;
-  }, [share?.key, pageSlug]);
+    return (
+      getAppUrl() +
+      buildSharedPageUrl({
+        shareId: share.key,
+        pageSlugId: page.slugId,
+        pageTitle: page.title,
+      })
+    );
+  }, [page?.slugId, page?.title, share?.key]);
 
   const shareCopyValue = useMemo(() => {
     if (!shareLink) {
@@ -344,24 +355,29 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
           </Anchor>
 
           {shareLink && (
-            <Group my="sm" gap={4} wrap="nowrap">
-              <TextInput
-                variant="default"
-                value={shareLink}
-                readOnly
-                rightSection={<CopyTextButton text={shareCopyValue} />}
-                style={{ width: "100%" }}
-              />
-              <ActionIcon
-                component="a"
-                variant="default"
-                target="_blank"
-                href={shareLink}
-                size="sm"
-              >
-                <IconExternalLink size={16} />
-              </ActionIcon>
-            </Group>
+            <>
+              <Group my="sm" gap={4} wrap="nowrap">
+                <TextInput
+                  variant="default"
+                  value={shareLink}
+                  readOnly
+                  rightSection={<CopyTextButton text={shareCopyValue} />}
+                  style={{ width: "100%" }}
+                />
+                <ActionIcon
+                  component="a"
+                  variant="default"
+                  target="_blank"
+                  href={shareLink}
+                  size="sm"
+                >
+                  <IconExternalLink size={16} />
+                </ActionIcon>
+              </Group>
+              {share?.accessMode !== "password_expiring" && (
+                <ShareWechatPanel shareLink={shareLink} copyValue={shareCopyValue} />
+              )}
+            </>
           )}
         </>
       ) : showConfigForm ? (
@@ -470,24 +486,29 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
       ) : (
         <>
           {shareLink && (
-            <Group my="sm" gap={4} wrap="nowrap">
-              <TextInput
-                variant="default"
-                value={shareLink}
-                readOnly
-                rightSection={<CopyTextButton text={shareCopyValue} />}
-                style={{ width: "100%" }}
-              />
-              <ActionIcon
-                component="a"
-                variant="default"
-                target="_blank"
-                href={shareLink}
-                size="sm"
-              >
-                <IconExternalLink size={16} />
-              </ActionIcon>
-            </Group>
+            <>
+              <Group my="sm" gap={4} wrap="nowrap">
+                <TextInput
+                  variant="default"
+                  value={shareLink}
+                  readOnly
+                  rightSection={<CopyTextButton text={shareCopyValue} />}
+                  style={{ width: "100%" }}
+                />
+                <ActionIcon
+                  component="a"
+                  variant="default"
+                  target="_blank"
+                  href={shareLink}
+                  size="sm"
+                >
+                  <IconExternalLink size={16} />
+                </ActionIcon>
+              </Group>
+              {share?.accessMode !== "password_expiring" && (
+                <ShareWechatPanel shareLink={shareLink} copyValue={shareCopyValue} />
+              )}
+            </>
           )}
 
           <Text size="sm" fw={500} mb={6}>

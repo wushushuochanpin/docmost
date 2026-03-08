@@ -4,11 +4,16 @@ import { ShareService } from './share.service';
 import { TokenModule } from '../auth/token.module';
 import { ShareSeoController } from './share-seo.controller';
 import { ShareStaticRendererService } from './share-static-renderer.service';
+import { SharePreviewMetaService } from './share-preview-meta.service';
 
 @Module({
   imports: [TokenModule],
   controllers: [ShareController, ShareSeoController],
-  providers: [ShareService, ShareStaticRendererService],
+  providers: [
+    ShareService,
+    ShareStaticRendererService,
+    SharePreviewMetaService,
+  ],
   exports: [ShareService],
 })
 export class ShareModule {}

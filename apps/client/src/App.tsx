@@ -152,6 +152,10 @@ export default function App() {
 
         <Route element={<ShareLayout />}>
           <Route
+            path={"/share/:shareId/:pageSlug"}
+            element={<SharedPage />}
+          />
+          <Route
             path={"/share/:shareId/p/:pageSlug"}
             element={<SharedPage />}
           />

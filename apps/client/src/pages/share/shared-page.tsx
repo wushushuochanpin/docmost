@@ -1,6 +1,7 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { extractPageSlugId } from "@/lib";
+import { buildSharedPageUrl } from "@/features/page/page.utils.ts";
 import ShareBranding from "@/features/share/components/share-branding.tsx";
 import { useAtom } from "jotai";
 import {
@@ -21,9 +22,11 @@ import ShareNotFound from "@/features/share/components/share-not-found.tsx";
 import { lazyShareMantineComponent } from "@/features/share/components/lazy-share-mantine.tsx";
 import {
   useShareDocumentTitle,
+  useSharePreviewMeta,
   useShareRobotsMeta,
 } from "@/features/share/hooks/use-share-document-title.ts";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
+import { getAppUrl } from "@/lib/config.ts";
 import classes from "@/features/share/components/share-page-state.module.css";
 
 const LazyReadonlyPageEditor = lazy(() =>
@@ -86,6 +89,7 @@ export default function SharedPage() {
   const { shareId } = useParams();
   const shareLegacyRouteMode = getShareLegacyRouteMode();
   const navigate = useNavigate();
+  const location = useLocation();
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
@@ -125,14 +129,36 @@ export default function SharedPage() {
     { enabled: shouldLoadExpiredShareMeta },
   );
   useShareDocumentTitle(data ? `${data.page?.title || t("untitled")}` : undefined);
+  useSharePreviewMeta(
+    data
+      ? {
+          title: data.page?.title || t("untitled"),
+          description: data.page?.excerpt,
+          canonicalUrl:
+            getAppUrl() +
+            buildSharedPageUrl({
+              shareId: data.share.key,
+              pageSlugId: data.page.slugId,
+              pageTitle: data.page.title,
+            }),
+        }
+      : undefined,
+  );
   useShareRobotsMeta(Boolean(data && !data.share.searchIndexing));
 
   useEffect(() => {
     if (!data) return;
 
+    const canonicalPath = buildSharedPageUrl({
+      shareId: data.share.key,
+      pageSlugId: data.page.slugId,
+      pageTitle: data.page.title,
+    });
+    const canonicalTarget = `${canonicalPath}${location.hash}`;
+
     if (shareId) {
-      if (data.share.key !== shareId) {
-        navigate(`/share/${data.share.key}/p/${pageSlug}`, { replace: true });
+      if (location.pathname !== canonicalPath) {
+        navigate(canonicalTarget, { replace: true });
       }
       return;
     }
@@ -142,9 +168,16 @@ export default function SharedPage() {
       data.share?.key &&
       data.share?.accessMode === "public"
     ) {
-      navigate(`/share/${data.share.key}/p/${pageSlug}`, { replace: true });
+      navigate(canonicalTarget, { replace: true });
     }
-  }, [shareId, data, pageSlug, navigate, shareLegacyRouteMode]);
+  }, [
+    shareId,
+    data,
+    navigate,
+    shareLegacyRouteMode,
+    location.hash,
+    location.pathname,
+  ]);
 
   useEffect(() => {
     if (!data) {

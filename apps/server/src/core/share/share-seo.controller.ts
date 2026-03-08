@@ -7,8 +7,9 @@ import { validate as isValidUUID } from 'uuid';
 import { WorkspaceRepo } from '@docmost/db/repos/workspace/workspace.repo';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 import { Workspace } from '@docmost/db/types/entity.types';
-import { htmlEscape } from '../../common/helpers/html-escaper';
 import { ShareAccessMode, ShareLegacyRouteMode } from './share.constants';
+import { PageRepo } from '@docmost/db/repos/page/page.repo';
+import { SharePreviewMetaService } from './share-preview-meta.service';
 
 @Controller('share')
 export class ShareSeoController {
@@ -16,12 +17,14 @@ export class ShareSeoController {
     private readonly shareService: ShareService,
     private workspaceRepo: WorkspaceRepo,
     private environmentService: EnvironmentService,
+    private readonly pageRepo: PageRepo,
+    private readonly sharePreviewMetaService: SharePreviewMetaService,
   ) {}
 
   /*
    * add meta tags to publicly shared pages
    */
-  @Get([':shareId/p/:pageSlug', 'p/:pageSlug'])
+  @Get([':shareId/p/:pageSlug', 'p/:pageSlug', ':shareId/:pageSlug'])
   async getShare(
     @Res({ passthrough: false }) res: FastifyReply,
     @Req() req: FastifyRequest,
@@ -59,6 +62,8 @@ export class ShareSeoController {
         return this.sendIndex(indexFilePath, res);
       }
 
+      const origin = this.getRequestOrigin(req);
+      const currentPathname = this.getRequestPathname(req, origin);
       const pageId = this.extractPageSlugId(pageSlug);
       const hasShareId = Boolean(shareId);
       const legacyMode = this.environmentService.getShareLegacyRouteMode();
@@ -77,6 +82,21 @@ export class ShareSeoController {
         return this.sendIndex(indexFilePath, res);
       }
 
+      const page = await this.pageRepo.findById(pageId, {
+        workspaceId: workspace.id,
+        includeTextContent: true,
+      });
+
+      if (!page || page.deletedAt) {
+        return this.sendIndex(indexFilePath, res);
+      }
+
+      const canonicalPath = this.sharePreviewMetaService.buildCanonicalPath({
+        shareKey: share.key,
+        pageSlugId: page.slugId,
+        pageTitle: page.title,
+      });
+
       if (!hasShareId) {
         if (share.accessMode === ShareAccessMode.PasswordExpiring) {
           if (
@@ -92,7 +112,7 @@ export class ShareSeoController {
           legacyMode === ShareLegacyRouteMode.RedirectPublic &&
           share.accessMode === ShareAccessMode.Public
         ) {
-          return res.redirect(`/share/${share.key}/p/${pageSlug}`, 302);
+          return res.redirect(canonicalPath, 302);
         }
       }
 
@@ -101,24 +121,28 @@ export class ShareSeoController {
         return this.sendIndex(indexFilePath, res);
       }
 
-      const rawTitle = htmlEscape(share?.sharedPage.title ?? 'untitled');
-      const metaTitle =
-        rawTitle.length > 80 ? `${rawTitle.slice(0, 77)}…` : rawTitle;
+      if (hasShareId && currentPathname !== canonicalPath) {
+        return res.redirect(canonicalPath, 302);
+      }
+
+      const previewMeta = this.sharePreviewMetaService.buildPublicMeta({
+        origin,
+        shareKey: share.key,
+        pageSlugId: page.slugId,
+        pageTitle: page.title,
+        textContent: page.textContent,
+        searchIndexing: share.searchIndexing,
+      });
 
       const metaTagVar = '<!--meta-tags-->';
 
-      const metaTags = [
-        `<meta property="og:title" content="${metaTitle}" />`,
-        `<meta property="twitter:title" content="${metaTitle}" />`,
-        !share.searchIndexing ? `<meta name="robots" content="noindex" />` : '',
-      ]
-        .filter(Boolean)
-        .join('\n    ');
-
       const html = fs.readFileSync(indexFilePath, 'utf8');
       const transformedHtml = html
-        .replace(/<title>[\s\S]*?<\/title>/i, `<title>${metaTitle}</title>`)
-        .replace(metaTagVar, metaTags);
+        .replace(
+          /<title>[\s\S]*?<\/title>/i,
+          `<title>${previewMeta.title}</title>`,
+        )
+        .replace(metaTagVar, previewMeta.metaTags);
 
       res.type('text/html').send(transformedHtml);
     }
@@ -138,5 +162,33 @@ export class ShareSeoController {
     }
     const parts = slug.split('-');
     return parts.length > 1 ? parts[parts.length - 1] : slug;
+  }
+
+  private getRequestOrigin(req: FastifyRequest) {
+    const host = req.headers.host;
+    if (!host) {
+      return this.environmentService.getAppUrl();
+    }
+
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    const protocol =
+      (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)
+        ?.toString()
+        ?.split(',')[0]
+        ?.trim() ||
+      req.protocol ||
+      (this.environmentService.isHttps() ? 'https' : 'http');
+
+    return `${protocol}://${host}`;
+  }
+
+  private getRequestPathname(req: FastifyRequest, origin: string) {
+    const rawUrl = req.raw.url || '/';
+
+    try {
+      return new URL(rawUrl, origin).pathname;
+    } catch {
+      return rawUrl.split('?')[0] || '/';
+    }
   }
 }

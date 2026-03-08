@@ -61,6 +61,7 @@ export interface SharedPageResponsePage {
   id: string;
   slugId: string;
   title: string;
+  excerpt?: string;
   content?: unknown;
 }
 
@@ -390,6 +391,7 @@ export class ShareService {
     const page = await this.pageRepo.findById(dto.pageId, {
       workspaceId,
       includeContent: true,
+      includeTextContent: true,
     });
 
     if (!page || page.deletedAt) {
@@ -403,6 +405,7 @@ export class ShareService {
       id: page.id,
       slugId: page.slugId,
       title: page.title,
+      excerpt: this.buildShareExcerpt(page.textContent),
       ...(hasStaticRenderableOutput ? {} : { content: page.content }),
     };
 
@@ -454,6 +457,19 @@ export class ShareService {
     }
 
     return segment;
+  }
+
+  private buildShareExcerpt(textContent?: string) {
+    const normalized = textContent?.replace(/\s+/g, ' ').trim() || '';
+    if (!normalized) {
+      return '';
+    }
+
+    if (normalized.length <= 160) {
+      return normalized;
+    }
+
+    return `${normalized.slice(0, 159).trimEnd()}…`;
   }
 
   async getShareForPage(

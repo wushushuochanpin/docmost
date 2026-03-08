@@ -37,7 +37,7 @@ export const buildSharedPageUrl = (opts: {
   if (!shareId) {
     url = `/share/p/${buildPageSlug(pageSlugId, pageTitle)}`;
   } else {
-    url = `/share/${shareId}/p/${buildPageSlug(pageSlugId, pageTitle)}`;
+    url = `/share/${shareId}/${buildPageSlug(pageSlugId, pageTitle)}`;
   }
   return anchorId ? `${url}#${anchorId}` : url;
 };

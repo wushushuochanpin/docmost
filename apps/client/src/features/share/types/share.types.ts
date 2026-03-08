@@ -55,6 +55,7 @@ export interface ISharedPagePage {
   id: string;
   slugId: string;
   title: string;
+  excerpt?: string;
   content?: unknown;
 }
 

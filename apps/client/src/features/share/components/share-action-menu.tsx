@@ -13,6 +13,7 @@ import {
   buildPageUrl,
   buildSharedPageUrl,
 } from "@/features/page/page.utils.ts";
+import { getAppUrl } from "@/lib/config.ts";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { notifications } from "@mantine/notifications";
 import { useNavigate } from "react-router-dom";
@@ -37,11 +38,13 @@ export default function ShareActionMenu({ share }: Props) {
   };
 
   const copyLink = () => {
-    const shareLink = buildSharedPageUrl({
-      shareId: share.key,
-      pageTitle: share.page.title,
-      pageSlugId: share.page.slugId,
-    });
+    const shareLink =
+      getAppUrl() +
+      buildSharedPageUrl({
+        shareId: share.key,
+        pageTitle: share.page.title,
+        pageSlugId: share.page.slugId,
+      });
 
     clipboard.copy(shareLink);
     notifications.show({ message: t("Link copied") });
