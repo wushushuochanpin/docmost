@@ -28,10 +28,15 @@ export interface IPage {
   descendantFolderCount?: number;
   descendantFileCount?: number;
   descendantTotalCount?: number;
+  canEdit?: boolean;
   creator: ICreator;
   lastUpdatedBy: ILastUpdatedBy;
   deletedBy: IDeletedBy;
   space: Partial<ISpace>;
+  permissions?: {
+    canEdit: boolean;
+    hasRestriction: boolean;
+  };
 }
 
 interface ICreator {

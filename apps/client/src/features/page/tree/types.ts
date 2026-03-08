@@ -17,5 +17,6 @@ export type SpaceTreeNode = {
   descendantFileCount?: number;
   descendantTotalCount?: number;
   hasChildren: boolean;
+  canEdit?: boolean;
   children: SpaceTreeNode[];
 };

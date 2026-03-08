@@ -61,6 +61,7 @@ export function buildTree(pages: IPage[]): SpaceTreeNode[] {
       descendantFolderCount: page.descendantFolderCount ?? 0,
       descendantFileCount: page.descendantFileCount ?? 0,
       descendantTotalCount: page.descendantTotalCount ?? 0,
+      canEdit: page.canEdit ?? page.permissions?.canEdit,
       children: [],
     };
   });

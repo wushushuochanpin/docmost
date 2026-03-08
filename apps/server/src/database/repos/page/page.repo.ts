@@ -187,12 +187,14 @@ export class PageRepo {
           .select(['id'])
           .where('id', '=', pageId)
           .where('workspaceId', '=', workspaceId)
+          .where('deletedAt', 'is', null)
           .unionAll((exp) =>
             exp
               .selectFrom('pages as p')
               .select(['p.id'])
               .innerJoin('page_descendants as pd', 'pd.id', 'p.parentPageId')
-              .where('p.workspaceId', '=', workspaceId),
+              .where('p.workspaceId', '=', workspaceId)
+              .where('p.deletedAt', 'is', null),
           ),
       )
       .selectFrom('page_descendants')
@@ -211,6 +213,7 @@ export class PageRepo {
           })
           .where('workspaceId', '=', workspaceId)
           .where('id', 'in', pageIds)
+          .where('deletedAt', 'is', null)
           .execute();
 
         await trx

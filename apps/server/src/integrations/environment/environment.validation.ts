@@ -154,6 +154,22 @@ export class EnvironmentVariables {
   @IsUrl({ protocols: ['http', 'https'], require_tld: false })
   OLLAMA_API_URL: string;
 
+  @IsOptional()
+  @IsIn(['postgres', 'clickhouse'])
+  @IsString()
+  EVENT_STORE_DRIVER: string;
+
+  @ValidateIf((obj) => obj.EVENT_STORE_DRIVER === 'clickhouse')
+  @IsNotEmpty()
+  @IsUrl(
+    { protocols: ['http', 'https'], require_tld: false },
+    {
+      message:
+        'CLICKHOUSE_URL must be a valid URL e.g http://user:password@localhost:8123/docmost',
+    },
+  )
+  CLICKHOUSE_URL: string;
+
   @ValidateIf((obj) => obj.WECHAT_APP_SECRET)
   @IsString()
   @IsNotEmpty()

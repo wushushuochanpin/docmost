@@ -1,10 +1,4 @@
-import {
-  Global,
-  Logger,
-  Module,
-  OnApplicationBootstrap,
-  BeforeApplicationShutdown,
-} from '@nestjs/common';
+import { Global, Logger, Module, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectKysely, KyselyModule } from 'nestjs-kysely';
 import { EnvironmentService } from '../integrations/environment/environment.service';
 import { CamelCasePlugin, LogEvent, sql } from 'kysely';
@@ -15,6 +9,7 @@ import { GroupUserRepo } from '@docmost/db/repos/group/group-user.repo';
 import { SpaceRepo } from '@docmost/db/repos/space/space.repo';
 import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
 import { PageRepo } from './repos/page/page.repo';
+import { PagePermissionRepo } from './repos/page/page-permission.repo';
 import { CommentRepo } from './repos/comment/comment.repo';
 import { PageHistoryRepo } from './repos/page/page-history.repo';
 import { AttachmentRepo } from './repos/attachment/attachment.repo';
@@ -78,6 +73,7 @@ import { WorkspaceReleaseChannelRepo } from './repos/workspace/workspace-release
     SpaceRepo,
     SpaceMemberRepo,
     PageRepo,
+    PagePermissionRepo,
     PageHistoryRepo,
     CommentRepo,
     AttachmentRepo,
@@ -98,6 +94,7 @@ import { WorkspaceReleaseChannelRepo } from './repos/workspace/workspace-release
     SpaceRepo,
     SpaceMemberRepo,
     PageRepo,
+    PagePermissionRepo,
     PageHistoryRepo,
     CommentRepo,
     AttachmentRepo,
@@ -110,9 +107,7 @@ import { WorkspaceReleaseChannelRepo } from './repos/workspace/workspace-release
     WorkspaceReleaseChannelRepo,
   ],
 })
-export class DatabaseModule
-  implements OnApplicationBootstrap, BeforeApplicationShutdown
-{
+export class DatabaseModule implements OnApplicationBootstrap {
   private readonly logger = new Logger(DatabaseModule.name);
 
   constructor(
@@ -126,12 +121,6 @@ export class DatabaseModule
 
     if (this.environmentService.getNodeEnv() === 'production') {
       await this.migrationService.migrateToLatest();
-    }
-  }
-
-  async beforeApplicationShutdown(): Promise<void> {
-    if (this.db) {
-      await this.db.destroy();
     }
   }
 

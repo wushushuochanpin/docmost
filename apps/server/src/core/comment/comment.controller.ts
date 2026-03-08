@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Inject,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
@@ -24,6 +25,13 @@ import {
   SpaceCaslSubject,
 } from '../casl/interfaces/space-ability.type';
 import { CommentRepo } from '@docmost/db/repos/comment/comment.repo';
+import { PageAccessService } from '../page/page-access/page-access.service';
+import { AuditEvent, AuditResource } from '../../common/events/audit-events';
+import {
+  AUDIT_SERVICE,
+  IAuditService,
+} from '../../integrations/audit/audit.service';
+import { WsService } from '../../ws/ws.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('comments')
@@ -33,6 +41,9 @@ export class CommentController {
     private readonly commentRepo: CommentRepo,
     private readonly pageRepo: PageRepo,
     private readonly spaceAbility: SpaceAbilityFactory,
+    private readonly pageAccessService: PageAccessService,
+    private readonly wsService: WsService,
+    @Inject(AUDIT_SERVICE) private readonly auditService: IAuditService,
   ) {}
 
   @HttpCode(HttpStatus.OK)
@@ -49,12 +60,9 @@ export class CommentController {
       throw new NotFoundException('Page not found');
     }
 
-    const ability = await this.spaceAbility.createForUser(user, page.spaceId);
-    if (ability.cannot(SpaceCaslAction.Create, SpaceCaslSubject.Page)) {
-      throw new ForbiddenException();
-    }
+    await this.pageAccessService.validateCanEdit(page, user);
 
-    return this.commentService.create(
+    const comment = await this.commentService.create(
       {
         userId: user.id,
         page,
@@ -62,6 +70,18 @@ export class CommentController {
       },
       createCommentDto,
     );
+
+    this.auditService.log({
+      event: AuditEvent.COMMENT_CREATED,
+      resourceType: AuditResource.COMMENT,
+      resourceId: comment.id,
+      spaceId: page.spaceId,
+      metadata: {
+        pageId: page.id,
+      },
+    });
+
+    return comment;
   }
 
   @HttpCode(HttpStatus.OK)
@@ -80,10 +100,8 @@ export class CommentController {
       throw new NotFoundException('Page not found');
     }
 
-    const ability = await this.spaceAbility.createForUser(user, page.spaceId);
-    if (ability.cannot(SpaceCaslAction.Read, SpaceCaslSubject.Page)) {
-      throw new ForbiddenException();
-    }
+    await this.pageAccessService.validateCanView(page, user);
+
     return this.commentService.findByPageId(page.id, pagination, workspace.id);
   }
 
@@ -101,13 +119,15 @@ export class CommentController {
       throw new NotFoundException('Comment not found');
     }
 
-    const ability = await this.spaceAbility.createForUser(
-      user,
-      comment.spaceId,
-    );
-    if (ability.cannot(SpaceCaslAction.Read, SpaceCaslSubject.Page)) {
-      throw new ForbiddenException();
+    const page = await this.pageRepo.findById(comment.pageId, {
+      workspaceId: workspace.id,
+    });
+    if (!page) {
+      throw new NotFoundException('Page not found');
     }
+
+    await this.pageAccessService.validateCanView(page, user);
+
     return comment;
   }
 
@@ -120,22 +140,21 @@ export class CommentController {
   ) {
     const comment = await this.commentRepo.findById(dto.commentId, {
       workspaceId: workspace.id,
+      includeCreator: true,
+      includeResolvedBy: true,
     });
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
 
-    const ability = await this.spaceAbility.createForUser(
-      user,
-      comment.spaceId,
-    );
-
-    // must be a space member with edit permission
-    if (ability.cannot(SpaceCaslAction.Edit, SpaceCaslSubject.Page)) {
-      throw new ForbiddenException(
-        'You must have space edit permission to edit comments',
-      );
+    const page = await this.pageRepo.findById(comment.pageId, {
+      workspaceId: workspace.id,
+    });
+    if (!page) {
+      throw new NotFoundException('Page not found');
     }
+
+    await this.pageAccessService.validateCanEdit(page, user);
 
     return this.commentService.update(comment, dto, user);
   }
@@ -154,15 +173,19 @@ export class CommentController {
       throw new NotFoundException('Comment not found');
     }
 
+    const page = await this.pageRepo.findById(comment.pageId, {
+      workspaceId: workspace.id,
+    });
+    if (!page) {
+      throw new NotFoundException('Page not found');
+    }
+
+    await this.pageAccessService.validateCanEdit(page, user);
+
     const ability = await this.spaceAbility.createForUser(
       user,
       comment.spaceId,
     );
-
-    // must be a space member with edit permission
-    if (ability.cannot(SpaceCaslAction.Edit, SpaceCaslSubject.Page)) {
-      throw new ForbiddenException();
-    }
 
     // Check if user is the comment owner
     const isOwner = comment.creatorId === user.id;
@@ -186,15 +209,33 @@ export class CommentController {
         );
       }*/
       await this.commentRepo.deleteComment(comment.id, workspace.id);
-      return;
+    } else {
+      // Space admin can delete any comment
+      if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Settings)) {
+        throw new ForbiddenException(
+          'You can only delete your own comments or must be a space admin',
+        );
+      }
+      await this.commentRepo.deleteComment(comment.id, workspace.id);
     }
 
-    // Space admin can delete any comment
-    if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Settings)) {
-      throw new ForbiddenException(
-        'You can only delete your own comments or must be a space admin',
-      );
-    }
-    await this.commentRepo.deleteComment(comment.id, workspace.id);
+    this.wsService.emitCommentEvent(comment.spaceId, comment.pageId, {
+      operation: 'commentDeleted',
+      pageId: comment.pageId,
+      commentId: comment.id,
+    });
+
+    this.auditService.log({
+      event: AuditEvent.COMMENT_DELETED,
+      resourceType: AuditResource.COMMENT,
+      resourceId: comment.id,
+      spaceId: comment.spaceId,
+      changes: {
+        before: {
+          pageId: comment.pageId,
+          creatorId: comment.creatorId,
+        },
+      },
+    });
   }
 }

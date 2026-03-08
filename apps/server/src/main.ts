@@ -26,10 +26,7 @@ async function bootstrap() {
     }),
     {
       rawBody: true,
-      // captures NestJS internal errors
       logger: new InternalLogFilter(),
-      // bufferLogs must be false else pino will fail
-      // to log OnApplicationBootstrap logs
       bufferLogs: false,
     },
   );
@@ -42,6 +39,7 @@ async function bootstrap() {
       'share/:shareId/:pageSlug',
       'share/:shareId/p/:pageSlug',
       'share/p/:pageSlug',
+      'mcp',
     ],
   });
 
@@ -73,7 +71,6 @@ async function bootstrap() {
       done(null, payload);
     })
     .addHook('preHandler', function (req, reply, done) {
-      // don't require workspaceId for the following paths
       const excludedPaths = [
         '/api/auth/setup',
         '/api/health',
@@ -122,9 +119,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   const host = process.env.HOST || '0.0.0.0';
   await app.listen(port, host, () => {
-    logger.log(
-      `Listening on http://127.0.0.1:${port} / ${process.env.APP_URL}`,
-    );
+    logger.log(`Listening on http://127.0.0.1:${port} / ${process.env.APP_URL}`);
   });
 }
 

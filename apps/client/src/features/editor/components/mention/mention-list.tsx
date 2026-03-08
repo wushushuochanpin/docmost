@@ -211,7 +211,7 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
       nodeType: "file" | "folder";
     } = {
       spaceId: space.id,
-      title: title,
+      title,
       nodeType: page.id ? "file" : "folder",
     };
     if (page.id) {
@@ -234,6 +234,7 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
         nodeType: createdPage.nodeType ?? payload.nodeType,
         isPinned: createdPage.isPinned ?? false,
         pinnedAt: createdPage.pinnedAt ?? null,
+        canEdit: true,
         children: [],
       } as any;
 
@@ -244,7 +245,7 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
 
       props.command({
         id: uuid7(),
-        label:  createdPage.title || "Untitled",
+        label: createdPage.title || "Untitled",
         entityType: "page",
         entityId: createdPage.id,
         slugId: createdPage.slugId,
@@ -252,17 +253,16 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
       });
 
       setTimeout(() => {
-      emit({
-        operation: "addTreeNode",
-        spaceId: space.id,
-        payload: {
-          parentId,
-          index: lastIndex,
-          data,
-        },
-      });
-    }, 50);
-
+        emit({
+          operation: "addTreeNode",
+          spaceId: space.id,
+          payload: {
+            parentId,
+            index: lastIndex,
+            data,
+          },
+        });
+      }, 50);
     } catch (err) {
       throw new Error("Failed to create page");
     }

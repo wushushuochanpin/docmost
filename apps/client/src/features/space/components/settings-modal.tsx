@@ -50,7 +50,7 @@ export default function SpaceSettingsModal({
           </Modal.Header>
           <Modal.Body p={0}>
             <div style={{ height: rem(560), maxHeight: "72vh", padding: rem(16) }}>
-              <Tabs defaultValue="members">
+              <Tabs color="dark" defaultValue="members">
                 <Tabs.List>
                   <Tabs.Tab fw={500} value="general">
                     {t("Settings")}

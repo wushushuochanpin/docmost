@@ -4,6 +4,8 @@ import {
   Comments,
   Groups,
   Notifications,
+  PageAccess as _PageAccess,
+  PagePermissions as _PagePermissions,
   Pages,
   Spaces,
   Users,
@@ -26,6 +28,7 @@ import {
   Watchers,
   ApiKeys,
   WorkspaceReleaseChannel as _WorkspaceReleaseChannel,
+  Audit as _Audit,
 } from './db';
 import { PageEmbeddings } from '@docmost/db/types/embeddings.types';
 
@@ -127,6 +130,16 @@ export type UpdatableFileTask = Updateable<Omit<FileTasks, 'id'>>;
 export type PageNodeMeta = Selectable<_PageNodeMeta>;
 export type InsertablePageNodeMeta = Insertable<_PageNodeMeta>;
 export type UpdatablePageNodeMeta = Updateable<Omit<_PageNodeMeta, 'pageId'>>;
+
+// Page Access
+export type PageAccess = Selectable<_PageAccess>;
+export type InsertablePageAccess = Insertable<_PageAccess>;
+export type UpdatablePageAccess = Updateable<Omit<_PageAccess, 'id'>>;
+
+// Page Permission
+export type PagePermission = Selectable<_PagePermissions>;
+export type InsertablePagePermission = Insertable<_PagePermissions>;
+export type UpdatablePagePermission = Updateable<Omit<_PagePermissions, 'id'>>;
 
 // Workspace Release Channel
 export type WorkspaceReleaseChannel = Selectable<_WorkspaceReleaseChannel>;

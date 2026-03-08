@@ -266,9 +266,19 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
       {isRootReady && rootElement.current && (
         <Tree
           data={filteredData}
-          disableDrag={readOnly}
+          disableDrag={
+            readOnly
+              ? true
+              : (data) => {
+                  return data.canEdit === false;
+                }
+          }
           disableDrop={(args) => {
             if (readOnly) {
+              return true;
+            }
+
+            if (args.parentNode?.data?.canEdit === false) {
               return true;
             }
 
@@ -289,10 +299,10 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
             }
 
             return args.dragNodes.some(
-              (dragNode) => dragNode.data?.nodeType === "folder",
-            );
+                (dragNode) => dragNode.data?.nodeType === "folder",
+              );
           }}
-          disableEdit={readOnly}
+          disableEdit={readOnly ? true : (data) => data.canEdit === false}
           {...controllers}
           width={width}
           height={rootElement.current.clientHeight}
@@ -435,6 +445,8 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
   const pageUrl = buildPageUrl(spaceSlug, node.data.slugId, node.data.name);
   const directChildCount = node.data.directChildCount ?? 0;
   const descendantTotalCount = node.data.descendantTotalCount ?? 0;
+  const nodeReadOnly =
+    tree.props.disableEdit === true || node.data.canEdit === false;
 
   const buildSubmittedName = (value: string) => value.trim() || "untitled";
 
@@ -455,7 +467,7 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
                 <IconFileText size={16} stroke={1.75} />
               )
             }
-            readOnly={tree.props.disableEdit as boolean}
+            readOnly={nodeReadOnly}
             removeEmojiAction={handleRemoveEmoji}
           />
         </div>
@@ -526,7 +538,7 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
                 <IconFileText size={16} stroke={1.75} />
               )
             }
-            readOnly={tree.props.disableEdit as boolean}
+            readOnly={nodeReadOnly}
             removeEmojiAction={handleRemoveEmoji}
           />
         </div>
@@ -562,7 +574,7 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
         <div className={classes.actions}>
           <NodeMenu node={node} treeApi={tree} spaceId={node.data.spaceId} />
 
-          {!tree.props.disableEdit && (
+          {!nodeReadOnly && (
             <CreateNode
               node={node}
               treeApi={tree}
@@ -687,7 +699,8 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
   ] = useDisclosure(false);
 
   const isFolder = node.data.nodeType === "folder";
-  const canEdit = !(treeApi.props.disableEdit as boolean);
+  const canEdit =
+    treeApi.props.disableEdit !== true && node.data.canEdit !== false;
   const selectedPageIds = Array.from(treeApi.selectedIds ?? []);
   const selectedMovableIds = selectedPageIds.filter((id) => id !== node.id);
   const canBatchMoveSelected =
@@ -748,6 +761,7 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
         descendantFolderCount: duplicatedPage.descendantFolderCount ?? 0,
         descendantFileCount: duplicatedPage.descendantFileCount ?? 0,
         descendantTotalCount: duplicatedPage.descendantTotalCount ?? 0,
+        canEdit: true,
         children: [],
       };
 
@@ -912,7 +926,7 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
             {t("Export page")}
           </Menu.Item>
 
-          {!(treeApi.props.disableEdit as boolean) && (
+          {canEdit && (
             <>
               <Menu.Item
                 leftSection={<IconCopy size={16} />}
@@ -933,7 +947,7 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
                   treeApi.edit(node.id);
                 }}
               >
-                Rename
+                {t("Rename")}
               </Menu.Item>
 
               <Menu.Item

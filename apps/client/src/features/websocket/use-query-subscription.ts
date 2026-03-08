@@ -3,7 +3,6 @@ import { socketAtom } from "@/features/websocket/atoms/socket-atom.ts";
 import { useAtom } from "jotai";
 import { InfiniteData, useQueryClient } from "@tanstack/react-query";
 import { WebSocketEvent } from "@/features/websocket/types";
-import { IPage } from "../page/types/page.types";
 import { IPagination } from "@/lib/types";
 import {
   invalidateOnCreatePage,
@@ -12,7 +11,6 @@ import {
   invalidateOnUpdatePage,
 } from "../page/queries/page-query";
 import { RQ_KEY } from "../comment/queries/comment-query";
-import { queryClient } from "@/query-client.ts";
 import { IComment } from "@/features/comment/types/comment.types";
 
 export const useQuerySubscription = () => {
@@ -20,6 +18,51 @@ export const useQuerySubscription = () => {
   const [socket] = useAtom(socketAtom);
 
   React.useEffect(() => {
+    const updateInfiniteComments = (
+      pageId: string,
+      updater: (comment: IComment) => IComment | null,
+    ) => {
+      const cache = queryClient.getQueryData(
+        RQ_KEY(pageId),
+      ) as InfiniteData<IPagination<IComment>> | undefined;
+
+      if (!cache) {
+        return false;
+      }
+
+      queryClient.setQueryData(RQ_KEY(pageId), {
+        ...cache,
+        pages: cache.pages.map((page) => ({
+          ...page,
+          items: page.items
+            .map((comment) => updater(comment))
+            .filter(Boolean) as IComment[],
+        })),
+      });
+
+      return true;
+    };
+
+    const updateFlatComments = (
+      pageId: string,
+      updater: (comment: IComment) => IComment | null,
+    ) => {
+      const cache = queryClient.getQueryData(RQ_KEY(pageId)) as
+        | IPagination<IComment>
+        | undefined;
+
+      if (!cache?.items) {
+        return;
+      }
+
+      queryClient.setQueryData(RQ_KEY(pageId), {
+        ...cache,
+        items: cache.items
+          .map((comment) => updater(comment))
+          .filter(Boolean) as IComment[],
+      });
+    };
+
     socket?.on("message", (event) => {
       const data: WebSocketEvent = event;
 
@@ -32,11 +75,57 @@ export const useQuerySubscription = () => {
             queryKey: [...data.entity, data.id].filter(Boolean),
           });
           break;
-        case "invalidateComment":
-          queryClient.invalidateQueries({
-            queryKey: RQ_KEY(data.pageId),
-          });
+        case "commentCreated": {
+          const createCache = queryClient.getQueryData(
+            RQ_KEY(data.pageId),
+          ) as InfiniteData<IPagination<IComment>> | undefined;
+
+          if (createCache && createCache.pages.length > 0) {
+            const alreadyExists = createCache.pages.some((page) =>
+              page.items.some((comment) => comment.id === data.comment.id),
+            );
+            if (alreadyExists) {
+              break;
+            }
+
+            const lastIdx = createCache.pages.length - 1;
+            queryClient.setQueryData(RQ_KEY(data.pageId), {
+              ...createCache,
+              pages: createCache.pages.map((page, i) =>
+                i === lastIdx
+                  ? { ...page, items: [...page.items, data.comment] }
+                  : page,
+              ),
+            });
+          }
           break;
+        }
+        case "commentUpdated":
+        case "commentResolved": {
+          const didUpdateInfinite = updateInfiniteComments(
+            data.pageId,
+            (comment) => (comment.id === data.comment.id ? data.comment : comment),
+          );
+
+          if (!didUpdateInfinite) {
+            updateFlatComments(data.pageId, (comment) =>
+              comment.id === data.comment.id ? data.comment : comment,
+            );
+          }
+          break;
+        }
+        case "commentDeleted": {
+          const didUpdateInfinite = updateInfiniteComments(data.pageId, (comment) =>
+            comment.id === data.commentId ? null : comment,
+          );
+
+          if (!didUpdateInfinite) {
+            updateFlatComments(data.pageId, (comment) =>
+              comment.id === data.commentId ? null : comment,
+            );
+          }
+          break;
+        }
         case "addTreeNode":
           invalidateOnCreatePage(data.payload.data);
           break;
@@ -101,30 +190,6 @@ export const useQuerySubscription = () => {
           queryClient.invalidateQueries({
             queryKey: ["recent-changes", spaceId],
           });
-          break;
-        }
-        case "resolveComment": {
-          const currentComments = queryClient.getQueryData(
-            RQ_KEY(data.pageId),
-          ) as IPagination<IComment>;
-
-          if (currentComments && currentComments.items) {
-            const updatedComments = currentComments.items.map((comment) =>
-              comment.id === data.commentId
-                ? { 
-                    ...comment, 
-                    resolvedAt: data.resolvedAt, 
-                    resolvedById: data.resolvedById, 
-                    resolvedBy: data.resolvedBy 
-                  }
-                : comment,
-            );
-            
-            queryClient.setQueryData(RQ_KEY(data.pageId), {
-              ...currentComments,
-              items: updatedComments,
-            });
-          }
           break;
         }
       }

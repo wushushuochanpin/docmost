@@ -7,5 +7,6 @@ import { TokenModule } from '../auth/token.module';
   imports: [TokenModule],
   controllers: [SearchController],
   providers: [SearchService],
+  exports: [SearchService],
 })
 export class SearchModule {}

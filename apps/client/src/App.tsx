@@ -7,9 +7,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { Error404 } from "@/components/ui/error-404.tsx";
-import { ErrorBoundary } from "react-error-boundary";
-import { isCloud } from "@/lib/config.ts";
-import { useTranslation } from "react-i18next";
+import { isCloud, getShareLegacyRouteMode } from "@/lib/config.ts";
 import { useRedirectToCloudSelect } from "@/ee/hooks/use-redirect-to-cloud-select.tsx";
 import { useTrackOrigin } from "@/hooks/use-track-origin";
 import APP_ROUTE from "@/lib/app-route.ts";
@@ -17,7 +15,6 @@ import {
   APP_NAVIGATE_EVENT,
   AUTH_UNAUTHORIZED_EVENT,
 } from "@/lib/api-client.ts";
-import { getShareLegacyRouteMode } from "@/lib/config.ts";
 
 const SetupWorkspace = lazy(() => import("@/pages/auth/setup-workspace.tsx"));
 const LoginPage = lazy(() => import("@/pages/auth/login"));
@@ -62,6 +59,7 @@ const WorkspaceApiKeys = lazy(
   () => import("@/ee/api-key/pages/workspace-api-keys"),
 );
 const AiSettings = lazy(() => import("@/ee/ai/pages/ai-settings.tsx"));
+const AuditLogs = lazy(() => import("@/ee/audit/pages/audit-logs.tsx"));
 const Backup = lazy(() => import("@/pages/settings/backup/backup"));
 const MfaChallengePage = lazy(() =>
   import("@/ee/mfa/pages/mfa-challenge-page").then((module) => ({
@@ -75,10 +73,10 @@ const MfaSetupRequiredPage = lazy(() =>
 );
 
 export default function App() {
-  const { t } = useTranslation();
   const shareLegacyRouteMode = getShareLegacyRouteMode();
   const navigate = useNavigate();
   const location = useLocation();
+
   useRedirectToCloudSelect();
   useTrackOrigin();
 
@@ -106,7 +104,6 @@ export default function App() {
       });
     };
 
-    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
     const onNavigate = (event: Event) => {
       const customEvent = event as CustomEvent<{
         to?: string;
@@ -120,6 +117,8 @@ export default function App() {
         state: customEvent.detail.state,
       });
     };
+
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
     window.addEventListener(APP_NAVIGATE_EVENT, onNavigate);
 
     return () => {
@@ -172,10 +171,7 @@ export default function App() {
           <Route path={"/spaces"} element={<SpacesPage />} />
           <Route path={"/s/:spaceSlug"} element={<SpaceHome />} />
           <Route path={"/s/:spaceSlug/trash"} element={<SpaceTrash />} />
-          <Route
-            path={"/s/:spaceSlug/p/:pageSlug"}
-            element={<Page />}
-          />
+          <Route path={"/s/:spaceSlug/p/:pageSlug"} element={<Page />} />
 
           <Route path={"/settings"}>
             <Route path={"account/profile"} element={<AccountSettings />} />
@@ -193,6 +189,8 @@ export default function App() {
             <Route path={"sharing"} element={<Shares />} />
             <Route path={"security"} element={<Security />} />
             <Route path={"ai"} element={<AiSettings />} />
+            <Route path={"ai/mcp"} element={<AiSettings />} />
+            <Route path={"audit"} element={<AuditLogs />} />
             {!isCloud() && (
               <>
                 <Route path={"backup"} element={<Backup />} />

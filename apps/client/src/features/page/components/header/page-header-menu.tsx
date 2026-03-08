@@ -49,6 +49,7 @@ import { PageStateSegmentedControl } from "@/features/user/components/page-state
 import { EditorFontSizeSegmentedControl } from "@/features/editor/components/editor-font-size-control.tsx";
 import MovePageModal from "@/features/page/components/move-page-modal.tsx";
 import { useTimeAgo } from "@/hooks/use-time-ago.tsx";
+import { PageShareModal } from "@/ee/page-permission";
 import { ShareMenuContent } from "@/features/share/components/share-modal.tsx";
 
 interface PageHeaderMenuProps {
@@ -87,6 +88,7 @@ export default function PageHeaderMenu({
 
       {!readOnly && <PageStateSegmentedControl size="xs" />}
       <EditorFontSizeSegmentedControl size="xs" />
+      <PageShareModal readOnly={readOnly} />
 
       <PageActionMenu readOnly={readOnly} pageId={pageId} />
     </Group>

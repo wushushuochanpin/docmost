@@ -339,4 +339,14 @@ export class EnvironmentService {
       'http://localhost:11434',
     );
   }
+
+  getEventStoreDriver(): string {
+    return this.configService
+      .get<string>('EVENT_STORE_DRIVER', 'postgres')
+      .toLowerCase();
+  }
+
+  getClickHouseUrl(): string {
+    return this.configService.get<string>('CLICKHOUSE_URL');
+  }
 }

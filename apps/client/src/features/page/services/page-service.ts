@@ -205,6 +205,15 @@ export async function importZip(
   return req.data;
 }
 
+export async function getAttachmentInfo(
+  attachmentId: string,
+): Promise<IAttachment> {
+  const req = await api.post<IAttachment>("/files/info", {
+    attachmentId,
+  });
+  return req.data;
+}
+
 export async function uploadFile(
   file: File,
   pageId: string,

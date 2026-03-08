@@ -16,6 +16,7 @@ import {
   JwtType,
 } from '../dto/jwt-payload';
 import { User } from '@docmost/db/types/entity.types';
+import { isUserDisabled } from '../../../common/helpers';
 
 @Injectable()
 export class TokenService {
@@ -25,7 +26,7 @@ export class TokenService {
   ) {}
 
   async generateAccessToken(user: User): Promise<string> {
-    if (user.deactivatedAt || user.deletedAt) {
+    if (isUserDisabled(user)) {
       throw new ForbiddenException();
     }
 
@@ -39,7 +40,7 @@ export class TokenService {
   }
 
   async generateCollabToken(user: User, workspaceId: string): Promise<string> {
-    if (user.deactivatedAt || user.deletedAt) {
+    if (isUserDisabled(user)) {
       throw new ForbiddenException();
     }
 
@@ -80,7 +81,7 @@ export class TokenService {
   }
 
   async generateMfaToken(user: User, workspaceId: string): Promise<string> {
-    if (user.deactivatedAt || user.deletedAt) {
+    if (isUserDisabled(user)) {
       throw new ForbiddenException();
     }
 
@@ -116,7 +117,7 @@ export class TokenService {
     expiresIn?: string | number;
   }): Promise<string> {
     const { apiKeyId, user, workspaceId, expiresIn } = opts;
-    if (user.deactivatedAt || user.deletedAt) {
+    if (isUserDisabled(user)) {
       throw new ForbiddenException();
     }
 

@@ -7,6 +7,7 @@ import {
 import { CreatePageDto, ContentFormat } from '../dto/create-page.dto';
 import { ContentOperation, UpdatePageDto } from '../dto/update-page.dto';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
+import { PagePermissionRepo } from '@docmost/db/repos/page/page-permission.repo';
 import { InsertablePage, Page, User } from '@docmost/db/types/entity.types';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import {
@@ -70,6 +71,7 @@ export class PageService {
   constructor(
     private pageRepo: PageRepo,
     private pageNodeMetaRepo: PageNodeMetaRepo,
+    private pagePermissionRepo: PagePermissionRepo,
     private attachmentRepo: AttachmentRepo,
     @InjectKysely() private readonly db: KyselyDB,
     private readonly storageService: StorageService,
@@ -96,7 +98,10 @@ export class PageService {
     });
   }
 
-  async getPageInfo(pageId: string, workspaceId?: string): Promise<
+  async getPageInfo(
+    pageId: string,
+    workspaceId?: string,
+  ): Promise<
     | (Page & {
         nodeType: PageNodeType;
         isPinned: boolean;
@@ -150,7 +155,11 @@ export class PageService {
         { workspaceId },
       );
 
-      if (!parentPage || parentPage.spaceId !== createPageDto.spaceId) {
+      if (
+        !parentPage ||
+        parentPage.deletedAt ||
+        parentPage.spaceId !== createPageDto.spaceId
+      ) {
         throw new NotFoundException('Parent page not found');
       }
 
@@ -337,6 +346,8 @@ export class PageService {
     pagination: PaginationOptions,
     workspaceId?: string,
     pageId?: string,
+    userId?: string,
+    spaceCanEdit?: boolean,
   ): Promise<
     CursorPaginationResult<
       Partial<Page> & {
@@ -452,10 +463,16 @@ export class PageService {
         paginatedResult.items,
         spaceId,
       );
+      const filteredItems = await this.applySidebarPermissions(
+        enrichedItems,
+        spaceId,
+        userId,
+        spaceCanEdit,
+      );
 
       return {
         ...paginatedResult,
-        items: enrichedItems,
+        items: filteredItems,
       };
     } catch (err) {
       if (!this.isMissingTableError(err)) {
@@ -520,12 +537,83 @@ export class PageService {
         paginatedResult.items,
         spaceId,
       );
+      const filteredItems = await this.applySidebarPermissions(
+        enrichedItems,
+        spaceId,
+        userId,
+        spaceCanEdit,
+      );
 
       return {
         ...paginatedResult,
-        items: enrichedItems,
+        items: filteredItems,
       };
     }
+  }
+
+  private async applySidebarPermissions<
+    T extends { id: string; hasChildren: boolean },
+  >(
+    items: T[],
+    spaceId: string,
+    userId?: string,
+    spaceCanEdit?: boolean,
+  ): Promise<Array<T & { canEdit: boolean }>> {
+    if (!items.length) {
+      return [];
+    }
+
+    if (!userId) {
+      return items.map((item) => ({
+        ...item,
+        canEdit: spaceCanEdit ?? true,
+      }));
+    }
+
+    const hasRestrictions =
+      await this.pagePermissionRepo.hasRestrictedPagesInSpace(spaceId);
+
+    if (!hasRestrictions) {
+      return items.map((item) => ({
+        ...item,
+        canEdit: spaceCanEdit ?? true,
+      }));
+    }
+
+    const accessiblePages =
+      await this.pagePermissionRepo.filterAccessiblePageIdsWithPermissions(
+        items.map((item) => item.id),
+        userId,
+      );
+    const permissionMap = new Map(
+      accessiblePages.map((page) => [page.id, page.canEdit]),
+    );
+
+    let filteredItems = items
+      .filter((item) => permissionMap.has(item.id))
+      .map((item) => ({
+        ...item,
+        canEdit: Boolean(permissionMap.get(item.id)) && (spaceCanEdit ?? true),
+      }));
+
+    const pagesWithChildren = filteredItems.filter((item) => item.hasChildren);
+    if (!pagesWithChildren.length) {
+      return filteredItems;
+    }
+
+    const parentsWithAccessibleChildren =
+      await this.pagePermissionRepo.getParentIdsWithAccessibleChildren(
+        pagesWithChildren.map((item) => item.id),
+        userId,
+      );
+    const hasAccessibleChildrenSet = new Set(parentsWithAccessibleChildren);
+
+    filteredItems = filteredItems.map((item) => ({
+      ...item,
+      hasChildren: item.hasChildren && hasAccessibleChildrenSet.has(item.id),
+    }));
+
+    return filteredItems;
   }
 
   private async enrichSidebarItemsWithCounts<T extends { id: string }>(
@@ -689,8 +777,45 @@ export class PageService {
     }
   }
 
-  async movePageToSpace(rootPage: Page, spaceId: string) {
+  async movePageToSpace(rootPage: Page, spaceId: string, userId?: string) {
+    let childPageIds: string[] = [];
+
+    const allPages = await this.pageRepo.getPageAndDescendants(rootPage.id, {
+      includeContent: false,
+      workspaceId: rootPage.workspaceId,
+    });
+    const accessiblePages = userId
+      ? await this.filterAccessibleTreePages(
+          allPages,
+          rootPage.id,
+          userId,
+          rootPage.spaceId,
+        )
+      : allPages;
+    const accessibleIds = new Set(accessiblePages.map((page) => page.id));
+    const pagesToOrphan = accessiblePages.length
+      ? allPages.filter(
+          (page) =>
+            !accessibleIds.has(page.id) &&
+            page.parentPageId &&
+            accessibleIds.has(page.parentPageId),
+        )
+      : [];
+
     await executeTx(this.db, async (trx) => {
+      for (const page of pagesToOrphan) {
+        const orphanPosition = await this.nextPagePosition(
+          rootPage.spaceId,
+          null,
+        );
+        await this.pageRepo.updatePage(
+          { parentPageId: null, position: orphanPosition },
+          page.id,
+          trx,
+          rootPage.workspaceId,
+        );
+      }
+
       // Update root page
       const nextPosition = await this.nextPagePosition(spaceId);
       await this.pageRepo.updatePage(
@@ -699,30 +824,26 @@ export class PageService {
         trx,
         rootPage.workspaceId,
       );
-      const pageIds = await this.pageRepo
-        .getPageAndDescendants(rootPage.id, {
-          includeContent: false,
-          workspaceId: rootPage.workspaceId,
-        })
-        .then((pages) => pages.map((page) => page.id));
-      // The first id is the root page id
-      if (pageIds.length > 1) {
+      const pageIdsToMove = accessiblePages.map((page) => page.id);
+      childPageIds = pageIdsToMove.filter((id) => id !== rootPage.id);
+
+      if (pageIdsToMove.length > 1) {
         // Update sub pages
         await this.pageRepo.updatePages(
           { spaceId },
-          pageIds.filter((id) => id !== rootPage.id),
+          childPageIds,
           trx,
           rootPage.workspaceId,
         );
       }
 
-      if (pageIds.length > 0) {
+      if (pageIdsToMove.length > 0) {
         try {
           await trx
             .updateTable('pageNodeMeta')
             .set({ spaceId, updatedAt: new Date() })
             .where('workspaceId', '=', rootPage.workspaceId)
-            .where('pageId', 'in', pageIds)
+            .where('pageId', 'in', pageIdsToMove)
             .execute();
         } catch (err) {
           if (!this.isMissingTableError(err)) {
@@ -730,12 +851,17 @@ export class PageService {
           }
         }
 
+        await trx
+          .deleteFrom('pageAccess')
+          .where('pageId', 'in', pageIdsToMove)
+          .execute();
+
         // update spaceId in shares
         await trx
           .updateTable('shares')
           .set({ spaceId: spaceId })
           .where('workspaceId', '=', rootPage.workspaceId)
-          .where('pageId', 'in', pageIds)
+          .where('pageId', 'in', pageIdsToMove)
           .execute();
 
         // Update comments
@@ -743,13 +869,13 @@ export class PageService {
           .updateTable('comments')
           .set({ spaceId: spaceId })
           .where('workspaceId', '=', rootPage.workspaceId)
-          .where('pageId', 'in', pageIds)
+          .where('pageId', 'in', pageIdsToMove)
           .execute();
 
         // Update attachments
         await this.attachmentRepo.updateAttachmentsByPageId(
           { spaceId },
-          pageIds,
+          pageIdsToMove,
           {
             workspaceId: rootPage.workspaceId,
             trx,
@@ -757,16 +883,22 @@ export class PageService {
         );
 
         // Update watchers and remove those without access to new space
-        await this.watcherService.movePageWatchersToSpace(pageIds, spaceId, {
-          trx,
-        });
+        await this.watcherService.movePageWatchersToSpace(
+          pageIdsToMove,
+          spaceId,
+          {
+            trx,
+          },
+        );
 
         await this.aiQueue.add(QueueJob.PAGE_MOVED_TO_SPACE, {
-          pageId: pageIds,
+          pageId: pageIdsToMove,
           workspaceId: rootPage.workspaceId,
         });
       }
     });
+
+    return { childPageIds };
   }
 
   async duplicatePage(
@@ -792,9 +924,15 @@ export class PageService {
       includeContent: true,
       workspaceId: rootPage.workspaceId,
     });
+    const accessiblePages = await this.filterAccessibleTreePages(
+      pages,
+      rootPage.id,
+      authUser.id,
+      rootPage.spaceId,
+    );
 
     const pageMap = new Map<string, CopyPageMapEntry>();
-    pages.forEach((page) => {
+    accessiblePages.forEach((page) => {
       pageMap.set(page.id, {
         newPageId: uuid7(),
         newSlugId: generateSlugId(),
@@ -805,7 +943,7 @@ export class PageService {
     const attachmentMap = new Map<string, ICopyPageAttachment>();
 
     const insertablePages: InsertablePage[] = await Promise.all(
-      pages.map(async (page) => {
+      accessiblePages.map(async (page) => {
         const pageContent = getProsemirrorContent(page.content);
         const pageFromMap = pageMap.get(page.id);
 
@@ -912,7 +1050,11 @@ export class PageService {
       const sourceMetaRows = await this.db
         .selectFrom('pageNodeMeta')
         .select(['pageId', 'nodeType'])
-        .where('pageId', 'in', pages.map((it) => it.id))
+        .where(
+          'pageId',
+          'in',
+          accessiblePages.map((it) => it.id),
+        )
         .execute();
       const nodeTypeBySourceId = new Map(
         sourceMetaRows.map((it) => [
@@ -924,7 +1066,7 @@ export class PageService {
       await this.db
         .insertInto('pageNodeMeta')
         .values(
-          pages.map((sourcePage) => ({
+          accessiblePages.map((sourcePage) => ({
             pageId: pageMap.get(sourcePage.id).newPageId,
             workspaceId: sourcePage.workspaceId,
             spaceId: spaceId,
@@ -1013,11 +1155,13 @@ export class PageService {
       includeSpace: true,
     });
 
-    const hasChildren = pages.length > 1;
+    const hasChildren = accessiblePages.length > 1;
+    const childPageIds = insertedPageIds.filter((id) => id !== newPageId);
 
     return {
       ...duplicatedPage,
       hasChildren,
+      childPageIds,
     };
   }
 
@@ -1025,7 +1169,9 @@ export class PageService {
     const movedMeta = await this.safeFindNodeMeta(movedPage.id);
     const movedNodeType = this.normalizeNodeType(movedMeta?.nodeType);
     const targetParentId =
-      dto.parentPageId === undefined ? movedPage.parentPageId : dto.parentPageId;
+      dto.parentPageId === undefined
+        ? movedPage.parentPageId
+        : dto.parentPageId;
 
     // validate position value by attempting to generate a key
     try {
@@ -1044,7 +1190,11 @@ export class PageService {
         const parentPage = await this.pageRepo.findById(targetParentId, {
           workspaceId: movedPage.workspaceId,
         });
-        if (!parentPage || parentPage.spaceId !== movedPage.spaceId) {
+        if (
+          !parentPage ||
+          parentPage.deletedAt ||
+          parentPage.spaceId !== movedPage.spaceId
+        ) {
           throw new NotFoundException('Parent page not found');
         }
 
@@ -1317,7 +1467,12 @@ export class PageService {
     const rootFiles = await this.db
       .selectFrom('pages')
       .leftJoin('pageNodeMeta', 'pageNodeMeta.pageId', 'pages.id')
-      .select(['pages.id', 'pages.title', 'pages.parentPageId', 'pages.position'])
+      .select([
+        'pages.id',
+        'pages.title',
+        'pages.parentPageId',
+        'pages.position',
+      ])
       .where('pages.workspaceId', '=', workspaceId)
       .where('pages.spaceId', '=', spaceId)
       .where('pages.parentPageId', 'is', null)
@@ -1518,9 +1673,7 @@ export class PageService {
     return result;
   }
 
-  private normalizeNodeType(
-    nodeType: string | null | undefined,
-  ): PageNodeType {
+  private normalizeNodeType(nodeType: string | null | undefined): PageNodeType {
     return nodeType === 'folder' ? 'folder' : 'file';
   }
 
@@ -1609,6 +1762,57 @@ export class PageService {
     return message.includes('relation') && message.includes('does not exist');
   }
 
+  /**
+   * Keep only pages that remain reachable from the root through accessible
+   * ancestors, so move/copy operations do not create broken partial trees.
+   */
+  private async filterAccessibleTreePages<
+    T extends { id: string; parentPageId: string | null },
+  >(
+    pages: T[],
+    rootPageId: string,
+    userId: string,
+    spaceId?: string,
+  ): Promise<T[]> {
+    if (pages.length === 0) {
+      return [];
+    }
+
+    const accessibleIds = await this.pagePermissionRepo.filterAccessiblePageIds(
+      {
+        pageIds: pages.map((page) => page.id),
+        userId,
+        spaceId,
+      },
+    );
+    const accessibleSet = new Set(accessibleIds);
+    const includedIds = new Set<string>();
+
+    let changed = true;
+    while (changed) {
+      changed = false;
+
+      for (const page of pages) {
+        if (includedIds.has(page.id) || !accessibleSet.has(page.id)) {
+          continue;
+        }
+
+        if (page.id === rootPageId) {
+          includedIds.add(page.id);
+          changed = true;
+          continue;
+        }
+
+        if (page.parentPageId && includedIds.has(page.parentPageId)) {
+          includedIds.add(page.id);
+          changed = true;
+        }
+      }
+    }
+
+    return pages.filter((page) => includedIds.has(page.id));
+  }
+
   async getPageBreadCrumbs(childPageId: string, workspaceId?: string) {
     const ancestors = await this.db
       .withRecursive('page_ancestors', (db) =>
@@ -1677,10 +1881,28 @@ export class PageService {
 
   async getRecentSpacePages(
     spaceId: string,
+    userId: string,
     pagination: PaginationOptions,
     workspaceId?: string,
   ): Promise<CursorPaginationResult<Page>> {
-    return this.pageRepo.getRecentPagesInSpace(spaceId, pagination, workspaceId);
+    const result = await this.pageRepo.getRecentPagesInSpace(
+      spaceId,
+      pagination,
+      workspaceId,
+    );
+
+    if (result.items.length > 0) {
+      const accessibleIds =
+        await this.pagePermissionRepo.filterAccessiblePageIds({
+          pageIds: result.items.map((page) => page.id),
+          userId,
+          spaceId,
+        });
+      const accessibleSet = new Set(accessibleIds);
+      result.items = result.items.filter((page) => accessibleSet.has(page.id));
+    }
+
+    return result;
   }
 
   async getRecentPages(
@@ -1688,19 +1910,49 @@ export class PageService {
     workspaceId: string,
     pagination: PaginationOptions,
   ): Promise<CursorPaginationResult<Page>> {
-    return this.pageRepo.getRecentPages(userId, workspaceId, pagination);
+    const result = await this.pageRepo.getRecentPages(
+      userId,
+      workspaceId,
+      pagination,
+    );
+
+    if (result.items.length > 0) {
+      const accessibleIds =
+        await this.pagePermissionRepo.filterAccessiblePageIds({
+          pageIds: result.items.map((page) => page.id),
+          userId,
+        });
+      const accessibleSet = new Set(accessibleIds);
+      result.items = result.items.filter((page) => accessibleSet.has(page.id));
+    }
+
+    return result;
   }
 
   async getDeletedSpacePages(
     spaceId: string,
+    userId: string,
     pagination: PaginationOptions,
     workspaceId?: string,
   ): Promise<CursorPaginationResult<Page>> {
-    return this.pageRepo.getDeletedPagesInSpace(
+    const result = await this.pageRepo.getDeletedPagesInSpace(
       spaceId,
       pagination,
       workspaceId,
     );
+
+    if (result.items.length > 0) {
+      const accessibleIds =
+        await this.pagePermissionRepo.filterAccessiblePageIds({
+          pageIds: result.items.map((page) => page.id),
+          userId,
+          spaceId,
+        });
+      const accessibleSet = new Set(accessibleIds);
+      result.items = result.items.filter((page) => accessibleSet.has(page.id));
+    }
+
+    return result;
   }
 
   async forceDelete(pageId: string, workspaceId: string): Promise<void> {

@@ -95,10 +95,9 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
     return <></>;
   }
 
-  const canManagePage = spaceAbility.can(
-    SpaceCaslAction.Manage,
-    SpaceCaslSubject.Page,
-  );
+  const canEdit =
+    page.permissions?.canEdit ??
+    spaceAbility.can(SpaceCaslAction.Manage, SpaceCaslSubject.Page);
   const isFolder = page.nodeType === "folder";
 
   return (
@@ -109,16 +108,16 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
         </Helmet>
 
         <MemoizedPageHeader
-          readOnly={!canManagePage}
+          readOnly={!canEdit}
           pageId={page.id}
-          editable={canManagePage}
+          editable={canEdit}
           showEditorToolbar={!isFolder}
         />
 
         {isFolder ? (
           <FolderView
             folderPage={page}
-            readOnly={!canManagePage}
+            readOnly={!canEdit}
             spaceSlug={page?.space?.slug}
           />
         ) : (
@@ -130,7 +129,7 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
             slugId={page.slugId}
             updatedAt={page.updatedAt}
             spaceSlug={page?.space?.slug}
-            editable={canManagePage}
+            editable={canEdit}
           />
         )}
         <MemoizedHistoryModal pageId={page.id} />
