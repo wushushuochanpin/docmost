@@ -28,6 +28,7 @@ import {
 import { useShareTranslation } from "@/features/share/share-translations.ts";
 import { getAppUrl } from "@/lib/config.ts";
 import classes from "@/features/share/components/share-page-state.module.css";
+import { useWechatShare } from "@/features/share/hooks/use-wechat-share.ts";
 
 const LazyReadonlyPageEditor = lazy(() =>
   lazyShareMantineComponent(
@@ -145,6 +146,20 @@ export default function SharedPage() {
       : undefined,
   );
   useShareRobotsMeta(Boolean(data && !data.share.searchIndexing));
+  useWechatShare({
+    enabled: Boolean(data && data.share.accessMode === "public"),
+    shareUrl:
+      data && data.share?.key
+        ? getAppUrl() +
+          buildSharedPageUrl({
+            shareId: data.share.key,
+            pageSlugId: data.page.slugId,
+            pageTitle: data.page.title,
+          })
+        : undefined,
+    title: data?.page?.title || t("untitled"),
+    description: data?.page?.excerpt,
+  });
 
   useEffect(() => {
     if (!data) return;

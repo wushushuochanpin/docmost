@@ -199,6 +199,18 @@ export class EnvironmentService {
     return this.configService.get<string>('DRAWIO_URL');
   }
 
+  getWechatAppId(): string {
+    return this.configService.get<string>('WECHAT_APP_ID');
+  }
+
+  getWechatAppSecret(): string {
+    return this.configService.get<string>('WECHAT_APP_SECRET');
+  }
+
+  hasWechatShareConfig(): boolean {
+    return Boolean(this.getWechatAppId() && this.getWechatAppSecret());
+  }
+
   isCloud(): boolean {
     const cloudConfig = this.configService
       .get<string>('CLOUD', 'false')

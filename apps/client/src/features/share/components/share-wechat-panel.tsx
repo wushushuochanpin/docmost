@@ -5,28 +5,33 @@ import { IconBrandWechat, IconCopy } from "@tabler/icons-react";
 import { CopyButton } from "@/components/common/copy-button";
 import classes from "@/features/share/components/share.module.css";
 import { useTranslation } from "react-i18next";
+import { useWechatShare } from "@/features/share/hooks/use-wechat-share.ts";
+import { isWechatUserAgent } from "@/features/share/wechat-utils.ts";
 
 interface ShareWechatPanelProps {
   shareLink: string;
   copyValue?: string;
-}
-
-function isWechatUserAgent() {
-  if (typeof navigator === "undefined") {
-    return false;
-  }
-
-  return /MicroMessenger/i.test(navigator.userAgent || "");
+  title?: string;
+  description?: string;
 }
 
 export default function ShareWechatPanel({
   shareLink,
   copyValue,
+  title,
+  description,
 }: ShareWechatPanelProps) {
   const { t } = useTranslation();
   const isMobile = useMediaQuery("(max-width: 48em)");
   const isWechat = useMemo(isWechatUserAgent, []);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
+
+  useWechatShare({
+    enabled: isWechat && Boolean(shareLink),
+    shareUrl: shareLink,
+    title,
+    description,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -71,18 +76,18 @@ export default function ShareWechatPanel({
       <section className={classes.shareWechatPanel}>
         <Group gap={8} mb={8} wrap="nowrap">
           <IconBrandWechat size={18} />
-          <Text size="sm" fw={600}>
-            {t("Share with WeChat")}
-          </Text>
-        </Group>
-        <Text size="sm">
-          {t(
-            "Open the top-right menu in WeChat to send to friends or share to Moments.",
-          )}
+        <Text size="sm" fw={600}>
+          {t("Share with WeChat")}
         </Text>
-      </section>
-    );
-  }
+      </Group>
+      <Text size="sm">
+        {t(
+          "Open the top-right menu in WeChat to send to friends or share to Moments. This page will use the public share link.",
+        )}
+      </Text>
+    </section>
+  );
+}
 
   if (isMobile) {
     return (

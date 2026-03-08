@@ -148,3 +148,11 @@ export interface ISharedPageRenderedSegment {
   segmentIndex: number;
   interactiveBlocks: ISharedPageRenderedBlock[];
 }
+
+export interface IShareWechatSignature {
+  enabled: boolean;
+  appId?: string;
+  nonceStr?: string;
+  timestamp?: number;
+  signature?: string;
+}

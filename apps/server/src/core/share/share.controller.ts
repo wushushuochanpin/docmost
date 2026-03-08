@@ -24,6 +24,7 @@ import {
   RegenerateProtectedShareDto,
   ShareIdDto,
   ShareInfoDto,
+  ShareWechatSignatureDto,
   SharePageSegmentDto,
   SharePageIdDto,
   UpdateShareDto,
@@ -38,6 +39,7 @@ import { EnvironmentService } from '../../integrations/environment/environment.s
 import { hasLicenseOrEE } from '../../common/helpers';
 import { FastifyRequest } from 'fastify';
 import { ShareErrorCode } from './share.constants';
+import { ShareWechatService } from './share-wechat.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('shares')
@@ -48,6 +50,7 @@ export class ShareController {
     private readonly shareRepo: ShareRepo,
     private readonly pageRepo: PageRepo,
     private readonly environmentService: EnvironmentService,
+    private readonly shareWechatService: ShareWechatService,
   ) {}
 
   @HttpCode(HttpStatus.OK)
@@ -366,10 +369,59 @@ export class ShareController {
     };
   }
 
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('/wechat-signature')
+  async getWechatSignature(
+    @Body() dto: ShareWechatSignatureDto,
+    @Req() req: FastifyRequest,
+  ) {
+    const requestOrigin = this.getRequestOrigin(req);
+    const normalizedUrl = this.validateWechatPageUrl(dto.url, requestOrigin);
+    return this.shareWechatService.createSignature(normalizedUrl);
+  }
+
   private shareNotFoundException() {
     return new NotFoundException({
       code: ShareErrorCode.ShareNotFound,
       message: 'Share not found',
     });
+  }
+
+  private getRequestOrigin(req: FastifyRequest) {
+    const host = req.headers.host;
+    if (!host) {
+      return this.environmentService.getAppUrl();
+    }
+
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    const protocol =
+      (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)
+        ?.toString()
+        ?.split(',')[0]
+        ?.trim() ||
+      req.protocol ||
+      (this.environmentService.isHttps() ? 'https' : 'http');
+
+    return `${protocol}://${host}`;
+  }
+
+  private validateWechatPageUrl(rawUrl: string, requestOrigin: string) {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(rawUrl);
+    } catch {
+      throw new BadRequestException('Invalid URL');
+    }
+
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      throw new BadRequestException('Invalid URL protocol');
+    }
+
+    if (parsedUrl.origin !== requestOrigin) {
+      throw new BadRequestException('URL origin mismatch');
+    }
+
+    return parsedUrl.toString();
   }
 }

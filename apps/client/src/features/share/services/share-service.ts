@@ -12,6 +12,7 @@ import {
   IShareForPage,
   ISharePageSegmentInput,
   IShareInfoInput,
+  IShareWechatSignature,
   IUpdateShare,
   IVerifyShareAccessInput,
   IVerifyShareAccessOutput,
@@ -80,6 +81,15 @@ export async function getSharePageSegment(
     shareInput,
   );
   return unwrapApiData<ISharedPageRenderedSegment>(req);
+}
+
+export async function getShareWechatSignature(
+  url: string,
+): Promise<IShareWechatSignature> {
+  const req = await api.post<IShareWechatSignature>("/shares/wechat-signature", {
+    url,
+  });
+  return unwrapApiData<IShareWechatSignature>(req);
 }
 
 export async function deleteShare(shareId: string): Promise<void> {

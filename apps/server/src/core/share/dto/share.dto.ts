@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   Max,
   Min,
@@ -91,6 +92,13 @@ export class SharePageSegmentDto extends ShareInfoDto {
   @IsString()
   @IsNotEmpty()
   cursor: string;
+}
+
+export class ShareWechatSignatureDto {
+  @IsString()
+  @IsNotEmpty()
+  @IsUrl({ protocols: ['http', 'https'], require_tld: false })
+  url: string;
 }
 
 export class SharePageIdDto {

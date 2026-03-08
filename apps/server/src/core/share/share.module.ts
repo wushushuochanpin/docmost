@@ -5,6 +5,7 @@ import { TokenModule } from '../auth/token.module';
 import { ShareSeoController } from './share-seo.controller';
 import { ShareStaticRendererService } from './share-static-renderer.service';
 import { SharePreviewMetaService } from './share-preview-meta.service';
+import { ShareWechatService } from './share-wechat.service';
 
 @Module({
   imports: [TokenModule],
@@ -13,6 +14,7 @@ import { SharePreviewMetaService } from './share-preview-meta.service';
     ShareService,
     ShareStaticRendererService,
     SharePreviewMetaService,
+    ShareWechatService,
   ],
   exports: [ShareService],
 })

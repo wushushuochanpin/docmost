@@ -375,7 +375,12 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
                 </ActionIcon>
               </Group>
               {share?.accessMode !== "password_expiring" && (
-                <ShareWechatPanel shareLink={shareLink} copyValue={shareCopyValue} />
+                <ShareWechatPanel
+                  shareLink={shareLink}
+                  copyValue={shareCopyValue}
+                  title={page?.title || share.sharedPage.title}
+                  description={t("Open this shared page in Docmost.")}
+                />
               )}
             </>
           )}
@@ -506,7 +511,12 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
                 </ActionIcon>
               </Group>
               {share?.accessMode !== "password_expiring" && (
-                <ShareWechatPanel shareLink={shareLink} copyValue={shareCopyValue} />
+                <ShareWechatPanel
+                  shareLink={shareLink}
+                  copyValue={shareCopyValue}
+                  title={page?.title}
+                  description={t("Open this shared page in Docmost.")}
+                />
               )}
             </>
           )}
