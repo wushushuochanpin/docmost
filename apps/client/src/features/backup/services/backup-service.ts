@@ -20,6 +20,9 @@ export interface BackupJob {
   durationMs: string | null;
   artifactPath: string | null;
   artifactSizeBytes: string | null;
+  artifactDeletedAt: string | null;
+  artifactDeletedByUserId: string | null;
+  artifactDeleteReason: string | null;
   checksum: string | null;
   errorCode: string | null;
   errorMessage: string | null;
@@ -87,4 +90,14 @@ export async function getBackupDownloadUrl(
 ): Promise<{ url: string }> {
   const res = await api.get(`/backups/jobs/${jobId}/download-url`);
   return unwrap<{ url: string }>(res);
+}
+
+export async function deleteBackupArtifact(
+  jobId: string,
+  reason = "manual_cleanup",
+): Promise<{ job: BackupJob }> {
+  const res = await api.post(`/backups/jobs/${jobId}/delete-artifact`, {
+    reason,
+  });
+  return unwrap<{ job: BackupJob }>(res);
 }

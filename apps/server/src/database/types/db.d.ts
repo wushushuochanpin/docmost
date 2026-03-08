@@ -402,6 +402,9 @@ export interface BackupJobs {
   durationMs: string | null;
   artifactPath: string | null;
   artifactSizeBytes: string | null;
+  artifactDeletedAt: Timestamp | null;
+  artifactDeletedByUserId: string | null;
+  artifactDeleteReason: string | null;
   checksum: string | null;
   errorCode: string | null;
   errorMessage: string | null;

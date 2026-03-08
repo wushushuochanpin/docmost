@@ -24,3 +24,9 @@ export class BackupRunDto {
   @IsBoolean()
   cleanupOnly?: boolean;
 }
+
+export class DeleteBackupArtifactDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}

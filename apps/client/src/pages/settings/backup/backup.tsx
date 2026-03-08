@@ -7,8 +7,16 @@ import {
   Button,
   Space,
   Tooltip,
+  ActionIcon,
+  Menu,
 } from "@mantine/core";
-import { IconPlayerPlay, IconDownload, IconRefresh } from "@tabler/icons-react";
+import {
+  IconPlayerPlay,
+  IconDownload,
+  IconRefresh,
+  IconDots,
+  IconTrash,
+} from "@tabler/icons-react";
 import SettingsTitle from "@/components/settings/settings-title";
 import { useTranslation } from "react-i18next";
 import { getAppName } from "@/lib/config";
@@ -17,11 +25,13 @@ import {
   useBackupJobsQuery,
   useRunBackupMutation,
   useCleanupStaleJobsMutation,
+  useDeleteBackupArtifactMutation,
 } from "@/features/backup/queries/backup-query";
 import type { BackupJob } from "@/features/backup/services/backup-service";
 import Paginate from "@/components/common/paginate";
 import NoTableResults from "@/components/common/no-table-results";
 import { getBackupDownloadUrl } from "@/features/backup/services/backup-service";
+import { modals } from "@mantine/modals";
 
 const JOB_STATUS_MAP: Record<
   string,
@@ -73,13 +83,17 @@ export default function BackupPage() {
     status === "running" || status === "pending";
   const runMutation = useRunBackupMutation();
   const cleanupMutation = useCleanupStaleJobsMutation();
+  const deleteArtifactMutation = useDeleteBackupArtifactMutation();
 
-  const goNext = useCallback((nextCursor: string | null | undefined) => {
-    if (nextCursor) {
-      setCursorStack((prev) => [...prev, cursor]);
-      setCursor(nextCursor);
-    }
-  }, [cursor]);
+  const goNext = useCallback(
+    (nextCursor: string | null | undefined) => {
+      if (nextCursor) {
+        setCursorStack((prev) => [...prev, cursor]);
+        setCursor(nextCursor);
+      }
+    },
+    [cursor],
+  );
 
   const goPrev = useCallback(() => {
     setCursorStack((prev) => {
@@ -98,10 +112,32 @@ export default function BackupPage() {
     }
   }, []);
 
+  const openDeleteModal = useCallback(
+    (job: BackupJob) => {
+      modals.openConfirmModal({
+        title: t("Delete backup"),
+        children: (
+          <Text size="sm">
+            {t(
+              "Are you sure you want to delete this backup artifact? The record will remain visible, but this backup will no longer be downloadable or restorable.",
+            )}
+          </Text>
+        ),
+        centered: true,
+        labels: { confirm: t("Delete"), cancel: t("Cancel") },
+        confirmProps: { color: "red" },
+        onConfirm: () => deleteArtifactMutation.mutate(job.id),
+      });
+    },
+    [deleteArtifactMutation, t],
+  );
+
   return (
     <>
       <Helmet>
-        <title>{t("Backup & Restore")} - {getAppName()}</title>
+        <title>
+          {t("Backup & Restore")} - {getAppName()}
+        </title>
       </Helmet>
       <SettingsTitle title={t("Backup & Restore")} />
 
@@ -156,7 +192,9 @@ export default function BackupPage() {
                 return (
                   <Table.Tr key={job.id}>
                     <Table.Td>
-                      <Text fz="sm">{formatDate(job.startedAt ?? job.createdAt)}</Text>
+                      <Text fz="sm">
+                        {formatDate(job.startedAt ?? job.createdAt)}
+                      </Text>
                     </Table.Td>
                     <Table.Td>
                       <Text fz="sm">{formatDate(job.endedAt)}</Text>
@@ -168,6 +206,11 @@ export default function BackupPage() {
                       <Badge variant="light" color={statusInfo.color}>
                         {t(statusInfo.label)}
                       </Badge>
+                      {job.artifactDeletedAt && (
+                        <Badge variant="outline" color="gray" ml={8}>
+                          {t("Artifact deleted")}
+                        </Badge>
+                      )}
                       {job.status === "failed" && job.errorMessage && (
                         <Tooltip label={job.errorMessage}>
                           <Text fz="xs" c="red" mt={4} lineClamp={1}>
@@ -193,14 +236,45 @@ export default function BackupPage() {
                         </Button>
                       )}
                       {job.status === "success" && (
-                        <Button
-                          variant="subtle"
-                          size="compact-sm"
-                          leftSection={<IconDownload size={14} />}
-                          onClick={() => handleDownload(job.id)}
-                        >
-                          {t("Download")}
-                        </Button>
+                        <Group gap="xs" wrap="nowrap">
+                          {!job.artifactDeletedAt && job.artifactPath && (
+                            <Button
+                              variant="subtle"
+                              size="compact-sm"
+                              leftSection={<IconDownload size={14} />}
+                              onClick={() => handleDownload(job.id)}
+                            >
+                              {t("Download")}
+                            </Button>
+                          )}
+                          {!job.artifactDeletedAt && job.artifactPath && (
+                            <Menu
+                              shadow="xl"
+                              position="bottom-end"
+                              offset={8}
+                              width={180}
+                              withArrow
+                            >
+                              <Menu.Target>
+                                <ActionIcon variant="subtle" color="gray">
+                                  <IconDots size={16} stroke={1.75} />
+                                </ActionIcon>
+                              </Menu.Target>
+                              <Menu.Dropdown>
+                                <Menu.Item
+                                  c="red"
+                                  onClick={() => openDeleteModal(job)}
+                                  leftSection={
+                                    <IconTrash size={14} stroke={1.75} />
+                                  }
+                                  disabled={deleteArtifactMutation.isPending}
+                                >
+                                  {t("Delete backup")}
+                                </Menu.Item>
+                              </Menu.Dropdown>
+                            </Menu>
+                          )}
+                        </Group>
                       )}
                     </Table.Td>
                   </Table.Tr>

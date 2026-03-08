@@ -9,6 +9,7 @@ import {
   getBackupJobs,
   runBackup,
   cleanupStaleBackupJobs,
+  deleteBackupArtifact,
   type BackupJob,
   type ListBackupJobsResult,
 } from "../services/backup-service";
@@ -67,6 +68,22 @@ export function useCleanupStaleJobsMutation() {
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       const msg = err.response?.data?.message ?? "Failed to cleanup stale jobs";
+      notifications.show({ message: msg, color: "red" });
+    },
+  });
+}
+
+export function useDeleteBackupArtifactMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (jobId: string) => deleteBackupArtifact(jobId),
+    onSuccess: () => {
+      notifications.show({ message: "Backup deleted" });
+      queryClient.invalidateQueries({ queryKey: ["backupJobs"] });
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      const msg = err.response?.data?.message ?? "Failed to delete backup";
       notifications.show({ message: msg, color: "red" });
     },
   });

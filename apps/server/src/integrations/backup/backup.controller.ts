@@ -25,6 +25,7 @@ import {
   BackupRunDto,
   ListBackupJobsDto,
   BackupJobIdDto,
+  DeleteBackupArtifactDto,
 } from './dto/backup-job.dto';
 import * as path from 'path';
 
@@ -66,9 +67,8 @@ export class BackupController {
   ) {
     this.ensureCanManageBackup(user, workspace);
     if (body?.cleanupOnly) {
-      const cleanedCount = await this.backupJobService.cleanupStaleJobsByWorkspace(
-        workspace.id,
-      );
+      const cleanedCount =
+        await this.backupJobService.cleanupStaleJobsByWorkspace(workspace.id);
       return { cleanedCount };
     }
 
@@ -85,9 +85,8 @@ export class BackupController {
     @AuthWorkspace() workspace: Workspace,
   ) {
     this.ensureCanManageBackup(user, workspace);
-    const cleanedCount = await this.backupJobService.cleanupStaleJobsByWorkspace(
-      workspace.id,
-    );
+    const cleanedCount =
+      await this.backupJobService.cleanupStaleJobsByWorkspace(workspace.id);
     return { cleanedCount };
   }
 
@@ -97,9 +96,8 @@ export class BackupController {
     @AuthWorkspace() workspace: Workspace,
   ) {
     this.ensureCanManageBackup(user, workspace);
-    const cleanedCount = await this.backupJobService.cleanupStaleJobsByWorkspace(
-      workspace.id,
-    );
+    const cleanedCount =
+      await this.backupJobService.cleanupStaleJobsByWorkspace(workspace.id);
     return { cleanedCount };
   }
 
@@ -115,9 +113,8 @@ export class BackupController {
       throw new ForbiddenException();
     }
 
-    const cleanedCount = await this.backupJobService.cleanupStaleJobsByWorkspace(
-      workspace.id,
-    );
+    const cleanedCount =
+      await this.backupJobService.cleanupStaleJobsByWorkspace(workspace.id);
     return { cleanedCount };
   }
 
@@ -149,6 +146,25 @@ export class BackupController {
     );
     if (!result) throw new ForbiddenException();
     return result;
+  }
+
+  @Post('jobs/:id/delete-artifact')
+  async deleteArtifact(
+    @Param() params: BackupJobIdDto,
+    @Body() body: DeleteBackupArtifactDto | undefined,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    this.ensureCanManageBackup(user, workspace);
+
+    const job = await this.backupJobService.deleteArtifact(
+      workspace.id,
+      params.id,
+      user.id,
+      body?.reason,
+    );
+
+    return { job };
   }
 
   @Get('jobs/:id/download')

@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB } from '@docmost/db/types/kysely.types';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -28,6 +33,9 @@ export interface BackupJobRow {
   durationMs: string | null;
   artifactPath: string | null;
   artifactSizeBytes: string | null;
+  artifactDeletedAt: Date | string | null;
+  artifactDeletedByUserId: string | null;
+  artifactDeleteReason: string | null;
   checksum: string | null;
   errorCode: string | null;
   errorMessage: string | null;
@@ -45,11 +53,46 @@ export interface ListBackupJobsResult {
 
 @Injectable()
 export class BackupJobService {
+  private readonly jobSelectFields = [
+    'backupJobs.id',
+    'backupJobs.workspaceId',
+    'backupJobs.policyId',
+    'backupJobs.triggerType',
+    'backupJobs.triggeredByUserId',
+    'backupJobs.status',
+    'backupJobs.startedAt',
+    'backupJobs.endedAt',
+    'backupJobs.durationMs',
+    'backupJobs.artifactPath',
+    'backupJobs.artifactSizeBytes',
+    'backupJobs.artifactDeletedAt',
+    'backupJobs.artifactDeletedByUserId',
+    'backupJobs.artifactDeleteReason',
+    'backupJobs.checksum',
+    'backupJobs.errorCode',
+    'backupJobs.errorMessage',
+    'backupJobs.metadata',
+    'backupJobs.createdAt',
+    'users.name as triggererName',
+  ] as const;
+
   constructor(
     @InjectKysely() private readonly db: KyselyDB,
     @InjectQueue(QueueName.BACKUP_QUEUE) private readonly backupQueue: Queue,
     private readonly environmentService: EnvironmentService,
   ) {}
+
+  private normalizeDeleteReason(reason?: string): string {
+    const value = reason?.trim();
+    return value ? value.slice(0, 255) : 'manual_cleanup';
+  }
+
+  private getArtifactAbsolutePath(artifactPath: string): string {
+    return path.join(
+      this.environmentService.getBackupLocalPath(),
+      artifactPath,
+    );
+  }
 
   private getStaleThresholdDate(): Date {
     const minutes = this.environmentService.getBackupStaleJobMinutes();
@@ -179,25 +222,7 @@ export class BackupJobService {
     const job = await this.db
       .selectFrom('backupJobs')
       .leftJoin('users', 'users.id', 'backupJobs.triggeredByUserId')
-      .select([
-        'backupJobs.id',
-        'backupJobs.workspaceId',
-        'backupJobs.policyId',
-        'backupJobs.triggerType',
-        'backupJobs.triggeredByUserId',
-        'backupJobs.status',
-        'backupJobs.startedAt',
-        'backupJobs.endedAt',
-        'backupJobs.durationMs',
-        'backupJobs.artifactPath',
-        'backupJobs.artifactSizeBytes',
-        'backupJobs.checksum',
-        'backupJobs.errorCode',
-        'backupJobs.errorMessage',
-        'backupJobs.metadata',
-        'backupJobs.createdAt',
-        'users.name as triggererName',
-      ])
+      .select(this.jobSelectFields)
       .where('backupJobs.workspaceId', '=', workspaceId)
       .where('backupJobs.id', '=', jobId)
       .executeTakeFirst();
@@ -215,25 +240,7 @@ export class BackupJobService {
     let q = this.db
       .selectFrom('backupJobs')
       .leftJoin('users', 'users.id', 'backupJobs.triggeredByUserId')
-      .select([
-        'backupJobs.id',
-        'backupJobs.workspaceId',
-        'backupJobs.policyId',
-        'backupJobs.triggerType',
-        'backupJobs.triggeredByUserId',
-        'backupJobs.status',
-        'backupJobs.startedAt',
-        'backupJobs.endedAt',
-        'backupJobs.durationMs',
-        'backupJobs.artifactPath',
-        'backupJobs.artifactSizeBytes',
-        'backupJobs.checksum',
-        'backupJobs.errorCode',
-        'backupJobs.errorMessage',
-        'backupJobs.metadata',
-        'backupJobs.createdAt',
-        'users.name as triggererName',
-      ])
+      .select(this.jobSelectFields)
       .where('backupJobs.workspaceId', '=', workspaceId)
       .orderBy('backupJobs.createdAt', 'desc')
       .limit(limit + 1);
@@ -264,12 +271,22 @@ export class BackupJobService {
   ): Promise<{ url: string } | null> {
     const job = await this.db
       .selectFrom('backupJobs')
-      .select(['id', 'status', 'artifactPath'])
+      .select(['id', 'status', 'artifactPath', 'artifactDeletedAt'])
       .where('workspaceId', '=', workspaceId)
       .where('id', '=', jobId)
       .executeTakeFirst();
 
-    if (!job || job.status !== 'success' || !job.artifactPath) {
+    if (
+      !job ||
+      job.status !== 'success' ||
+      !job.artifactPath ||
+      job.artifactDeletedAt
+    ) {
+      return null;
+    }
+
+    const fullPath = this.getArtifactAbsolutePath(job.artifactPath);
+    if (!(await fs.pathExists(fullPath))) {
       return null;
     }
 
@@ -319,22 +336,139 @@ export class BackupJobService {
     return row as { id: string; status: string } | null;
   }
 
+  async deleteArtifact(
+    workspaceId: string,
+    jobId: string,
+    userId: string,
+    reason?: string,
+  ): Promise<BackupJobRow> {
+    const deleteReason = this.normalizeDeleteReason(reason);
+    const deletedAt = new Date();
+
+    return this.db.transaction().execute(async (trx) => {
+      const job = await trx
+        .selectFrom('backupJobs')
+        .select([
+          'id',
+          'workspaceId',
+          'status',
+          'artifactPath',
+          'artifactDeletedAt',
+        ])
+        .where('workspaceId', '=', workspaceId)
+        .where('id', '=', jobId)
+        .forUpdate()
+        .executeTakeFirst();
+
+      if (!job) {
+        throw new NotFoundException('Backup job not found');
+      }
+
+      if (job.status !== 'success' || !job.artifactPath) {
+        throw new BadRequestException(
+          'Only successful backups with an artifact can be deleted',
+        );
+      }
+
+      if (job.artifactDeletedAt) {
+        throw new BadRequestException(
+          'Backup artifact has already been deleted',
+        );
+      }
+
+      const blockingRestore = await trx
+        .selectFrom('backupRestores')
+        .select('id')
+        .where('workspaceId', '=', workspaceId)
+        .where('jobId', '=', jobId)
+        .where('status', 'in', ['pending', 'running'])
+        .executeTakeFirst();
+
+      if (blockingRestore) {
+        throw new ConflictException(
+          'Backup artifact is currently referenced by an active restore',
+        );
+      }
+
+      const availableArtifacts = await trx
+        .selectFrom('backupJobs')
+        .select(['id', 'artifactPath'])
+        .where('workspaceId', '=', workspaceId)
+        .where('status', '=', 'success')
+        .where('artifactPath', 'is not', null)
+        .where('artifactDeletedAt', 'is', null)
+        .forUpdate()
+        .execute();
+
+      const availableArtifactIds: string[] = [];
+      for (const artifact of availableArtifacts) {
+        if (!artifact.artifactPath) continue;
+
+        const artifactFullPath = this.getArtifactAbsolutePath(
+          artifact.artifactPath,
+        );
+        if (await fs.pathExists(artifactFullPath)) {
+          availableArtifactIds.push(artifact.id);
+        }
+      }
+
+      if (
+        availableArtifactIds.length <= 1 &&
+        availableArtifactIds.includes(jobId)
+      ) {
+        throw new BadRequestException(
+          'Cannot delete the last available successful backup',
+        );
+      }
+
+      const fullPath = this.getArtifactAbsolutePath(job.artifactPath);
+      if (!(await fs.pathExists(fullPath))) {
+        throw new BadRequestException('Backup artifact file not found');
+      }
+
+      await fs.remove(fullPath);
+
+      await trx
+        .updateTable('backupJobs')
+        .set({
+          artifactDeletedAt: deletedAt,
+          artifactDeletedByUserId: userId,
+          artifactDeleteReason: deleteReason,
+        })
+        .where('id', '=', jobId)
+        .execute();
+
+      const updated = await trx
+        .selectFrom('backupJobs')
+        .leftJoin('users', 'users.id', 'backupJobs.triggeredByUserId')
+        .select(this.jobSelectFields)
+        .where('backupJobs.workspaceId', '=', workspaceId)
+        .where('backupJobs.id', '=', jobId)
+        .executeTakeFirst();
+
+      if (!updated) {
+        throw new NotFoundException('Backup job not found');
+      }
+
+      return updated as BackupJobRow;
+    });
+  }
+
   async getArtifactFullPath(
     workspaceId: string,
     jobId: string,
   ): Promise<string | null> {
     const row = await this.db
       .selectFrom('backupJobs')
-      .select('artifactPath')
+      .select(['artifactPath', 'artifactDeletedAt'])
       .where('workspaceId', '=', workspaceId)
       .where('id', '=', jobId)
       .where('status', '=', 'success')
       .executeTakeFirst();
 
-    if (!row?.artifactPath) return null;
+    if (!row?.artifactPath || row.artifactDeletedAt) return null;
 
-    const root = this.environmentService.getBackupLocalPath();
-    const fullPath = path.join(root, row.artifactPath);
+    const fullPath = this.getArtifactAbsolutePath(row.artifactPath);
 
     if (!(await fs.pathExists(fullPath))) {
       return null;
