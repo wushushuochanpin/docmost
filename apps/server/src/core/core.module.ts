@@ -1,4 +1,5 @@
 import {
+  Global,
   MiddlewareConsumer,
   Module,
   NestModule,
@@ -26,6 +27,7 @@ import {
   NoopAuditService,
 } from '../integrations/audit/audit.service';
 
+@Global()
 @Module({
   imports: [
     UserModule,
