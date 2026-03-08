@@ -9,6 +9,8 @@ import { useTranslation } from "react-i18next";
 export default function AppVersion() {
   const { t } = useTranslation();
   const { data: appVersion } = useAppVersion(!isCloud());
+  const releaseUrl =
+    appVersion?.releaseUrl || "https://github.com/docmost/docmost/releases";
   let hasUpdate = false;
   try {
     hasUpdate =
@@ -36,10 +38,7 @@ export default function AppVersion() {
           style={{ cursor: "pointer" }}
           disabled={!hasUpdate}
           onClick={() => {
-            window.open(
-              "https://github.com/docmost/docmost/releases",
-              "_blank",
-            );
+            window.open(releaseUrl, "_blank");
           }}
         >
           <Text
@@ -47,13 +46,26 @@ export default function AppVersion() {
             c="dimmed"
             component="a"
             mr={45}
-            href="https://github.com/docmost/docmost/releases"
+            href={releaseUrl}
             target="_blank"
+            rel="noreferrer"
           >
             {appVersion?.currentVersion && <>v{appVersion?.currentVersion}</>}
           </Text>
         </Indicator>
       </Tooltip>
+      {!isCloud() && appVersion?.sourceUrl && (
+        <Text
+          size="sm"
+          c="dimmed"
+          component="a"
+          href={appVersion.sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {t("Source Code")}
+        </Text>
+      )}
     </div>
   );
 }

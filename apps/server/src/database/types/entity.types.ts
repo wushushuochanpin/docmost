@@ -27,6 +27,10 @@ import {
   PageNodeMeta as _PageNodeMeta,
   Watchers,
   ApiKeys,
+  ScApiTokens as _ScApiTokens,
+  ScApiTokenEvents as _ScApiTokenEvents,
+  ScAuditEvents as _ScAuditEvents,
+  ScAuditRetention as _ScAuditRetention,
   WorkspaceReleaseChannel as _WorkspaceReleaseChannel,
   Audit as _Audit,
 } from './db';
@@ -173,6 +177,28 @@ export type UpdatableUserMFA = Updateable<Omit<_UserMFA, 'id'>>;
 export type ApiKey = Selectable<ApiKeys>;
 export type InsertableApiKey = Insertable<ApiKeys>;
 export type UpdatableApiKey = Updateable<Omit<ApiKeys, 'id'>>;
+
+// Self-built API Tokens
+export type ScApiToken = Selectable<_ScApiTokens>;
+export type InsertableScApiToken = Insertable<_ScApiTokens>;
+export type UpdatableScApiToken = Updateable<Omit<_ScApiTokens, 'id'>>;
+
+export type ScApiTokenEvent = Selectable<_ScApiTokenEvents>;
+export type InsertableScApiTokenEvent = Insertable<_ScApiTokenEvents>;
+export type UpdatableScApiTokenEvent = Updateable<
+  Omit<_ScApiTokenEvents, 'id'>
+>;
+
+// Self-built Audit
+export type ScAuditEvent = Selectable<_ScAuditEvents>;
+export type InsertableScAuditEvent = Insertable<_ScAuditEvents>;
+export type UpdatableScAuditEvent = Updateable<Omit<_ScAuditEvents, 'id'>>;
+
+export type ScAuditRetention = Selectable<_ScAuditRetention>;
+export type InsertableScAuditRetention = Insertable<_ScAuditRetention>;
+export type UpdatableScAuditRetention = Updateable<
+  Omit<_ScAuditRetention, 'workspaceId'>
+>;
 
 // Page Embedding
 export type PageEmbedding = Selectable<PageEmbeddings>;

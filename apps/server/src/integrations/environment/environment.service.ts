@@ -4,6 +4,8 @@ import * as path from 'path';
 import ms, { StringValue } from 'ms';
 import { ShareLegacyRouteMode } from '../../core/share/share.constants';
 
+const DEFAULT_SOURCE_REPO_URL = 'https://github.com/wushushuochanpin/docmost';
+
 @Injectable()
 export class EnvironmentService {
   constructor(private configService: ConfigService) {}
@@ -45,6 +47,25 @@ export class EnvironmentService {
 
   getAppSecret(): string {
     return this.configService.get<string>('APP_SECRET');
+  }
+
+  getAppCommitSha(): string | undefined {
+    const commitSha = this.configService.get<string>('APP_COMMIT_SHA');
+    return commitSha?.trim() || undefined;
+  }
+
+  getAppSourceUrl(): string {
+    const configured = this.configService.get<string>('APP_SOURCE_URL');
+    if (configured?.trim()) {
+      return configured.trim();
+    }
+
+    const commitSha = this.getAppCommitSha();
+    if (commitSha) {
+      return `${DEFAULT_SOURCE_REPO_URL}/tree/${commitSha}`;
+    }
+
+    return DEFAULT_SOURCE_REPO_URL;
   }
 
   getAppChannel(): 'prod' | 'staging' {

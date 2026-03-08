@@ -42,6 +42,35 @@ export interface ApiKeys {
   workspaceId: string;
 }
 
+export interface ScApiTokens {
+  createdAt: Generated<Timestamp>;
+  creatorUserId: string;
+  expiresAt: Timestamp | null;
+  id: Generated<string>;
+  isWorkspaceManaged: Generated<boolean>;
+  lastUsedAt: Timestamp | null;
+  lastUsedIp: string | null;
+  name: string;
+  ownerUserId: string;
+  revokedAt: Timestamp | null;
+  scopeJson: Generated<Json>;
+  status: Generated<string>;
+  tokenHash: string;
+  tokenPrefix: string;
+  updatedAt: Generated<Timestamp>;
+  workspaceId: string;
+}
+
+export interface ScApiTokenEvents {
+  actorUserId: string | null;
+  apiTokenId: string;
+  createdAt: Generated<Timestamp>;
+  eventType: string;
+  id: Generated<string>;
+  metadata: Json | null;
+  workspaceId: string;
+}
+
 export interface Attachments {
   createdAt: Generated<Timestamp>;
   creatorId: string;
@@ -73,6 +102,29 @@ export interface Audit {
   resourceId: string | null;
   resourceType: string;
   spaceId: string | null;
+  workspaceId: string;
+}
+
+export interface ScAuditEvents {
+  actorId: string | null;
+  actorType: Generated<string>;
+  changes: Json | null;
+  createdAt: Generated<Timestamp>;
+  event: string;
+  id: Generated<string>;
+  ipAddress: string | null;
+  metadata: Json | null;
+  resourceId: string | null;
+  resourceType: string;
+  spaceId: string | null;
+  userAgent: string | null;
+  workspaceId: string;
+}
+
+export interface ScAuditRetention {
+  retentionDays: Generated<Int8>;
+  updatedAt: Generated<Timestamp>;
+  updatedBy: string | null;
   workspaceId: string;
 }
 
@@ -535,6 +587,10 @@ export interface PagePermissions {
 
 export interface DB {
   apiKeys: ApiKeys;
+  scApiTokenEvents: ScApiTokenEvents;
+  scApiTokens: ScApiTokens;
+  scAuditEvents: ScAuditEvents;
+  scAuditRetention: ScAuditRetention;
   backupJobs: BackupJobs;
   backupPolicies: BackupPolicies;
   backupRestores: BackupRestores;

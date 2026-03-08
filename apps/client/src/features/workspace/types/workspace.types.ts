@@ -1,5 +1,14 @@
 import { IAuthProvider } from "@/ee/security/types/security.types.ts";
 
+export interface IWorkspaceCapabilities {
+  integrationTokens: boolean;
+  workspaceTokenManagement: boolean;
+  securityPolicies: boolean;
+  identityProviders: boolean;
+  auditLogs: boolean;
+  sourceCodeAccess: boolean;
+}
+
 export interface IWorkspace {
   id: string;
   name: string;
@@ -28,6 +37,7 @@ export interface IWorkspace {
   mcpEnabled?: boolean;
   trashRetentionDays?: number;
   restrictApiToAdmins?: boolean;
+  capabilities?: IWorkspaceCapabilities;
 }
 
 export interface IWorkspaceSettings {
@@ -91,4 +101,6 @@ export interface IVersion {
   currentVersion: string;
   latestVersion: string;
   releaseUrl: string;
+  sourceUrl?: string;
+  commitSha?: string;
 }

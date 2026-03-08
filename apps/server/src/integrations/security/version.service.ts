@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { EnvironmentService } from '../environment/environment.service';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require('./../../../package.json');
 
 @Injectable()
 export class VersionService {
-  constructor() {}
+  constructor(private readonly environmentService: EnvironmentService) {}
 
   async getVersion() {
     const url = `https://api.github.com/repos/docmost/docmost/releases/latest`;
@@ -23,6 +24,8 @@ export class VersionService {
       currentVersion: packageJson?.version,
       latestVersion: latestVersion,
       releaseUrl: 'https://github.com/docmost/docmost/releases',
+      sourceUrl: this.environmentService.getAppSourceUrl(),
+      commitSha: this.environmentService.getAppCommitSha(),
     };
   }
 }

@@ -39,6 +39,9 @@ import AppVersion from "@/components/settings/app-version.tsx";
 import { mobileSidebarAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
 import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-toggle-sidebar.ts";
 import { useSettingsNavigation } from "@/hooks/use-settings-navigation";
+import type { IWorkspaceCapabilities } from "@/features/workspace/types/workspace.types.ts";
+
+type CapabilityKey = keyof IWorkspaceCapabilities;
 
 interface DataItem {
   label: string;
@@ -50,6 +53,7 @@ interface DataItem {
   isOwner?: boolean;
   isSelfhosted?: boolean;
   showDisabledInNonEE?: boolean;
+  capabilityKey?: CapabilityKey;
 }
 
 interface DataGroup {
@@ -74,6 +78,7 @@ const groupedData: DataGroup[] = [
         isCloud: true,
         isEnterprise: true,
         showDisabledInNonEE: true,
+        capabilityKey: "integrationTokens",
       },
     ],
   },
@@ -97,6 +102,7 @@ const groupedData: DataGroup[] = [
         isEnterprise: true,
         isAdmin: true,
         showDisabledInNonEE: true,
+        capabilityKey: "securityPolicies",
       },
       { label: "Groups", icon: IconUsersGroup, path: "/settings/groups" },
       { label: "Spaces", icon: IconSpaces, path: "/settings/spaces" },
@@ -109,6 +115,7 @@ const groupedData: DataGroup[] = [
         isEnterprise: true,
         isAdmin: true,
         showDisabledInNonEE: true,
+        capabilityKey: "workspaceTokenManagement",
       },
       {
         label: "AI settings",
@@ -124,6 +131,7 @@ const groupedData: DataGroup[] = [
         isOwner: true,
         isSelfhosted: true,
         showDisabledInNonEE: true,
+        capabilityKey: "auditLogs",
       },
     ],
   },
@@ -166,7 +174,21 @@ export default function SettingsSidebar() {
     return true;
   };
 
+  const hasCapabilityAccess = (item: DataItem) => {
+    if (!item.capabilityKey) return false;
+    return Boolean(workspace?.capabilities?.[item.capabilityKey]);
+  };
+
   const canShowItem = (item: DataItem) => {
+    if (item.capabilityKey && item.showDisabledInNonEE) {
+      if (item.isSelfhosted && isCloud()) return false;
+      return hasRoleAccess(item);
+    }
+
+    if (item.capabilityKey) {
+      return hasCapabilityAccess(item) && hasRoleAccess(item);
+    }
+
     if (item.showDisabledInNonEE && item.isEnterprise) {
       if (item.isSelfhosted && isCloud()) return false;
       return hasRoleAccess(item);
@@ -193,6 +215,10 @@ export default function SettingsSidebar() {
   };
 
   const isItemDisabled = (item: DataItem) => {
+    if (item.capabilityKey && item.showDisabledInNonEE) {
+      return !hasCapabilityAccess(item);
+    }
+
     if (item.showDisabledInNonEE && item.isEnterprise) {
       return !(isCloud() || workspace?.hasLicenseKey);
     }

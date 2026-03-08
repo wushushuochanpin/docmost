@@ -10,8 +10,8 @@ import { getWorkspaceMembers } from "@/features/workspace/services/workspace-ser
 import { getLicenseInfo } from "@/ee/licence/services/license-service.ts";
 import { getSsoProviders } from "@/ee/security/services/security-service.ts";
 import { getShares } from "@/features/share/services/share-service.ts";
-import { getApiKeys } from "@/ee/api-key";
-import { getAuditLogs } from "@/ee/audit/services/audit-service";
+import { getApiKeys } from "@/features/compliance-admin/api-keys";
+import { getAuditLogs } from "@/features/compliance-admin/audit";
 
 export const prefetchWorkspaceMembers = () => {
   const params: QueryParams = { limit: 100, query: "" };

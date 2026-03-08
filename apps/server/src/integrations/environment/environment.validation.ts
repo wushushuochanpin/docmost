@@ -39,6 +39,14 @@ export class EnvironmentVariables {
   @IsUrl({ protocols: ['http', 'https'], require_tld: false })
   APP_URL: string;
 
+  @IsOptional()
+  @IsUrl({ protocols: ['http', 'https'], require_tld: false })
+  APP_SOURCE_URL: string;
+
+  @IsOptional()
+  @IsString()
+  APP_COMMIT_SHA: string;
+
   @IsNotEmpty()
   @MinLength(32)
   @IsNotIn(['REPLACE_WITH_LONG_SECRET'])

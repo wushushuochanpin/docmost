@@ -49,6 +49,7 @@ import {
   AUDIT_SERVICE,
   IAuditService,
 } from '../../../integrations/audit/audit.service';
+import { buildWorkspaceClientState } from '../workspace-capabilities';
 
 @Injectable()
 export class WorkspaceService {
@@ -79,12 +80,22 @@ export class WorkspaceService {
   }
 
   async getWorkspaceInfo(workspaceId: string) {
-    const workspace = await this.workspaceRepo.findById(workspaceId);
+    const workspace = await this.workspaceRepo.findById(workspaceId, {
+      withLicenseKey: true,
+      withMemberCount: true,
+    });
     if (!workspace) {
       throw new NotFoundException('Workspace not found');
     }
 
-    return workspace;
+    const workspaceWithMemberCount = workspace as typeof workspace & {
+      memberCount?: number | string;
+    };
+
+    return buildWorkspaceClientState(workspace, {
+      isCloud: this.environmentService.isCloud(),
+      memberCount: Number(workspaceWithMemberCount.memberCount ?? 0),
+    });
   }
 
   async getReleaseChannel(workspaceId: string) {
@@ -142,12 +153,9 @@ export class WorkspaceService {
       throw new NotFoundException('Workspace not found');
     }
 
-    const { licenseKey, ...rest } = workspace;
-
-    return {
-      ...rest,
-      hasLicenseKey: Boolean(licenseKey),
-    };
+    return buildWorkspaceClientState(workspace, {
+      isCloud: this.environmentService.isCloud(),
+    });
   }
 
   async create(

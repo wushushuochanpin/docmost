@@ -24,8 +24,10 @@ import { NotificationModule } from './notification/notification.module';
 import { WatcherModule } from './watcher/watcher.module';
 import {
   AUDIT_SERVICE,
-  NoopAuditService,
 } from '../integrations/audit/audit.service';
+import { IntegrationTokenModule } from './integration-token/integration-token.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
+import { AuditLogService } from './audit-log/services/audit-log.service';
 
 @Global()
 @Module({
@@ -44,11 +46,13 @@ import {
     ShareModule,
     NotificationModule,
     WatcherModule,
+    IntegrationTokenModule,
+    AuditLogModule,
   ],
   providers: [
     {
       provide: AUDIT_SERVICE,
-      useClass: NoopAuditService,
+      useExisting: AuditLogService,
     },
   ],
   exports: [AUDIT_SERVICE],

@@ -54,12 +54,17 @@ const ShareLayout = lazy(
 const ShareRedirect = lazy(() => import("@/pages/share/share-redirect.tsx"));
 const SpacesPage = lazy(() => import("@/pages/spaces/spaces.tsx"));
 const SpaceTrash = lazy(() => import("@/pages/space/space-trash.tsx"));
-const UserApiKeys = lazy(() => import("@/ee/api-key/pages/user-api-keys"));
+const UserApiKeys = lazy(
+  () => import("@/features/compliance-admin/api-keys/pages/user-api-keys.tsx"),
+);
 const WorkspaceApiKeys = lazy(
-  () => import("@/ee/api-key/pages/workspace-api-keys"),
+  () =>
+    import("@/features/compliance-admin/api-keys/pages/workspace-api-keys.tsx"),
 );
 const AiSettings = lazy(() => import("@/ee/ai/pages/ai-settings.tsx"));
-const AuditLogs = lazy(() => import("@/ee/audit/pages/audit-logs.tsx"));
+const AuditLogs = lazy(
+  () => import("@/features/compliance-admin/audit/pages/audit-logs.tsx"),
+);
 const Backup = lazy(() => import("@/pages/settings/backup/backup"));
 const MfaChallengePage = lazy(() =>
   import("@/ee/mfa/pages/mfa-challenge-page").then((module) => ({
