@@ -1,28 +1,35 @@
 import { useParams } from "react-router-dom";
 import { usePageQuery } from "@/features/page/queries/page-query";
-import { FullEditor } from "@/features/editor/full-editor";
-import HistoryModal from "@/features/page-history/components/history-modal";
 import { Helmet } from "react-helmet-async";
-import PageHeader from "@/features/page/components/header/page-header.tsx";
 import { extractPageSlugId } from "@/lib";
-import { useGetSpaceBySlugQuery } from "@/features/space/queries/space-query.ts";
-import { useSpaceAbility } from "@/features/space/permissions/use-space-ability.ts";
-import {
-  SpaceCaslAction,
-  SpaceCaslSubject,
-} from "@/features/space/permissions/permissions.type.ts";
 import { useTranslation } from "react-i18next";
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { IconAlertTriangle, IconFileOff } from "@tabler/icons-react";
-import { Button } from "@mantine/core";
+import { Button, Center, Loader } from "@mantine/core";
 import { Link } from "react-router-dom";
 import { ErrorBoundary } from "react-error-boundary";
-import FolderView from "./folder-view";
 
-const MemoizedFullEditor = React.memo(FullEditor);
-const MemoizedPageHeader = React.memo(PageHeader);
-const MemoizedHistoryModal = React.memo(HistoryModal);
+const LazyFullEditor = lazy(() =>
+  import("@/features/editor/full-editor").then((module) => ({
+    default: module.FullEditor,
+  })),
+);
+const LazyHistoryModal = lazy(
+  () => import("@/features/page-history/components/history-modal"),
+);
+const LazyPageHeader = lazy(
+  () => import("@/features/page/components/header/page-header.tsx"),
+);
+const LazyFolderView = lazy(() => import("./folder-view"));
+
+function PageContentLoader() {
+  return (
+    <Center mih="40vh">
+      <Loader size="sm" />
+    </Center>
+  );
+}
 
 export default function Page() {
   const { t } = useTranslation();
@@ -57,13 +64,8 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
     isError,
     error,
   } = usePageQuery({ pageId: extractPageSlugId(pageSlug) });
-  const { data: space } = useGetSpaceBySlugQuery(page?.space?.slug);
-
-  const spaceRules = space?.membership?.permissions;
-  const spaceAbility = useSpaceAbility(spaceRules);
-
   if (isLoading) {
-    return <></>;
+    return <PageContentLoader />;
   }
 
   if (isError || !page) {
@@ -91,13 +93,7 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
     );
   }
 
-  if (!space) {
-    return <></>;
-  }
-
-  const canEdit =
-    page.permissions?.canEdit ??
-    spaceAbility.can(SpaceCaslAction.Manage, SpaceCaslSubject.Page);
+  const canEdit = page.permissions?.canEdit ?? false;
   const isFolder = page.nodeType === "folder";
 
   return (
@@ -107,32 +103,40 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
           <title>{`${page?.icon || ""}  ${page?.title || t("untitled")}`}</title>
         </Helmet>
 
-        <MemoizedPageHeader
-          readOnly={!canEdit}
-          pageId={page.id}
-          editable={canEdit}
-          showEditorToolbar={!isFolder}
-        />
+        <Suspense fallback={null}>
+          <LazyPageHeader
+            readOnly={!canEdit}
+            pageId={page.id}
+            editable={canEdit}
+            showEditorToolbar={!isFolder}
+          />
+        </Suspense>
 
         {isFolder ? (
-          <FolderView
-            folderPage={page}
-            readOnly={!canEdit}
-            spaceSlug={page?.space?.slug}
-          />
+          <Suspense fallback={<PageContentLoader />}>
+            <LazyFolderView
+              folderPage={page}
+              readOnly={!canEdit}
+              spaceSlug={page?.space?.slug}
+            />
+          </Suspense>
         ) : (
-          <MemoizedFullEditor
-            key={page.id}
-            pageId={page.id}
-            title={page.title}
-            content={page.content}
-            slugId={page.slugId}
-            updatedAt={page.updatedAt}
-            spaceSlug={page?.space?.slug}
-            editable={canEdit}
-          />
+          <Suspense fallback={<PageContentLoader />}>
+            <LazyFullEditor
+              key={page.id}
+              pageId={page.id}
+              title={page.title}
+              content={page.content}
+              slugId={page.slugId}
+              updatedAt={page.updatedAt}
+              spaceSlug={page?.space?.slug}
+              editable={canEdit}
+            />
+          </Suspense>
         )}
-        <MemoizedHistoryModal pageId={page.id} />
+        <Suspense fallback={null}>
+          <LazyHistoryModal pageId={page.id} />
+        </Suspense>
       </div>
     )
   );

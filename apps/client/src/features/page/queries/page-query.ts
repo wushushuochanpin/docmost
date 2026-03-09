@@ -63,6 +63,18 @@ export function usePageQuery(
   return query;
 }
 
+export function prefetchPage(pageInput: Partial<IPageInput>) {
+  if (!pageInput.pageId) {
+    return Promise.resolve(undefined);
+  }
+
+  return queryClient.prefetchQuery({
+    queryKey: ["pages", pageInput.pageId],
+    queryFn: () => getPageById(pageInput),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useCreatePageMutation() {
   const { t } = useTranslation();
   return useMutation<IPage, Error, Partial<IPage>>({
