@@ -28,12 +28,10 @@ import { historyAtoms } from "@/features/page-history/atoms/history-atoms.ts";
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { useParams } from "react-router-dom";
-import { usePageQuery } from "@/features/page/queries/page-query.ts";
 import { useLatestPageHistoryQuery } from "@/features/page-history/queries/page-history-query.ts";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import { notifications } from "@mantine/notifications";
 import { getAppUrl } from "@/lib/config.ts";
-import { extractPageSlugId } from "@/lib";
 import { treeApiAtom } from "@/features/page/tree/atoms/tree-api-atom.ts";
 import { useDeletePageModal } from "@/features/page/hooks/use-delete-page-modal.tsx";
 import { PageWidthToggle } from "@/features/user/components/page-width-pref.tsx";
@@ -42,6 +40,7 @@ import ExportModal from "@/components/common/export-modal";
 import { htmlToMarkdown } from "@docmost/editor-ext";
 import {
   pageEditorAtom,
+  readOnlyEditorAtom,
   yjsConnectionStatusAtom,
 } from "@/features/editor/atoms/editor-atoms.ts";
 import { formattedDate } from "@/lib/time.ts";
@@ -50,14 +49,17 @@ import { EditorFontSizeSegmentedControl } from "@/features/editor/components/edi
 import MovePageModal from "@/features/page/components/move-page-modal.tsx";
 import { useTimeAgo } from "@/hooks/use-time-ago.tsx";
 import { ShareMenuContent } from "@/features/share/components/share-modal.tsx";
+import { IPage } from "@/features/page/types/page.types.ts";
 
 interface PageHeaderMenuProps {
   readOnly?: boolean;
   pageId?: string;
+  page: IPage;
 }
 export default function PageHeaderMenu({
   readOnly,
   pageId,
+  page,
 }: PageHeaderMenuProps) {
   useHotkeys(
     [
@@ -82,31 +84,53 @@ export default function PageHeaderMenu({
 
   return (
     <Group wrap="nowrap" gap={14}>
-      <HeaderMeta pageId={pageId} />
+      <HeaderMeta page={page} pageId={pageId} />
       <ConnectionWarning />
 
       {!readOnly && <PageStateSegmentedControl size="xs" />}
       <EditorFontSizeSegmentedControl size="xs" />
 
-      <PageActionMenu readOnly={readOnly} pageId={pageId} />
+      <PageActionMenu readOnly={readOnly} page={page} />
     </Group>
   );
 }
 
+function getCharacterCountFromText(text?: string | null) {
+  if (!text) {
+    return 0;
+  }
+
+  return text.replace(/\s+/g, "").length;
+}
+
+function getWordCountFromText(text?: string | null) {
+  if (!text) {
+    return 0;
+  }
+
+  const normalized = text.trim();
+  if (!normalized) {
+    return 0;
+  }
+
+  const cjkMatches = normalized.match(/[\u3400-\u9fff\uf900-\ufaff]/g) ?? [];
+  const remainingText = normalized.replace(/[\u3400-\u9fff\uf900-\ufaff]/g, " ");
+  const wordMatches = remainingText.match(/[^\s]+/g) ?? [];
+
+  return cjkMatches.length + wordMatches.length;
+}
+
 interface PageActionMenuProps {
   readOnly?: boolean;
-  pageId?: string;
+  page: IPage;
 }
-function PageActionMenu({ readOnly, pageId }: PageActionMenuProps) {
+function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
   const { t } = useTranslation();
   const toggleAside = useToggleAside();
   const [, setHistoryModalOpen] = useAtom(historyAtoms);
   const clipboard = useClipboard({ timeout: 500 });
-  const { pageSlug, spaceSlug } = useParams();
-  const resolvedPageId = pageId ?? extractPageSlugId(pageSlug);
-  const { data: page } = usePageQuery({
-    pageId: resolvedPageId,
-  });
+  const { spaceSlug } = useParams();
+  const currentPage = page;
   const { openDeleteModal } = useDeletePageModal();
   const [tree] = useAtom(treeApiAtom);
   const [exportOpened, { open: openExportModal, close: closeExportModal }] =
@@ -117,26 +141,40 @@ function PageActionMenu({ readOnly, pageId }: PageActionMenuProps) {
   ] = useDisclosure(false);
   const [menuOpened, setMenuOpened] = useState(false);
   const [shareExpanded, setShareExpanded] = useState(false);
-  const [pageEditor] = useAtom(pageEditorAtom);
-  const pageUpdatedAt = useTimeAgo(page?.updatedAt ?? null);
+  const pageEditor = useAtomValue(pageEditorAtom);
+  const readOnlyEditor = useAtomValue(readOnlyEditorAtom);
+  const activeEditor =
+    pageEditor && !pageEditor.isDestroyed
+      ? pageEditor
+      : readOnlyEditor && !readOnlyEditor.isDestroyed
+        ? readOnlyEditor
+        : null;
+  const pageUpdatedAt = useTimeAgo(currentPage?.updatedAt ?? null);
 
-  if (!page) {
+  if (!currentPage) {
     return null;
   }
 
   const handleCopyLink = () => {
     const pageUrl =
-      getAppUrl() + buildPageUrl(spaceSlug, page.slugId, page.title);
+      getAppUrl() +
+      buildPageUrl(spaceSlug, currentPage.slugId, currentPage.title);
 
     clipboard.copy(pageUrl);
     notifications.show({ message: t("Link copied") });
   };
 
   const handleCopyAsMarkdown = () => {
-    if (!pageEditor) return;
-    const html = pageEditor.getHTML();
+    const staticHtml =
+      currentPage.rendered?.deliveryMode === "full"
+        ? (currentPage.rendered.html ?? currentPage.rendered.headHtml ?? "")
+        : "";
+    const html = activeEditor ? activeEditor.getHTML() : staticHtml;
+
+    if (!html) return;
+
     const markdown = htmlToMarkdown(html);
-    const title = page?.title ? `# ${page.title}\n\n` : "";
+    const title = currentPage.title ? `# ${currentPage.title}\n\n` : "";
     clipboard.copy(`${title}${markdown}`);
     notifications.show({ message: t("Copied") });
   };
@@ -152,8 +190,17 @@ function PageActionMenu({ readOnly, pageId }: PageActionMenuProps) {
   };
 
   const handleDeletePage = () => {
-    openDeleteModal({ onConfirm: () => tree?.delete(page.id) });
+    openDeleteModal({ onConfirm: () => tree?.delete(currentPage.id) });
   };
+
+  const wordCount =
+    activeEditor?.storage?.characterCount?.words?.() ??
+    getWordCountFromText(currentPage.textContent);
+  const canCopyAsMarkdown = Boolean(
+    activeEditor ||
+      (currentPage.rendered?.deliveryMode === "full" &&
+        (currentPage.rendered.html || currentPage.rendered.headHtml)),
+  );
 
   const toggleSharePanel = () => {
     setShareExpanded((previous) => !previous);
@@ -228,6 +275,7 @@ function PageActionMenu({ readOnly, pageId }: PageActionMenuProps) {
           <Menu.Item
             leftSection={<IconMarkdown size={16} />}
             onClick={handleCopyAsMarkdown}
+            disabled={!canCopyAsMarkdown}
           >
             {t("Copy as Markdown")}
           </Menu.Item>
@@ -290,7 +338,10 @@ function PageActionMenu({ readOnly, pageId }: PageActionMenuProps) {
             <Group px="sm" wrap="nowrap" style={{ cursor: "pointer" }}>
               <Tooltip
                 label={t("Edited by {{name}} {{time}}", {
-                  name: page.lastUpdatedBy?.name ?? page.creator?.name ?? "-",
+                  name:
+                    currentPage.lastUpdatedBy?.name ??
+                    currentPage.creator?.name ??
+                    "-",
                   time: pageUpdatedAt,
                 })}
                 position="left-start"
@@ -298,20 +349,20 @@ function PageActionMenu({ readOnly, pageId }: PageActionMenuProps) {
                 <div style={{ width: 210 }}>
                   <Text size="xs" c="dimmed" truncate="end">
                     {t("Word count: {{wordCount}}", {
-                      wordCount: pageEditor?.storage?.characterCount?.words(),
+                      wordCount,
                     })}
                   </Text>
 
                   <Text size="xs" c="dimmed" lineClamp={1}>
                     <Trans
                       defaults="Created by: <b>{{creatorName}}</b>"
-                      values={{ creatorName: page?.creator?.name }}
+                      values={{ creatorName: currentPage?.creator?.name }}
                       components={{ b: <Text span fw={500} /> }}
                     />
                   </Text>
                   <Text size="xs" c="dimmed" truncate="end">
                     {t("Created at: {{time}}", {
-                      time: formattedDate(page.createdAt),
+                      time: formattedDate(currentPage.createdAt),
                     })}
                   </Text>
                 </div>
@@ -323,14 +374,14 @@ function PageActionMenu({ readOnly, pageId }: PageActionMenuProps) {
 
       <ExportModal
         type="page"
-        id={page.id}
+        id={currentPage.id}
         open={exportOpened}
         onClose={closeExportModal}
       />
 
       <MovePageModal
-        pageId={page.id}
-        slugId={page.slugId}
+        pageId={currentPage.id}
+        slugId={currentPage.slugId}
         currentSpaceSlug={spaceSlug}
         onClose={closeMoveSpaceModal}
         open={movePageModalOpened}
@@ -393,42 +444,46 @@ function formatUpdatedAt(date: Date, locale: string) {
   return formatAbsoluteDate(date, normalizedLocale);
 }
 
-function HeaderMeta({ pageId }: { pageId?: string }) {
+function HeaderMeta({ page, pageId }: { page: IPage; pageId?: string }) {
   const { t, i18n } = useTranslation();
-  const { pageSlug } = useParams();
   const [documentCharCount, setDocumentCharCount] = useState(0);
   const [relativeUpdatedAt, setRelativeUpdatedAt] = useState("");
   const pageEditor = useAtomValue(pageEditorAtom);
-  const resolvedPageId = pageId ?? extractPageSlugId(pageSlug);
-  const { data: currentPage } = usePageQuery({ pageId: resolvedPageId });
+  const readOnlyEditor = useAtomValue(readOnlyEditorAtom);
+  const activeEditor =
+    pageEditor && !pageEditor.isDestroyed
+      ? pageEditor
+      : readOnlyEditor && !readOnlyEditor.isDestroyed
+        ? readOnlyEditor
+        : null;
   const { data: latestPageHistory } = useLatestPageHistoryQuery(
-    currentPage?.id || resolvedPageId || "",
+    pageId || page.id,
   );
-  const sourceUpdatedAt = latestPageHistory?.createdAt ?? currentPage?.updatedAt;
+  const sourceUpdatedAt = latestPageHistory?.createdAt ?? page.updatedAt;
   const sourceUpdatedAtTimestamp = sourceUpdatedAt
     ? new Date(sourceUpdatedAt).getTime()
     : NaN;
 
   useEffect(() => {
-    if (!pageEditor) {
-      setDocumentCharCount(0);
+    if (!activeEditor) {
+      setDocumentCharCount(getCharacterCountFromText(page.textContent));
       return;
     }
 
     const updateDocumentCharCount = () => {
-      const count = pageEditor.storage?.characterCount?.characters?.();
+      const count = activeEditor.storage?.characterCount?.characters?.();
       if (typeof count === "number") {
         setDocumentCharCount(count);
       }
     };
 
     updateDocumentCharCount();
-    pageEditor.on("update", updateDocumentCharCount);
+    activeEditor.on("update", updateDocumentCharCount);
 
     return () => {
-      pageEditor.off("update", updateDocumentCharCount);
+      activeEditor.off("update", updateDocumentCharCount);
     };
-  }, [pageEditor]);
+  }, [activeEditor, page.textContent]);
 
   useEffect(() => {
     if (Number.isNaN(sourceUpdatedAtTimestamp)) {
@@ -474,6 +529,7 @@ function HeaderMeta({ pageId }: { pageId?: string }) {
 
 function ConnectionWarning() {
   const { t } = useTranslation();
+  const pageEditor = useAtomValue(pageEditorAtom);
   const yjsConnectionStatus = useAtomValue(yjsConnectionStatusAtom);
   const [showWarning, setShowWarning] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -505,7 +561,7 @@ function ConnectionWarning() {
     };
   }, []);
 
-  if (!showWarning) return null;
+  if (!pageEditor || pageEditor.isDestroyed || !showWarning) return null;
 
   return (
     <Tooltip

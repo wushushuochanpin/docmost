@@ -20,6 +20,7 @@ import {
   PageHistoryIdDto,
   PageIdDto,
   PageInfoDto,
+  PageRenderSegmentDto,
 } from './dto/page.dto';
 import { PageHistoryService } from './services/page-history.service';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
@@ -54,6 +55,7 @@ import {
   IAuditService,
 } from '../../integrations/audit/audit.service';
 import { getPageTitle } from '../../common/helpers';
+import { ShareStaticRendererService } from '../share/share-static-renderer.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('pages')
@@ -64,6 +66,7 @@ export class PageController {
     private readonly pageHistoryService: PageHistoryService,
     private readonly spaceAbility: SpaceAbilityFactory,
     private readonly pageAccessService: PageAccessService,
+    private readonly shareStaticRendererService: ShareStaticRendererService,
     @Inject(AUDIT_SERVICE) private readonly auditService: IAuditService,
   ) {}
 
@@ -74,7 +77,19 @@ export class PageController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageService.getPageInfo(dto.pageId, workspace.id);
+    const includeSpace = dto.includeSpace ?? true;
+    const includeContent = dto.includeContent ?? true;
+    const includeRendered = dto.includeRendered === true;
+    const preferStaticReadonly = dto.preferStaticReadonly === true;
+    const requiresFormattedContent = Boolean(dto.format && dto.format !== 'json');
+    const shouldLoadRawContent =
+      includeContent || includeRendered || preferStaticReadonly || requiresFormattedContent;
+
+    const page = await this.pageService.getPageInfo(dto.pageId, workspace.id, {
+      includeSpace,
+      includeContent: shouldLoadRawContent,
+      includeTextContent: true,
+    });
 
     if (!page) {
       throw new NotFoundException('Page not found');
@@ -82,20 +97,82 @@ export class PageController {
 
     const permissions =
       await this.pageAccessService.validateCanViewWithPermissions(page, user);
+    const shouldAttachRendered =
+      includeRendered || (preferStaticReadonly && !permissions.canEdit);
+    const rendered =
+      shouldAttachRendered && page.content
+        ? this.shareStaticRendererService.render(page.content)
+        : null;
+    const hasStaticRenderableOutput = Boolean(
+      rendered?.html || rendered?.headHtml,
+    );
+    const shouldPreferRenderedPayload =
+      shouldAttachRendered &&
+      hasStaticRenderableOutput &&
+      (!includeContent || (preferStaticReadonly && !permissions.canEdit));
+    const shouldReturnRawContent =
+      requiresFormattedContent ||
+      (includeContent && !shouldPreferRenderedPayload) ||
+      (shouldAttachRendered && !hasStaticRenderableOutput);
 
     if (dto.format && dto.format !== 'json' && page.content) {
       const contentOutput =
         dto.format === 'markdown'
           ? jsonToMarkdown(page.content)
           : jsonToHtml(page.content);
-      return {
+      const response = {
         ...page,
         content: contentOutput,
+        ...(rendered ? { rendered } : {}),
         permissions,
       };
+      return response;
     }
 
-    return { ...page, permissions };
+    const response = {
+      ...page,
+      ...(rendered ? { rendered } : {}),
+      permissions,
+    };
+
+    if (!shouldReturnRawContent) {
+      delete response.content;
+    }
+
+    return response;
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('/render-segment')
+  async getPageRenderSegment(
+    @Body() dto: PageRenderSegmentDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const page = await this.pageService.findById(
+      dto.pageId,
+      true,
+      false,
+      false,
+      workspace.id,
+    );
+
+    if (!page || page.deletedAt) {
+      throw new NotFoundException('Page not found');
+    }
+
+    await this.pageAccessService.validateCanView(page, user);
+
+    const segment = this.shareStaticRendererService.getSegment(
+      page.content,
+      dto.cursor,
+    );
+
+    if (!segment) {
+      throw new BadRequestException('Invalid page segment cursor');
+    }
+
+    return segment;
   }
 
   @HttpCode(HttpStatus.OK)

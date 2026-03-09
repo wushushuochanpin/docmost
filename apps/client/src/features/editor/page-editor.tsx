@@ -26,7 +26,7 @@ import {
   collabExtensions,
   mainExtensions,
 } from "@/features/editor/extensions/extensions";
-import { useAtom } from "jotai";
+import { useAtom, useStore } from "jotai";
 import useCollaborationUrl from "@/features/editor/hooks/use-collaboration-url";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom";
 import {
@@ -84,14 +84,10 @@ export default function PageEditor({
   const collaborationURL = useCollaborationUrl();
   const isComponentMounted = useRef(false);
   const editorRef = useRef<Editor | null>(null);
-
-  useEffect(() => {
-    isComponentMounted.current = true;
-  }, []);
+  const store = useStore();
 
   const [currentUser] = useAtom(currentUserAtom);
   const [localPageEditMode] = useAtom(pageEditModePreferenceAtom);
-  const [, setPageEditor] = useAtom(pageEditorAtom);
   const [, setAsideState] = useAtom(asideStateAtom);
   const [, setActiveCommentId] = useAtom(activeCommentIdAtom);
   const [showCommentPopup, setShowCommentPopup] = useAtom(showCommentPopupAtom);
@@ -115,6 +111,15 @@ export default function PageEditor({
     [isComponentMounted],
   );
   const { handleScrollTo } = useEditorScroll({ canScroll });
+
+  useEffect(() => {
+    isComponentMounted.current = true;
+
+    return () => {
+      store.set(pageEditorAtom as any, null);
+      setYjsConnectionStatus("");
+    };
+  }, [setYjsConnectionStatus, store]);
   // Providers only created once per pageId
   const providersRef = useRef<{
     local: IndexeddbPersistence;

@@ -5,7 +5,7 @@ import { Document } from "@tiptap/extension-document";
 import { Heading } from "@tiptap/extension-heading";
 import { Text } from "@tiptap/extension-text";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useStore } from "jotai";
 import {
   pageEditorAtom,
   titleEditorAtom,
@@ -52,8 +52,8 @@ export function TitleEditor({
   const { t } = useTranslation();
   const { mutateAsync: updateTitlePageMutationAsync } =
     useUpdateTitlePageMutation();
+  const store = useStore();
   const pageEditor = useAtomValue(pageEditorAtom);
-  const [, setTitleEditor] = useAtom(titleEditorAtom);
   const emit = useQueryEmit();
   const navigate = useNavigate();
   const [activePageId, setActivePageId] = useState(pageId);
@@ -176,8 +176,9 @@ export function TitleEditor({
     return () => {
       // force-save title on navigation
       saveTitle();
+      store.set(titleEditorAtom as any, null);
     };
-  }, [pageId]);
+  }, [pageId, saveTitle, store]);
 
   useEffect(() => {
     // honor user default page edit mode preference

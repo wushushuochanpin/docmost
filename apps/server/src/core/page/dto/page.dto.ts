@@ -36,9 +36,23 @@ export class PageInfoDto extends PageIdDto {
   includeContent: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  includeRendered: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  preferStaticReadonly: boolean;
+
+  @IsOptional()
   @Transform(({ value }) => value?.toLowerCase())
   @IsIn(['json', 'markdown', 'html'])
   format?: ContentFormat;
+}
+
+export class PageRenderSegmentDto extends PageIdDto {
+  @IsString()
+  @IsNotEmpty()
+  cursor: string;
 }
 
 export class DeletePageDto extends PageIdDto {

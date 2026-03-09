@@ -12,6 +12,8 @@ import {
   IMovePageToSpace,
   IPage,
   IPageInput,
+  IPageRenderedSegment,
+  IPageRenderSegmentInput,
   SidebarPagesParams,
 } from '@/features/page/types/page.types';
 import { QueryParams } from "@/lib/types";
@@ -35,6 +37,13 @@ export async function getPageById(
 
 export async function updatePage(data: Partial<IPageInput>): Promise<IPage> {
   const req = await api.post<IPage>("/pages/update", data);
+  return req.data;
+}
+
+export async function getPageRenderedSegment(
+  data: IPageRenderSegmentInput,
+): Promise<IPageRenderedSegment> {
+  const req = await api.post<IPageRenderedSegment>("/pages/render-segment", data);
   return req.data;
 }
 

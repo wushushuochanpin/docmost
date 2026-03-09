@@ -1,12 +1,17 @@
 import { ISpace } from "@/features/space/types/space.types.ts";
+import {
+  ISharedPageRendered,
+  ISharedPageRenderedSegment,
+} from "@/features/share/types/share.types.ts";
 
 export interface IPage {
   id: string;
   slugId: string;
   title: string;
-  content: string;
+  content?: any;
   icon: string;
   coverPhoto: string;
+  textContent?: string;
   themeColor?: string;
   themePattern?: string;
   parentPageId: string | null;
@@ -37,6 +42,7 @@ export interface IPage {
     canEdit: boolean;
     hasRestriction: boolean;
   };
+  rendered?: ISharedPageRendered | null;
 }
 
 interface ICreator {
@@ -120,9 +126,13 @@ export interface SidebarPagesParams {
 
 export interface IPageInput {
   pageId: string;
+  format?: "json" | "markdown" | "html";
   title: string;
   parentPageId: string | null;
   nodeType?: "file" | "folder";
+  includeContent?: boolean;
+  includeRendered?: boolean;
+  preferStaticReadonly?: boolean;
   icon: string;
   coverPhoto: string;
   themeColor?: string;
@@ -130,6 +140,13 @@ export interface IPageInput {
   position: string;
   isLocked: boolean;
 }
+
+export interface IPageRenderSegmentInput {
+  pageId: string;
+  cursor: string;
+}
+
+export type IPageRenderedSegment = ISharedPageRenderedSegment;
 
 export interface IExportPageParams {
   pageId: string;

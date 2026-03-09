@@ -4,8 +4,13 @@ import React, { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { TableOfContents } from "@/features/editor/components/table-of-contents/table-of-contents.tsx";
 import { useAtomValue } from "jotai";
-import { pageEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
+import {
+  pageEditorAtom,
+  readOnlyEditorAtom,
+} from "@/features/editor/atoms/editor-atoms.ts";
 import { IconX } from "@tabler/icons-react";
+import { pageStaticTocAtom } from "@/features/page/atoms/page-static-render-atom.ts";
+import StaticTableOfContents from "@/features/share/components/static-table-of-contents.tsx";
 
 type AsideTab = "comments" | "toc";
 
@@ -17,6 +22,14 @@ interface AsideProps {
 export default function Aside({ tab, onClose }: AsideProps) {
   const { t } = useTranslation();
   const pageEditor = useAtomValue(pageEditorAtom);
+  const readOnlyEditor = useAtomValue(readOnlyEditorAtom);
+  const pageStaticToc = useAtomValue(pageStaticTocAtom);
+  const activeEditor =
+    pageEditor && !pageEditor.isDestroyed
+      ? pageEditor
+      : readOnlyEditor && !readOnlyEditor.isDestroyed
+        ? readOnlyEditor
+        : null;
   const isTocTab = tab === "toc";
 
   let title: string;
@@ -29,8 +42,10 @@ export default function Aside({ tab, onClose }: AsideProps) {
       break;
     case "toc":
       content =
-        pageEditor && !pageEditor.isDestroyed ? (
-          <TableOfContents editor={pageEditor} />
+        activeEditor ? (
+          <TableOfContents editor={activeEditor} />
+        ) : pageStaticToc.length ? (
+          <StaticTableOfContents items={pageStaticToc} />
         ) : (
           <Text size="sm" c="dimmed">
             {t("Editor is loading...")}

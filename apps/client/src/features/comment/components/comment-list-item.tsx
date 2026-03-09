@@ -4,7 +4,10 @@ import classes from "./comment.module.css";
 import { useAtom, useAtomValue } from "jotai";
 import { useTimeAgo } from "@/hooks/use-time-ago";
 import CommentEditor from "@/features/comment/components/comment-editor";
-import { pageEditorAtom } from "@/features/editor/atoms/editor-atoms";
+import {
+  pageEditorAtom,
+  readOnlyEditorAtom,
+} from "@/features/editor/atoms/editor-atoms";
 import CommentActions from "@/features/comment/components/comment-actions";
 import CommentMenu from "@/features/comment/components/comment-menu";
 import { useIsCloudEE } from "@/hooks/use-is-cloud-ee";
@@ -37,7 +40,14 @@ function CommentListItem({
   const { hovered, ref } = useHover();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const editor = useAtomValue(pageEditorAtom);
+  const pageEditor = useAtomValue(pageEditorAtom);
+  const readOnlyEditor = useAtomValue(readOnlyEditorAtom);
+  const editor =
+    pageEditor && !pageEditor.isDestroyed
+      ? pageEditor
+      : readOnlyEditor && !readOnlyEditor.isDestroyed
+        ? readOnlyEditor
+        : null;
   const [content, setContent] = useState<string>(comment.content);
   const editContentRef = useRef<any>(null);
   const updateCommentMutation = useUpdateCommentMutation();

@@ -1,0 +1,100 @@
+.layout {
+  --doc-content-gutter-x: 3rem;
+  --rendered-doc-sticky-offset: calc(
+    var(--app-shell-header-offset, var(--app-shell-header-height, 45px)) + 28px
+  );
+
+  gap: 14px;
+  margin: 20px auto 56px;
+  padding: 0 0 28px;
+}
+
+.titleSection {
+  padding: 0 var(--doc-content-gutter-x, 3rem);
+}
+
+.pageTitle {
+  font-size: var(--doc-title-font-size, calc(26px * var(--editor-font-scale, 1)));
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+.article {
+  padding: 0 var(--doc-content-gutter-x, 3rem);
+  font-size: calc(var(--mantine-font-size-md, 1rem) * var(--editor-font-scale, 1));
+  line-height: var(--mantine-line-height-xl, 1.75);
+}
+
+.article :global(p),
+.article :global(ul),
+.article :global(ol),
+.article :global(blockquote) {
+  max-width: none;
+}
+
+.article :global(p) {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.article :global(ul),
+.article :global(ol) {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding: 0 1rem;
+}
+
+.article :global(h1),
+.article :global(h2),
+.article :global(h3) {
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.article :global(h1) {
+  font-size: var(--doc-h1-font-size, calc(24px * var(--editor-font-scale, 1)));
+  margin-top: 1.875rem;
+}
+
+.article :global(h2) {
+  font-size: var(--doc-h2-font-size, calc(22px * var(--editor-font-scale, 1)));
+  margin-top: 1.5rem;
+}
+
+.article :global(h3) {
+  font-size: var(--doc-h3-font-size, calc(20px * var(--editor-font-scale, 1)));
+  margin-top: 1.25rem;
+}
+
+.article :global(h4),
+.article :global(h5),
+.article :global(h6) {
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+
+.article :global(blockquote) {
+  margin: 0;
+  padding: 0 0 0 1rem;
+  border-left-width: 3px;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.segmentStatus {
+  padding: 0 var(--doc-content-gutter-x, 3rem);
+}
+
+@media (max-width: 48em) {
+  .layout {
+    --doc-content-gutter-x: 1rem;
+
+    gap: 12px;
+    margin: 12px auto 40px;
+    padding-bottom: 24px;
+  }
+}

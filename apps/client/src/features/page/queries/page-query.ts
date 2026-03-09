@@ -12,6 +12,7 @@ import {
   createPage,
   deletePage,
   getPageById,
+  getPageRenderedSegment,
   getSidebarPages,
   updatePage,
   movePage,
@@ -25,6 +26,8 @@ import {
   IMovePage,
   IPage,
   IPageInput,
+  IPageRenderSegmentInput,
+  IPageRenderedSegment,
   SidebarPagesParams,
 } from "@/features/page/types/page.types";
 import { notifications } from "@mantine/notifications";
@@ -40,11 +43,33 @@ import { SimpleTree } from "react-arborist";
 import { SpaceTreeNode } from "@/features/page/tree/types";
 import { useQueryEmit } from "@/features/websocket/use-query-emit";
 
+function buildPageQueryKey(pageInput: Partial<IPageInput>): QueryKey {
+  if (
+    pageInput.includeContent === undefined &&
+    pageInput.includeRendered === undefined &&
+    pageInput.preferStaticReadonly === undefined &&
+    pageInput.format === undefined
+  ) {
+    return ["pages", pageInput.pageId];
+  }
+
+  return [
+    "pages",
+    pageInput.pageId,
+    {
+      includeContent: pageInput.includeContent,
+      includeRendered: pageInput.includeRendered,
+      preferStaticReadonly: pageInput.preferStaticReadonly,
+      format: pageInput.format,
+    },
+  ];
+}
+
 export function usePageQuery(
   pageInput: Partial<IPageInput>,
 ): UseQueryResult<IPage, Error> {
   const query = useQuery({
-    queryKey: ["pages", pageInput.pageId],
+    queryKey: buildPageQueryKey(pageInput),
     queryFn: () => getPageById(pageInput),
     enabled: !!pageInput.pageId,
     staleTime: 5 * 60 * 1000,
@@ -52,13 +77,28 @@ export function usePageQuery(
 
   useEffect(() => {
     if (query.data) {
+      queryClient.setQueryData(["pages", query.data.id], (prev?: IPage) => ({
+        ...prev,
+        ...query.data,
+      }));
+      queryClient.setQueryData(["pages", query.data.slugId], (prev?: IPage) => ({
+        ...prev,
+        ...query.data,
+      }));
+
       if (isValidUuid(pageInput.pageId)) {
-        queryClient.setQueryData(["pages", query.data.slugId], query.data);
+        queryClient.setQueryData(buildPageQueryKey({ pageId: query.data.slugId }), (prev?: IPage) => ({
+          ...prev,
+          ...query.data,
+        }));
       } else {
-        queryClient.setQueryData(["pages", query.data.id], query.data);
+        queryClient.setQueryData(buildPageQueryKey({ pageId: query.data.id }), (prev?: IPage) => ({
+          ...prev,
+          ...query.data,
+        }));
       }
     }
-  }, [query.data]);
+  }, [pageInput.pageId, query.data]);
 
   return query;
 }
@@ -69,10 +109,16 @@ export function prefetchPage(pageInput: Partial<IPageInput>) {
   }
 
   return queryClient.prefetchQuery({
-    queryKey: ["pages", pageInput.pageId],
+    queryKey: buildPageQueryKey(pageInput),
     queryFn: () => getPageById(pageInput),
     staleTime: 5 * 60 * 1000,
   });
+}
+
+export async function prefetchPageRenderedSegment(
+  input: IPageRenderSegmentInput,
+): Promise<IPageRenderedSegment> {
+  return getPageRenderedSegment(input);
 }
 
 export function useCreatePageMutation() {

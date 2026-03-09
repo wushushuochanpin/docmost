@@ -101,6 +101,11 @@ export class PageService {
   async getPageInfo(
     pageId: string,
     workspaceId?: string,
+    opts?: {
+      includeContent?: boolean;
+      includeSpace?: boolean;
+      includeTextContent?: boolean;
+    },
   ): Promise<
     | (Page & {
         nodeType: PageNodeType;
@@ -111,8 +116,9 @@ export class PageService {
   > {
     const page = await this.pageRepo.findById(pageId, {
       workspaceId,
-      includeSpace: true,
-      includeContent: true,
+      includeSpace: opts?.includeSpace ?? true,
+      includeContent: opts?.includeContent ?? true,
+      includeTextContent: opts?.includeTextContent ?? true,
       includeCreator: true,
       includeLastUpdatedBy: true,
       includeContributors: true,

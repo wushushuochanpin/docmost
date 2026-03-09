@@ -7,10 +7,12 @@ import useToggleAside from "@/hooks/use-toggle-aside.tsx";
 import { useAtom } from "jotai";
 import { asideStateAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
 import { useTranslation } from "react-i18next";
+import { IPage } from "@/features/page/types/page.types.ts";
 
 interface Props {
   readOnly?: boolean;
   pageId?: string;
+  page: IPage;
   editable?: boolean;
   showEditorToolbar?: boolean;
 }
@@ -18,6 +20,7 @@ interface Props {
 export default function PageHeader({
   readOnly,
   pageId,
+  page,
   editable,
   showEditorToolbar,
 }: Props) {
@@ -67,7 +70,7 @@ export default function PageHeader({
         )}
 
         <div className={classes.actions}>
-          <PageHeaderMenu readOnly={readOnly} pageId={pageId} />
+          <PageHeaderMenu readOnly={readOnly} pageId={pageId} page={page} />
         </div>
       </div>
     </div>

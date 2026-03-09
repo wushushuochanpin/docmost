@@ -16,6 +16,6 @@ import { ShareWechatService } from './share-wechat.service';
     SharePreviewMetaService,
     ShareWechatService,
   ],
-  exports: [ShareService],
+  exports: [ShareService, ShareStaticRendererService],
 })
 export class ShareModule {}
