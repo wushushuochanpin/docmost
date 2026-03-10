@@ -1,0 +1,150 @@
+.viewport {
+  width: 100%;
+}
+
+.viewportFullscreen {
+  min-height: calc(100vh - var(--share-header-height, 50px));
+  display: flex;
+  align-items: center;
+}
+
+.shell {
+  width: 100%;
+  padding-top: var(--shared-page-skeleton-py, 0);
+  padding-bottom: var(--shared-page-skeleton-py, 0);
+}
+
+.header,
+.body,
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  gap: 14px;
+  padding: 0 var(--share-content-padding-x, clamp(18px, 4vw, 44px));
+}
+
+.body {
+  gap: 24px;
+  margin-top: 28px;
+  padding: 0 var(--share-content-padding-x, clamp(18px, 4vw, 44px));
+}
+
+.section {
+  gap: 12px;
+}
+
+.block {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      110deg,
+      rgb(226 232 240 / 88%) 10%,
+      rgb(241 245 249 / 96%) 42%,
+      rgb(226 232 240 / 88%) 72%
+    );
+  background-size: 220% 100%;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 58%),
+    0 1px 0 rgb(148 163 184 / 10%);
+  animation: skeletonShimmer 1.65s ease-in-out infinite;
+}
+
+.kicker {
+  width: 18%;
+  min-width: 92px;
+  height: 13px;
+}
+
+.titleLg {
+  height: 42px;
+  width: min(82%, 680px);
+  border-radius: 16px;
+}
+
+.titleMd {
+  height: 42px;
+  width: min(72%, 560px);
+  border-radius: 16px;
+}
+
+.meta {
+  height: 16px;
+  width: min(38%, 240px);
+}
+
+.line {
+  height: 15px;
+}
+
+.sectionHeading {
+  height: 18px;
+  width: min(44%, 240px) !important;
+}
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: -100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block {
+    animation: none;
+    background: rgb(236 239 243 / 96%);
+  }
+}
+
+@media (max-width: 48em) {
+  .header {
+    gap: 12px;
+  }
+
+  .body {
+    gap: 20px;
+    margin-top: 24px;
+  }
+
+  .section {
+    gap: 10px;
+  }
+
+  .kicker {
+    min-width: 72px;
+    height: 12px;
+  }
+
+  .titleLg {
+    width: 92%;
+    height: 34px;
+    border-radius: 14px;
+  }
+
+  .titleMd {
+    width: 84%;
+    height: 34px;
+    border-radius: 14px;
+  }
+
+  .meta {
+    width: 52%;
+    height: 14px;
+  }
+
+  .line {
+    height: 14px;
+  }
+
+  .sectionHeading {
+    width: 48% !important;
+    height: 17px;
+  }
+}

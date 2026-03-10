@@ -69,6 +69,7 @@ import { useEditorScroll } from "./hooks/use-editor-scroll";
 import { EditorAiMenu } from "@/ee/ai/components/editor/ai-menu/ai-menu";
 import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 import ColumnsMenu from "@/features/editor/components/columns/columns-menu.tsx";
+import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
 
 interface PageEditorProps {
   pageId: string;
@@ -106,6 +107,10 @@ export default function PageEditor({
     localPageEditMode ??
     currentUser?.user?.settings?.preferences?.pageEditMode ??
     PageEditMode.Edit;
+  const normalizedContent = useMemo(
+    () => normalizeProsemirrorContent(content),
+    [content],
+  );
   const canScroll = useCallback(
     () => Boolean(isComponentMounted.current && editorRef.current),
     [isComponentMounted],
@@ -430,7 +435,7 @@ export default function PageEditor({
         editable={false}
         immediatelyRender={true}
         extensions={mainExtensions}
-        content={content}
+        content={normalizedContent}
       />
     );
   }

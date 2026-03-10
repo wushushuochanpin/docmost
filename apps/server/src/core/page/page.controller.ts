@@ -56,6 +56,7 @@ import {
 } from '../../integrations/audit/audit.service';
 import { getPageTitle } from '../../common/helpers';
 import { ShareStaticRendererService } from '../share/share-static-renderer.service';
+import { getProsemirrorContent } from '../../common/helpers/prosemirror/utils';
 
 @UseGuards(JwtAuthGuard)
 @Controller('pages')
@@ -99,9 +100,13 @@ export class PageController {
       await this.pageAccessService.validateCanViewWithPermissions(page, user);
     const shouldAttachRendered =
       includeRendered || (preferStaticReadonly && !permissions.canEdit);
+    const normalizedContent = this.normalizePageContent(
+      page.content,
+      page.nodeType,
+    );
     const rendered =
-      shouldAttachRendered && page.content
-        ? this.shareStaticRendererService.render(page.content)
+      shouldAttachRendered && page.nodeType !== 'folder'
+        ? this.shareStaticRendererService.render(normalizedContent)
         : null;
     const hasStaticRenderableOutput = Boolean(
       rendered?.html || rendered?.headHtml,
@@ -115,11 +120,11 @@ export class PageController {
       (includeContent && !shouldPreferRenderedPayload) ||
       (shouldAttachRendered && !hasStaticRenderableOutput);
 
-    if (dto.format && dto.format !== 'json' && page.content) {
+    if (dto.format && dto.format !== 'json' && page.nodeType !== 'folder') {
       const contentOutput =
         dto.format === 'markdown'
-          ? jsonToMarkdown(page.content)
-          : jsonToHtml(page.content);
+          ? jsonToMarkdown(normalizedContent)
+          : jsonToHtml(normalizedContent);
       const response = {
         ...page,
         content: contentOutput,
@@ -137,6 +142,8 @@ export class PageController {
 
     if (!shouldReturnRawContent) {
       delete response.content;
+    } else if (page.nodeType !== 'folder') {
+      response.content = normalizedContent;
     }
 
     return response;
@@ -229,19 +236,19 @@ export class PageController {
       },
     });
 
-    if (
-      createPageDto.format &&
-      createPageDto.format !== 'json' &&
-      page.content
-    ) {
+    const normalizedContent = this.normalizePageContent(page.content, page.nodeType);
+
+    if (createPageDto.format && createPageDto.format !== 'json' && page.nodeType !== 'folder') {
       const contentOutput =
         createPageDto.format === 'markdown'
-          ? jsonToMarkdown(page.content)
-          : jsonToHtml(page.content);
+          ? jsonToMarkdown(normalizedContent)
+          : jsonToHtml(normalizedContent);
       return { ...page, content: contentOutput, permissions };
     }
 
-    return { ...page, permissions };
+    return page.nodeType === 'folder'
+      ? { ...page, permissions }
+      : { ...page, content: normalizedContent, permissions };
   }
 
   @HttpCode(HttpStatus.OK)
@@ -269,21 +276,38 @@ export class PageController {
       updatePageDto,
       user,
     );
+    const updatedPageInfo = await this.pageService.getPageInfo(
+      updatedPage.id,
+      workspace.id,
+      {
+        includeContent: true,
+        includeSpace: true,
+        includeTextContent: true,
+      },
+    );
     const permissions = { canEdit: true, hasRestriction };
+    const pageResponse = updatedPageInfo ?? updatedPage;
+
+    const normalizedContent = this.normalizePageContent(
+      pageResponse.content,
+      updatedPageInfo?.nodeType,
+    );
 
     if (
       updatePageDto.format &&
       updatePageDto.format !== 'json' &&
-      updatedPage.content
+      updatedPageInfo?.nodeType !== 'folder'
     ) {
       const contentOutput =
         updatePageDto.format === 'markdown'
-          ? jsonToMarkdown(updatedPage.content)
-          : jsonToHtml(updatedPage.content);
-      return { ...updatedPage, content: contentOutput, permissions };
+          ? jsonToMarkdown(normalizedContent)
+          : jsonToHtml(normalizedContent);
+      return { ...pageResponse, content: contentOutput, permissions };
     }
 
-    return { ...updatedPage, permissions };
+    return updatedPageInfo?.nodeType === 'folder'
+      ? { ...pageResponse, permissions }
+      : { ...pageResponse, content: normalizedContent, permissions };
   }
 
   @HttpCode(HttpStatus.OK)
@@ -840,5 +864,13 @@ export class PageController {
 
     await this.pageAccessService.validateCanView(page, user);
     return this.pageService.getPageBreadCrumbs(page.id, workspace.id);
+  }
+
+  private normalizePageContent(content: any, nodeType?: string | null) {
+    if (nodeType === 'folder') {
+      return content;
+    }
+
+    return getProsemirrorContent(content);
   }
 }

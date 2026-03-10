@@ -18,7 +18,7 @@ export interface FullEditorProps {
   pageId: string;
   slugId: string;
   title: string;
-  content: string;
+  content: any;
   updatedAt: Date | string;
   spaceSlug: string;
   editable: boolean;

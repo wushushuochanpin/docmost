@@ -1,5 +1,5 @@
 import "@/features/editor/styles/index.css";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EditorProvider } from "@tiptap/react";
 import { getReadonlyExtensions } from "@/features/editor/extensions/readonly-extensions.ts";
 import { Document } from "@tiptap/extension-document";
@@ -16,6 +16,7 @@ import {
 } from "@/features/editor/utils/editor-font-size-utils";
 import { editorFontSizePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 import classes from "@/features/editor/styles/editor.module.css";
+import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
 
 interface PageEditorProps {
   title: string;
@@ -46,6 +47,10 @@ export default function ReadonlyPageEditor({
   const editorFontScale = getEditorFontScale(
     localEditorFontSize ?? extractEditorFontSizeFromUser(user),
   );
+  const normalizedContent = useMemo(
+    () => normalizeProsemirrorContent(content),
+    [content],
+  );
 
   useEffect(() => {
     isComponentMounted.current = true;
@@ -57,7 +62,7 @@ export default function ReadonlyPageEditor({
     setExtensions(null);
     store.set(readOnlyEditorAtom as any, null);
 
-    void getReadonlyExtensions(content).then((nextExtensions) => {
+    void getReadonlyExtensions(normalizedContent).then((nextExtensions) => {
       if (!cancelled) {
         setExtensions(nextExtensions);
       }
@@ -67,7 +72,7 @@ export default function ReadonlyPageEditor({
       cancelled = true;
       store.set(readOnlyEditorAtom as any, null);
     };
-  }, [content, store]);
+  }, [normalizedContent, store]);
 
   const titleExtensions = [
     Document.extend({
@@ -102,7 +107,7 @@ export default function ReadonlyPageEditor({
           editable={false}
           immediatelyRender={true}
           extensions={extensions}
-          content={content}
+          content={normalizedContent}
           onCreate={({ editor }) => {
             if (editor) {
               if (pageId) {

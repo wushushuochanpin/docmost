@@ -26,6 +26,7 @@ import {
   extractEditorFontSizeFromUser,
   getEditorFontScale,
 } from "@/features/editor/utils/editor-font-size-utils.ts";
+import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
 import PageStaticHtmlContent from "@/features/page/components/page-static-html-content.tsx";
 
 const MemoizedPageHeader = React.memo(PageHeader);
@@ -110,7 +111,13 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
     page?.rendered?.html || page?.rendered?.headHtml,
   );
   const canEdit = Boolean(page && canManagePage && !useReadExperience);
-  const requiresEditorContent = Boolean(page && !isFolder && !useReadExperience);
+  const normalizedPageContent = useMemo(() => {
+    if (!page || isFolder) {
+      return undefined;
+    }
+
+    return normalizeProsemirrorContent(page.content);
+  }, [isFolder, page]);
 
   useEffect(() => {
     if (page && !isFolder && useReadExperience && canUseStaticHtml) {
@@ -170,10 +177,6 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
     );
   }
 
-  if (requiresEditorContent && !page.content) {
-    return <PageContentLoader />;
-  }
-
   return (
     page && (
       <div>
@@ -206,7 +209,7 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
           <MemoizedReadonlyPageEditor
             pageId={page.id}
             title={page.title}
-            content={page.content}
+            content={normalizedPageContent}
           />
         ) : (
           <Suspense fallback={<PageContentLoader />}>
@@ -214,7 +217,7 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
               key={page.id}
               pageId={page.id}
               title={page.title}
-              content={page.content}
+              content={normalizedPageContent}
               slugId={page.slugId}
               updatedAt={page.updatedAt}
               spaceSlug={page?.space?.slug}
