@@ -16,6 +16,7 @@ import { PagePermissionRepo } from '@docmost/db/repos/page/page-permission.repo'
 import { TokenService } from '../auth/services/token.service';
 import { JwtShareAccessPayload, JwtType } from '../auth/dto/jwt-payload';
 import { ShareAccessMode, ShareErrorCode } from '../share/share.constants';
+import { PageNodeMetaRepo } from '@docmost/db/repos/page/page-node-meta.repo';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const tsquery = require('pg-tsquery')();
@@ -26,6 +27,7 @@ export class SearchService {
     @InjectKysely() private readonly db: KyselyDB,
     private pageRepo: PageRepo,
     private shareRepo: ShareRepo,
+    private pageNodeMetaRepo: PageNodeMetaRepo,
     private spaceMemberRepo: SpaceMemberRepo,
     private pagePermissionRepo: PagePermissionRepo,
     private tokenService: TokenService,
@@ -113,7 +115,12 @@ export class SearchService {
       await this.assertPublicShareAccess(share, searchParams.accessToken);
 
       const pageIdsToSearch = [];
-      if (share.includeSubPages) {
+      const sharedPageNodeMeta = await this.pageNodeMetaRepo.findByPageId(
+        share.pageId,
+      );
+      const canSearchDescendants =
+        share.includeSubPages || sharedPageNodeMeta?.nodeType === 'folder';
+      if (canSearchDescendants) {
         const pageList = await this.pageRepo.getPageAndDescendants(
           share.pageId,
           {

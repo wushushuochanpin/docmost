@@ -14,11 +14,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getPageIcon } from "@/lib";
 import CopyTextButton from "@/components/common/copy";
-import { getAppUrl, isCloud } from "@/lib/config";
-import {
-  buildPageUrl,
-  buildSharedPageUrl,
-} from "@/features/page/page.utils";
+import { getPublicAppUrl, isCloud } from "@/lib/config";
+import { buildPageUrl, buildSharedPageUrl } from "@/features/page/page.utils";
 import {
   useCreateShareMutation,
   useDeleteShareMutation,
@@ -35,7 +32,13 @@ type PublishTabProps = {
   spaceSharingDisabled?: boolean;
 };
 
-export function PublishTab({ pageId, readOnly, isRestricted, workspaceSharingDisabled, spaceSharingDisabled }: PublishTabProps) {
+export function PublishTab({
+  pageId,
+  readOnly,
+  isRestricted,
+  workspaceSharingDisabled,
+  spaceSharingDisabled,
+}: PublishTabProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { spaceSlug } = useParams();
@@ -51,7 +54,7 @@ export function PublishTab({ pageId, readOnly, isRestricted, workspaceSharingDis
 
   const publicLink =
     share?.key && share?.sharedPage?.slugId
-      ? getAppUrl() +
+      ? getPublicAppUrl() +
         buildSharedPageUrl({
           shareId: share.key,
           pageSlugId: share.sharedPage.slugId,

@@ -486,6 +486,7 @@ export class PageRepo {
       .withRecursive('page_hierarchy', (db) =>
         db
           .selectFrom('pages')
+          .leftJoin('pageNodeMeta', 'pageNodeMeta.pageId', 'pages.id')
           .select([
             'id',
             'slugId',
@@ -499,6 +500,9 @@ export class PageRepo {
             'workspaceId',
             'createdAt',
             'updatedAt',
+            sql<string>`COALESCE("pageNodeMeta"."nodeType", 'file')`.as(
+              'nodeType',
+            ),
           ])
           .$if(opts?.includeContent, (qb) => qb.select('content'))
           .$if(Boolean(opts?.workspaceId), (qb) =>
@@ -509,6 +513,7 @@ export class PageRepo {
           .unionAll((exp) =>
             exp
               .selectFrom('pages as p')
+              .leftJoin('pageNodeMeta as pnm', 'pnm.pageId', 'p.id')
               .select([
                 'p.id',
                 'p.slugId',
@@ -522,6 +527,7 @@ export class PageRepo {
                 'p.workspaceId',
                 'p.createdAt',
                 'p.updatedAt',
+                sql<string>`COALESCE("pnm"."nodeType", 'file')`.as('nodeType'),
               ])
               .$if(opts?.includeContent, (qb) => qb.select('p.content'))
               .innerJoin('page_hierarchy as ph', 'p.parentPageId', 'ph.id')

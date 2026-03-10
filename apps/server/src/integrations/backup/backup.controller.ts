@@ -3,13 +3,13 @@ import {
   ForbiddenException,
   Get,
   Body,
+  NotFoundException,
   Param,
   Post,
   Query,
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { createReadStream } from 'fs';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -27,7 +27,7 @@ import {
   BackupJobIdDto,
   DeleteBackupArtifactDto,
 } from './dto/backup-job.dto';
-import * as path from 'path';
+import { EnvironmentService } from '../environment/environment.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('backups')
@@ -35,7 +35,14 @@ export class BackupController {
   constructor(
     private readonly backupJobService: BackupJobService,
     private readonly workspaceAbility: WorkspaceAbilityFactory,
+    private readonly environmentService: EnvironmentService,
   ) {}
+
+  private ensureBackupEnabled() {
+    if (!this.environmentService.isBackupEnabled()) {
+      throw new NotFoundException();
+    }
+  }
 
   private ensureCanManageBackup(user: User, workspace: Workspace) {
     const ability = this.workspaceAbility.createForUser(user, workspace);
@@ -52,6 +59,7 @@ export class BackupController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
+    this.ensureBackupEnabled();
     this.ensureCanManageBackup(user, workspace);
     return this.backupJobService.listJobs(workspace.id, {
       cursor: dto.cursor,
@@ -65,6 +73,7 @@ export class BackupController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
+    this.ensureBackupEnabled();
     this.ensureCanManageBackup(user, workspace);
     if (body?.cleanupOnly) {
       const cleanedCount =
@@ -84,6 +93,7 @@ export class BackupController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
+    this.ensureBackupEnabled();
     this.ensureCanManageBackup(user, workspace);
     const cleanedCount =
       await this.backupJobService.cleanupStaleJobsByWorkspace(workspace.id);
@@ -95,6 +105,7 @@ export class BackupController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
+    this.ensureBackupEnabled();
     this.ensureCanManageBackup(user, workspace);
     const cleanedCount =
       await this.backupJobService.cleanupStaleJobsByWorkspace(workspace.id);
@@ -107,6 +118,7 @@ export class BackupController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
+    this.ensureBackupEnabled();
     this.ensureCanManageBackup(user, workspace);
 
     if (jobId !== 'cleanup-stale') {
@@ -124,6 +136,7 @@ export class BackupController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
+    this.ensureBackupEnabled();
     this.ensureCanManageBackup(user, workspace);
     const job = await this.backupJobService.getJobWithTriggerer(
       workspace.id,
@@ -139,6 +152,7 @@ export class BackupController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
+    this.ensureBackupEnabled();
     this.ensureCanManageBackup(user, workspace);
     const result = await this.backupJobService.getDownloadUrl(
       workspace.id,
@@ -155,6 +169,7 @@ export class BackupController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
+    this.ensureBackupEnabled();
     this.ensureCanManageBackup(user, workspace);
 
     const job = await this.backupJobService.deleteArtifact(
@@ -174,18 +189,18 @@ export class BackupController {
     @AuthWorkspace() workspace: Workspace,
     @Res() res: FastifyReply,
   ) {
+    this.ensureBackupEnabled();
     this.ensureCanManageBackup(user, workspace);
-    const fullPath = await this.backupJobService.getArtifactFullPath(
+    const artifact = await this.backupJobService.getArtifactReadable(
       workspace.id,
       params.id,
     );
-    if (!fullPath) throw new ForbiddenException();
+    if (!artifact) throw new ForbiddenException();
 
-    const filename = path.basename(fullPath);
     res.headers({
       'Content-Type': 'application/gzip',
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(artifact.filename)}"`,
     });
-    return res.send(createReadStream(fullPath));
+    return res.send(artifact.stream);
   }
 }

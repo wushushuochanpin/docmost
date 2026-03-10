@@ -28,6 +28,7 @@ import {
 } from "@/features/editor/utils/editor-font-size-utils.ts";
 import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
 import PageStaticHtmlContent from "@/features/page/components/page-static-html-content.tsx";
+import { canUseStaticRenderedHtml } from "@/features/share/rendered-utils.ts";
 
 const MemoizedPageHeader = React.memo(PageHeader);
 const MemoizedHistoryModal = React.memo(HistoryModal);
@@ -59,7 +60,12 @@ export default function Page() {
           icon={IconAlertTriangle}
           title={t("Failed to load page. An error occurred.")}
           action={
-            <Button variant="default" size="sm" mt="xs" onClick={resetErrorBoundary}>
+            <Button
+              variant="default"
+              size="sm"
+              mt="xs"
+              onClick={resetErrorBoundary}
+            >
               {t("Try again")}
             </Button>
           }
@@ -107,9 +113,7 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
   const isFolder = page?.nodeType === "folder";
   const useReadExperience =
     !page || !canManagePage || userPageEditMode === PageEditMode.Read;
-  const canUseStaticHtml = Boolean(
-    page?.rendered?.html || page?.rendered?.headHtml,
-  );
+  const canUseStaticHtml = canUseStaticRenderedHtml(page?.rendered);
   const canEdit = Boolean(page && canManagePage && !useReadExperience);
   const normalizedPageContent = useMemo(() => {
     if (!page || isFolder) {
@@ -162,7 +166,13 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
             "This page may have been deleted, moved, or you may not have access.",
           )}
           action={
-            <Button component={Link} to="/home" variant="default" size="sm" mt="xs">
+            <Button
+              component={Link}
+              to="/home"
+              variant="default"
+              size="sm"
+              mt="xs"
+            >
               {t("Go to homepage")}
             </Button>
           }
@@ -170,10 +180,7 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
       );
     }
     return (
-      <EmptyState
-        icon={IconFileOff}
-        title={t("Error fetching page data.")}
-      />
+      <EmptyState icon={IconFileOff} title={t("Error fetching page data.")} />
     );
   }
 

@@ -56,6 +56,7 @@ import {
 } from '../../integrations/audit/audit.service';
 import { getPageTitle } from '../../common/helpers';
 import { ShareStaticRendererService } from '../share/share-static-renderer.service';
+import { canUseStaticShareRender } from '../share/share-rendered.util';
 import { getProsemirrorContent } from '../../common/helpers/prosemirror/utils';
 
 @UseGuards(JwtAuthGuard)
@@ -82,9 +83,14 @@ export class PageController {
     const includeContent = dto.includeContent ?? true;
     const includeRendered = dto.includeRendered === true;
     const preferStaticReadonly = dto.preferStaticReadonly === true;
-    const requiresFormattedContent = Boolean(dto.format && dto.format !== 'json');
+    const requiresFormattedContent = Boolean(
+      dto.format && dto.format !== 'json',
+    );
     const shouldLoadRawContent =
-      includeContent || includeRendered || preferStaticReadonly || requiresFormattedContent;
+      includeContent ||
+      includeRendered ||
+      preferStaticReadonly ||
+      requiresFormattedContent;
 
     const page = await this.pageService.getPageInfo(dto.pageId, workspace.id, {
       includeSpace,
@@ -108,9 +114,7 @@ export class PageController {
       shouldAttachRendered && page.nodeType !== 'folder'
         ? this.shareStaticRendererService.render(normalizedContent)
         : null;
-    const hasStaticRenderableOutput = Boolean(
-      rendered?.html || rendered?.headHtml,
-    );
+    const hasStaticRenderableOutput = canUseStaticShareRender(rendered);
     const shouldPreferRenderedPayload =
       shouldAttachRendered &&
       hasStaticRenderableOutput &&
@@ -236,9 +240,16 @@ export class PageController {
       },
     });
 
-    const normalizedContent = this.normalizePageContent(page.content, page.nodeType);
+    const normalizedContent = this.normalizePageContent(
+      page.content,
+      page.nodeType,
+    );
 
-    if (createPageDto.format && createPageDto.format !== 'json' && page.nodeType !== 'folder') {
+    if (
+      createPageDto.format &&
+      createPageDto.format !== 'json' &&
+      page.nodeType !== 'folder'
+    ) {
       const contentOutput =
         createPageDto.format === 'markdown'
           ? jsonToMarkdown(normalizedContent)

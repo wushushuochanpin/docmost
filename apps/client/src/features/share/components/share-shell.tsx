@@ -9,9 +9,7 @@ import {
   sharedTreeDataAtom,
 } from "@/features/share/atoms/shared-page-atom";
 import { buildSharedPageTree } from "@/features/share/utils";
-import {
-  mobileSidebarAtom,
-} from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
+import { mobileSidebarAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
 import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-toggle-sidebar.ts";
 import {
   shareDesktopSidebarAtom,
@@ -85,6 +83,7 @@ export default function ShareShell({
   );
   const renderMode = sharedShellState?.renderMode ?? "editor";
   const tocItems = sharedShellState?.toc ?? [];
+  const hasToc = tocItems.length > 0;
   const [searchOpenToken, setSearchOpenToken] = useState(0);
   const [isSearchMounted, setIsSearchMounted] = useState(false);
   const { data } = useShareAsyncResource(
@@ -134,7 +133,7 @@ export default function ShareShell({
   }, [canUseSearch]);
 
   const desktopHasLeftSidebar = hasTree && desktopOpened;
-  const desktopHasRightSidebar = tocOpened;
+  const desktopHasRightSidebar = hasToc && tocOpened;
 
   const openShareSearch = () => {
     setIsSearchMounted(true);
@@ -238,36 +237,41 @@ export default function ShareShell({
               </button>
             )}
 
-            <button
-              type="button"
-              className={cx(classes.iconButton, classes.mobileOnly, {
-                [classes.iconButtonActive]: mobileTocOpened,
-              })}
-              onClick={toggleTocMobile}
-              aria-label={t("Table of contents")}
-              title={t("Table of contents")}
-            >
-              <IconList size={18} stroke={1.75} />
-            </button>
+            {hasToc && (
+              <>
+                <button
+                  type="button"
+                  className={cx(classes.iconButton, classes.mobileOnly, {
+                    [classes.iconButtonActive]: mobileTocOpened,
+                  })}
+                  onClick={toggleTocMobile}
+                  aria-label={t("Table of contents")}
+                  title={t("Table of contents")}
+                >
+                  <IconList size={18} stroke={1.75} />
+                </button>
 
-            <button
-              type="button"
-              className={cx(classes.iconButton, classes.desktopOnly, {
-                [classes.iconButtonActive]: desktopHasRightSidebar,
-              })}
-              onClick={toggleToc}
-              aria-label={t("Table of contents")}
-              title={t("Table of contents")}
-            >
-              <IconList size={18} stroke={1.75} />
-            </button>
+                <button
+                  type="button"
+                  className={cx(classes.iconButton, classes.desktopOnly, {
+                    [classes.iconButtonActive]: desktopHasRightSidebar,
+                  })}
+                  onClick={toggleToc}
+                  aria-label={t("Table of contents")}
+                  title={t("Table of contents")}
+                >
+                  <IconList size={18} stroke={1.75} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
 
       <div
         className={cx(classes.body, {
-          [classes.bodyWithLeft]: desktopHasLeftSidebar && !desktopHasRightSidebar,
+          [classes.bodyWithLeft]:
+            desktopHasLeftSidebar && !desktopHasRightSidebar,
           [classes.bodyWithRight]:
             !desktopHasLeftSidebar && desktopHasRightSidebar,
           [classes.bodyWithBoth]:
@@ -326,7 +330,7 @@ export default function ShareShell({
         </>
       )}
 
-      {mobileTocOpened && (
+      {hasToc && mobileTocOpened && (
         <>
           <button
             type="button"

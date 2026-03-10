@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import {
+  Alert,
   Group,
   Table,
   Text,
@@ -9,6 +10,7 @@ import {
   Tooltip,
   ActionIcon,
   Menu,
+  ThemeIcon,
 } from "@mantine/core";
 import {
   IconPlayerPlay,
@@ -16,10 +18,13 @@ import {
   IconRefresh,
   IconDots,
   IconTrash,
+  IconInfoCircle,
+  IconDeviceFloppy,
+  IconCloud,
 } from "@tabler/icons-react";
 import SettingsTitle from "@/components/settings/settings-title";
 import { useTranslation } from "react-i18next";
-import { getAppName } from "@/lib/config";
+import { getAppName, isBackupS3Enabled } from "@/lib/config";
 import { Helmet } from "react-helmet-async";
 import {
   useBackupJobsQuery,
@@ -27,7 +32,10 @@ import {
   useCleanupStaleJobsMutation,
   useDeleteBackupArtifactMutation,
 } from "@/features/backup/queries/backup-query";
-import type { BackupJob } from "@/features/backup/services/backup-service";
+import type {
+  BackupJob,
+  BackupJobMetadata,
+} from "@/features/backup/services/backup-service";
 import Paginate from "@/components/common/paginate";
 import NoTableResults from "@/components/common/no-table-results";
 import { getBackupDownloadUrl } from "@/features/backup/services/backup-service";
@@ -70,10 +78,29 @@ function formatTrigger(job: BackupJob): string {
   return "System";
 }
 
+function getCopyAvailability(job: BackupJob): {
+  hasLocalCopy: boolean;
+  hasS3Copy: boolean;
+} {
+  if (job.status !== "success" || !job.artifactPath || job.artifactDeletedAt) {
+    return { hasLocalCopy: false, hasS3Copy: false };
+  }
+
+  const metadata = job.metadata as BackupJobMetadata | null;
+  const artifactCopies =
+    metadata && typeof metadata === "object" ? metadata.artifactCopies : null;
+
+  return {
+    hasLocalCopy: Boolean(artifactCopies?.local) || Boolean(job.artifactPath),
+    hasS3Copy: Boolean(artifactCopies?.s3),
+  };
+}
+
 export default function BackupPage() {
   const { t } = useTranslation();
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorStack, setCursorStack] = useState<(string | undefined)[]>([]);
+  const backupS3Enabled = isBackupS3Enabled();
 
   const { data, isLoading, refetch, isFetching } = useBackupJobsQuery({
     cursor,
@@ -141,6 +168,21 @@ export default function BackupPage() {
       </Helmet>
       <SettingsTitle title={t("Backup & Restore")} />
 
+      <Alert
+        mb="md"
+        color={backupS3Enabled ? "blue" : "gray"}
+        variant="light"
+        icon={<IconInfoCircle size={16} />}
+      >
+        <Text size="sm">
+          {backupS3Enabled
+            ? t("Current backup mode: local disk + COS/S3 replica.")
+            : t(
+                "Current backup mode: local disk only. COS/S3 replica is disabled.",
+              )}
+        </Text>
+      </Alert>
+
       <Group justify="space-between" mb="md">
         <Text size="sm" c="dimmed">
           {t("Trigger a full backup or download a previous backup.")}
@@ -171,6 +213,7 @@ export default function BackupPage() {
               <Table.Th>{t("Started")}</Table.Th>
               <Table.Th>{t("Ended")}</Table.Th>
               <Table.Th>{t("Size")}</Table.Th>
+              <Table.Th>{t("Copies")}</Table.Th>
               <Table.Th>{t("Status")}</Table.Th>
               <Table.Th>{t("Triggered by")}</Table.Th>
               <Table.Th>{t("Actions")}</Table.Th>
@@ -179,7 +222,7 @@ export default function BackupPage() {
           <Table.Tbody>
             {isLoading ? (
               <Table.Tr>
-                <Table.Td colSpan={6}>
+                <Table.Td colSpan={7}>
                   <Text size="sm" c="dimmed">
                     {t("Loading...")}
                   </Text>
@@ -189,6 +232,8 @@ export default function BackupPage() {
               (data.items ?? []).map((job) => {
                 const statusInfo =
                   JOB_STATUS_MAP[job.status] ?? JOB_STATUS_MAP.pending;
+                const copyAvailability = getCopyAvailability(job);
+
                 return (
                   <Table.Tr key={job.id}>
                     <Table.Td>
@@ -201,6 +246,50 @@ export default function BackupPage() {
                     </Table.Td>
                     <Table.Td>
                       <Text fz="sm">{formatSize(job.artifactSizeBytes)}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Group gap={6} wrap="nowrap">
+                        <Tooltip
+                          label={t(
+                            copyAvailability.hasLocalCopy
+                              ? "Local copy available"
+                              : "Local copy unavailable",
+                          )}
+                        >
+                          <ThemeIcon
+                            size="sm"
+                            radius="xl"
+                            variant={
+                              copyAvailability.hasLocalCopy
+                                ? "light"
+                                : "subtle"
+                            }
+                            color={
+                              copyAvailability.hasLocalCopy ? "teal" : "gray"
+                            }
+                          >
+                            <IconDeviceFloppy size={14} stroke={1.8} />
+                          </ThemeIcon>
+                        </Tooltip>
+                        <Tooltip
+                          label={t(
+                            copyAvailability.hasS3Copy
+                              ? "COS/S3 replica available"
+                              : "COS/S3 replica unavailable",
+                          )}
+                        >
+                          <ThemeIcon
+                            size="sm"
+                            radius="xl"
+                            variant={
+                              copyAvailability.hasS3Copy ? "light" : "subtle"
+                            }
+                            color={copyAvailability.hasS3Copy ? "blue" : "gray"}
+                          >
+                            <IconCloud size={14} stroke={1.8} />
+                          </ThemeIcon>
+                        </Tooltip>
+                      </Group>
                     </Table.Td>
                     <Table.Td>
                       <Badge variant="light" color={statusInfo.color}>
@@ -281,7 +370,7 @@ export default function BackupPage() {
                 );
               })
             ) : (
-              <NoTableResults colSpan={6} />
+              <NoTableResults colSpan={7} />
             )}
           </Table.Tbody>
         </Table>

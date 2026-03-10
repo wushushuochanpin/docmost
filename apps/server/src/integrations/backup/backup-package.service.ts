@@ -8,6 +8,10 @@ import { createWriteStream } from 'fs';
 import { createGzip } from 'zlib';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
+import {
+  BackupArtifactJobMetadata,
+  BackupArtifactStorageService,
+} from './backup-artifact-storage.service';
 
 const DOCMOST_VERSION = process.env.npm_package_version ?? '0.0.0';
 
@@ -17,13 +21,17 @@ const PG_DUMP_BIN = process.env.PG_DUMP_PATH || '/usr/bin/pg_dump';
 export interface BackupResult {
   artifactPath: string;
   artifactSizeBytes: number;
+  metadata: BackupArtifactJobMetadata;
 }
 
 @Injectable()
 export class BackupPackageService {
   private readonly logger = new Logger(BackupPackageService.name);
 
-  constructor(private readonly environmentService: EnvironmentService) {}
+  constructor(
+    private readonly environmentService: EnvironmentService,
+    private readonly backupArtifactStorageService: BackupArtifactStorageService,
+  ) {}
 
   async runBackup(workspaceId: string, jobId: string): Promise<BackupResult> {
     const backupRoot = this.environmentService.getBackupLocalPath();
@@ -74,27 +82,60 @@ export class BackupPackageService {
 
       const outDir = path.join(backupRoot, workspaceId);
       await fs.ensureDir(outDir);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-')
+        .slice(0, 19);
       const artifactName = `backup-${workspaceId}-${timestamp}.tar.gz`;
       const artifactPath = path.join(outDir, artifactName);
+      const artifactRelativePath = path.join(workspaceId, artifactName);
 
       await this.createTarGz(workDir, artifactPath);
 
       const stat = await fs.stat(artifactPath);
+      let metadata = this.backupArtifactStorageService.createMetadata(
+        artifactRelativePath,
+        stat.size,
+      );
+
+      try {
+        metadata = await this.backupArtifactStorageService.attachRemoteReplica(
+          metadata,
+          artifactPath,
+          workspaceId,
+          artifactName,
+          stat.size,
+        );
+      } catch (err) {
+        await fs
+          .remove(artifactPath)
+          .catch((cleanupErr) =>
+            this.logger.warn(
+              `Cleanup failed for incomplete backup artifact ${artifactPath}: ${cleanupErr}`,
+            ),
+          );
+        throw err;
+      }
+
       return {
-        artifactPath: path.join(workspaceId, artifactName),
+        artifactPath: artifactRelativePath,
         artifactSizeBytes: stat.size,
+        metadata,
       };
     } finally {
-      await fs.remove(workDir).catch((e) =>
-        this.logger.warn(`Cleanup temp dir failed: ${e}`),
-      );
+      await fs
+        .remove(workDir)
+        .catch((e) => this.logger.warn(`Cleanup temp dir failed: ${e}`));
     }
   }
 
-  private parseDatabaseUrl(
-    databaseUrl: string,
-  ): { host: string; port: string; db: string; user: string; password: string } {
+  private parseDatabaseUrl(databaseUrl: string): {
+    host: string;
+    port: string;
+    db: string;
+    user: string;
+    password: string;
+  } {
     const m = databaseUrl.match(
       /^postgres(?:ql)?:\/\/([^@]+)@([^/]+)\/([^?]*)/,
     );
@@ -119,9 +160,18 @@ export class BackupPackageService {
     };
   }
 
-  private async dumpDatabase(databaseUrl: string, outPath: string): Promise<void> {
+  private async dumpDatabase(
+    databaseUrl: string,
+    outPath: string,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
-      let parsed: { host: string; port: string; db: string; user: string; password: string };
+      let parsed: {
+        host: string;
+        port: string;
+        db: string;
+        user: string;
+        password: string;
+      };
       try {
         parsed = this.parseDatabaseUrl(databaseUrl);
       } catch (e) {
@@ -146,10 +196,14 @@ export class BackupPackageService {
       pgDump.stdout!.pipe(gzip).pipe(out);
 
       let stderr = '';
-      pgDump.stderr?.on('data', (c) => { stderr += c.toString(); });
+      pgDump.stderr?.on('data', (c) => {
+        stderr += c.toString();
+      });
 
       pgDump.on('error', (err) => {
-        reject(new Error(`pg_dump failed: ${err.message}. Is pg_dump installed?`));
+        reject(
+          new Error(`pg_dump failed: ${err.message}. Is pg_dump installed?`),
+        );
       });
 
       out.on('finish', () => resolve());

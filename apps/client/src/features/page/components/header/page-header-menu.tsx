@@ -1,10 +1,4 @@
-import {
-  ActionIcon,
-  Group,
-  Menu,
-  Text,
-  Tooltip,
-} from "@mantine/core";
+import { ActionIcon, Group, Menu, Text, Tooltip } from "@mantine/core";
 import {
   IconArrowRight,
   IconArrowsHorizontal,
@@ -50,6 +44,7 @@ import MovePageModal from "@/features/page/components/move-page-modal.tsx";
 import { useTimeAgo } from "@/hooks/use-time-ago.tsx";
 import { ShareMenuContent } from "@/features/share/components/share-modal.tsx";
 import { IPage } from "@/features/page/types/page.types.ts";
+import { canUseStaticRenderedHtml } from "@/features/share/rendered-utils.ts";
 
 interface PageHeaderMenuProps {
   readOnly?: boolean;
@@ -114,7 +109,10 @@ function getWordCountFromText(text?: string | null) {
   }
 
   const cjkMatches = normalized.match(/[\u3400-\u9fff\uf900-\ufaff]/g) ?? [];
-  const remainingText = normalized.replace(/[\u3400-\u9fff\uf900-\ufaff]/g, " ");
+  const remainingText = normalized.replace(
+    /[\u3400-\u9fff\uf900-\ufaff]/g,
+    " ",
+  );
   const wordMatches = remainingText.match(/[^\s]+/g) ?? [];
 
   return cjkMatches.length + wordMatches.length;
@@ -166,7 +164,8 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
 
   const handleCopyAsMarkdown = () => {
     const staticHtml =
-      currentPage.rendered?.deliveryMode === "full"
+      currentPage.rendered?.deliveryMode === "full" &&
+      canUseStaticRenderedHtml(currentPage.rendered)
         ? (currentPage.rendered.html ?? currentPage.rendered.headHtml ?? "")
         : "";
     const html = activeEditor ? activeEditor.getHTML() : staticHtml;
@@ -199,7 +198,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
   const canCopyAsMarkdown = Boolean(
     activeEditor ||
       (currentPage.rendered?.deliveryMode === "full" &&
-        (currentPage.rendered.html || currentPage.rendered.headHtml)),
+        canUseStaticRenderedHtml(currentPage.rendered)),
   );
 
   const toggleSharePanel = () => {

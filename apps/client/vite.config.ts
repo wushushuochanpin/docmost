@@ -45,6 +45,8 @@ export default defineConfig(({ mode }) => {
     FILE_UPLOAD_SIZE_LIMIT,
     FILE_IMPORT_SIZE_LIMIT,
     DRAWIO_URL,
+    BACKUP_ENABLED,
+    BACKUP_S3_ENABLED,
     CLOUD,
     SUBDOMAIN_HOST,
     COLLAB_URL,
@@ -56,12 +58,27 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = VITE_PROXY_TARGET || APP_URL;
 
   return {
+    envPrefix: [
+      "VITE_",
+      "APP_",
+      "FILE_",
+      "DRAWIO_",
+      "BACKUP_",
+      "CLOUD",
+      "SUBDOMAIN_",
+      "COLLAB_",
+      "BILLING_",
+      "POSTHOG_",
+      "SHARE_",
+    ],
     define: {
       "process.env": {
         APP_URL,
         FILE_UPLOAD_SIZE_LIMIT,
         FILE_IMPORT_SIZE_LIMIT,
         DRAWIO_URL,
+        BACKUP_ENABLED,
+        BACKUP_S3_ENABLED,
         CLOUD,
         SUBDOMAIN_HOST,
         COLLAB_URL,

@@ -16,6 +16,7 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconFileDescription,
+  IconFolder,
   IconPointFilled,
 } from "@tabler/icons-react";
 import { ActionIcon, Box } from "@mantine/core";
@@ -150,7 +151,13 @@ function Node({ node, style, tree }: NodeRendererProps<any>) {
               node.data.icon ? (
                 node.data.icon
               ) : (
-                <IconFileDescription size="18" />
+                <>
+                  {node.data.nodeType === "folder" ? (
+                    <IconFolder size="18" />
+                  ) : (
+                    <IconFileDescription size="18" />
+                  )}
+                </>
               )
             }
             readOnly={true}

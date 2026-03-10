@@ -39,6 +39,10 @@ const DEFAULT_SHARE_MESSAGES = {
   "Open original": "Open original",
   "Close preview": "Close preview",
   "Loading remaining content...": "Loading remaining content...",
+  "Loading folder items...": "Loading folder items...",
+  "No items in this folder.": "No items in this folder.",
+  "{{folderCount}} folders · {{fileCount}} files":
+    "{{folderCount}} folders · {{fileCount}} files",
   "Page failed to load": "Page failed to load",
   Reload: "Reload",
 } as const;
@@ -207,6 +211,10 @@ const SHARE_MESSAGES: Partial<
     Search: "搜索",
     "Table of contents": "目录",
     "Loading remaining content...": "正在加载剩余内容...",
+    "Loading folder items...": "正在加载文件夹内容...",
+    "No items in this folder.": "此文件夹暂无内容。",
+    "{{folderCount}} folders · {{fileCount}} files":
+      "{{folderCount}} 个文件夹 · {{fileCount}} 个文件",
     "Page failed to load": "页面加载失败",
     Reload: "重新加载",
   },

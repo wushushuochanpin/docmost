@@ -7,7 +7,11 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { Error404 } from "@/components/ui/error-404.tsx";
-import { isCloud, getShareLegacyRouteMode } from "@/lib/config.ts";
+import {
+  getShareLegacyRouteMode,
+  isBackupEnabled,
+  isCloud,
+} from "@/lib/config.ts";
 import { useRedirectToCloudSelect } from "@/ee/hooks/use-redirect-to-cloud-select.tsx";
 import { useTrackOrigin } from "@/hooks/use-track-origin";
 import APP_ROUTE from "@/lib/app-route.ts";
@@ -196,9 +200,13 @@ export default function App() {
             <Route path={"ai"} element={<AiSettings />} />
             <Route path={"ai/mcp"} element={<AiSettings />} />
             <Route path={"audit"} element={<AuditLogs />} />
-            {!isCloud() && (
+            {!isCloud() && isBackupEnabled() && (
               <>
                 <Route path={"backup"} element={<Backup />} />
+              </>
+            )}
+            {!isCloud() && (
+              <>
                 <Route path={"license"} element={<License />} />
               </>
             )}

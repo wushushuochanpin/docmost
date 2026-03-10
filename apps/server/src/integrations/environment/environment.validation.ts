@@ -61,6 +61,41 @@ export class EnvironmentVariables {
   STORAGE_DRIVER: string;
 
   @IsOptional()
+  @IsIn(['true', 'false', '1', '0'])
+  BACKUP_ENABLED: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false', '1', '0'])
+  BACKUP_S3_ENABLED: string;
+
+  @IsOptional()
+  @IsString()
+  BACKUP_S3_PREFIX: string;
+
+  @IsOptional()
+  @ValidateIf(
+    (obj) => obj.BACKUP_S3_ENABLED === 'true' || obj.BACKUP_S3_ENABLED === '1',
+  )
+  @IsNotEmpty()
+  @IsString()
+  AWS_S3_REGION: string;
+
+  @IsOptional()
+  @ValidateIf(
+    (obj) => obj.BACKUP_S3_ENABLED === 'true' || obj.BACKUP_S3_ENABLED === '1',
+  )
+  @IsNotEmpty()
+  @IsString()
+  AWS_S3_BUCKET: string;
+
+  @IsOptional()
+  @ValidateIf(
+    (obj) => obj.BACKUP_S3_ENABLED === 'true' || obj.BACKUP_S3_ENABLED === '1',
+  )
+  @IsUrl({ protocols: ['http', 'https'], require_tld: false })
+  AWS_S3_ENDPOINT: string;
+
+  @IsOptional()
   @ValidateIf((obj) => obj.COLLAB_URL != '' && obj.COLLAB_URL != null)
   @IsUrl({ protocols: ['http', 'https'], require_tld: false })
   COLLAB_URL: string;

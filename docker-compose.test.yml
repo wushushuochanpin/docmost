@@ -1,29 +1,36 @@
-# 测试热加载环境：只起一个 docmost（pnpm dev），复用正式栈的 DB/Redis（不启动 db/redis）
-# 使用：先确保正式栈已运行，再执行：
-#   docker compose -p test-doc -f docker-compose.test.yml up -d --build --force-recreate
-# .env 需有：DOCMOST_DB_PASSWORD、DOCMOST_PROD_NETWORK=docmost_default
-#
-# 若页面出现「加载失败，请检查网络或稍后重试」：多为容器内后端(3000)未启动或已挂。
-# 解决：docker compose -p test-doc -f docker-compose.test.yml restart docmost，约 1 分钟后刷新页面。
+# Standalone hot-reload environment for local development.
+# Usage:
+#   cp .env.example .env
+#   docker compose -f docker-compose.test.yml up -d --build
+# Then open http://localhost:3020 and finish setup at /setup/register.
 
 services:
   docmost:
     build:
-      context: /root/coderepository/docmost
+      context: .
       dockerfile: Dockerfile.dev
-    image: docmost-test-dev:latest
+    image: docmost-dev:latest
     working_dir: /app
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
     environment:
-      APP_URL: 'https://book-test.superchat.help'
+      APP_URL: '${APP_URL:-http://localhost:3020}'
+      APP_SOURCE_URL: '${APP_SOURCE_URL:-}'
       APP_SECRET: '${APP_SECRET:-REPLACE_WITH_LONG_SECRET}'
       DATABASE_URL: 'postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost?schema=public'
       REDIS_URL: 'redis://redis:6379'
-      STORAGE_DRIVER: '${STORAGE_DRIVER:-s3}'
-      AWS_S3_ACCESS_KEY_ID: '${AWS_S3_ACCESS_KEY_ID}'
-      AWS_S3_SECRET_ACCESS_KEY: '${AWS_S3_SECRET_ACCESS_KEY}'
-      AWS_S3_REGION: '${AWS_S3_REGION}'
-      AWS_S3_BUCKET: '${AWS_S3_BUCKET}'
-      AWS_S3_ENDPOINT: '${AWS_S3_ENDPOINT}'
+      STORAGE_DRIVER: '${STORAGE_DRIVER:-local}'
+      BACKUP_ENABLED: '${BACKUP_ENABLED:-true}'
+      BACKUP_S3_ENABLED: '${BACKUP_S3_ENABLED:-false}'
+      BACKUP_S3_PREFIX: '${BACKUP_S3_PREFIX:-backups}'
+      AWS_S3_ACCESS_KEY_ID: '${AWS_S3_ACCESS_KEY_ID:-}'
+      AWS_S3_SECRET_ACCESS_KEY: '${AWS_S3_SECRET_ACCESS_KEY:-}'
+      AWS_S3_REGION: '${AWS_S3_REGION:-}'
+      AWS_S3_BUCKET: '${AWS_S3_BUCKET:-}'
+      AWS_S3_ENDPOINT: '${AWS_S3_ENDPOINT:-}'
       AWS_S3_FORCE_PATH_STYLE: '${AWS_S3_FORCE_PATH_STYLE:-false}'
       AWS_S3_URL: '${AWS_S3_URL:-}'
       BACKUP_LOCAL_PATH: '/app/data/storage/backups'
@@ -35,7 +42,7 @@ services:
     ports:
       - "127.0.0.1:3020:5173"
     volumes:
-      - /root/coderepository/docmost:/app
+      - .:/app
       - docmost_test_node_modules:/app/node_modules
       - docmost_test:/app/data/storage
       - docmost_test_pnpm_store:/pnpm/store
@@ -50,16 +57,28 @@ services:
       && pnpm concurrently --kill-others-on-fail -n 'backend,frontend' -c 'green,cyan'
       'pnpm --filter ./apps/server run start:prod'
       'pnpm --filter ./apps/client run dev'"
-    networks:
-      - prod
     restart: unless-stopped
 
-networks:
-  prod:
-    external: true
-    name: ${DOCMOST_PROD_NETWORK:-docmost_default}
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: docmost
+      POSTGRES_USER: docmost
+      POSTGRES_PASSWORD: ${DOCMOST_DB_PASSWORD}
+    restart: unless-stopped
+    volumes:
+      - docmost_test_db:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7.2-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    restart: unless-stopped
+    volumes:
+      - docmost_test_redis:/data
 
 volumes:
   docmost_test_node_modules:
   docmost_test:
   docmost_test_pnpm_store:
+  docmost_test_db:
+  docmost_test_redis:

@@ -43,6 +43,7 @@ export class BackupProcessor extends WorkerHost {
         durationMs: endedAt.getTime() - startedAt.getTime(),
         artifactPath: result.artifactPath,
         artifactSizeBytes: result.artifactSizeBytes,
+        metadata: result.metadata,
       });
     } catch (err) {
       this.logger.warn(`Backup job ${jobId} failed: ${err}`);

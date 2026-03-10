@@ -4,7 +4,7 @@ import * as path from 'path';
 import ms, { StringValue } from 'ms';
 import { ShareLegacyRouteMode } from '../../core/share/share.constants';
 
-const DEFAULT_SOURCE_REPO_URL = 'https://github.com/wushushuochanpin/docmost';
+const DEFAULT_SOURCE_REPO_URL = 'https://github.com/docmost/docmost';
 
 @Injectable()
 export class EnvironmentService {
@@ -18,13 +18,18 @@ export class EnvironmentService {
     return this.getNodeEnv() === 'development';
   }
 
-  getAppUrl(): string {
-    const rawUrl =
-      this.configService.get<string>('APP_URL') ||
-      `http://localhost:${this.getPort()}`;
+  getConfiguredAppUrl(): string | undefined {
+    const rawUrl = this.configService.get<string>('APP_URL')?.trim();
+    if (!rawUrl) {
+      return undefined;
+    }
 
     const { origin } = new URL(rawUrl);
     return origin;
+  }
+
+  getAppUrl(): string {
+    return this.getConfiguredAppUrl() || `http://localhost:${this.getPort()}`;
   }
 
   isHttps(): boolean {
@@ -117,6 +122,21 @@ export class EnvironmentService {
     );
   }
 
+  isBackupEnabled(): boolean {
+    const raw = this.configService.get<string>('BACKUP_ENABLED', 'true');
+    return raw === 'true' || raw === '1';
+  }
+
+  isBackupS3Enabled(): boolean {
+    const raw = this.configService.get<string>('BACKUP_S3_ENABLED', 'false');
+    return raw === 'true' || raw === '1';
+  }
+
+  getBackupS3Prefix(): string {
+    const value = this.configService.get<string>('BACKUP_S3_PREFIX', 'backups');
+    return value.trim().replace(/^\/+|\/+$/g, '');
+  }
+
   getBackupStaleJobMinutes(): number {
     const raw = this.configService.get<string>(
       'BACKUP_STALE_JOB_MINUTES',
@@ -132,12 +152,18 @@ export class EnvironmentService {
   }
 
   getFileUploadSizeLimit(): string {
-    const value = this.configService.get<string>('FILE_UPLOAD_SIZE_LIMIT', '50mb');
+    const value = this.configService.get<string>(
+      'FILE_UPLOAD_SIZE_LIMIT',
+      '50mb',
+    );
     return value?.trim() || '50mb';
   }
 
   getFileImportSizeLimit(): string {
-    const value = this.configService.get<string>('FILE_IMPORT_SIZE_LIMIT', '200mb');
+    const value = this.configService.get<string>(
+      'FILE_IMPORT_SIZE_LIMIT',
+      '200mb',
+    );
     return value?.trim() || '200mb';
   }
 

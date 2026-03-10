@@ -52,6 +52,8 @@ import {
 } from './share-rate-limit';
 import { randomInt } from 'crypto';
 import { ShareStaticRendererService } from './share-static-renderer.service';
+import { PageNodeMetaRepo } from '@docmost/db/repos/page/page-node-meta.repo';
+import { canUseStaticShareRender } from './share-rendered.util';
 
 const PROTECTED_SHARE_PASSWORD_LENGTH = 8;
 const PROTECTED_SHARE_PASSWORD_CHARSET =
@@ -61,6 +63,7 @@ export interface SharedPageResponsePage {
   id: string;
   slugId: string;
   title: string;
+  nodeType: 'file' | 'folder';
   excerpt?: string;
   content?: unknown;
 }
@@ -77,6 +80,7 @@ export class ShareService {
     private readonly tokenService: TokenService,
     private readonly environmentService: EnvironmentService,
     private readonly shareStaticRendererService: ShareStaticRendererService,
+    private readonly pageNodeMetaRepo: PageNodeMetaRepo,
   ) {}
 
   async getShareTree(shareId: string, workspaceId: string) {
@@ -85,7 +89,8 @@ export class ShareService {
       throw this.shareNotFoundException();
     }
 
-    if (share.includeSubPages) {
+    const sharedPageNodeType = await this.getPageNodeType(share.pageId);
+    if (share.includeSubPages || sharedPageNodeType === 'folder') {
       const pageList = await this.pageRepo.getPageAndDescendants(share.pageId, {
         includeContent: false,
         workspaceId,
@@ -107,7 +112,9 @@ export class ShareService {
 
     try {
       const requestedAccessMode = this.getAccessMode(createShareDto.accessMode);
-      const shares = await this.shareRepo.findByPageId(page.id, { workspaceId });
+      const shares = await this.shareRepo.findByPageId(page.id, {
+        workspaceId,
+      });
       if (shares) {
         if (
           requestedAccessMode !== shares.accessMode ||
@@ -182,10 +189,7 @@ export class ShareService {
   ) {
     try {
       // Keep security-sensitive changes in explicit rotate/regenerate flow.
-      if (
-        updateShareDto.accessMode ||
-        updateShareDto.expiresInMinutes
-      ) {
+      if (updateShareDto.accessMode || updateShareDto.expiresInMinutes) {
         throw this.shareRegenerateRequiredException();
       }
 
@@ -398,19 +402,32 @@ export class ShareService {
       throw this.shareNotFoundException();
     }
 
-    page.content = await this.updatePublicAttachments(page);
-    const rendered = this.shareStaticRendererService.render(page.content);
-    const hasStaticRenderableOutput = Boolean(rendered.html || rendered.headHtml);
+    const nodeType = await this.getPageNodeType(page.id);
     const responsePage: SharedPageResponsePage = {
       id: page.id,
       slugId: page.slugId,
       title: page.title,
+      nodeType,
       excerpt: this.buildShareExcerpt(page.textContent),
-      ...(hasStaticRenderableOutput ? {} : { content: page.content }),
     };
 
+    if (nodeType === 'folder') {
+      return {
+        page: responsePage,
+        share,
+        rendered: null,
+      };
+    }
+
+    page.content = await this.updatePublicAttachments(page);
+    const rendered = this.shareStaticRendererService.render(page.content);
+    const hasStaticRenderableOutput = canUseStaticShareRender(rendered);
+
     return {
-      page: responsePage,
+      page: {
+        ...responsePage,
+        ...(hasStaticRenderableOutput ? {} : { content: page.content }),
+      },
       share,
       rendered,
     };
@@ -555,7 +572,10 @@ export class ShareService {
     }
 
     if ((share.level as number) > 0 && !share.includeSubPages) {
-      return undefined;
+      const sharedPageNodeType = await this.getPageNodeType(share.id);
+      if (sharedPageNodeType !== 'folder') {
+        return undefined;
+      }
     }
 
     return {
@@ -662,7 +682,8 @@ export class ShareService {
 
     const workspaceDisabled =
       (result.workspaceSettings as any)?.sharing?.disabled === true;
-    const spaceDisabled = (result.spaceSettings as any)?.sharing?.disabled === true;
+    const spaceDisabled =
+      (result.spaceSettings as any)?.sharing?.disabled === true;
 
     return !workspaceDisabled && !spaceDisabled;
   }
@@ -735,7 +756,8 @@ export class ShareService {
       return this.toShareForPage(share, sharedPage, 0);
     }
 
-    if (!share.includeSubPages) {
+    const sharedPageNodeType = await this.getPageNodeType(share.pageId);
+    if (!share.includeSubPages && sharedPageNodeType !== 'folder') {
       return undefined;
     }
 
@@ -824,6 +846,11 @@ export class ShareService {
     }
 
     return password;
+  }
+
+  private async getPageNodeType(pageId: string): Promise<'file' | 'folder'> {
+    const nodeMeta = await this.pageNodeMetaRepo.findByPageId(pageId);
+    return nodeMeta?.nodeType === 'folder' ? 'folder' : 'file';
   }
 
   private assertNotExpired(

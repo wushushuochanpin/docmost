@@ -19,7 +19,7 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import classes from "./settings.module.css";
 import { useTranslation } from "react-i18next";
-import { isCloud } from "@/lib/config.ts";
+import { isBackupEnabled, isCloud } from "@/lib/config.ts";
 import useUserRole from "@/hooks/use-user-role.tsx";
 import { useAtom } from "jotai";
 import { workspaceAtom } from "@/features/user/atoms/current-user-atom.ts";
@@ -180,6 +180,10 @@ export default function SettingsSidebar() {
   };
 
   const canShowItem = (item: DataItem) => {
+    if (item.path === "/settings/backup" && !isBackupEnabled()) {
+      return false;
+    }
+
     if (item.capabilityKey && item.showDisabledInNonEE) {
       if (item.isSelfhosted && isCloud()) return false;
       return hasRoleAccess(item);

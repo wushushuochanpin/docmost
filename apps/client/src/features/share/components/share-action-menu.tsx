@@ -13,7 +13,7 @@ import {
   buildPageUrl,
   buildSharedPageUrl,
 } from "@/features/page/page.utils.ts";
-import { getAppUrl } from "@/lib/config.ts";
+import { getPublicAppUrl } from "@/lib/config.ts";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { notifications } from "@mantine/notifications";
 import { useNavigate } from "react-router-dom";
@@ -39,7 +39,7 @@ export default function ShareActionMenu({ share }: Props) {
 
   const copyLink = () => {
     const shareLink =
-      getAppUrl() +
+      getPublicAppUrl() +
       buildSharedPageUrl({
         shareId: share.key,
         pageTitle: share.page.title,

@@ -6,6 +6,7 @@ export type SharedPageTreeNode = {
   slugId: string;
   name: string;
   icon?: string;
+  nodeType?: "file" | "folder";
   position: string;
   spaceId: string;
   parentPageId: string;
@@ -27,6 +28,7 @@ export function buildSharedPageTree(
       slugId: page.slugId,
       name: page.title,
       icon: page.icon,
+      nodeType: page.nodeType,
       position: page.position,
       // Initially assume a page has no children.
       hasChildren: false,
@@ -66,7 +68,6 @@ export function buildSharedPageTree(
 
   return sortTree(tree);
 }
-
 
 // Recursively checks if a page exists in the shared page tree.
 export function isPageInTree(

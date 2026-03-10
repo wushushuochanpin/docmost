@@ -10,7 +10,10 @@ services:
     env_file:
       - .env
     environment:
-      APP_URL: 'https://book.superchat.help'
+      APP_URL: '${APP_URL:-http://localhost:3000}'
+      APP_SOURCE_URL: '${APP_SOURCE_URL:-}'
+      DATABASE_URL: 'postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost?schema=public'
+      REDIS_URL: 'redis://redis:6379'
       BACKUP_LOCAL_PATH: '/app/data/storage/backups'
     # Loopback-only so only Nginx (80/443) is public; debug via ssh -L
     ports:

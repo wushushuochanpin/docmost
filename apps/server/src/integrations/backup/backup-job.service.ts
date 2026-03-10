@@ -8,9 +8,9 @@ import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB } from '@docmost/db/types/kysely.types';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import * as path from 'path';
-import * as fs from 'fs-extra';
 import { QueueJob, QueueName } from '../queue/constants';
+import { Readable } from 'stream';
+import { BackupArtifactStorageService } from './backup-artifact-storage.service';
 import { EnvironmentService } from '../environment/environment.service';
 
 export type BackupJobStatus =
@@ -80,18 +80,12 @@ export class BackupJobService {
     @InjectKysely() private readonly db: KyselyDB,
     @InjectQueue(QueueName.BACKUP_QUEUE) private readonly backupQueue: Queue,
     private readonly environmentService: EnvironmentService,
+    private readonly backupArtifactStorageService: BackupArtifactStorageService,
   ) {}
 
   private normalizeDeleteReason(reason?: string): string {
     const value = reason?.trim();
     return value ? value.slice(0, 255) : 'manual_cleanup';
-  }
-
-  private getArtifactAbsolutePath(artifactPath: string): string {
-    return path.join(
-      this.environmentService.getBackupLocalPath(),
-      artifactPath,
-    );
   }
 
   private getStaleThresholdDate(): Date {
@@ -271,7 +265,7 @@ export class BackupJobService {
   ): Promise<{ url: string } | null> {
     const job = await this.db
       .selectFrom('backupJobs')
-      .select(['id', 'status', 'artifactPath', 'artifactDeletedAt'])
+      .select(['id', 'status', 'artifactPath', 'artifactDeletedAt', 'metadata'])
       .where('workspaceId', '=', workspaceId)
       .where('id', '=', jobId)
       .executeTakeFirst();
@@ -285,8 +279,11 @@ export class BackupJobService {
       return null;
     }
 
-    const fullPath = this.getArtifactAbsolutePath(job.artifactPath);
-    if (!(await fs.pathExists(fullPath))) {
+    const available = await this.backupArtifactStorageService.hasAvailableCopy(
+      job.artifactPath,
+      job.metadata,
+    );
+    if (!available) {
       return null;
     }
 
@@ -302,6 +299,7 @@ export class BackupJobService {
       durationMs?: number;
       artifactPath?: string;
       artifactSizeBytes?: number;
+      metadata?: unknown;
       errorCode?: string;
       errorMessage?: string;
     },
@@ -313,6 +311,7 @@ export class BackupJobService {
     if (opts?.artifactPath) set.artifactPath = opts.artifactPath;
     if (opts?.artifactSizeBytes != null)
       set.artifactSizeBytes = String(opts.artifactSizeBytes);
+    if (opts?.metadata !== undefined) set.metadata = opts.metadata;
     if (opts?.errorCode) set.errorCode = opts.errorCode;
     if (opts?.errorMessage) set.errorMessage = opts.errorMessage;
 
@@ -354,6 +353,7 @@ export class BackupJobService {
           'status',
           'artifactPath',
           'artifactDeletedAt',
+          'metadata',
         ])
         .where('workspaceId', '=', workspaceId)
         .where('id', '=', jobId)
@@ -392,7 +392,7 @@ export class BackupJobService {
 
       const availableArtifacts = await trx
         .selectFrom('backupJobs')
-        .select(['id', 'artifactPath'])
+        .select(['id', 'artifactPath', 'metadata'])
         .where('workspaceId', '=', workspaceId)
         .where('status', '=', 'success')
         .where('artifactPath', 'is not', null)
@@ -404,10 +404,12 @@ export class BackupJobService {
       for (const artifact of availableArtifacts) {
         if (!artifact.artifactPath) continue;
 
-        const artifactFullPath = this.getArtifactAbsolutePath(
-          artifact.artifactPath,
-        );
-        if (await fs.pathExists(artifactFullPath)) {
+        const hasCopy =
+          await this.backupArtifactStorageService.hasAvailableCopy(
+            artifact.artifactPath,
+            artifact.metadata,
+          );
+        if (hasCopy) {
           availableArtifactIds.push(artifact.id);
         }
       }
@@ -421,12 +423,18 @@ export class BackupJobService {
         );
       }
 
-      const fullPath = this.getArtifactAbsolutePath(job.artifactPath);
-      if (!(await fs.pathExists(fullPath))) {
-        throw new BadRequestException('Backup artifact file not found');
+      const hasCopy = await this.backupArtifactStorageService.hasAvailableCopy(
+        job.artifactPath,
+        job.metadata,
+      );
+      if (!hasCopy) {
+        throw new BadRequestException('Backup artifact copy not found');
       }
 
-      await fs.remove(fullPath);
+      await this.backupArtifactStorageService.deleteCopies(
+        job.artifactPath,
+        job.metadata,
+      );
 
       await trx
         .updateTable('backupJobs')
@@ -454,13 +462,13 @@ export class BackupJobService {
     });
   }
 
-  async getArtifactFullPath(
+  async getArtifactReadable(
     workspaceId: string,
     jobId: string,
-  ): Promise<string | null> {
+  ): Promise<{ stream: Readable; filename: string } | null> {
     const row = await this.db
       .selectFrom('backupJobs')
-      .select(['artifactPath', 'artifactDeletedAt'])
+      .select(['artifactPath', 'artifactDeletedAt', 'metadata'])
       .where('workspaceId', '=', workspaceId)
       .where('id', '=', jobId)
       .where('status', '=', 'success')
@@ -468,12 +476,9 @@ export class BackupJobService {
 
     if (!row?.artifactPath || row.artifactDeletedAt) return null;
 
-    const fullPath = this.getArtifactAbsolutePath(row.artifactPath);
-
-    if (!(await fs.pathExists(fullPath))) {
-      return null;
-    }
-
-    return fullPath;
+    return await this.backupArtifactStorageService.openArtifact(
+      row.artifactPath,
+      row.metadata,
+    );
   }
 }

@@ -8,6 +8,28 @@ export type BackupJobStatus =
   | "canceled";
 export type BackupTriggerType = "schedule" | "manual" | "api";
 
+export interface BackupArtifactLocalCopyMetadata {
+  driver: "local";
+  path: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface BackupArtifactS3CopyMetadata {
+  driver: "s3";
+  bucket: string;
+  key: string;
+  sizeBytes: number;
+  uploadedAt: string;
+}
+
+export interface BackupJobMetadata {
+  artifactCopies?: {
+    local?: BackupArtifactLocalCopyMetadata;
+    s3?: BackupArtifactS3CopyMetadata;
+  };
+}
+
 export interface BackupJob {
   id: string;
   workspaceId: string;
@@ -26,7 +48,7 @@ export interface BackupJob {
   checksum: string | null;
   errorCode: string | null;
   errorMessage: string | null;
-  metadata: unknown;
+  metadata: BackupJobMetadata | null;
   createdAt: string;
   triggererName?: string | null;
 }

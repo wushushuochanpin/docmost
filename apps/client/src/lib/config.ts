@@ -20,14 +20,37 @@ export function getServerAppUrl(): string {
   return getConfigValue("APP_URL");
 }
 
+export function getPublicAppUrl(): string {
+  const currentUrl = getAppUrl();
+  const serverUrl = getServerAppUrl()?.trim();
+  if (serverUrl) {
+    try {
+      const normalizedServerUrl = new URL(serverUrl).origin;
+      const currentHostname = new URL(currentUrl).hostname;
+      const serverHostname = new URL(normalizedServerUrl).hostname;
+
+      if (
+        isLoopbackHostname(serverHostname) &&
+        !isLoopbackHostname(currentHostname)
+      ) {
+        return currentUrl;
+      }
+
+      return normalizedServerUrl;
+    } catch {
+      return currentUrl;
+    }
+  }
+
+  return currentUrl;
+}
+
 export function getBackendUrl(): string {
   return getAppUrl() + "/api";
 }
 
 export function getCollaborationUrl(): string {
-  const baseUrl =
-    getConfigValue("COLLAB_URL") ||
-    (import.meta.env.DEV ? process.env.APP_URL : getAppUrl());
+  const baseUrl = getConfigValue("COLLAB_URL") || getServerAppUrl() || getAppUrl();
 
   const collabUrl = new URL("/collab", baseUrl);
   collabUrl.protocol = collabUrl.protocol === "https:" ? "wss:" : "ws:";
@@ -40,6 +63,14 @@ export function getSubdomainHost(): string {
 
 export function isCloud(): boolean {
   return castToBoolean(getConfigValue("CLOUD"));
+}
+
+export function isBackupEnabled(): boolean {
+  return castToBoolean(getConfigValue("BACKUP_ENABLED", "true"));
+}
+
+export function isBackupS3Enabled(): boolean {
+  return castToBoolean(getConfigValue("BACKUP_S3_ENABLED", "false"));
 }
 
 export function getAvatarUrl(
@@ -140,9 +171,26 @@ export function getShareLegacyRouteMode(): ShareLegacyRouteMode {
 }
 
 function getConfigValue(key: string, defaultValue: string = undefined): string {
-  const rawValue = import.meta.env.DEV
-    ? process?.env?.[key]
-    : window?.CONFIG?.[key];
-  const value = rawValue ?? defaultValue;
+  const devConfig = import.meta.env as unknown as Record<
+    string,
+    string | boolean | undefined
+  >;
+  const rawValue = import.meta.env.DEV ? devConfig[key] : window?.CONFIG?.[key];
+  const normalizedValue =
+    typeof rawValue === "string"
+      ? rawValue
+      : rawValue == null
+        ? undefined
+        : String(rawValue);
+  const value = normalizedValue ?? defaultValue;
   return value === "" ? defaultValue : value;
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  );
 }

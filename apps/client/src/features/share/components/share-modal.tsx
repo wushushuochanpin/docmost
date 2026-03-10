@@ -12,7 +12,12 @@ import {
   TextInput,
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
-import { IconExternalLink, IconWorld, IconLock, IconCopy } from "@tabler/icons-react";
+import {
+  IconExternalLink,
+  IconWorld,
+  IconLock,
+  IconCopy,
+} from "@tabler/icons-react";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   useCreateShareMutation,
@@ -26,7 +31,7 @@ import { useTranslation } from "react-i18next";
 import { usePageQuery } from "@/features/page/queries/page-query.ts";
 import CopyTextButton from "@/components/common/copy.tsx";
 import { CopyButton } from "@/components/common/copy-button";
-import { getAppUrl, isCloud } from "@/lib/config.ts";
+import { getPublicAppUrl, isCloud } from "@/lib/config.ts";
 import {
   buildPageUrl,
   buildSharedPageUrl,
@@ -109,7 +114,10 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
         setExpiresInMinutes(
           Math.min(
             DEFAULT_PROTECTED_TTL_MINUTES,
-            Math.max(1, Number.isFinite(remainingMinutes) ? remainingMinutes : 1),
+            Math.max(
+              1,
+              Number.isFinite(remainingMinutes) ? remainingMinutes : 1,
+            ),
           ),
         );
       } else {
@@ -126,7 +134,13 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
     setIncludeSubPages(true);
     setKeepCurrentLink(true);
     setIsReshareDraft(false);
-  }, [pageIsShared, share?.accessMode, share?.expiresAt, share?.includeSubPages, shareExpired]);
+  }, [
+    pageIsShared,
+    share?.accessMode,
+    share?.expiresAt,
+    share?.includeSubPages,
+    shareExpired,
+  ]);
 
   useEffect(() => {
     if (!opened) {
@@ -150,7 +164,7 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
       return "";
     }
     return (
-      getAppUrl() +
+      getPublicAppUrl() +
       buildSharedPageUrl({
         shareId: share.key,
         pageSlugId: page.slugId,
@@ -199,7 +213,9 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
     }
 
     setOneTimePassword(result?.generatedPassword ?? null);
-    await queryClient.invalidateQueries({ queryKey: ["share-for-page", pageId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["share-for-page", pageId],
+    });
     await refetchShareForPage();
     setIsReshareDraft(false);
   };
@@ -389,7 +405,9 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
         <>
           {shareExpired && (
             <Text size="xs" c="dimmed" mb="sm">
-              {t("Previous protected share has expired. Configure a new share.")}
+              {t(
+                "Previous protected share has expired. Configure a new share.",
+              )}
             </Text>
           )}
 
@@ -422,7 +440,9 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
               description={t("Maximum 30 minutes")}
               value={expiresInMinutes}
               onChange={(value) =>
-                setExpiresInMinutes(Number(value) || DEFAULT_PROTECTED_TTL_MINUTES)
+                setExpiresInMinutes(
+                  Number(value) || DEFAULT_PROTECTED_TTL_MINUTES,
+                )
               }
               min={1}
               max={30}
@@ -443,7 +463,9 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
                 </div>
                 <Switch
                   checked={keepCurrentLink}
-                  onChange={(event) => setKeepCurrentLink(event.currentTarget.checked)}
+                  onChange={(event) =>
+                    setKeepCurrentLink(event.currentTarget.checked)
+                  }
                   size="xs"
                   disabled={readOnly}
                 />
@@ -483,7 +505,9 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
               isShareForPageLoading ||
               isShareForPageFetching
             }
-            disabled={readOnly || isShareForPageLoading || isShareForPageFetching}
+            disabled={
+              readOnly || isShareForPageLoading || isShareForPageFetching
+            }
           >
             {t("Confirm sharing")}
           </Button>
@@ -525,10 +549,14 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
             {t("Sharing details")}
           </Text>
           <Text size="xs" c="dimmed" mb={4}>
-            {t("Sharing mode")}: {share?.accessMode === "password_expiring" ? t("Password protected link") : t("Public link")}
+            {t("Sharing mode")}:{" "}
+            {share?.accessMode === "password_expiring"
+              ? t("Password protected link")
+              : t("Public link")}
           </Text>
           <Text size="xs" c="dimmed" mb={4}>
-            {t("Include sub-pages")}: {share?.includeSubPages ? t("Enabled") : t("Disabled")}
+            {t("Include sub-pages")}:{" "}
+            {share?.includeSubPages ? t("Enabled") : t("Disabled")}
           </Text>
 
           {share?.accessMode === "password_expiring" && (
@@ -561,7 +589,9 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
               <Text size="xs" c="dimmed" mb="sm">
                 {oneTimePassword
                   ? t("Shown once. Save it now.")
-                  : t("Password is hidden for security. Reshare to generate a new one.")}
+                  : t(
+                      "Password is hidden for security. Reshare to generate a new one.",
+                    )}
               </Text>
             </>
           )}
@@ -623,9 +653,7 @@ export default function ShareModal({ readOnly }: ShareModalProps) {
       <Popover.Target>
         <Button
           size="compact-sm"
-          leftSection={
-            <IconWorld size={20} stroke={1.5} />
-          }
+          leftSection={<IconWorld size={20} stroke={1.5} />}
           variant="subtle"
           rightSection={
             isPagePublic ? (

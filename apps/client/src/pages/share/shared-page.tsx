@@ -11,6 +11,7 @@ import {
 import { getShareLegacyRouteMode } from "@/lib/config.ts";
 import SharedPageSkeleton from "@/features/share/components/shared-page-skeleton.tsx";
 import SharedPageHtmlContent from "@/features/share/components/shared-page-html-content.tsx";
+import SharedFolderView from "@/features/share/components/shared-folder-view.tsx";
 import {
   getShareInfo,
   getSharePageInfo,
@@ -26,9 +27,10 @@ import {
   useShareRobotsMeta,
 } from "@/features/share/hooks/use-share-document-title.ts";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
-import { getAppUrl } from "@/lib/config.ts";
+import { getPublicAppUrl } from "@/lib/config.ts";
 import classes from "@/features/share/components/share-page-state.module.css";
 import { useWechatShare } from "@/features/share/hooks/use-wechat-share.ts";
+import { canUseStaticRenderedHtml } from "@/features/share/rendered-utils.ts";
 
 const LazyReadonlyPageEditor = lazy(() =>
   lazyShareMantineComponent(
@@ -129,14 +131,16 @@ export default function SharedPage() {
     [shareId, shouldLoadExpiredShareMeta],
     { enabled: shouldLoadExpiredShareMeta },
   );
-  useShareDocumentTitle(data ? `${data.page?.title || t("untitled")}` : undefined);
+  useShareDocumentTitle(
+    data ? `${data.page?.title || t("untitled")}` : undefined,
+  );
   useSharePreviewMeta(
     data
       ? {
           title: data.page?.title || t("untitled"),
           description: data.page?.excerpt,
           canonicalUrl:
-            getAppUrl() +
+            getPublicAppUrl() +
             buildSharedPageUrl({
               shareId: data.share.key,
               pageSlugId: data.page.slugId,
@@ -150,7 +154,7 @@ export default function SharedPage() {
     enabled: Boolean(data && data.share.accessMode === "public"),
     shareUrl:
       data && data.share?.key
-        ? getAppUrl() +
+        ? getPublicAppUrl() +
           buildSharedPageUrl({
             shareId: data.share.key,
             pageSlugId: data.page.slugId,
@@ -200,12 +204,11 @@ export default function SharedPage() {
       return;
     }
 
-    const canUseStaticHtml = Boolean(
-      data.rendered?.html || data.rendered?.headHtml,
-    );
+    const canUseStaticHtml = canUseStaticRenderedHtml(data.rendered);
 
     setSharedShellState({
-      includeSubPages: Boolean(data.share.includeSubPages),
+      includeSubPages:
+        Boolean(data.share.includeSubPages) || data.page.nodeType === "folder",
       hasLicenseKey: data.hasLicenseKey,
       canUseSearch: Boolean(shareId),
       renderMode: canUseStaticHtml ? "html" : "editor",
@@ -300,7 +303,9 @@ export default function SharedPage() {
       return (
         <div className={classes.centeredViewport}>
           <section className={classes.statePanel}>
-            <h1 className={classes.stateTitle}>{t("Share link has expired")}</h1>
+            <h1 className={classes.stateTitle}>
+              {t("Share link has expired")}
+            </h1>
             <p className={classes.stateDescription}>
               {t("Ask the owner to regenerate a new link.")}
             </p>
@@ -391,7 +396,9 @@ export default function SharedPage() {
     return (
       <div className={classes.centeredViewport}>
         <section className={classes.statePanel}>
-          <h1 className={classes.stateTitle}>{t("Unable to load shared page")}</h1>
+          <h1 className={classes.stateTitle}>
+            {t("Unable to load shared page")}
+          </h1>
           <p className={classes.stateDescription}>
             {getErrorMessage(error) || t("Error fetching page data.")}
           </p>
@@ -400,14 +407,17 @@ export default function SharedPage() {
     );
   }
 
-  const canUseStaticHtml = Boolean(data.rendered?.html || data.rendered?.headHtml);
+  const isFolder = data.page.nodeType === "folder";
+  const canUseStaticHtml = canUseStaticRenderedHtml(data.rendered);
   const canUseLegacyEditor = !canUseStaticHtml && data.page.content != null;
 
-  if (!canUseStaticHtml && !canUseLegacyEditor) {
+  if (!isFolder && !canUseStaticHtml && !canUseLegacyEditor) {
     return (
       <div className={classes.centeredViewport}>
         <section className={classes.statePanel}>
-          <h1 className={classes.stateTitle}>{t("Unable to load shared page")}</h1>
+          <h1 className={classes.stateTitle}>
+            {t("Unable to load shared page")}
+          </h1>
           <p className={classes.stateDescription}>
             {t("Error fetching page data.")}
           </p>
@@ -419,7 +429,9 @@ export default function SharedPage() {
   return (
     <div>
       <div className={classes.pageFrame}>
-        {canUseStaticHtml ? (
+        {isFolder ? (
+          <SharedFolderView pageId={data.page.id} title={data.page.title} />
+        ) : canUseStaticHtml ? (
           <SharedPageHtmlContent
             title={data.page.title}
             pageId={data.page.id}
