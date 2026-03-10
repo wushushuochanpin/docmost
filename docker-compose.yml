@@ -11,7 +11,7 @@ services:
       - .env
     environment:
       APP_URL: '${APP_URL:-http://localhost:3000}'
-      APP_SOURCE_URL: '${APP_SOURCE_URL:-}'
+      APP_SOURCE_URL: '${APP_SOURCE_URL:-https://github.com/wushushuochanpin/docmost}'
       DATABASE_URL: 'postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost?schema=public'
       REDIS_URL: 'redis://redis:6379'
       BACKUP_LOCAL_PATH: '/app/data/storage/backups'
