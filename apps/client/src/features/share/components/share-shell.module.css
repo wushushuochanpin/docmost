@@ -4,6 +4,11 @@
   color: var(--ui-text-primary);
 }
 
+.shellFullScreen {
+  background: var(--ui-bg-canvas);
+  color: var(--ui-text-primary);
+}
+
 .header {
   position: sticky;
   top: 0;
@@ -12,6 +17,10 @@
   border-bottom: 1px solid var(--ui-border-default);
   background: rgb(255 255 255 / 88%);
   backdrop-filter: blur(12px);
+}
+
+.headerHidden {
+  display: none;
 }
 
 .headerInner {
@@ -125,6 +134,14 @@
   padding: 24px var(--share-shell-padding) 40px;
 }
 
+.bodyFullScreen {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: block;
+}
+
 .bodyWithLeft {
   grid-template-columns: var(--share-sidebar-width) minmax(0, 1fr);
 }
@@ -164,6 +181,11 @@
 
 .main {
   min-width: 0;
+}
+
+.mainFullScreen {
+  width: 100%;
+  min-height: 100vh;
 }
 
 .drawerBackdrop {

@@ -48,6 +48,7 @@ export interface ISharedPage extends IShare {
     sharedPage: { id: string; slugId: string; title: string; icon: string };
   };
   hasLicenseKey: boolean;
+  pageTree?: Partial<IPage[]>;
   rendered?: ISharedPageRendered | null;
 }
 

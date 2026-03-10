@@ -17,12 +17,21 @@ export type SharedPageTreeNode = {
 };
 
 export function buildSharedPageTree(
-  pages: Partial<IPage[]>,
+  pages: Partial<IPage>[] | undefined | null,
 ): SharedPageTreeNode[] {
+  if (!Array.isArray(pages) || pages.length === 0) {
+    return [];
+  }
+
   const pageMap: Record<string, SharedPageTreeNode> = {};
 
-  // Initialize each page as a tree node and store it in a map.
-  pages.forEach((page) => {
+  // Only include pages with both id and slugId so map keys and node identity are reliable.
+  const validPages = pages.filter(
+    (p): p is Partial<IPage> & { id: string; slugId: string } =>
+      Boolean(p && typeof p.id === "string" && typeof p.slugId === "string"),
+  );
+
+  validPages.forEach((page) => {
     pageMap[page.id] = {
       id: page.slugId,
       slugId: page.slugId,
@@ -30,7 +39,6 @@ export function buildSharedPageTree(
       icon: page.icon,
       nodeType: page.nodeType,
       position: page.position,
-      // Initially assume a page has no children.
       hasChildren: false,
       spaceId: page.spaceId,
       parentPageId: page.parentPageId,
@@ -40,22 +48,21 @@ export function buildSharedPageTree(
     };
   });
 
-  // Build the tree structure.
   const tree: SharedPageTreeNode[] = [];
-  pages.forEach((page) => {
+  validPages.forEach((page) => {
+    const node = pageMap[page.id];
+    if (!node) return;
+
     if (page.parentPageId) {
-      // If the page has a parent, add it as a child of the parent node.
       const parentNode = pageMap[page.parentPageId];
       if (parentNode) {
-        parentNode.children.push(pageMap[page.id]);
+        parentNode.children.push(node);
         parentNode.hasChildren = true;
       } else {
-        // Parent not found – treat this page as a top-level node.
-        tree.push(pageMap[page.id]);
+        tree.push(node);
       }
     } else {
-      // No parentPageId indicates a top-level page.
-      tree.push(pageMap[page.id]);
+      tree.push(node);
     }
   });
 
@@ -67,6 +74,39 @@ export function buildSharedPageTree(
   }
 
   return sortTree(tree);
+}
+
+/**
+ * Find direct children of the page in the shared tree.
+ * pageId can be the page's UUID (node.value) or slugId (node.slugId / node.id).
+ */
+export function findSharedPageSubpages(
+  tree: SharedPageTreeNode[] | null | undefined,
+  pageId: string | undefined,
+): SharedPageTreeNode[] {
+  if (!tree?.length || !pageId) {
+    return [];
+  }
+
+  function visit(nodes: SharedPageTreeNode[]): SharedPageTreeNode[] | null {
+    for (const node of nodes) {
+      if (
+        node.value === pageId ||
+        node.slugId === pageId ||
+        node.id === pageId
+      ) {
+        return node.children ?? [];
+      }
+
+      if (node.children?.length) {
+        const subpages = visit(node.children);
+        if (subpages) return subpages;
+      }
+    }
+    return null;
+  }
+
+  return visit(tree) ?? [];
 }
 
 // Recursively checks if a page exists in the shared page tree.

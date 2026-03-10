@@ -10,6 +10,11 @@
 .treeNode {
   text-decoration: none;
   user-select: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .navbar,

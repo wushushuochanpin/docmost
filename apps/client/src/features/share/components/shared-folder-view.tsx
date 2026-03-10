@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { useAtomValue } from "jotai";
 import {
@@ -9,7 +9,10 @@ import {
 import { buildSharedPageUrl } from "@/features/page/page.utils.ts";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
 import { useSharedPageSubpages } from "@/features/share/hooks/use-shared-page-subpages.ts";
-import { sharedPageTreeAtom } from "@/features/share/atoms/shared-page-atom.ts";
+import {
+  sharedPageTreeAtom,
+  sharedPageTreeRequestStateAtom,
+} from "@/features/share/atoms/shared-page-atom.ts";
 import classes from "./shared-folder-view.module.css";
 
 interface SharedFolderViewProps {
@@ -24,6 +27,7 @@ export default function SharedFolderView({
   const { t } = useShareTranslation();
   const { shareId } = useParams();
   const sharedPageTree = useAtomValue(sharedPageTreeAtom);
+  const treeRequestState = useAtomValue(sharedPageTreeRequestStateAtom);
   const subpages = useSharedPageSubpages(pageId);
 
   const { folderCount, fileCount } = useMemo(
@@ -55,42 +59,45 @@ export default function SharedFolderView({
       </header>
 
       <div className={classes.panel}>
-        {!sharedPageTree ? (
+        {treeRequestState.status === "error" ? (
+          <div className={classes.state}>
+            {treeRequestState.errorMessage || t("Failed to load folder items.")}
+          </div>
+        ) : !sharedPageTree ? (
           <div className={classes.state}>{t("Loading folder items...")}</div>
         ) : subpages.length === 0 ? (
           <div className={classes.state}>{t("No items in this folder.")}</div>
         ) : (
           <div className={classes.list}>
-            {subpages.map((item) => (
-              <Link
-                key={item.value}
-                className={classes.item}
-                to={buildSharedPageUrl({
-                  shareId: shareId ?? "",
-                  pageSlugId: item.slugId,
-                  pageTitle: item.name,
-                })}
-              >
-                <div className={classes.itemMain}>
-                  <span className={classes.itemIcon} aria-hidden="true">
-                    {item.icon ? (
-                      item.icon
-                    ) : item.nodeType === "folder" ? (
-                      <IconFolder size={16} stroke={1.75} />
-                    ) : (
-                      <IconFileText size={16} stroke={1.75} />
-                    )}
-                  </span>
-                  <span className={classes.itemTitle}>
-                    {item.name || t("untitled")}
-                  </span>
-                </div>
+            {subpages.map((item) => {
+              const href = buildSharedPageUrl({
+                shareId: shareId ?? "",
+                pageSlugId: item.slugId,
+                pageTitle: item.name,
+              });
+              return (
+                <a key={item.value} className={classes.item} href={href}>
+                  <div className={classes.itemMain}>
+                    <span className={classes.itemIcon} aria-hidden="true">
+                      {item.icon ? (
+                        item.icon
+                      ) : item.nodeType === "folder" ? (
+                        <IconFolder size={16} stroke={1.75} />
+                      ) : (
+                        <IconFileText size={16} stroke={1.75} />
+                      )}
+                    </span>
+                    <span className={classes.itemTitle}>
+                      {item.name || t("untitled")}
+                    </span>
+                  </div>
 
-                <span className={classes.itemMeta} aria-hidden="true">
-                  <IconChevronRight size={16} stroke={1.75} />
-                </span>
-              </Link>
-            ))}
+                  <span className={classes.itemMeta} aria-hidden="true">
+                    <IconChevronRight size={16} stroke={1.75} />
+                  </span>
+                </a>
+              );
+            })}
           </div>
         )}
       </div>

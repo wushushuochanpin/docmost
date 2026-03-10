@@ -6,6 +6,11 @@
   padding: 48px 16px;
 }
 
+/* When shell is full-screen (no header), use full viewport so content is fixed center */
+:global(.shareShellFullScreen) .centeredViewport {
+  min-height: 100vh;
+}
+
 .pageFrame {
   width: min(100%, var(--share-content-max-width));
   margin: 0 auto;
@@ -23,6 +28,23 @@
 
 .statePanelNarrow {
   width: min(100%, 420px);
+}
+
+/* Password form: center panel and content */
+.statePanelPassword {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.statePanelPassword .field {
+  width: 100%;
+  max-width: 320px;
+}
+
+.statePanelPassword .stateActions {
+  justify-content: center;
 }
 
 .stateTitle {

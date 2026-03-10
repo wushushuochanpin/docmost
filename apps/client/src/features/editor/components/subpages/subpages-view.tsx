@@ -52,7 +52,7 @@ export default function SubpagesView(props: NodeViewProps) {
 
   if (error && !shareId) {
     return (
-      <NodeViewWrapper data-drag-handle>
+      <NodeViewWrapper data-drag-handle={editor.isEditable ? true : undefined}>
         <Text c="dimmed" size="md" py="md">
           {t("Failed to load subpages")}
         </Text>
@@ -62,7 +62,7 @@ export default function SubpagesView(props: NodeViewProps) {
 
   if (subpages.length === 0) {
     return (
-      <NodeViewWrapper data-drag-handle>
+      <NodeViewWrapper data-drag-handle={editor.isEditable ? true : undefined}>
         <div className={classes.container}>
           <Text c="dimmed" size="md" py="md">
             {t("No subpages")}
@@ -73,7 +73,7 @@ export default function SubpagesView(props: NodeViewProps) {
   }
 
   return (
-    <NodeViewWrapper data-drag-handle>
+    <NodeViewWrapper data-drag-handle={editor.isEditable ? true : undefined}>
       <div className={classes.container}>
         <Stack gap={5}>
           {subpages.map((page) => (

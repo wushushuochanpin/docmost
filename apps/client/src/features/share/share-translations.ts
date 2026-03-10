@@ -40,11 +40,18 @@ const DEFAULT_SHARE_MESSAGES = {
   "Close preview": "Close preview",
   "Loading remaining content...": "Loading remaining content...",
   "Loading folder items...": "Loading folder items...",
+  "Failed to load folder items.": "Failed to load folder items.",
   "No items in this folder.": "No items in this folder.",
+  "Failed to load subpages.": "Failed to load subpages.",
+  Subpages: "Subpages",
   "{{folderCount}} folders · {{fileCount}} files":
     "{{folderCount}} folders · {{fileCount}} files",
   "Page failed to load": "Page failed to load",
   Reload: "Reload",
+  "Loading timed out": "Loading timed out",
+  "Please check your network and try again.":
+    "Please check your network and try again.",
+  Retry: "Retry",
 } as const;
 
 type ShareMessageKey = keyof typeof DEFAULT_SHARE_MESSAGES;
@@ -202,6 +209,7 @@ const SHARE_MESSAGES: Partial<
       "输入密码以访问此共享页面。",
     Password: "密码",
     "Verify password": "验证密码",
+    "Unable to load shared page": "无法加载共享页面",
     "Error fetching page data.": "获取页面数据时出错。",
     untitled: "无标题",
     "Too many attempts. Please try again later.": "尝试次数过多，请稍后重试。",
@@ -212,11 +220,17 @@ const SHARE_MESSAGES: Partial<
     "Table of contents": "目录",
     "Loading remaining content...": "正在加载剩余内容...",
     "Loading folder items...": "正在加载文件夹内容...",
+    "Failed to load folder items.": "加载文件夹内容失败。",
     "No items in this folder.": "此文件夹暂无内容。",
+    "Failed to load subpages.": "加载子页面失败。",
+    Subpages: "下级文档",
     "{{folderCount}} folders · {{fileCount}} files":
       "{{folderCount}} 个文件夹 · {{fileCount}} 个文件",
     "Page failed to load": "页面加载失败",
     Reload: "重新加载",
+    "Loading timed out": "加载超时",
+    "Please check your network and try again.": "请检查网络后重试。",
+    Retry: "重试",
   },
 };
 
@@ -283,18 +297,19 @@ export function getCurrentShareLocale(): ShareLocale {
     return storedLocale;
   }
 
-  if (typeof document !== "undefined") {
-    const documentLocale = document.documentElement.lang;
-    if (documentLocale) {
-      return resolveShareLocale(documentLocale);
-    }
-  }
-
+  // Prefer browser language for share visitors (no stored locale)
   if (typeof navigator !== "undefined") {
     for (const locale of navigator.languages || [navigator.language]) {
       if (locale) {
         return resolveShareLocale(locale);
       }
+    }
+  }
+
+  if (typeof document !== "undefined") {
+    const documentLocale = document.documentElement.lang;
+    if (documentLocale) {
+      return resolveShareLocale(documentLocale);
     }
   }
 

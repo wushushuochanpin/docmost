@@ -10,7 +10,7 @@ import { extractPageSlugId } from "@/lib";
 import classes from "./mention.module.css";
 
 export default function ReadonlyMentionView(props: NodeViewProps) {
-  const { node } = props;
+  const { node, editor } = props;
   const { label, entityType, slugId, anchorId } = node.attrs;
   const { spaceSlug, pageSlug, shareId } = useParams();
   const navigate = useNavigate();
@@ -35,7 +35,10 @@ export default function ReadonlyMentionView(props: NodeViewProps) {
   };
 
   return (
-    <NodeViewWrapper style={{ display: "inline" }} data-drag-handle>
+    <NodeViewWrapper
+      style={{ display: "inline" }}
+      data-drag-handle={editor.isEditable ? true : undefined}
+    >
       {entityType === "user" && (
         <Text className={classes.userMention} component="span">
           @{label}
@@ -59,6 +62,7 @@ export default function ReadonlyMentionView(props: NodeViewProps) {
           onClick={handleClick}
           underline="never"
           className={classes.pageMentionLink}
+          draggable={false}
         >
           <ActionIcon
             variant="transparent"

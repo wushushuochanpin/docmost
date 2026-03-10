@@ -1,46 +1,40 @@
-# Standalone hot-reload environment for local development.
+# Test environment: run only docmost and reuse the existing
+# docmost DB/Redis on the shared Docker network.
 # Usage:
-#   cp .env.example .env
-#   docker compose -f docker-compose.test.yml up -d --build
-# Then open http://localhost:3020 and finish setup at /setup/register.
+#   docker compose -p test-doc -f docker-compose.test.yml up -d --build --force-recreate
+# Requirements:
+#   DOCMOST_DB_PASSWORD
+#   DOCMOST_PROD_NETWORK=docmost_default
 
 services:
   docmost:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    image: docmost-dev:latest
+    image: docmost-test-dev:latest
     working_dir: /app
-    depends_on:
-      - db
-      - redis
-    env_file:
-      - .env
     environment:
-      APP_URL: '${APP_URL:-http://localhost:3020}'
-      APP_SOURCE_URL: '${APP_SOURCE_URL:-https://github.com/wushushuochanpin/docmost}'
-      APP_SECRET: '${APP_SECRET:-REPLACE_WITH_LONG_SECRET}'
-      DATABASE_URL: 'postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost?schema=public'
-      REDIS_URL: 'redis://redis:6379'
-      STORAGE_DRIVER: '${STORAGE_DRIVER:-local}'
-      BACKUP_ENABLED: '${BACKUP_ENABLED:-true}'
-      BACKUP_S3_ENABLED: '${BACKUP_S3_ENABLED:-false}'
-      BACKUP_S3_PREFIX: '${BACKUP_S3_PREFIX:-backups}'
-      AWS_S3_ACCESS_KEY_ID: '${AWS_S3_ACCESS_KEY_ID:-}'
-      AWS_S3_SECRET_ACCESS_KEY: '${AWS_S3_SECRET_ACCESS_KEY:-}'
-      AWS_S3_REGION: '${AWS_S3_REGION:-}'
-      AWS_S3_BUCKET: '${AWS_S3_BUCKET:-}'
-      AWS_S3_ENDPOINT: '${AWS_S3_ENDPOINT:-}'
-      AWS_S3_FORCE_PATH_STYLE: '${AWS_S3_FORCE_PATH_STYLE:-false}'
-      AWS_S3_URL: '${AWS_S3_URL:-}'
-      BACKUP_LOCAL_PATH: '/app/data/storage/backups'
-      PORT: '3000'
-      VITE_DEV_HOST: 'true'
-      VITE_PROXY_TARGET: 'http://127.0.0.1:3000'
-      CI: 'true'
-      npm_config_store_dir: '/pnpm/store'
+      APP_URL: "${TEST_APP_URL:-https://book-test.superchat.help}"
+      APP_SOURCE_URL: "${APP_SOURCE_URL:-https://github.com/wushushuochanpin/docmost}"
+      APP_SECRET: "${APP_SECRET:-REPLACE_WITH_LONG_SECRET}"
+      DATABASE_URL: "postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      STORAGE_DRIVER: "${STORAGE_DRIVER:-s3}"
+      BACKUP_ENABLED: "${BACKUP_ENABLED:-true}"
+      BACKUP_S3_ENABLED: "${BACKUP_S3_ENABLED:-true}"
+      BACKUP_S3_PREFIX: "${BACKUP_S3_PREFIX:-backups}"
+      AWS_S3_ACCESS_KEY_ID: "${AWS_S3_ACCESS_KEY_ID:-}"
+      AWS_S3_SECRET_ACCESS_KEY: "${AWS_S3_SECRET_ACCESS_KEY:-}"
+      AWS_S3_REGION: "${AWS_S3_REGION:-}"
+      AWS_S3_BUCKET: "${AWS_S3_BUCKET:-}"
+      AWS_S3_ENDPOINT: "${AWS_S3_ENDPOINT:-}"
+      AWS_S3_FORCE_PATH_STYLE: "${AWS_S3_FORCE_PATH_STYLE:-false}"
+      AWS_S3_URL: "${AWS_S3_URL:-}"
+      BACKUP_LOCAL_PATH: "/app/data/storage/backups"
+      PORT: "3000"
+      npm_config_store_dir: "/pnpm/store"
     ports:
-      - "127.0.0.1:3020:5173"
+      - "127.0.0.1:3020:3000"
     volumes:
       - .:/app
       - docmost_test_node_modules:/app/node_modules
@@ -49,36 +43,23 @@ services:
     command: >
       sh -c "pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
       && pnpm --filter @docmost/editor-ext run build
+      && pnpm exec nx run client:build
       && rm -f apps/server/tsconfig.build.tsbuildinfo
       && rm -f apps/server/tsconfig.tsbuildinfo
       && rm -rf apps/server/dist
       && pnpm run server:build
       && pnpm --filter ./apps/server run migration:up
-      && pnpm concurrently --kill-others-on-fail -n 'backend,frontend' -c 'green,cyan'
-      'pnpm --filter ./apps/server run start:prod'
-      'pnpm --filter ./apps/client run dev'"
+      && pnpm --filter ./apps/server run start:prod"
+    networks:
+      - prod
     restart: unless-stopped
 
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: docmost
-      POSTGRES_USER: docmost
-      POSTGRES_PASSWORD: ${DOCMOST_DB_PASSWORD}
-    restart: unless-stopped
-    volumes:
-      - docmost_test_db:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7.2-alpine
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
-    restart: unless-stopped
-    volumes:
-      - docmost_test_redis:/data
+networks:
+  prod:
+    external: true
+    name: ${DOCMOST_PROD_NETWORK:-docmost_default}
 
 volumes:
   docmost_test_node_modules:
   docmost_test:
   docmost_test_pnpm_store:
-  docmost_test_db:
-  docmost_test_redis:

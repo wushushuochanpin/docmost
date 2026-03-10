@@ -7,7 +7,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useElementSize, useMergedRef } from "@mantine/hooks";
 import { SpaceTreeNode } from "@/features/page/tree/types.ts";
-import { Link, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { atom, useAtom } from "jotai/index";
 import { useTranslation } from "react-i18next";
 import { buildSharedPageUrl } from "@/features/page/page.utils.ts";
@@ -125,6 +125,8 @@ function Node({ node, style, tree }: NodeRendererProps<any>) {
   const { shareId } = useParams();
   const { t } = useTranslation();
   const [, setMobileSidebarState] = useAtom(mobileSidebarAtom);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const pageUrl = buildSharedPageUrl({
     shareId: shareId,
@@ -132,41 +134,48 @@ function Node({ node, style, tree }: NodeRendererProps<any>) {
     pageTitle: node.data.name,
   });
 
+  const onNavigate = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    tree.select(node.id);
+    setMobileSidebarState(false);
+
+    if (location.pathname !== pageUrl) {
+      navigate(pageUrl);
+    }
+  };
+
   return (
-    <>
-      <Box
-        style={style}
-        className={clsx(classes.node, node.state, styles.treeNode)}
-        component={Link}
-        to={pageUrl}
-        onClick={() => {
-          setMobileSidebarState(false);
-        }}
-      >
-        <PageArrow node={node} />
-        <div style={{ marginRight: "4px" }}>
-          <EmojiPicker
-            onEmojiSelect={() => {}}
-            icon={
-              node.data.icon ? (
-                node.data.icon
-              ) : (
-                <>
-                  {node.data.nodeType === "folder" ? (
-                    <IconFolder size="18" />
-                  ) : (
-                    <IconFileDescription size="18" />
-                  )}
-                </>
-              )
-            }
-            readOnly={true}
-            removeEmojiAction={() => {}}
-          />
-        </div>
-        <span className={classes.text}>{node.data.name || t("untitled")}</span>
-      </Box>
-    </>
+    <Box
+      type="button"
+      style={style}
+      className={clsx(classes.node, node.state, styles.treeNode)}
+      component="button"
+      onClick={onNavigate}
+    >
+      <PageArrow node={node} />
+      <div style={{ marginRight: "4px" }}>
+        <EmojiPicker
+          onEmojiSelect={() => {}}
+          icon={
+            node.data.icon ? (
+              node.data.icon
+            ) : (
+              <>
+                {node.data.nodeType === "folder" ? (
+                  <IconFolder size="18" />
+                ) : (
+                  <IconFileDescription size="18" />
+                )}
+              </>
+            )
+          }
+          readOnly={true}
+          removeEmojiAction={() => {}}
+        />
+      </div>
+      <span className={classes.text}>{node.data.name || t("untitled")}</span>
+    </Box>
   );
 }
 

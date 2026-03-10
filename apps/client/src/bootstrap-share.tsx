@@ -81,6 +81,11 @@ if (!rootEl) {
   throw new Error("Root element #root not found");
 }
 
+rootEl.setAttribute("data-share-bootstrap-mounted", "true");
+if (typeof (window as any).__shareDebug === "function") {
+  (window as any).__shareDebug("Bootstrap: React mounting");
+}
+
 ReactDOM.createRoot(rootEl).render(
   <BrowserRouter>
     <QueryClientProvider client={queryClient}>

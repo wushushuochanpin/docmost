@@ -4,9 +4,11 @@ import { readOnlyEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   sharedAccessTokenAtom,
+  sharedPageTreeRequestStateAtom,
   sharedShellStateAtom,
   sharedPageTreeAtom,
   sharedTreeDataAtom,
+  sharedFullScreenAtom,
 } from "@/features/share/atoms/shared-page-atom";
 import { buildSharedPageTree } from "@/features/share/utils";
 import { mobileSidebarAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
@@ -32,6 +34,28 @@ import { cx } from "@/features/share/classnames.ts";
 import { lazyShareMantineComponent } from "./lazy-share-mantine.tsx";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
 import { ShareWidgetBoundary } from "./share-widget-boundary.tsx";
+
+function getShareTreeErrorMessage(error: unknown): string | null {
+  const candidate = error as any;
+  const message =
+    candidate?.response?.data?.message ??
+    candidate?.data?.message ??
+    candidate?.message;
+
+  if (typeof message === "string") {
+    return message;
+  }
+
+  if (Array.isArray(message)) {
+    const normalized = message
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter(Boolean)
+      .join(", ");
+    return normalized || null;
+  }
+
+  return null;
+}
 
 const LazySharedTree = lazy(() =>
   lazyShareMantineComponent(
@@ -75,8 +99,12 @@ export default function ShareShell({
   const { shareId } = useParams();
   const accessTokens = useAtomValue(sharedAccessTokenAtom);
   const sharedShellState = useAtomValue(sharedShellStateAtom);
+  const prefetchedSharedPageTree = useAtomValue(sharedPageTreeAtom);
   const accessToken = shareId ? accessTokens[shareId] : undefined;
   const shouldLoadTree = Boolean(shareId && sharedShellState?.includeSubPages);
+  const shouldFetchTree = Boolean(
+    shouldLoadTree && shareId && !prefetchedSharedPageTree?.pageTree?.length,
+  );
   const canUseSearch = Boolean(shareId && sharedShellState?.canUseSearch);
   const showShareBranding = Boolean(
     shareId && sharedShellState && !sharedShellState.hasLicenseKey,
@@ -84,22 +112,27 @@ export default function ShareShell({
   const renderMode = sharedShellState?.renderMode ?? "editor";
   const tocItems = sharedShellState?.toc ?? [];
   const hasToc = tocItems.length > 0;
+  const fullScreen = useAtomValue(sharedFullScreenAtom);
   const [searchOpenToken, setSearchOpenToken] = useState(0);
   const [isSearchMounted, setIsSearchMounted] = useState(false);
-  const { data } = useShareAsyncResource(
-    shouldLoadTree && shareId
+  const { data, error, isError } = useShareAsyncResource(
+    shouldFetchTree && shareId
       ? () => getSharedPageTree(shareId, accessToken)
       : null,
-    [shareId, accessToken, shouldLoadTree],
-    { enabled: shouldLoadTree, keepPreviousData: true },
+    [shareId, accessToken, shouldFetchTree],
+    { enabled: shouldFetchTree, keepPreviousData: true },
   );
   const readOnlyEditor = useAtomValue(readOnlyEditorAtom);
-  const sharedPageTree = shouldLoadTree ? data || null : null;
+  const sharedPageTree = shouldLoadTree
+    ? (prefetchedSharedPageTree ?? data ?? null)
+    : null;
 
-  const [, setSharedPageTree] = useAtom(sharedPageTreeAtom);
-  const [, setSharedTreeData] = useAtom(sharedTreeDataAtom);
+  const setSharedPageTree = useSetAtom(sharedPageTreeAtom);
+  const setSharedTreeData = useSetAtom(sharedTreeDataAtom);
+  const setSharedPageTreeRequestState = useSetAtom(
+    sharedPageTreeRequestStateAtom,
+  );
 
-  // Build and set the tree data when it changes
   const treeData = useMemo(() => {
     if (!sharedPageTree?.pageTree) return null;
     return buildSharedPageTree(sharedPageTree.pageTree);
@@ -109,9 +142,49 @@ export default function ShareShell({
   );
 
   useEffect(() => {
-    setSharedPageTree(sharedPageTree);
-    setSharedTreeData(treeData);
-  }, [sharedPageTree, treeData, setSharedPageTree, setSharedTreeData]);
+    if (!data?.pageTree) {
+      return;
+    }
+
+    setSharedPageTree(data);
+    setSharedTreeData(buildSharedPageTree(data.pageTree));
+  }, [data, setSharedPageTree, setSharedTreeData]);
+
+  useEffect(() => {
+    if (!shouldLoadTree) {
+      setSharedPageTreeRequestState({ status: "idle", errorMessage: null });
+      return;
+    }
+
+    if (sharedPageTree?.pageTree?.length) {
+      setSharedPageTreeRequestState({ status: "success", errorMessage: null });
+      return;
+    }
+
+    if (isError) {
+      setSharedPageTreeRequestState({
+        status: "error",
+        errorMessage:
+          getShareTreeErrorMessage(error) || t("Error fetching page data."),
+      });
+      return;
+    }
+
+    if (shouldFetchTree) {
+      setSharedPageTreeRequestState({ status: "loading", errorMessage: null });
+      return;
+    }
+
+    setSharedPageTreeRequestState({ status: "idle", errorMessage: null });
+  }, [
+    error,
+    isError,
+    setSharedPageTreeRequestState,
+    sharedPageTree,
+    shouldFetchTree,
+    shouldLoadTree,
+    t,
+  ]);
 
   useEffect(() => {
     if (!canUseSearch || typeof window === "undefined") {
@@ -167,9 +240,24 @@ export default function ShareShell({
     );
   };
 
+  const showDesktopLeftSidebar = desktopHasLeftSidebar && !fullScreen;
+  const showDesktopRightSidebar = desktopHasRightSidebar && !fullScreen;
+  const showMobileTreeDrawer = hasTree && mobileOpened && !fullScreen;
+  const showMobileTocDrawer = hasToc && mobileTocOpened && !fullScreen;
+  const showShareSearch = canUseSearch && isSearchMounted && !fullScreen;
+
   return (
-    <div className={classes.shell}>
-      <header className={classes.header}>
+    <div
+      className={cx(classes.shell, {
+        [classes.shellFullScreen]: fullScreen,
+      })}
+      data-full-screen={fullScreen ? "" : undefined}
+    >
+      <header
+        className={cx(classes.header, {
+          [classes.headerHidden]: fullScreen,
+        })}
+      >
         <div className={classes.headerInner}>
           <div className={classes.headerGroup}>
             {hasTree && (
@@ -276,10 +364,14 @@ export default function ShareShell({
             !desktopHasLeftSidebar && desktopHasRightSidebar,
           [classes.bodyWithBoth]:
             desktopHasLeftSidebar && desktopHasRightSidebar,
+          [classes.bodyFullScreen]: fullScreen,
         })}
       >
-        {desktopHasLeftSidebar && (
-          <aside className={cx(classes.sidebar, classes.desktopNav)}>
+        {showDesktopLeftSidebar && (
+          <aside
+            key="share-shell-desktop-nav"
+            className={cx(classes.sidebar, classes.desktopNav)}
+          >
             <div className={classes.sidebarInner}>
               <ShareWidgetBoundary area="desktop-shared-tree">
                 <Suspense fallback={null}>
@@ -292,13 +384,21 @@ export default function ShareShell({
           </aside>
         )}
 
-        <main className={classes.main}>
+        <main
+          key="share-shell-main"
+          className={cx(classes.main, {
+            [classes.mainFullScreen]: fullScreen,
+          })}
+        >
           {children}
-          {showShareBranding && <ShareBranding />}
+          {showShareBranding && !fullScreen && <ShareBranding />}
         </main>
 
-        {desktopHasRightSidebar && (
-          <aside className={cx(classes.sidebar, classes.desktopAside)}>
+        {showDesktopRightSidebar && (
+          <aside
+            key="share-shell-desktop-aside"
+            className={cx(classes.sidebar, classes.desktopAside)}
+          >
             <div className={classes.sidebarInner}>
               <ShareWidgetBoundary area="desktop-table-of-contents">
                 {renderToc()}
@@ -308,7 +408,7 @@ export default function ShareShell({
         )}
       </div>
 
-      {hasTree && mobileOpened && (
+      {showMobileTreeDrawer && (
         <>
           <button
             type="button"
@@ -330,7 +430,7 @@ export default function ShareShell({
         </>
       )}
 
-      {hasToc && mobileTocOpened && (
+      {showMobileTocDrawer && (
         <>
           <button
             type="button"
@@ -348,7 +448,7 @@ export default function ShareShell({
         </>
       )}
 
-      {canUseSearch && isSearchMounted && (
+      {showShareSearch && (
         <ShareWidgetBoundary area="share-search">
           <Suspense fallback={null}>
             <LazyShareSearchSpotlight

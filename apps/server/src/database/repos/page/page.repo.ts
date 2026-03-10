@@ -486,30 +486,28 @@ export class PageRepo {
       .withRecursive('page_hierarchy', (db) =>
         db
           .selectFrom('pages')
-          .leftJoin('pageNodeMeta', 'pageNodeMeta.pageId', 'pages.id')
+          .leftJoin('pageNodeMeta as pnm', 'pnm.pageId', 'pages.id')
           .select([
-            'id',
-            'slugId',
-            'title',
-            'icon',
-            'themeColor',
-            'themePattern',
-            'position',
-            'parentPageId',
-            'spaceId',
-            'workspaceId',
-            'createdAt',
-            'updatedAt',
-            sql<string>`COALESCE("pageNodeMeta"."nodeType", 'file')`.as(
-              'nodeType',
-            ),
+            'pages.id',
+            'pages.slugId',
+            'pages.title',
+            'pages.icon',
+            'pages.themeColor',
+            'pages.themePattern',
+            'pages.position',
+            'pages.parentPageId',
+            'pages.spaceId',
+            'pages.workspaceId',
+            'pages.createdAt',
+            'pages.updatedAt',
+            sql<string>`COALESCE("pnm"."node_type", 'file')`.as('nodeType'),
           ])
-          .$if(opts?.includeContent, (qb) => qb.select('content'))
+          .$if(opts?.includeContent, (qb) => qb.select('pages.content'))
           .$if(Boolean(opts?.workspaceId), (qb) =>
-            qb.where('workspaceId', '=', opts!.workspaceId!),
+            qb.where('pages.workspaceId', '=', opts!.workspaceId!),
           )
-          .where('id', '=', parentPageId)
-          .where('deletedAt', 'is', null)
+          .where('pages.id', '=', parentPageId)
+          .where('pages.deletedAt', 'is', null)
           .unionAll((exp) =>
             exp
               .selectFrom('pages as p')
@@ -527,7 +525,7 @@ export class PageRepo {
                 'p.workspaceId',
                 'p.createdAt',
                 'p.updatedAt',
-                sql<string>`COALESCE("pnm"."nodeType", 'file')`.as('nodeType'),
+                sql<string>`COALESCE("pnm"."node_type", 'file')`.as('nodeType'),
               ])
               .$if(opts?.includeContent, (qb) => qb.select('p.content'))
               .innerJoin('page_hierarchy as ph', 'p.parentPageId', 'ph.id')

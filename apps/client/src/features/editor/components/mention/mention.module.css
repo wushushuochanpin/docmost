@@ -3,6 +3,8 @@
     var(--mantine-color-dark-4),
     var(--mantine-color-dark-1)
   ) !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .pageMentionText {
   @mixin light {

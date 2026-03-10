@@ -68,6 +68,10 @@ export interface SharedPageResponsePage {
   content?: unknown;
 }
 
+type SharedPageTreeResponse = Awaited<
+  ReturnType<PageRepo['getPageAndDescendants']>
+>;
+
 @Injectable()
 export class ShareService {
   private readonly logger = new Logger(ShareService.name);
@@ -90,16 +94,14 @@ export class ShareService {
     }
 
     const sharedPageNodeType = await this.getPageNodeType(share.pageId);
-    if (share.includeSubPages || sharedPageNodeType === 'folder') {
-      const pageList = await this.pageRepo.getPageAndDescendants(share.pageId, {
-        includeContent: false,
-        workspaceId,
-      });
+    const pageTree = await this.getSharedPageTreePayload(
+      share.pageId,
+      workspaceId,
+      share.includeSubPages,
+      sharedPageNodeType,
+    );
 
-      return { share, pageTree: pageList };
-    } else {
-      return { share, pageTree: [] };
-    }
+    return { share, pageTree: pageTree ?? [] };
   }
 
   async createShare(opts: {
@@ -410,11 +412,22 @@ export class ShareService {
       nodeType,
       excerpt: this.buildShareExcerpt(page.textContent),
     };
+    const sharedRootNodeType =
+      page.id === share.pageId
+        ? nodeType
+        : await this.getPageNodeType(share.pageId);
+    const pageTree = await this.getSharedPageTreePayload(
+      share.pageId,
+      workspaceId,
+      share.includeSubPages,
+      sharedRootNodeType,
+    );
 
     if (nodeType === 'folder') {
       return {
         page: responsePage,
         share,
+        pageTree,
         rendered: null,
       };
     }
@@ -429,6 +442,7 @@ export class ShareService {
         ...(hasStaticRenderableOutput ? {} : { content: page.content }),
       },
       share,
+      pageTree,
       rendered,
     };
   }
@@ -487,6 +501,25 @@ export class ShareService {
     }
 
     return `${normalized.slice(0, 159).trimEnd()}…`;
+  }
+
+  private async getSharedPageTreePayload(
+    sharedRootPageId: string,
+    workspaceId: string,
+    includeSubPages: boolean,
+    sharedRootNodeType?: 'file' | 'folder',
+  ): Promise<SharedPageTreeResponse | undefined> {
+    const effectiveNodeType =
+      sharedRootNodeType ?? (await this.getPageNodeType(sharedRootPageId));
+
+    if (!includeSubPages && effectiveNodeType !== 'folder') {
+      return undefined;
+    }
+
+    return this.pageRepo.getPageAndDescendants(sharedRootPageId, {
+      includeContent: false,
+      workspaceId,
+    });
   }
 
   async getShareForPage(

@@ -14,14 +14,43 @@
 
 To get started with SuperChat, please refer to our [documentation](https://docmost.com/docs) or try our [cloud version](https://docmost.com/pricing) .
 
+## Docker deployment
+
+1. Clone the repository and enter the project directory.
+   ```bash
+   git clone https://github.com/wushushuochanpin/docmost-open.git
+   cd docmost-open
+   ```
+2. Copy the example environment file.
+   ```bash
+   cp .env.example .env
+   ```
+3. Edit `.env` and set at least these values:
+   ```env
+   APP_URL=https://your-domain.example.com
+   APP_SOURCE_URL=https://github.com/wushushuochanpin/docmost-open
+   APP_SECRET=replace_with_a_long_random_secret
+   DOCMOST_DB_PASSWORD=replace_with_a_strong_database_password
+   ```
+   Generate `APP_SECRET` with:
+   ```bash
+   openssl rand -hex 32
+   ```
+4. Start the stack.
+   ```bash
+   docker compose up -d --build
+   ```
+5. Open `/setup/register` in the browser and create the first workspace and owner account.
+
 ## Self-hosting notes
 
-- Copy `.env.example` to `.env`, then set `APP_URL`, `APP_SECRET`, and `DOCMOST_DB_PASSWORD`.
-- Start the stack with `docker compose up -d --build`, then open `/setup/register` to create the first workspace and admin account.
-- The default `docker-compose.yml` binds the app to `127.0.0.1:3000`, which is intended for use behind Nginx or another reverse proxy.
+- There is no default username or password. The first user must finish `/setup/register`.
+- The default `docker-compose.yml` binds the app to `127.0.0.1:3000`, which is intended for use behind Nginx or another reverse proxy. If you want to expose the app directly for testing, change it to `3000:3000`.
 - `STORAGE_DRIVER=local` is the default. Only set `AWS_S3_*` when you want S3-compatible object storage such as Tencent COS for attachments.
-- `BACKUP_ENABLED=true` in `.env.example`, so the Backup & Restore page is available on fresh self-hosted installs.
+- `BACKUP_ENABLED=true` enables the Backup & Restore page on fresh self-hosted installs.
 - Backup artifacts are written to local disk under `BACKUP_LOCAL_PATH` by default. Set `BACKUP_S3_ENABLED=true` to upload the same package to COS/S3 as a second copy, using the existing `AWS_S3_*` config and `BACKUP_S3_PREFIX`.
+- Keep `BACKUP_S3_ENABLED=false` if you only want local backups and do not want to use COS.
+- Do not run `docker compose down -v` unless you intentionally want to delete PostgreSQL, Redis, and uploaded files.
 - If you publish your fork, set `APP_SOURCE_URL` to that public GitHub repository so the in-product source link points to the correct code.
 
 ## Features

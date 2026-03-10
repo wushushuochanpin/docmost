@@ -61,8 +61,11 @@ export class StaticModule implements OnModuleInit {
 
       const windowScriptContent = `<script>window.CONFIG=${JSON.stringify(configString)};</script>`;
 
-      if (!fs.existsSync(indexTemplateFilePath)) {
-        fs.copyFileSync(indexFilePath, indexTemplateFilePath);
+      const builtIndexHtml = fs.readFileSync(indexFilePath, 'utf8');
+      if (builtIndexHtml.includes(windowVar)) {
+        fs.writeFileSync(indexTemplateFilePath, builtIndexHtml);
+      } else if (!fs.existsSync(indexTemplateFilePath)) {
+        fs.writeFileSync(indexTemplateFilePath, builtIndexHtml);
       }
 
       const html = fs.readFileSync(indexTemplateFilePath, 'utf8');

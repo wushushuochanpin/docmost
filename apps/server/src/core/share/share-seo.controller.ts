@@ -144,13 +144,13 @@ export class ShareSeoController {
         )
         .replace(metaTagVar, previewMeta.metaTags);
 
-      res.type('text/html').send(transformedHtml);
+      res.header('Cache-Control', 'no-store').type('text/html').send(transformedHtml);
     }
   }
 
   sendIndex(indexFilePath: string, res: FastifyReply) {
     const stream = fs.createReadStream(indexFilePath);
-    res.type('text/html').send(stream);
+    res.header('Cache-Control', 'no-store').type('text/html').send(stream);
   }
 
   extractPageSlugId(slug: string): string {
