@@ -14,7 +14,9 @@ export function EmptyState({ icon: Icon, title, description, action }: EmptyStat
   return (
     <div className={classes.root}>
       <Stack align="center" gap="xs">
-        <Icon size={40} stroke={1.5} color="var(--mantine-color-dimmed)" />
+        <div className={classes.iconWrapper}>
+          <Icon size={28} stroke={1.5} color="var(--ui-text-tertiary)" />
+        </div>
         <Text size="lg" fw={500}>
           {title}
         </Text>

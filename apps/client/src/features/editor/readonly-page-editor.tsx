@@ -16,6 +16,7 @@ import {
 } from "@/features/editor/utils/editor-font-size-utils";
 import { editorFontSizePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 import classes from "@/features/editor/styles/editor.module.css";
+import { Container } from "@mantine/core";
 import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
 
 interface PageEditorProps {
@@ -47,6 +48,7 @@ export default function ReadonlyPageEditor({
   const editorFontScale = getEditorFontScale(
     localEditorFontSize ?? extractEditorFontSizeFromUser(user),
   );
+  const fullPageWidth = user.settings?.preferences?.fullPageWidth;
   const normalizedContent = useMemo(
     () => normalizeProsemirrorContent(content),
     [content],
@@ -87,10 +89,16 @@ export default function ReadonlyPageEditor({
   ];
 
   return (
-    <div
-      className={classes.docLayout}
+    <Container
+      fluid={fullPageWidth}
+      size={!fullPageWidth && 900}
+      p={0}
+      className={classes.editor}
       style={{ "--editor-font-scale": editorFontScale } as React.CSSProperties}
     >
+      <div
+        className={classes.docLayout}
+      >
       <div className={classes.readonlyTitleSection}>
         <div className={classes.surfaceTitle}>
           <EditorProvider
@@ -163,5 +171,6 @@ export default function ReadonlyPageEditor({
       )}
       <div style={{ paddingBottom: "20vh" }}></div>
     </div>
+    </Container>
   );
 }

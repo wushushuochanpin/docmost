@@ -98,7 +98,7 @@ export default function GlobalAppShell({
 
   return (
     <AppShell
-      header={{ height: 45 }}
+      header={{ height: 52 }}
       navbar={
         !hideSidebar && {
           width: isSpaceRoute ? sidebarWidth : 300,

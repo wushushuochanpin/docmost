@@ -14,11 +14,36 @@
     <meta name="apple-mobile-web-app-title" content="SuperChat" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- Preload Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <!--meta-tags-->
   </head>
   <body>
     <div id="root">
-      <div id="app-loading" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f6f7f9;color:#495057;font-family:system-ui,sans-serif;">Loading...</div>
+      <div id="app-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f6f7f9;font-family:'Inter',system-ui,sans-serif;">
+        <img src="/icons/favicon-32x32.png" alt="" style="width:40px;height:40px;margin-bottom:16px;animation:app-loading-pulse 1.5s ease-in-out infinite;" />
+        <style>
+          @keyframes app-loading-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.95); }
+          }
+          #app-loading-spinner {
+            width: 24px; height: 24px;
+            border: 2.5px solid #e2e8f0;
+            border-top-color: #2563eb;
+            border-radius: 50%;
+            animation: app-loading-spin 0.7s linear infinite;
+            margin-bottom: 12px;
+          }
+          @keyframes app-loading-spin {
+            to { transform: rotate(360deg); }
+          }
+        </style>
+        <div id="app-loading-spinner"></div>
+        <span style="color:#94a3b8;font-size:13px;font-weight:500;letter-spacing:0.02em;">Loading SuperChat...</span>
+      </div>
     </div>
 
     <!--window-config-->

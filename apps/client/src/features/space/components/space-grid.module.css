@@ -1,19 +1,22 @@
 .card {
-    background-color: var(--mantine-color-body);
+    background-color: var(--ui-bg-surface);
+    border-color: var(--ui-border-default);
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+
     @mixin hover {
-        box-shadow: var(--mantine-shadow-xs);
-        transform: scale(1.02);
+        border-color: var(--ui-border-hover);
+        box-shadow: var(--ui-shadow-sm);
+        transform: translateY(-2px);
     }
 }
 
 .cardSection {
-    background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6));
+    background: var(--ui-bg-subtle);
+    border-radius: var(--mantine-radius-md) var(--mantine-radius-md) 0 0;
 }
 
 .title {
-    font-family:
-            Greycliff CF,
-            var(--mantine-font-family);
+    font-family: inherit;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
@@ -21,5 +24,6 @@
 
 .icon {
     margin-right: rem(5px);
-    color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+    color: var(--ui-text-tertiary);
+    transition: color 120ms ease;
 }

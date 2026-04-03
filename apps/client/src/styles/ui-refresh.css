@@ -21,18 +21,22 @@ body {
   box-shadow: none;
 }
 
+/* --- Dropdown / Popover / Menu --- */
 .mantine-Menu-dropdown {
   border: 1px solid var(--ui-border-default);
   border-radius: 10px;
-  box-shadow: var(--ui-shadow-sm);
+  box-shadow: var(--ui-shadow-md);
+  backdrop-filter: blur(8px);
 }
 
 .mantine-Menu-item {
   border-radius: 8px;
   color: var(--ui-text-primary);
   font-weight: 500;
+  transition: background-color 100ms ease;
 }
 
+/* --- Buttons --- */
 .mantine-Button-root {
   border-radius: 10px;
   font-weight: 600;
@@ -40,7 +44,8 @@ body {
     background-color 120ms ease,
     border-color 120ms ease,
     color 120ms ease,
-    box-shadow 120ms ease;
+    box-shadow 120ms ease,
+    transform 100ms ease;
 }
 
 .mantine-Button-root[data-variant="filled"] {
@@ -49,6 +54,13 @@ body {
 
 .mantine-Button-root[data-variant="filled"]:hover {
   background: var(--ui-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.mantine-Button-root[data-variant="filled"]:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .mantine-Button-root[data-variant="default"] {
@@ -62,6 +74,7 @@ body {
   color: var(--ui-text-primary);
 }
 
+/* --- Action Icons --- */
 .mantine-ActionIcon-root {
   border-radius: 10px;
   transition:
@@ -83,6 +96,7 @@ body {
   background: var(--ui-bg-subtle);
 }
 
+/* --- Input fields --- */
 .mantine-TextInput-input,
 .mantine-Textarea-input,
 .mantine-Input-input {
@@ -90,6 +104,7 @@ body {
   background: var(--ui-bg-surface);
   color: var(--ui-text-primary);
   border-radius: 10px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .mantine-TextInput-input[data-variant="filled"],
@@ -107,6 +122,7 @@ body {
 .mantine-Select-input:focus,
 .mantine-PasswordInput-input:focus {
   border-color: var(--ui-border-active);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .mantine-Select-input,
@@ -117,10 +133,11 @@ body {
   border-radius: 10px;
 }
 
+/* --- Modal (enhanced shadow + blur backdrop) --- */
 .mantine-Modal-content {
   border: 1px solid var(--ui-border-default);
   border-radius: 12px;
-  box-shadow: var(--ui-shadow-sm);
+  box-shadow: var(--ui-shadow-lg);
   background: var(--ui-bg-surface);
 }
 
@@ -143,16 +160,18 @@ body {
   border-color: var(--ui-border-default);
 }
 
+/* --- Combobox --- */
 .mantine-Combobox-dropdown {
   border: 1px solid var(--ui-border-default);
   border-radius: 10px;
-  box-shadow: var(--ui-shadow-sm);
+  box-shadow: var(--ui-shadow-md);
   background: var(--ui-bg-surface);
 }
 
 .mantine-Combobox-option {
   border-radius: 8px;
   color: var(--ui-text-primary);
+  transition: background-color 100ms ease;
 }
 
 .mantine-Combobox-option[data-combobox-selected="true"],
@@ -160,10 +179,51 @@ body {
   background: rgba(37, 99, 235, 0.10);
 }
 
+/* --- Tabs --- */
 .mantine-Tabs-tab {
   border-radius: 8px;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
 .mantine-Tabs-tab[data-active="true"] {
   background: var(--ui-bg-subtle);
+}
+
+/* --- Tooltip --- */
+.mantine-Tooltip-tooltip {
+  border-radius: 8px;
+  box-shadow: var(--ui-shadow-md);
+}
+
+/* --- Popover --- */
+.mantine-Popover-dropdown {
+  border: 1px solid var(--ui-border-default);
+  border-radius: 10px;
+  box-shadow: var(--ui-shadow-md);
+}
+
+/* --- Spotlight --- */
+.mantine-Spotlight-content {
+  border: 1px solid var(--ui-border-default);
+  border-radius: 14px;
+  box-shadow: var(--ui-shadow-lg);
+}
+
+/* --- Recent changes table row hover --- */
+.mantine-Table-tr {
+  transition: background-color 100ms ease;
+}
+.mantine-Table-tr:hover {
+  background-color: var(--ui-bg-subtle) !important;
+}
+.mantine-Table-tr > .mantine-Table-td {
+  border-bottom: 1px solid var(--ui-border-default);
+}
+
+/* --- Badge hover micro animation --- */
+.mantine-Badge-root {
+  transition: transform 100ms ease, box-shadow 100ms ease;
+}
+.mantine-Badge-root:hover {
+  transform: translateY(-1px);
 }

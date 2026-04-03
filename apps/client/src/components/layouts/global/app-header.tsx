@@ -101,8 +101,12 @@ export function AppHeader() {
             style={{
               cursor: "pointer",
               userSelect: "none",
-              color: "var(--ui-text-primary)",
+              background: "linear-gradient(135deg, var(--ui-accent-primary), #7c3aed)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
               letterSpacing: "0.01em",
+              fontWeight: 700,
             }}
             component={Link}
             to="/home"

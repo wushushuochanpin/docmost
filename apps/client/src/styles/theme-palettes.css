@@ -14,7 +14,9 @@
   --ui-border-active: #64748b;
   --ui-accent-primary: #2563eb;
   --ui-accent-hover: #1d4ed8;
-  --ui-shadow-sm: 0 4px 16px rgba(15, 23, 42, 0.06);
+  --ui-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --ui-shadow-md: 0 8px 32px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.06);
+  --ui-shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.16), 0 4px 16px rgba(15, 23, 42, 0.08);
   --mantine-color-body: var(--ui-bg-canvas);
   --mantine-color-default-border: var(--ui-border-default);
 }
@@ -32,7 +34,9 @@
   --ui-border-active: #5e5e60;
   --ui-accent-primary: #3b82f6;
   --ui-accent-hover: #60a5fa;
-  --ui-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.22);
+  --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --ui-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --ui-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
   --mantine-color-body: var(--ui-bg-canvas);
   --mantine-color-default-border: var(--ui-border-default);
 }
@@ -50,7 +54,9 @@
   --ui-border-active: #57606a;
   --ui-accent-primary: #58a6ff;
   --ui-accent-hover: #79b8ff;
-  --ui-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --ui-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.25);
+  --ui-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.35);
   --mantine-color-body: var(--ui-bg-canvas);
   --mantine-color-default-border: var(--ui-border-default);
 }
@@ -68,7 +74,9 @@
   --ui-border-active: #71717a;
   --ui-accent-primary: #f59e0b;
   --ui-accent-hover: #fbbf24;
-  --ui-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.28);
+  --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.32);
+  --ui-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.22);
+  --ui-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.52), 0 4px 16px rgba(0, 0, 0, 0.32);
   --mantine-color-body: var(--ui-bg-canvas);
   --mantine-color-default-border: var(--ui-border-default);
 }
@@ -86,7 +94,9 @@
   --ui-border-active: #6b7c6b;
   --ui-accent-primary: #9ece6a;
   --ui-accent-hover: #b9f27c;
-  --ui-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.24);
+  --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --ui-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --ui-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
   --mantine-color-body: var(--ui-bg-canvas);
   --mantine-color-default-border: var(--ui-border-default);
 }

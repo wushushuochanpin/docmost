@@ -8,8 +8,8 @@
 }
 
 .navbar {
-  top: var(--app-shell-header-height, 45px) !important;
-  height: calc(100dvh - var(--app-shell-header-height, 45px)) !important;
+  top: var(--app-shell-header-height, 52px) !important;
+  height: calc(100dvh - var(--app-shell-header-height, 52px)) !important;
 
   @media (max-width: $mantine-breakpoint-sm) {
     width: 350px;

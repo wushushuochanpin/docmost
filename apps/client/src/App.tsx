@@ -22,6 +22,7 @@ import {
 import { lazyWithRetry } from "@/lib/lazy-import.ts";
 import Layout from "@/components/layouts/global/layout.tsx";
 
+import { RouteTransition } from "@/components/common/route-transition.tsx";
 const SetupWorkspace = lazyWithRetry(
   () => import("@/pages/auth/setup-workspace.tsx"),
 );
@@ -153,6 +154,7 @@ export default function App() {
 
   return (
     <Suspense fallback={null}>
+      <RouteTransition>
       <Routes>
         <Route index element={<Navigate to="/home" />} />
         <Route path={"/login"} element={<LoginPage />} />
@@ -231,6 +233,7 @@ export default function App() {
 
         <Route path="*" element={<Error404 />} />
       </Routes>
+      </RouteTransition>
     </Suspense>
   );
 }
