@@ -48,6 +48,7 @@ const DEFAULT_SHARE_MESSAGES = {
     "{{folderCount}} folders · {{fileCount}} files",
   "Page failed to load": "Page failed to load",
   Reload: "Reload",
+  "Loading…": "Loading…",
   "Loading timed out": "Loading timed out",
   "Please check your network and try again.":
     "Please check your network and try again.",
@@ -218,6 +219,7 @@ const SHARE_MESSAGES: Partial<
     "Sidebar toggle": "切换侧边栏",
     Search: "搜索",
     "Table of contents": "目录",
+    "Loading…": "加载中…",
     "Loading remaining content...": "正在加载剩余内容...",
     "Loading folder items...": "正在加载文件夹内容...",
     "Failed to load folder items.": "加载文件夹内容失败。",

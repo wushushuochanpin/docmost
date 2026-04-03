@@ -1,4 +1,11 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import React, {
+  Suspense,
+  lazy,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useParams } from "react-router-dom";
 import { readOnlyEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -26,12 +33,12 @@ import {
 } from "@tabler/icons-react";
 import { useToggleToc } from "@/features/share/hooks/use-toggle-toc.ts";
 import classes from "./share-shell.module.css";
-import ShareBranding from "@/features/share/components/share-branding.tsx";
 import StaticTableOfContents from "@/features/share/components/static-table-of-contents.tsx";
 import { getSharedPageTree } from "@/features/share/services/share-service.ts";
 import { useShareAsyncResource } from "@/features/share/hooks/use-share-async-resource.ts";
 import { cx } from "@/features/share/classnames.ts";
 import { lazyShareMantineComponent } from "./lazy-share-mantine.tsx";
+import { ensureShareLazyRuntime } from "@/features/share/share-lazy-runtime.ts";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
 import { ShareWidgetBoundary } from "./share-widget-boundary.tsx";
 
@@ -106,13 +113,33 @@ export default function ShareShell({
     shouldLoadTree && shareId && !prefetchedSharedPageTree?.pageTree?.length,
   );
   const canUseSearch = Boolean(shareId && sharedShellState?.canUseSearch);
-  const showShareBranding = Boolean(
-    shareId && sharedShellState && !sharedShellState.hasLicenseKey,
-  );
   const renderMode = sharedShellState?.renderMode ?? "editor";
   const tocItems = sharedShellState?.toc ?? [];
   const hasToc = tocItems.length > 0;
   const fullScreen = useAtomValue(sharedFullScreenAtom);
+
+  // Preload TOC chunk as soon as share is loaded so first click on directory icon is fast
+  useEffect(() => {
+    if (!shareId || !sharedShellState) return;
+    if (renderMode !== "editor") return;
+    Promise.all([
+      import(
+        "@/features/editor/components/table-of-contents/table-of-contents.tsx"
+      ),
+      import("./share-mantine-boundary.tsx"),
+      ensureShareLazyRuntime(),
+    ]).catch(() => {});
+  }, [shareId, sharedShellState, renderMode]);
+
+  useLayoutEffect(() => {
+    const el = document.documentElement;
+    if (fullScreen) {
+      el.classList.add("share-viewport-lock");
+      return () => el.classList.remove("share-viewport-lock");
+    }
+    el.classList.remove("share-viewport-lock");
+  }, [fullScreen]);
+
   const [searchOpenToken, setSearchOpenToken] = useState(0);
   const [isSearchMounted, setIsSearchMounted] = useState(false);
   const { data, error, isError } = useShareAsyncResource(
@@ -228,7 +255,13 @@ export default function ShareShell({
     }
 
     return (
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <div className={classes.tocLoading} aria-hidden="true">
+            {t("Loading…")}
+          </div>
+        }
+      >
         {readOnlyEditor && (
           <LazyTableOfContents
             isShare={true}
@@ -250,12 +283,13 @@ export default function ShareShell({
     <div
       className={cx(classes.shell, {
         [classes.shellFullScreen]: fullScreen,
-      })}
+      }, fullScreen && "shareShellFullScreen")}
       data-full-screen={fullScreen ? "" : undefined}
     >
       <header
         className={cx(classes.header, {
           [classes.headerHidden]: fullScreen,
+          [classes.headerMobileEmpty]: !hasTree,
         })}
       >
         <div className={classes.headerInner}>
@@ -313,44 +347,18 @@ export default function ShareShell({
           </div>
 
           <div className={cx(classes.headerGroup, classes.headerGroupEnd)}>
-            {canUseSearch && (
+            {hasToc && (
               <button
                 type="button"
-                className={cx(classes.iconButton, classes.mobileOnly)}
-                onClick={openShareSearch}
-                aria-label={t("Search")}
-                title={t("Search")}
+                className={cx(classes.iconButton, classes.desktopOnly, {
+                  [classes.iconButtonActive]: desktopHasRightSidebar,
+                })}
+                onClick={toggleToc}
+                aria-label={t("Table of contents")}
+                title={t("Table of contents")}
               >
-                <IconSearch size={18} stroke={1.75} />
+                <IconList size={18} stroke={1.75} />
               </button>
-            )}
-
-            {hasToc && (
-              <>
-                <button
-                  type="button"
-                  className={cx(classes.iconButton, classes.mobileOnly, {
-                    [classes.iconButtonActive]: mobileTocOpened,
-                  })}
-                  onClick={toggleTocMobile}
-                  aria-label={t("Table of contents")}
-                  title={t("Table of contents")}
-                >
-                  <IconList size={18} stroke={1.75} />
-                </button>
-
-                <button
-                  type="button"
-                  className={cx(classes.iconButton, classes.desktopOnly, {
-                    [classes.iconButtonActive]: desktopHasRightSidebar,
-                  })}
-                  onClick={toggleToc}
-                  aria-label={t("Table of contents")}
-                  title={t("Table of contents")}
-                >
-                  <IconList size={18} stroke={1.75} />
-                </button>
-              </>
             )}
           </div>
         </div>
@@ -391,7 +399,6 @@ export default function ShareShell({
           })}
         >
           {children}
-          {showShareBranding && !fullScreen && <ShareBranding />}
         </main>
 
         {showDesktopRightSidebar && (
@@ -446,6 +453,34 @@ export default function ShareShell({
             </div>
           </aside>
         </>
+      )}
+
+      {canUseSearch && !fullScreen && (
+        <button
+          type="button"
+          className={cx(classes.mobileSearchFab, {
+            [classes.mobileSearchFabOnly]: !hasToc,
+          })}
+          onClick={openShareSearch}
+          aria-label={t("Search")}
+          title={t("Search")}
+        >
+          <IconSearch size={20} stroke={1.75} />
+        </button>
+      )}
+
+      {hasToc && !fullScreen && (
+        <button
+          type="button"
+          className={cx(classes.mobileTocFab, {
+            [classes.mobileTocFabActive]: mobileTocOpened,
+          })}
+          onClick={toggleTocMobile}
+          aria-label={t("Table of contents")}
+          title={t("Table of contents")}
+        >
+          <IconList size={20} stroke={1.75} />
+        </button>
       )}
 
       {showShareSearch && (

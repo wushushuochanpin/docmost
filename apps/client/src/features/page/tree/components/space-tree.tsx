@@ -5,15 +5,15 @@ import {
   TreeApi,
   SimpleTree,
 } from "react-arborist";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useSetAtom } from "jotai";
 import { treeApiAtom } from "@/features/page/tree/atoms/tree-api-atom.ts";
 import {
+  invalidateRootSidebarQueries,
   fetchAllAncestorChildren,
   useGetRootSidebarPagesQuery,
-  usePageQuery,
   useUpdatePageMutation,
 } from "@/features/page/queries/page-query.ts";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import classes from "@/features/page/tree/styles/tree.module.css";
 import {
@@ -28,7 +28,9 @@ import {
   rem,
 } from "@mantine/core";
 import {
+  IconCategory2,
   IconArrowRight,
+  IconCheck,
   IconChevronDown,
   IconChevronRight,
   IconCopy,
@@ -55,19 +57,23 @@ import {
   appendNodeChildren,
   buildTree,
   buildTreeWithChildren,
-  mergeRootTrees,
+  reconcileRootTrees,
   updateTreeNodePinnedState,
   updateTreeNodeIcon,
 } from "@/features/page/tree/utils/utils.ts";
 import { SpaceTreeNode } from "@/features/page/tree/types.ts";
 import {
+  assignSidebarCategory,
   batchMovePages,
   pinPage,
   unpinPage,
   getPageBreadcrumbs,
-  getPageById,
 } from "@/features/page/services/page-service.ts";
-import { IPage, SidebarPagesParams } from "@/features/page/types/page.types.ts";
+import {
+  IPage,
+  SidebarPagesParams,
+  SidebarViewMode,
+} from "@/features/page/types/page.types.ts";
 import { queryClient } from "@/query-client.ts";
 import { OpenMap } from "react-arborist/dist/main/state/open-slice";
 import {
@@ -91,19 +97,110 @@ import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-to
 import CopyPageModal from "../../components/copy-page-modal.tsx";
 import { duplicatePage } from "../../services/page-service.ts";
 import { AutoTooltipText } from "@/components/ui/auto-tooltip-text.tsx";
+import { useAtomValue } from "jotai";
+import { currentRoutePageAtom } from "@/features/page/atoms/current-route-page-atom.ts";
+import { useSidebarCategoriesQuery } from "@/features/space/queries/space-query.ts";
+import { ISidebarCategory } from "@/features/space/types/sidebar-category.types.ts";
+import {
+  SidebarViewSelection,
+  SidebarViewTabs,
+} from "./sidebar-view-tabs.tsx";
+import { SidebarCategoryManageModal } from "./sidebar-category-manage-modal.tsx";
 
 interface SpaceTreeProps {
   spaceId: string;
   readOnly: boolean;
+  canManageCategories?: boolean;
 }
 
 const openTreeNodesAtom = atom<OpenMap>({});
 
-export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
+const DEFAULT_SIDEBAR_VIEW_KEY = "all";
+
+function getSidebarViewStorageKey(spaceId: string) {
+  return `docmost:sidebar-view:${spaceId}`;
+}
+
+function readStoredSidebarView(spaceId: string): string {
+  if (typeof window === "undefined") {
+    return DEFAULT_SIDEBAR_VIEW_KEY;
+  }
+
+  return (
+    window.localStorage.getItem(getSidebarViewStorageKey(spaceId)) ??
+    DEFAULT_SIDEBAR_VIEW_KEY
+  );
+}
+
+function writeStoredSidebarView(spaceId: string, key: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(getSidebarViewStorageKey(spaceId), key);
+}
+
+function parseSidebarViewSelection(
+  key: string,
+  categories: ISidebarCategory[],
+  t: (value: string) => string,
+): SidebarViewSelection {
+  if (key === "pinned") {
+    return {
+      key,
+      label: t("Pinned"),
+      viewMode: "pinned",
+      categoryId: null,
+    };
+  }
+
+  if (key.startsWith("category:")) {
+    const categoryId = key.slice("category:".length);
+    const category = categories.find((item) => item.id === categoryId);
+    if (category) {
+      return {
+        key,
+        label: category.name,
+        viewMode: "category",
+        categoryId: category.id,
+      };
+    }
+  }
+
+  return {
+    key: DEFAULT_SIDEBAR_VIEW_KEY,
+    label: t("All"),
+    viewMode: "all",
+    categoryId: null,
+  };
+}
+
+export default function SpaceTree({
+  spaceId,
+  readOnly,
+  canManageCategories,
+}: SpaceTreeProps) {
   const { t } = useTranslation();
   const { pageSlug } = useParams();
+  const currentRoutePage = useAtomValue(currentRoutePageAtom);
+  const [selectedViewKey, setSelectedViewKey] = useState(() =>
+    readStoredSidebarView(spaceId),
+  );
+  const [manageCategoriesOpened, { open: openManageCategories, close: closeManageCategories }] =
+    useDisclosure(false);
+  const {
+    data: sidebarCategories = [],
+    isFetched: areSidebarCategoriesLoaded,
+  } = useSidebarCategoriesQuery(spaceId);
+  const currentView = useMemo(
+    () => parseSidebarViewSelection(selectedViewKey, sidebarCategories, t),
+    [selectedViewKey, sidebarCategories, t],
+  );
   const { data, setData, controllers } =
-    useTreeMutation<TreeApi<SpaceTreeNode>>(spaceId);
+    useTreeMutation<SpaceTreeNode>(spaceId, {
+      rootViewMode: currentView.viewMode,
+      rootCategoryId: currentView.categoryId,
+    });
   const {
     data: pagesData,
     hasNextPage,
@@ -111,6 +208,8 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
     isFetching,
   } = useGetRootSidebarPagesQuery({
     spaceId,
+    viewMode: currentView.viewMode,
+    categoryId: currentView.categoryId,
   });
   const [, setTreeApi] = useAtom<TreeApi<SpaceTreeNode>>(treeApiAtom);
   const treeApiRef = useRef<TreeApi<SpaceTreeNode>>();
@@ -127,19 +226,50 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const spaceIdRef = useRef(spaceId);
   spaceIdRef.current = spaceId;
-  const { data: currentPage } = usePageQuery({
-    pageId: extractPageSlugId(pageSlug),
-  });
+  const currentPage =
+    currentRoutePage &&
+    String(currentRoutePage.slugId) === String(extractPageSlugId(pageSlug))
+      ? currentRoutePage
+      : null;
+
+  useEffect(() => {
+    setSelectedViewKey(readStoredSidebarView(spaceId));
+    setIsDataLoaded(false);
+    setData([]);
+    setOpenTreeNodes({});
+  }, [setData, setOpenTreeNodes, spaceId]);
+
+  useEffect(() => {
+    writeStoredSidebarView(spaceId, currentView.key);
+  }, [currentView.key, spaceId]);
+
+  useEffect(() => {
+    if (
+      areSidebarCategoriesLoaded &&
+      currentView.viewMode === "category" &&
+      currentView.categoryId &&
+      !sidebarCategories.some((item) => item.id === currentView.categoryId)
+    ) {
+      setSelectedViewKey(DEFAULT_SIDEBAR_VIEW_KEY);
+    }
+  }, [
+    areSidebarCategoriesLoaded,
+    currentView.categoryId,
+    currentView.viewMode,
+    sidebarCategories,
+  ]);
 
   useEffect(() => {
     setIsDataLoaded(false);
-  }, [spaceId]);
+    setData([]);
+    setOpenTreeNodes({});
+  }, [currentView.key, setData, setOpenTreeNodes]);
 
   useEffect(() => {
     if (hasNextPage && !isFetching) {
       fetchNextPage();
     }
-  }, [hasNextPage, fetchNextPage, isFetching, spaceId]);
+  }, [currentView.key, fetchNextPage, hasNextPage, isFetching, spaceId]);
 
   useEffect(() => {
     if (!pagesData?.pages) {
@@ -150,20 +280,16 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
     const treeData = buildTree(allItems);
 
     setData((prev) => {
-      // fresh space; full reset
-      if (prev.length === 0 || prev[0]?.spaceId !== spaceId) {
-        setOpenTreeNodes({});
-        return treeData;
-      }
-
-      // same space; append only missing roots
-      return mergeRootTrees(prev, treeData);
+      return reconcileRootTrees(
+        prev.filter((item) => item?.spaceId === spaceId),
+        treeData,
+      );
     });
 
     if (!isDataLoaded) {
       setIsDataLoaded(true);
     }
-  }, [pagesData, isDataLoaded, setData, setOpenTreeNodes, spaceId]);
+  }, [currentView.key, isDataLoaded, pagesData, setData, spaceId]);
 
   useEffect(() => {
     const effectSpaceId = spaceId;
@@ -216,6 +342,14 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
             const ancestorsTree = buildTreeWithChildren(flatTreeItems);
             // child of root page we're attaching the built ancestors to
             const rootChild = ancestorsTree[0];
+            const rootExistsInCurrentView = data.some(
+              (item) => item.id === rootChild.id,
+            );
+
+            if (!rootExistsInCurrentView && currentView.viewMode !== "all") {
+              setSelectedViewKey(DEFAULT_SIDEBAR_VIEW_KEY);
+              return;
+            }
 
             // attach built ancestors to tree using functional updater
             // to avoid stale closure overwriting the current tree data
@@ -233,7 +367,7 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
     };
 
     fetchData();
-  }, [isDataLoaded, currentPage?.id]);
+  }, [currentPage?.id, currentView.viewMode, data, isDataLoaded, setData]);
 
   useEffect(() => {
     if (currentPage?.id) {
@@ -257,119 +391,146 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
   const filteredData = data.filter((node) => node?.spaceId === spaceId);
 
   return (
-    <div ref={mergedRef} className={classes.treeContainer}>
+    <div className={classes.treeContainer}>
+      <SidebarViewTabs
+        categories={sidebarCategories}
+        value={currentView.key}
+        canManageCategories={canManageCategories}
+        onChange={(view) => setSelectedViewKey(view.key)}
+        onManageCategories={openManageCategories}
+      />
+
       {isDataLoaded && filteredData.length === 0 && (
         <Text size="xs" c="dimmed" py="xs" px="sm">
-          {t("No pages yet")}
+          {currentView.viewMode === "category"
+            ? t("No pages in this category yet")
+            : currentView.viewMode === "pinned"
+              ? t("No pinned pages yet")
+            : t("No pages yet")}
         </Text>
       )}
-      {isRootReady && rootElement.current && (
-        <Tree
-          data={filteredData}
-          disableDrag={
-            readOnly
-              ? true
-              : (data) => {
-                  return data.canEdit === false;
-                }
-          }
-          disableDrop={(args) => {
-            if (readOnly) {
-              return true;
+      <div ref={mergedRef} className={classes.treeViewport}>
+        {isRootReady && rootElement.current && (
+          <Tree
+            data={filteredData}
+            disableDrag={
+              readOnly
+                ? true
+                : (data) => {
+                    return data.canEdit === false;
+                  }
             }
+            disableDrop={(args) => {
+              if (readOnly) {
+                return true;
+              }
 
-            if (args.parentNode?.data?.canEdit === false) {
-              return true;
-            }
+              if (args.parentNode?.data?.canEdit === false) {
+                return true;
+              }
 
-            const isRootTarget =
-              args.parentNode.id === "__REACT_ARBORIST_INTERNAL_ROOT__";
+              const isRootTarget =
+                args.parentNode.id === "__REACT_ARBORIST_INTERNAL_ROOT__";
 
-            if (isRootTarget) {
+              if (isRootTarget) {
+                return args.dragNodes.some(
+                  (dragNode) => dragNode.data?.nodeType !== "folder",
+                );
+              }
+
+              const parentNodeType =
+                args.parentNode.data?.nodeType === "folder" ? "folder" : "file";
+
+              if (parentNodeType === "folder") {
+                return false;
+              }
+
               return args.dragNodes.some(
-                (dragNode) => dragNode.data?.nodeType !== "folder",
-              );
-            }
+                  (dragNode) => dragNode.data?.nodeType === "folder",
+                );
+            }}
+            disableEdit={readOnly ? true : (data) => data.canEdit === false}
+            {...controllers}
+            width={width}
+            height={height}
+            ref={(ref) => {
+              treeApiRef.current = ref;
+              if (ref) {
+                //@ts-ignore
+                setTreeApi(ref);
+              }
+            }}
+            openByDefault={false}
+            disableMultiSelection={readOnly}
+            className={classes.tree}
+            rowClassName={classes.row}
+            rowHeight={34}
+            overscanCount={10}
+            dndRootElement={rootElement.current}
+            onToggle={() => {
+              setOpenTreeNodes(treeApiRef.current?.openState);
+            }}
+            initialOpenState={openTreeNodes}
+          >
+            {(props) => (
+              <Node
+                {...props}
+                sidebarCategories={sidebarCategories}
+                canManageCategories={canManageCategories}
+                currentViewMode={currentView.viewMode}
+                onManageCategories={openManageCategories}
+              />
+            )}
+          </Tree>
+        )}
+      </div>
 
-            const parentNodeType =
-              args.parentNode.data?.nodeType === "folder" ? "folder" : "file";
-
-            if (parentNodeType === "folder") {
-              return false;
-            }
-
-            return args.dragNodes.some(
-                (dragNode) => dragNode.data?.nodeType === "folder",
-              );
-          }}
-          disableEdit={readOnly ? true : (data) => data.canEdit === false}
-          {...controllers}
-          width={width}
-          height={rootElement.current.clientHeight}
-          ref={(ref) => {
-            treeApiRef.current = ref;
-            if (ref) {
-              //@ts-ignore
-              setTreeApi(ref);
-            }
-          }}
-          openByDefault={false}
-          disableMultiSelection={readOnly}
-          className={classes.tree}
-          rowClassName={classes.row}
-          rowHeight={34}
-          overscanCount={10}
-          dndRootElement={rootElement.current}
-          onToggle={() => {
-            setOpenTreeNodes(treeApiRef.current?.openState);
-          }}
-          initialOpenState={openTreeNodes}
-        >
-          {Node}
-        </Tree>
-      )}
+      <SidebarCategoryManageModal
+        opened={manageCategoriesOpened}
+        onClose={closeManageCategories}
+        spaceId={spaceId}
+        categories={sidebarCategories}
+      />
     </div>
   );
 }
 
-function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
+interface TreeNodeRendererProps extends NodeRendererProps<SpaceTreeNode> {
+  sidebarCategories: ISidebarCategory[];
+  canManageCategories?: boolean;
+  currentViewMode: SidebarViewMode;
+  onManageCategories?: () => void;
+}
+
+function Node({
+  node,
+  style,
+  dragHandle,
+  tree,
+  sidebarCategories,
+  canManageCategories,
+  currentViewMode,
+  onManageCategories,
+}: TreeNodeRendererProps) {
   const { t } = useTranslation();
   const updatePageMutation = useUpdatePageMutation();
-  const [treeData, setTreeData] = useAtom(treeDataAtom);
-  const [, appendChildren] = useAtom(appendNodeChildrenAtom);
+  const setTreeData = useSetAtom(treeDataAtom);
+  const appendChildren = useSetAtom(appendNodeChildrenAtom);
   const emit = useQueryEmit();
   const { spaceSlug } = useParams();
-  const timerRef = useRef(null);
+  const isLoadingChildrenRef = useRef(false);
   const [mobileSidebarOpened] = useAtom(mobileSidebarAtom);
   const toggleMobileSidebar = useToggleSidebar(mobileSidebarAtom);
 
-  const prefetchPage = () => {
-    timerRef.current = setTimeout(async () => {
-      const page = await queryClient.fetchQuery({
-        queryKey: ["pages", node.data.id],
-        queryFn: () => getPageById({ pageId: node.data.id }),
-        staleTime: 5 * 60 * 1000,
-      });
-      if (page?.slugId) {
-        queryClient.setQueryData(["pages", page.slugId], page);
-      }
-    }, 150);
-  };
-
-  const cancelPagePrefetch = () => {
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-
   async function handleLoadChildren(node: NodeApi<SpaceTreeNode>) {
     if (!node.data.hasChildren) return;
+    if (node.children.length > 0 || isLoadingChildrenRef.current) return;
     // in conflict with use-query-subscription.ts => case "addTreeNode","moveTreeNode" etc with websocket
     // if (node.data.children && node.data.children.length > 0) {
     //   return;
     // }
 
+    isLoadingChildrenRef.current = true;
     try {
       const params: SidebarPagesParams = {
         pageId: node.data.id,
@@ -384,11 +545,17 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
       });
     } catch (error) {
       console.error("Failed to fetch children:", error);
+    } finally {
+      isLoadingChildrenRef.current = false;
     }
   }
 
   const handleUpdateNodeIcon = (nodeId: string, newIcon: string) => {
-    const updatedTree = updateTreeNodeIcon(treeData, nodeId, newIcon);
+    const updatedTree = updateTreeNodeIcon(
+      tree.props.data as SpaceTreeNode[],
+      nodeId,
+      newIcon,
+    );
     setTreeData(updatedTree);
   };
 
@@ -448,7 +615,7 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
   const nodeReadOnly =
     tree.props.disableEdit === true || node.data.canEdit === false;
 
-  const buildSubmittedName = (value: string) => value.trim() || "untitled";
+  const buildSubmittedName = (value: string) => value.trim() || t("untitled");
 
   if (node.isEditing) {
     return (
@@ -521,8 +688,6 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
             toggleMobileSidebar();
           }
         }}
-        onMouseEnter={prefetchPage}
-        onMouseLeave={cancelPagePrefetch}
       >
         <PageArrow node={node} onExpandTree={() => handleLoadChildren(node)} />
 
@@ -566,13 +731,27 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
         ) : null}
         <span
           className={classes.counts}
-          title={`Direct children (1 level): ${directChildCount} · All descendants: ${descendantTotalCount}`}
+          title={t(
+            "Direct children (1 level): {{directChildCount}} · All descendants: {{descendantTotalCount}}",
+            {
+              directChildCount,
+              descendantTotalCount,
+            },
+          )}
         >
           {directChildCount} · {descendantTotalCount}
         </span>
 
         <div className={classes.actions}>
-          <NodeMenu node={node} treeApi={tree} spaceId={node.data.spaceId} />
+          <NodeMenu
+            node={node}
+            treeApi={tree}
+            spaceId={node.data.spaceId}
+            sidebarCategories={sidebarCategories}
+            canManageCategories={canManageCategories}
+            currentViewMode={currentViewMode}
+            onManageCategories={onManageCategories}
+          />
 
           {!nodeReadOnly && (
             <CreateNode
@@ -673,14 +852,26 @@ interface NodeMenuProps {
   node: NodeApi<SpaceTreeNode>;
   treeApi: TreeApi<SpaceTreeNode>;
   spaceId: string;
+  sidebarCategories: ISidebarCategory[];
+  canManageCategories?: boolean;
+  currentViewMode: SidebarViewMode;
+  onManageCategories?: () => void;
 }
 
-function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
+function NodeMenu({
+  node,
+  treeApi,
+  spaceId,
+  sidebarCategories,
+  canManageCategories,
+  currentViewMode,
+  onManageCategories,
+}: NodeMenuProps) {
   const { t } = useTranslation();
   const clipboard = useClipboard({ timeout: 500 });
   const { spaceSlug } = useParams();
   const { openDeleteModal } = useDeletePageModal();
-  const [data, setData] = useAtom(treeDataAtom);
+  const setData = useSetAtom(treeDataAtom);
   const emit = useQueryEmit();
   const [filteredKeyword, setFilteredKeyword] = useState("");
   const [exportOpened, { open: openExportModal, close: closeExportModal }] =
@@ -699,14 +890,17 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
   ] = useDisclosure(false);
 
   const isFolder = node.data.nodeType === "folder";
+  const isRootNode = node.data.parentPageId == null;
   const canEdit =
     treeApi.props.disableEdit !== true && node.data.canEdit !== false;
   const selectedPageIds = Array.from(treeApi.selectedIds ?? []);
   const selectedMovableIds = selectedPageIds.filter((id) => id !== node.id);
   const canBatchMoveSelected =
     canEdit && isFolder && selectedMovableIds.length > 0;
+  const getCurrentTreeData = () => (treeApi.props.data as SpaceTreeNode[]) ?? [];
 
   const refreshSidebarTree = () => {
+    invalidateRootSidebarQueries(spaceId);
     queryClient.removeQueries({
       predicate: (item) =>
         ["root-sidebar-pages", "sidebar-pages"].includes(
@@ -753,6 +947,7 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
         nodeType: duplicatedPage.nodeType ?? node.data.nodeType ?? "file",
         isPinned: duplicatedPage.isPinned ?? false,
         pinnedAt: duplicatedPage.pinnedAt ?? null,
+        sidebarCategoryId: duplicatedPage.sidebarCategoryId ?? null,
         directChildCount:
           duplicatedPage.directChildCount ??
           duplicatedPage.directChildFolderCount ??
@@ -765,14 +960,22 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
         children: [],
       };
 
-      // Update local tree
-      const simpleTree = new SimpleTree(data);
-      simpleTree.create({
-        parentId,
-        index: newIndex,
-        data: treeNodeData,
-      });
-      setData(simpleTree.data);
+      const shouldRenderLocally =
+        currentViewMode !== "pinned" ||
+        Boolean(duplicatedPage.isPinned ?? false) ||
+        parentId !== null;
+
+      if (shouldRenderLocally) {
+        const simpleTree = new SimpleTree(getCurrentTreeData());
+        simpleTree.create({
+          parentId,
+          index: newIndex,
+          data: treeNodeData,
+        });
+        setData(simpleTree.data);
+      }
+
+      invalidateRootSidebarQueries(spaceId);
 
       // Emit socket event
       setTimeout(() => {
@@ -804,12 +1007,13 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
         ? await unpinPage(node.id)
         : await pinPage(node.id);
       const updatedTree = updateTreeNodePinnedState(
-        data,
+        getCurrentTreeData(),
         node.id,
         result.isPinned,
         result.pinnedAt,
       );
       setData(updatedTree);
+      invalidateRootSidebarQueries(spaceId);
       notifications.show({
         message: result.isPinned ? t("Pinned") : t("Unpinned"),
       });
@@ -817,6 +1021,32 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
       notifications.show({
         message:
           err.response?.data.message || t("Failed to update pin status"),
+        color: "red",
+      });
+    }
+  };
+
+  const handleAssignCategory = async (categoryId: string | null) => {
+    try {
+      const result = await assignSidebarCategory({
+        pageId: node.id,
+        categoryId,
+      });
+
+      const simpleTree = new SimpleTree(getCurrentTreeData());
+      simpleTree.update({
+        id: node.id,
+        changes: { sidebarCategoryId: result.sidebarCategoryId } as any,
+      });
+      setData(simpleTree.data);
+      invalidateRootSidebarQueries(spaceId);
+
+      notifications.show({
+        message: categoryId ? t("Category updated") : t("Category cleared"),
+      });
+    } catch (err) {
+      notifications.show({
+        message: err.response?.data?.message || t("Failed to update category"),
         color: "red",
       });
     }
@@ -837,13 +1067,18 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
       notifications.show({
         message:
           result.failedCount > 0
-            ? `Moved ${result.movedCount}, failed ${result.failedCount}`
-            : `Moved ${result.movedCount} pages`,
+            ? t("Moved {{movedCount}}, failed {{failedCount}}", {
+                movedCount: result.movedCount,
+                failedCount: result.failedCount,
+              })
+            : t("Moved {{count}} pages", {
+                count: result.movedCount,
+              }),
       });
       refreshSidebarTree();
     } catch (err) {
       notifications.show({
-        message: err.response?.data.message || "Batch move failed",
+        message: err.response?.data.message || t("Batch move failed"),
         color: "red",
       });
     }
@@ -853,7 +1088,7 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
     const keyword = filteredKeyword.trim();
     if (!keyword) {
       notifications.show({
-        message: "Please enter a filter keyword",
+        message: t("Please enter a filter keyword"),
         color: "yellow",
       });
       return;
@@ -869,15 +1104,21 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
       notifications.show({
         message:
           result.failedCount > 0
-            ? `Moved ${result.movedCount}, failed ${result.failedCount}`
-            : `Moved ${result.movedCount} pages`,
+            ? t("Moved {{movedCount}}, failed {{failedCount}}", {
+                movedCount: result.movedCount,
+                failedCount: result.failedCount,
+              })
+            : t("Moved {{count}} pages", {
+                count: result.movedCount,
+              }),
       });
       closeFilteredMoveModal();
       setFilteredKeyword("");
       refreshSidebarTree();
     } catch (err) {
       notifications.show({
-        message: err.response?.data.message || "Filtered batch move failed",
+        message:
+          err.response?.data.message || t("Filtered batch move failed"),
         color: "red",
       });
     }
@@ -991,6 +1232,69 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
                 {node.data.isPinned ? t("Unpin") : t("Pin to top")}
               </Menu.Item>
 
+              {isRootNode && (
+                <Menu.Sub>
+                  <Menu.Sub.Target>
+                    <Menu.Sub.Item
+                      leftSection={<IconCategory2 size={16} stroke={1.75} />}
+                    >
+                      {t("Set category")}
+                    </Menu.Sub.Item>
+                  </Menu.Sub.Target>
+
+                  <Menu.Sub.Dropdown>
+                    <Menu.Item
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleAssignCategory(null);
+                      }}
+                      rightSection={
+                        !node.data.sidebarCategoryId ? (
+                          <IconCheck size={14} stroke={1.8} />
+                        ) : null
+                      }
+                    >
+                      {t("None")}
+                    </Menu.Item>
+
+                    {sidebarCategories.map((category) => (
+                      <Menu.Item
+                        key={category.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleAssignCategory(category.id);
+                        }}
+                        rightSection={
+                          node.data.sidebarCategoryId === category.id ? (
+                            <IconCheck size={14} stroke={1.8} />
+                          ) : null
+                        }
+                      >
+                        {category.name}
+                      </Menu.Item>
+                    ))}
+
+                    {canManageCategories && onManageCategories ? (
+                      <>
+                        <Menu.Divider />
+                        <Menu.Item
+                          leftSection={<IconPencil size={16} stroke={1.75} />}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onManageCategories();
+                          }}
+                        >
+                          {t("Manage categories")}
+                        </Menu.Item>
+                      </>
+                    ) : null}
+                  </Menu.Sub.Dropdown>
+                </Menu.Sub>
+              )}
+
               {isFolder && (
                 <Menu.Item
                   leftSection={<IconArrowRight size={16} />}
@@ -1000,7 +1304,7 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
                     openFilteredMoveModal();
                   }}
                 >
-                  Move filtered pages here
+                  {t("Move filtered pages here")}
                 </Menu.Item>
               )}
 
@@ -1013,7 +1317,9 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
                     handleBatchMoveSelectedHere();
                   }}
                 >
-                  Move selected here ({selectedMovableIds.length})
+                  {t("Move selected here ({{count}})", {
+                    count: selectedMovableIds.length,
+                  })}
                 </Menu.Item>
               )}
 
@@ -1068,17 +1374,21 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
         <Modal.Overlay blur={1} />
         <Modal.Content style={{ overflow: "hidden" }}>
           <Modal.Header py={0}>
-            <Modal.Title fw={500}>Move filtered pages here</Modal.Title>
+            <Modal.Title fw={500}>
+              {t("Move filtered pages here")}
+            </Modal.Title>
             <Modal.CloseButton />
           </Modal.Header>
           <Modal.Body>
             <Text mb="xs" c="dimmed" size="sm">
-              Move all matched pages in this space to the selected folder.
+              {t(
+                "Move all matched pages in this space to the selected folder.",
+              )}
             </Text>
 
             <TextInput
-              label="Title contains"
-              placeholder="e.g. PRD"
+              label={t("Title contains")}
+              placeholder={t("e.g. PRD")}
               value={filteredKeyword}
               onChange={(event) =>
                 setFilteredKeyword(event.currentTarget.value)
@@ -1089,7 +1399,7 @@ function NodeMenu({ node, treeApi, spaceId }: NodeMenuProps) {
               <Button variant="subtle" onClick={closeFilteredMoveModal}>
                 {t("Cancel")}
               </Button>
-              <Button onClick={handleBatchMoveFilteredHere}>Move</Button>
+              <Button onClick={handleBatchMoveFilteredHere}>{t("Move")}</Button>
             </Group>
           </Modal.Body>
         </Modal.Content>
@@ -1127,8 +1437,8 @@ interface PageArrowProps {
 
 function PageArrow({ node, onExpandTree }: PageArrowProps) {
   useEffect(() => {
-    if (node.isOpen) {
-      onExpandTree();
+    if (node.isOpen && node.data.hasChildren && node.children.length === 0) {
+      onExpandTree?.();
     }
   }, []);
 
@@ -1140,8 +1450,11 @@ function PageArrow({ node, onExpandTree }: PageArrowProps) {
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        const shouldOpen = !node.isOpen;
         node.toggle();
-        onExpandTree();
+        if (shouldOpen) {
+          onExpandTree?.();
+        }
       }}
     >
       {node.isInternal ? (

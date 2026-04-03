@@ -15,7 +15,7 @@ import {
   executeWithCursorPagination,
 } from '@docmost/db/pagination/cursor-pagination';
 import { InjectKysely } from 'nestjs-kysely';
-import { KyselyDB } from '@docmost/db/types/kysely.types';
+import { KyselyDB, KyselyTransaction } from '@docmost/db/types/kysely.types';
 import { generateJitteredKeyBetween } from 'fractional-indexing-jittered';
 import { MovePageDto } from '../dto/move-page.dto';
 import { generateSlugId } from '../../../common/helpers';
@@ -55,6 +55,7 @@ import {
 } from '@docmost/db/repos/page/page-node-meta.repo';
 import { BatchMovePageDto } from '../dto/batch-move-page.dto';
 import { sql } from 'kysely';
+import { SpaceSidebarCategoryRepo } from '@docmost/db/repos/space/space-sidebar-category.repo';
 
 type SidebarCountFields = {
   directChildCount: number;
@@ -71,6 +72,7 @@ export class PageService {
   constructor(
     private pageRepo: PageRepo,
     private pageNodeMetaRepo: PageNodeMetaRepo,
+    private spaceSidebarCategoryRepo: SpaceSidebarCategoryRepo,
     private pagePermissionRepo: PagePermissionRepo,
     private attachmentRepo: AttachmentRepo,
     @InjectKysely() private readonly db: KyselyDB,
@@ -111,6 +113,7 @@ export class PageService {
         nodeType: PageNodeType;
         isPinned: boolean;
         pinnedAt: Date | null;
+        sidebarCategoryId: string | null;
       })
     | undefined
   > {
@@ -135,6 +138,7 @@ export class PageService {
       nodeType: this.normalizeNodeType(nodeMeta?.nodeType),
       isPinned: nodeMeta?.isPinned ?? false,
       pinnedAt: nodeMeta?.pinnedAt ?? null,
+      sidebarCategoryId: nodeMeta?.sidebarCategoryId ?? null,
     };
   }
 
@@ -147,6 +151,7 @@ export class PageService {
       nodeType: PageNodeType;
       isPinned: boolean;
       pinnedAt: Date | null;
+      sidebarCategoryId: string | null;
     }
   > {
     const nodeType = this.normalizeNodeType(createPageDto.nodeType);
@@ -227,6 +232,7 @@ export class PageService {
       nodeType,
       isPinned: false,
       pinnedAt: null,
+      sidebarCategoryId: null,
     };
   }
 
@@ -352,6 +358,8 @@ export class PageService {
     pagination: PaginationOptions,
     workspaceId?: string,
     pageId?: string,
+    viewMode?: 'all' | 'pinned' | 'category',
+    categoryId?: string,
     userId?: string,
     spaceCanEdit?: boolean,
   ): Promise<
@@ -361,6 +369,7 @@ export class PageService {
         nodeType: string;
         isPinned: boolean;
         pinnedAt: Date | null;
+        sidebarCategoryId: string | null;
         pinSortOrder: number;
         pinnedAtSort: Date;
         directChildCount: number;
@@ -413,6 +422,7 @@ export class PageService {
         'pages.creatorId as creatorId',
         'pages.deletedAt as deletedAt',
         'pageNodeMeta.pinnedAt as pinnedAt',
+        'pageNodeMeta.sidebarCategoryId as sidebarCategoryId',
       ])
       .select((eb) =>
         eb
@@ -446,6 +456,12 @@ export class PageService {
     } else {
       // Keep legacy root files visible during gradual migration rollout.
       query = query.where('pages.parentPageId', 'is', null);
+
+      if (viewMode === 'pinned') {
+        query = query.where('pageNodeMeta.isPinned', '=', true);
+      } else if (viewMode === 'category' && categoryId) {
+        query = query.where('pageNodeMeta.sidebarCategoryId', '=', categoryId);
+      }
     }
 
     try {
@@ -501,6 +517,7 @@ export class PageService {
         .select((eb) => sql<string>`'file'`.as('nodeType'))
         .select((eb) => sql<boolean>`false`.as('isPinned'))
         .select((eb) => sql<Date | null>`null`.as('pinnedAt'))
+        .select((eb) => sql<string | null>`null`.as('sidebarCategoryId'))
         .select(() => sql<number>`0`.as('pinSortOrder'))
         .select(() => sql<Date>`to_timestamp(0)`.as('pinnedAtSort'))
         .select((eb) => this.pageRepo.withHasChildren(eb))
@@ -514,6 +531,10 @@ export class PageService {
         legacyQuery = legacyQuery.where('pages.parentPageId', '=', pageId);
       } else {
         legacyQuery = legacyQuery.where('pages.parentPageId', 'is', null);
+
+        if (viewMode === 'pinned' || viewMode === 'category') {
+          legacyQuery = legacyQuery.where(sql<boolean>`false`);
+        }
       }
 
       const legacySortFields = [
@@ -847,7 +868,11 @@ export class PageService {
         try {
           await trx
             .updateTable('pageNodeMeta')
-            .set({ spaceId, updatedAt: new Date() })
+            .set({
+              spaceId,
+              sidebarCategoryId: null,
+              updatedAt: new Date(),
+            })
             .where('workspaceId', '=', rootPage.workspaceId)
             .where('pageId', 'in', pageIdsToMove)
             .execute();
@@ -1055,7 +1080,7 @@ export class PageService {
     try {
       const sourceMetaRows = await this.db
         .selectFrom('pageNodeMeta')
-        .select(['pageId', 'nodeType'])
+        .select(['pageId', 'nodeType', 'sidebarCategoryId'])
         .where(
           'pageId',
           'in',
@@ -1068,6 +1093,9 @@ export class PageService {
           this.normalizeNodeType(it.nodeType),
         ]),
       );
+      const sidebarCategoryIdBySourceId = new Map(
+        sourceMetaRows.map((it) => [it.pageId, it.sidebarCategoryId ?? null]),
+      );
 
       await this.db
         .insertInto('pageNodeMeta')
@@ -1079,6 +1107,12 @@ export class PageService {
             nodeType: nodeTypeBySourceId.get(sourcePage.id) ?? 'file',
             isPinned: false,
             pinnedAt: null,
+            sidebarCategoryId:
+              sourcePage.id === rootPage.id &&
+              isDuplicateInSameSpace &&
+              !rootPage.parentPageId
+                ? sidebarCategoryIdBySourceId.get(sourcePage.id) ?? null
+                : null,
           })),
         )
         .onConflict((oc) => oc.column('pageId').doNothing())
@@ -1224,6 +1258,63 @@ export class PageService {
       undefined,
       movedPage.workspaceId,
     );
+
+    if (parentPageId) {
+      await this.clearSidebarCategoryForPages([dto.pageId], movedPage.workspaceId);
+    }
+  }
+
+  async assignSidebarCategory(
+    pageId: string,
+    categoryId: string | null,
+    workspaceId?: string,
+  ) {
+    const page = await this.pageRepo.findById(pageId, {
+      workspaceId,
+    });
+    if (!page) {
+      throw new NotFoundException('Page not found');
+    }
+
+    if (page.parentPageId) {
+      throw new BadRequestException('ROOT_NODE_ONLY_CATEGORY_ASSIGNMENT');
+    }
+
+    if (categoryId) {
+      const category = await this.spaceSidebarCategoryRepo.findById(
+        categoryId,
+        workspaceId,
+      );
+      if (!category) {
+        throw new NotFoundException('SIDEBAR_CATEGORY_NOT_FOUND');
+      }
+
+      if (category.spaceId !== page.spaceId) {
+        throw new BadRequestException('CATEGORY_SPACE_MISMATCH');
+      }
+    }
+
+    const currentMeta = await this.safeFindNodeMeta(page.id);
+    const meta = await this.safeUpsertNodeMeta({
+      pageId: page.id,
+      workspaceId: page.workspaceId,
+      spaceId: page.spaceId,
+      nodeType: this.normalizeNodeType(currentMeta?.nodeType),
+      isPinned: currentMeta?.isPinned ?? false,
+      pinnedAt: currentMeta?.pinnedAt ?? null,
+      sidebarCategoryId: categoryId,
+    });
+
+    if (!meta) {
+      throw new BadRequestException(
+        'SIDEBAR_CATEGORY_NOT_AVAILABLE_BEFORE_MIGRATION',
+      );
+    }
+
+    return {
+      pageId: page.id,
+      sidebarCategoryId: meta.sidebarCategoryId ?? null,
+    };
   }
 
   async setPagePinned(pageId: string, isPinned: boolean, workspaceId?: string) {
@@ -1379,6 +1470,26 @@ export class PageService {
           .where('workspaceId', '=', targetFolder.workspaceId)
           .where('id', '=', page.id)
           .execute();
+      }
+
+      try {
+        await trx
+          .updateTable('pageNodeMeta')
+          .set({
+            sidebarCategoryId: null,
+            updatedAt: new Date(),
+          })
+          .where('workspaceId', '=', targetFolder.workspaceId)
+          .where(
+            'pageId',
+            'in',
+            movablePages.map((item) => item.id),
+          )
+          .execute();
+      } catch (err) {
+        if (!this.isMissingTableError(err)) {
+          throw err;
+        }
       }
     });
 
@@ -1732,6 +1843,7 @@ export class PageService {
     nodeType: PageNodeType;
     isPinned: boolean;
     pinnedAt: Date | null;
+    sidebarCategoryId?: string | null;
   }) {
     try {
       return await this.pageNodeMetaRepo.upsertMeta(payload);
@@ -1766,6 +1878,32 @@ export class PageService {
 
     const message = pgError.message?.toLowerCase() ?? '';
     return message.includes('relation') && message.includes('does not exist');
+  }
+
+  private async clearSidebarCategoryForPages(
+    pageIds: string[],
+    workspaceId: string,
+    trx?: KyselyTransaction,
+  ) {
+    if (!pageIds.length) {
+      return;
+    }
+
+    try {
+      await (trx ?? this.db)
+        .updateTable('pageNodeMeta')
+        .set({
+          sidebarCategoryId: null,
+          updatedAt: new Date(),
+        })
+        .where('workspaceId', '=', workspaceId)
+        .where('pageId', 'in', pageIds)
+        .execute();
+    } catch (err) {
+      if (!this.isMissingTableError(err)) {
+        throw err;
+      }
+    }
   }
 
   /**

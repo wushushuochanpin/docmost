@@ -316,6 +316,7 @@ export interface PageNodeMeta {
   nodeType: Generated<string>;
   pageId: string;
   pinnedAt: Timestamp | null;
+  sidebarCategoryId: string | null;
   spaceId: string;
   updatedAt: Generated<Timestamp>;
   workspaceId: string;
@@ -360,6 +361,17 @@ export interface Shares {
   pageId: string | null;
   searchIndexing: Generated<boolean | null>;
   securityVersion: Generated<number>;
+  spaceId: string;
+  updatedAt: Generated<Timestamp>;
+  workspaceId: string;
+}
+
+export interface SpaceSidebarCategories {
+  createdAt: Generated<Timestamp>;
+  createdBy: string | null;
+  id: Generated<string>;
+  name: string;
+  sortKey: string;
   spaceId: string;
   updatedAt: Generated<Timestamp>;
   workspaceId: string;
@@ -613,6 +625,7 @@ export interface DB {
   pageNodeMeta: PageNodeMeta;
   pages: Pages;
   shares: Shares;
+  spaceSidebarCategories: SpaceSidebarCategories;
   spaceMembers: SpaceMembers;
   spaces: Spaces;
   userMfa: UserMfa;

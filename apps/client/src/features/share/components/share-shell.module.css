@@ -4,7 +4,19 @@
   color: var(--ui-text-primary);
 }
 
+/* Full-screen (e.g. password form): 自适应窗口铺满，无上下滚动 */
 .shellFullScreen {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh; /* 自适应移动端视口（地址栏显隐） */
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
   background: var(--ui-bg-canvas);
   color: var(--ui-text-primary);
 }
@@ -15,8 +27,7 @@
   z-index: 40;
   height: var(--share-header-height);
   border-bottom: 1px solid var(--ui-border-default);
-  background: rgb(255 255 255 / 88%);
-  backdrop-filter: blur(12px);
+  background: rgb(255 255 255 / 96%);
 }
 
 .headerHidden {
@@ -136,10 +147,12 @@
 
 .bodyFullScreen {
   width: 100%;
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
   margin: 0;
   padding: 0;
-  display: block;
+  display: flex;
+  flex-direction: column;
 }
 
 .bodyWithLeft {
@@ -185,7 +198,11 @@
 
 .mainFullScreen {
   width: 100%;
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .drawerBackdrop {
@@ -218,6 +235,23 @@
 
 .drawerInner {
   padding: calc(var(--share-header-height) + 12px) 16px 24px;
+}
+
+.tocLoading {
+  padding: 12px 0;
+  font-size: 0.9rem;
+  color: var(--ui-text-tertiary);
+}
+
+/* 移动端悬浮按钮（桌面端隐藏） */
+.mobileTocFab,
+.mobileSearchFab {
+  display: none;
+}
+
+/* 移动端 header 无内容时隐藏 */
+.headerMobileEmpty {
+  display: block; /* 桌面端正常显示 */
 }
 
 .srOnly {
@@ -260,6 +294,11 @@
     display: none;
   }
 
+  /* 移动端 header 无内容（无子页树）时整体隐藏 */
+  .headerMobileEmpty {
+    display: none;
+  }
+
   .body,
   .bodyWithLeft,
   .bodyWithRight,
@@ -270,5 +309,61 @@
 
   .sidebar {
     display: none;
+  }
+
+  /* 移动端 FAB 公共样式 */
+  .mobileTocFab,
+  .mobileSearchFab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 20px;
+    z-index: 44;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: var(--ui-accent-primary);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.35);
+    cursor: pointer;
+    transition:
+      background-color 120ms ease,
+      box-shadow 120ms ease,
+      transform 120ms ease;
+  }
+
+  /* TOC FAB：最底部 */
+  .mobileTocFab {
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Search FAB：TOC FAB 上方 8px 间距 */
+  .mobileSearchFab {
+    bottom: calc(28px + 48px + 8px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* 仅搜索时（无 TOC）贴底 */
+  .mobileSearchFabOnly {
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobileTocFab:hover,
+  .mobileTocFab:focus-visible,
+  .mobileSearchFab:hover,
+  .mobileSearchFab:focus-visible {
+    background: var(--ui-accent-hover);
+    box-shadow: 0 6px 24px rgba(37, 99, 235, 0.45);
+  }
+
+  .mobileTocFab:active,
+  .mobileSearchFab:active {
+    transform: scale(0.94);
+  }
+
+  .mobileTocFabActive,
+  .mobileSearchFabActive {
+    background: var(--ui-accent-hover);
   }
 }

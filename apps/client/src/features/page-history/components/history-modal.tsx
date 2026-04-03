@@ -16,6 +16,10 @@ export default function HistoryModal({ pageId, pageTitle }: Props) {
   const [isModalOpen, setModalOpen] = useAtom(historyAtoms);
   const isMobile = useMediaQuery("(max-width: 800px)");
 
+  if (!isModalOpen) {
+    return null;
+  }
+
   if (isMobile) {
     return (
       <Modal.Root

@@ -1,6 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
-import { join } from 'path';
+import { join, resolve, sep } from 'path';
 import * as fs from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import { EnvironmentService } from '../environment/environment.service';
@@ -32,7 +32,6 @@ export class StaticModule implements OnModuleInit {
         'public, max-age=31536000, immutable';
       const DEFAULT_STATIC_CACHE_CONTROL = 'public, max-age=300';
       const NO_STORE_CACHE_CONTROL = 'no-store';
-      const indexTemplateFilePath = join(clientDistPath, 'index-template.html');
       const windowVar = '<!--window-config-->';
 
       const configString = {
@@ -60,24 +59,16 @@ export class StaticModule implements OnModuleInit {
       };
 
       const windowScriptContent = `<script>window.CONFIG=${JSON.stringify(configString)};</script>`;
-
-      const builtIndexHtml = fs.readFileSync(indexFilePath, 'utf8');
-      if (builtIndexHtml.includes(windowVar)) {
-        fs.writeFileSync(indexTemplateFilePath, builtIndexHtml);
-      } else if (!fs.existsSync(indexTemplateFilePath)) {
-        fs.writeFileSync(indexTemplateFilePath, builtIndexHtml);
-      }
-
-      const html = fs.readFileSync(indexTemplateFilePath, 'utf8');
-      const transformedHtml = html.replace(windowVar, windowScriptContent);
-
-      fs.writeFileSync(indexFilePath, transformedHtml);
+      const indexHtml = fs.readFileSync(indexFilePath, 'utf8');
+      const transformedIndexHtml = indexHtml.includes(windowVar)
+        ? indexHtml.replace(windowVar, windowScriptContent)
+        : indexHtml;
 
       const RENDER_PATH = '*';
 
       await app.register(fastifyStatic, {
         root: clientDistPath,
-        wildcard: false,
+        serve: false,
         setHeaders: (res, filePath) => {
           const normalizedPath = filePath.replace(/\\/g, '/');
 
@@ -96,11 +87,38 @@ export class StaticModule implements OnModuleInit {
       });
 
       app.get(RENDER_PATH, (req: any, res: any) => {
-        const stream = fs.createReadStream(indexFilePath);
+        const requestPath = (req.raw?.url ?? req.url ?? '').split('?')[0];
+        const relativePath = requestPath.replace(/^\/+/, '');
+
+        if (relativePath) {
+          const absolutePath = resolve(clientDistPath, relativePath);
+          const isWithinClientDist =
+            absolutePath === clientDistPath ||
+            absolutePath.startsWith(`${clientDistPath}${sep}`);
+
+          if (
+            isWithinClientDist &&
+            fs.existsSync(absolutePath) &&
+            fs.statSync(absolutePath).isFile()
+          ) {
+            if (relativePath.startsWith('assets/')) {
+              return res.sendFile(relativePath, {
+                maxAge: '365d',
+                immutable: true,
+              });
+            }
+
+            return res.sendFile(relativePath, {
+              maxAge: requestPath.endsWith('/index.html') ? 0 : '5m',
+              immutable: false,
+            });
+          }
+        }
+
         res
           .header('Cache-Control', NO_STORE_CACHE_CONTROL)
           .type('text/html')
-          .send(stream);
+          .send(transformedIndexHtml);
       });
     }
   }

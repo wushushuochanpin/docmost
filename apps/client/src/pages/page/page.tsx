@@ -6,15 +6,14 @@ import { Helmet } from "react-helmet-async";
 import PageHeader from "@/features/page/components/header/page-header.tsx";
 import { extractPageSlugId } from "@/lib";
 import { useTranslation } from "react-i18next";
-import React, { Suspense, lazy, useCallback, useEffect, useMemo } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo } from "react";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { IconAlertTriangle, IconFileOff } from "@tabler/icons-react";
 import { Button, Center, Loader } from "@mantine/core";
 import { Link } from "react-router-dom";
 import { ErrorBoundary } from "react-error-boundary";
 import FolderView from "./folder-view";
-import ReadonlyPageEditor from "@/features/editor/readonly-page-editor.tsx";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
 import {
   editorFontSizePreferenceAtom,
@@ -22,22 +21,27 @@ import {
 } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 import { PageEditMode } from "@/features/user/types/user.types.ts";
 import { pageStaticTocAtom } from "@/features/page/atoms/page-static-render-atom.ts";
+import { currentRoutePageAtom } from "@/features/page/atoms/current-route-page-atom.ts";
 import {
   extractEditorFontSizeFromUser,
   getEditorFontScale,
 } from "@/features/editor/utils/editor-font-size-utils.ts";
 import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
-import PageStaticHtmlContent from "@/features/page/components/page-static-html-content.tsx";
 import { canUseStaticRenderedHtml } from "@/features/share/rendered-utils.ts";
+import { lazyWithRetry } from "@/lib/lazy-import.ts";
+import { FullEditor } from "@/features/editor/full-editor";
+import {
+  markEditorBootstrapStage,
+  resetEditorBootstrapTrace,
+} from "@/features/editor/lib/editor-bootstrap-metrics";
 
 const MemoizedPageHeader = React.memo(PageHeader);
 const MemoizedHistoryModal = React.memo(HistoryModal);
-const MemoizedReadonlyPageEditor = React.memo(ReadonlyPageEditor);
-const MemoizedPageStaticHtmlContent = React.memo(PageStaticHtmlContent);
-const LazyFullEditor = lazy(() =>
-  import("@/features/editor/full-editor").then((module) => ({
-    default: module.FullEditor,
-  })),
+const LazyReadonlyPageEditor = lazyWithRetry(
+  () => import("@/features/editor/readonly-page-editor.tsx"),
+);
+const LazyPageStaticHtmlContent = lazyWithRetry(
+  () => import("@/features/page/components/page-static-html-content.tsx"),
 );
 
 function PageContentLoader() {
@@ -83,6 +87,7 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
   const localPageEditMode = useAtomValue(pageEditModePreferenceAtom);
   const localEditorFontSize = useAtomValue(editorFontSizePreferenceAtom);
   const setPageStaticToc = useSetAtom(pageStaticTocAtom);
+  const store = useStore();
   const pageId = extractPageSlugId(pageSlug);
   const userPageEditMode =
     localPageEditMode ??
@@ -124,6 +129,27 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
   }, [isFolder, page]);
 
   useEffect(() => {
+    if (!page) {
+      store.set(currentRoutePageAtom as any, null);
+      return;
+    }
+
+    store.set(currentRoutePageAtom as any, page);
+  }, [page, store]);
+
+  useEffect(() => {
+    if (!page?.id || isFolder) {
+      return;
+    }
+
+    markEditorBootstrapStage(page.id, "page-data-ready");
+
+    return () => {
+      resetEditorBootstrapTrace(page.id);
+    };
+  }, [isFolder, page?.id]);
+
+  useEffect(() => {
     if (page && !isFolder && useReadExperience && canUseStaticHtml) {
       setPageStaticToc(page.rendered?.toc ?? []);
       return;
@@ -135,8 +161,9 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
   useEffect(() => {
     return () => {
       setPageStaticToc([]);
+      store.set(currentRoutePageAtom as any, null);
     };
-  }, [setPageStaticToc]);
+  }, [setPageStaticToc, store]);
 
   const loadRenderedSegment = useCallback(
     (cursor: string) => {
@@ -206,31 +233,33 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
             spaceSlug={page?.space?.slug}
           />
         ) : useReadExperience && canUseStaticHtml ? (
-          <MemoizedPageStaticHtmlContent
-            title={page.title}
-            rendered={page.rendered!}
-            loadSegment={loadRenderedSegment}
-            fontScale={editorFontScale}
-          />
-        ) : useReadExperience ? (
-          <MemoizedReadonlyPageEditor
-            pageId={page.id}
-            title={page.title}
-            content={normalizedPageContent}
-          />
-        ) : (
           <Suspense fallback={<PageContentLoader />}>
-            <LazyFullEditor
-              key={page.id}
+            <LazyPageStaticHtmlContent
+              title={page.title}
+              rendered={page.rendered!}
+              loadSegment={loadRenderedSegment}
+              fontScale={editorFontScale}
+            />
+          </Suspense>
+        ) : useReadExperience ? (
+          <Suspense fallback={<PageContentLoader />}>
+            <LazyReadonlyPageEditor
               pageId={page.id}
               title={page.title}
               content={normalizedPageContent}
-              slugId={page.slugId}
-              updatedAt={page.updatedAt}
-              spaceSlug={page?.space?.slug}
-              editable={canEdit}
             />
           </Suspense>
+        ) : (
+          <FullEditor
+            key={page.id}
+            pageId={page.id}
+            title={page.title}
+            content={normalizedPageContent}
+            slugId={page.slugId}
+            updatedAt={page.updatedAt}
+            spaceSlug={page?.space?.slug}
+            editable={canEdit}
+          />
         )}
         <MemoizedHistoryModal pageId={page.id} />
       </div>

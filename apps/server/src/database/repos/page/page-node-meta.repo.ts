@@ -40,18 +40,24 @@ export class PageNodeMetaRepo {
     data: InsertablePageNodeMeta,
     trx?: KyselyTransaction,
   ): Promise<PageNodeMeta | undefined> {
+    const updateSet: UpdatablePageNodeMeta = {
+      workspaceId: data.workspaceId,
+      spaceId: data.spaceId,
+      nodeType: data.nodeType,
+      isPinned: data.isPinned,
+      pinnedAt: data.pinnedAt ?? null,
+      updatedAt: new Date(),
+    };
+
+    if (Object.prototype.hasOwnProperty.call(data, 'sidebarCategoryId')) {
+      updateSet.sidebarCategoryId = data.sidebarCategoryId ?? null;
+    }
+
     return dbOrTx(this.db, trx)
       .insertInto('pageNodeMeta')
       .values(data)
       .onConflict((oc) =>
-        oc.column('pageId').doUpdateSet({
-          workspaceId: data.workspaceId,
-          spaceId: data.spaceId,
-          nodeType: data.nodeType,
-          isPinned: data.isPinned,
-          pinnedAt: data.pinnedAt ?? null,
-          updatedAt: new Date(),
-        }),
+        oc.column('pageId').doUpdateSet(updateSet),
       )
       .returningAll()
       .executeTakeFirst();

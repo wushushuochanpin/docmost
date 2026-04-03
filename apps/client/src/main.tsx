@@ -1,3 +1,5 @@
+import { retryDynamicImport } from "@/lib/lazy-import.ts";
+
 const rootEl = document.getElementById("root");
 
 if (!rootEl) {
@@ -77,10 +79,28 @@ const renderBootstrapError = () => {
 };
 
 const SHARE_LOAD_TIMEOUT_MS = 25000;
+const isPageRoute = /^\/s\/[^/]+\/p\/[^/]+$/.test(window.location.pathname);
+
+async function preloadAppRouteChunks() {
+  if (!isPageRoute) {
+    return;
+  }
+
+  await Promise.all([
+    retryDynamicImport(
+      () => import("@/components/layouts/global/layout.tsx"),
+      { retries: 4, retryDelayMs: 400 },
+    ),
+    retryDynamicImport(() => import("@/pages/page/page.tsx"), {
+      retries: 4,
+      retryDelayMs: 400,
+    }),
+  ]);
+}
 
 if (isShareRoute) {
   shareDebugLog("Bootstrap: loading chunk...");
-  const loadPromise = import("./bootstrap-share.tsx");
+  const loadPromise = retryDynamicImport(() => import("./bootstrap-share.tsx"));
   const timeoutId = setTimeout(() => {
     if (rootEl.hasAttribute("data-share-bootstrap-mounted")) return;
     shareDebugLog("Bootstrap: timeout (chunk did not load in time)");
@@ -106,5 +126,7 @@ if (isShareRoute) {
       renderBootstrapError();
     });
 } else {
-  void import("./bootstrap-app.tsx").catch(renderBootstrapError);
+  void preloadAppRouteChunks()
+    .then(() => retryDynamicImport(() => import("./bootstrap-app.tsx")))
+    .catch(renderBootstrapError);
 }

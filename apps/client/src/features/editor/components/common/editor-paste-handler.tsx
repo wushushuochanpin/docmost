@@ -19,18 +19,253 @@ const ATTACHMENT_NODE_TYPES = [
 
 const ATTACHMENT_URL_RE = /\/api\/files\/([0-9a-f-]+)\//;
 
+function getClipboardFiles(clipboardData?: DataTransfer | null): File[] {
+  if (!clipboardData) return [];
+
+  const fileItems = Array.from(clipboardData.items || []).filter(
+    (item) => item.kind === "file",
+  );
+
+  if (clipboardData.files?.length) {
+    return Array.from(clipboardData.files).map((file, index) => {
+      if (file.type) return file;
+      const item = fileItems[index];
+      if (
+        item?.type &&
+        (item.type.startsWith("image/") || item.type.startsWith("video/"))
+      ) {
+        return new File([file], file.name || "pasted-image", {
+          type: item.type,
+        });
+      }
+      return file;
+    });
+  }
+
+  return Array.from(clipboardData.items || [])
+    .filter((item) => item.kind === "file")
+    .map((item) => {
+      const file = item.getAsFile();
+      if (!file) return null;
+      // On macOS Chrome, file.type may be empty while item.type is correct
+      if (!file.type && item.type.startsWith("image/")) {
+        return new File([file], file.name || "pasted-image", {
+          type: item.type,
+        });
+      }
+      return file;
+    })
+    .filter((file): file is File => Boolean(file));
+}
+
+function isMediaClipboardFile(file: File): boolean {
+  if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+    return true;
+  }
+
+  if (!file.type && file.name) {
+    return /\.(png|jpe?g|webp|gif|bmp|svg|tiff?|heic|heif|mov|mp4|webm|m4v)$/i.test(
+      file.name,
+    );
+  }
+
+  return false;
+}
+
+function looksLikeSpreadsheetPaste(
+  htmlData?: string,
+  plainTextData?: string,
+): boolean {
+  if (!htmlData || !/<table[\s>]/i.test(htmlData)) {
+    return false;
+  }
+
+  return /\t/.test(plainTextData || "");
+}
+
+function getEmbeddedHtmlImageSources(htmlData?: string): string[] {
+  if (!htmlData || !/<img[\s>]/i.test(htmlData)) {
+    return [];
+  }
+
+  const doc = new DOMParser().parseFromString(htmlData, "text/html");
+
+  return Array.from(doc.images)
+    .map((img) => img.getAttribute("src")?.trim() || "")
+    .filter((src) => src.startsWith("data:image/") || src.startsWith("blob:"));
+}
+
+function fileExtensionFromMimeType(mimeType: string): string {
+  switch (mimeType) {
+    case "image/png":
+      return ".png";
+    case "image/jpeg":
+      return ".jpg";
+    case "image/webp":
+      return ".webp";
+    case "image/gif":
+      return ".gif";
+    case "image/svg+xml":
+      return ".svg";
+    case "image/bmp":
+      return ".bmp";
+    case "image/tiff":
+      return ".tiff";
+    case "image/heic":
+      return ".heic";
+    case "image/heif":
+      return ".heif";
+    case "video/quicktime":
+      return ".mov";
+    case "video/mp4":
+      return ".mp4";
+    case "video/webm":
+      return ".webm";
+    default:
+      return "";
+  }
+}
+
+function clipboardBlobToFile(blob: Blob, index: number): File {
+  const extension = fileExtensionFromMimeType(blob.type);
+  const baseName = blob.type.startsWith("video/")
+    ? "pasted-video"
+    : "pasted-image";
+
+  return new File([blob], `${baseName}-${index + 1}${extension}`, {
+    type: blob.type,
+  });
+}
+
+function dataUrlToFile(dataUrl: string, index: number): File | null {
+  const match = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/s);
+  if (!match) return null;
+
+  const mimeType = match[1] || "application/octet-stream";
+  const extension = fileExtensionFromMimeType(mimeType);
+  const fileName = `pasted-image-${index + 1}${extension}`;
+
+  try {
+    if (match[2]) {
+      const binary = atob(match[3]);
+      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+      return new File([bytes], fileName, { type: mimeType });
+    }
+
+    const decoded = decodeURIComponent(match[3]);
+    return new File([decoded], fileName, { type: mimeType });
+  } catch {
+    return null;
+  }
+}
+
+async function embeddedImageSourceToFile(
+  src: string,
+  index: number,
+): Promise<File | null> {
+  if (src.startsWith("data:image/")) {
+    return dataUrlToFile(src, index);
+  }
+
+  if (!src.startsWith("blob:")) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(src);
+    if (!response.ok) return null;
+
+    const blob = await response.blob();
+    const extension = fileExtensionFromMimeType(blob.type);
+    return new File([blob], `pasted-image-${index + 1}${extension}`, {
+      type: blob.type,
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function getEmbeddedHtmlImageFiles(htmlData?: string): Promise<File[]> {
+  const imageSources = getEmbeddedHtmlImageSources(htmlData);
+  if (imageSources.length === 0) {
+    return [];
+  }
+
+  const files = await Promise.all(
+    imageSources.map((src, index) => embeddedImageSourceToFile(src, index)),
+  );
+
+  return files.filter((file): file is File => Boolean(file));
+}
+
+async function getAsyncClipboardMediaFiles(): Promise<File[]> {
+  if (
+    typeof navigator === "undefined" ||
+    !("clipboard" in navigator) ||
+    typeof navigator.clipboard.read !== "function"
+  ) {
+    return [];
+  }
+
+  try {
+    const clipboardItems = await navigator.clipboard.read();
+    const files: File[] = [];
+
+    for (const item of clipboardItems) {
+      for (const type of item.types) {
+        if (!type.startsWith("image/") && !type.startsWith("video/")) {
+          continue;
+        }
+
+        const blob = await item.getType(type);
+        files.push(clipboardBlobToFile(blob, files.length));
+      }
+
+      if (files.length > 0) {
+        continue;
+      }
+
+      if (!item.types.includes("text/html")) {
+        continue;
+      }
+
+      const htmlBlob = await item.getType("text/html");
+      const htmlData = await htmlBlob.text();
+      const embeddedFiles = await getEmbeddedHtmlImageFiles(htmlData);
+      files.push(...embeddedFiles);
+    }
+
+    return files;
+  } catch {
+    return [];
+  }
+}
+
+function uploadClipboardFiles(
+  files: File[],
+  editor: Editor,
+  pageId: string,
+) {
+  for (const file of files) {
+    const pos = editor.state.selection.from;
+    uploadImageAction(file, editor, pos, pageId);
+    uploadVideoAction(file, editor, pos, pageId);
+    uploadAttachmentAction(file, editor, pos, pageId);
+  }
+}
+
 export const handlePaste = (
   editor: Editor,
   event: ClipboardEvent,
   pageId: string,
   creatorId?: string,
 ) => {
-  const clipboardData = event.clipboardData.getData("text/plain");
+  const plainTextData = event.clipboardData?.getData("text/plain") || "";
 
-  if (INTERNAL_LINK_REGEX.test(clipboardData)) {
+  if (INTERNAL_LINK_REGEX.test(plainTextData)) {
     // we have to do this validation here to allow the default link extension to takeover if needs be
     event.preventDefault();
-    const url = clipboardData.trim();
+    const url = plainTextData.trim();
     const { from: pos, empty } = editor.state.selection;
     const match = INTERNAL_LINK_REGEX.exec(url);
 
@@ -55,16 +290,33 @@ export const handlePaste = (
   }
 
   const htmlData = event.clipboardData?.getData("text/html");
-  const hasHtmlTable = htmlData && /<table[\s>]/i.test(htmlData);
+  const isSpreadsheetPaste = looksLikeSpreadsheetPaste(
+    htmlData,
+    plainTextData,
+  );
+  const clipboardFiles = getClipboardFiles(event.clipboardData);
+  const mediaClipboardFiles = clipboardFiles.filter(isMediaClipboardFile);
+  const embeddedHtmlImageSources = getEmbeddedHtmlImageSources(htmlData);
 
-  if (event.clipboardData?.files.length && !hasHtmlTable) {
+  if (mediaClipboardFiles.length) {
     event.preventDefault();
-    for (const file of event.clipboardData.files) {
-      const pos = editor.state.selection.from;
-      uploadImageAction(file, editor, pos, pageId);
-      uploadVideoAction(file, editor, pos, pageId);
-      uploadAttachmentAction(file, editor, pos, pageId);
-    }
+    uploadClipboardFiles(mediaClipboardFiles, editor, pageId);
+    return true;
+  }
+
+  if (embeddedHtmlImageSources.length) {
+    event.preventDefault();
+    void getEmbeddedHtmlImageFiles(htmlData).then((files) => {
+      if (files.length > 0) {
+        uploadClipboardFiles(files, editor, pageId);
+      }
+    });
+    return true;
+  }
+
+  if (clipboardFiles.length && !isSpreadsheetPaste) {
+    event.preventDefault();
+    uploadClipboardFiles(clipboardFiles, editor, pageId);
     return true;
   }
 
@@ -73,6 +325,16 @@ export const handlePaste = (
     setTimeout(() => {
       reuploadPastedAttachments(editor, pageId, pasteFrom);
     }, 0);
+  }
+
+  if (!plainTextData.trim() && (!htmlData || /<img[\s>]/i.test(htmlData))) {
+    event.preventDefault();
+    void getAsyncClipboardMediaFiles().then((files) => {
+      if (files.length > 0) {
+        uploadClipboardFiles(files, editor, pageId);
+      }
+    });
+    return true;
   }
 
   return false;

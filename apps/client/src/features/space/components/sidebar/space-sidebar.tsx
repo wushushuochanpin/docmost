@@ -99,6 +99,10 @@ export function SpaceSidebar() {
                 SpaceCaslAction.Manage,
                 SpaceCaslSubject.Page,
               )}
+              canManageCategories={spaceAbility.can(
+                SpaceCaslAction.Manage,
+                SpaceCaslSubject.Settings,
+              )}
             />
           </div>
         </div>

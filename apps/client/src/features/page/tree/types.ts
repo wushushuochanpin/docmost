@@ -11,6 +11,7 @@ export type SpaceTreeNode = {
   nodeType?: PageNodeType;
   isPinned?: boolean;
   pinnedAt?: Date | string | null;
+  sidebarCategoryId?: string | null;
   directChildCount?: number;
   directChildFolderCount?: number;
   descendantFolderCount?: number;

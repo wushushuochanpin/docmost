@@ -31,6 +31,8 @@ import useCollaborationUrl from "@/features/editor/hooks/use-collaboration-url";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom";
 import {
   pageEditorAtom,
+  pageEditorRuntimeModeAtom,
+  readOnlyEditorAtom,
   yjsConnectionStatusAtom,
 } from "@/features/editor/atoms/editor-atoms";
 import { asideStateAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom";
@@ -70,11 +72,404 @@ import { EditorAiMenu } from "@/ee/ai/components/editor/ai-menu/ai-menu";
 import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 import ColumnsMenu from "@/features/editor/components/columns/columns-menu.tsx";
 import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
+import { notifications } from "@mantine/notifications";
+import { updatePage } from "@/features/page/services/page-service";
+import { updatePageData } from "@/features/page/queries/page-query";
+import { markEditorBootstrapStage } from "@/features/editor/lib/editor-bootstrap-metrics";
+
+type RuntimeMode = "preview" | "local" | "collab";
+
+type SerializedContent = {
+  content: any;
+  serialized: string;
+};
 
 interface PageEditorProps {
   pageId: string;
   editable: boolean;
   content: any;
+}
+
+function serializeEditorContent(content: any) {
+  try {
+    return JSON.stringify(content ?? null);
+  } catch {
+    return "";
+  }
+}
+
+function normalizePageEditMode(mode?: string | null): PageEditMode | undefined {
+  return mode === PageEditMode.Edit || mode === PageEditMode.Read
+    ? mode
+    : undefined;
+}
+
+function updateCachedPageContent(
+  pageId: string,
+  slugId: string | undefined,
+  newContent: any,
+) {
+  const updater = (page: IPage | undefined) => {
+    if (!page) return page;
+    return { ...page, content: newContent };
+  };
+
+  queryClient.setQueriesData({ queryKey: ["pages", pageId] }, updater);
+
+  if (slugId && slugId !== pageId) {
+    queryClient.setQueriesData({ queryKey: ["pages", slugId] }, updater);
+  }
+}
+
+function createEditorProps(
+  editorRef: React.MutableRefObject<Editor | null>,
+  pageId: string,
+  currentUserId?: string,
+) {
+  return {
+    scrollThreshold: 90,
+    scrollMargin: 90,
+    handleDOMEvents: {
+      keydown: (_view, event) => {
+        if ((event.ctrlKey || event.metaKey) && event.code === "KeyS") {
+          event.preventDefault();
+          return true;
+        }
+        if ((event.ctrlKey || event.metaKey) && event.code === "KeyK") {
+          searchSpotlight.open();
+          return true;
+        }
+        if (["ArrowUp", "ArrowDown", "Enter"].includes(event.key)) {
+          const slashCommand = document.querySelector("#slash-command");
+          if (slashCommand) {
+            return true;
+          }
+        }
+        if (
+          ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(
+            event.key,
+          )
+        ) {
+          const emojiCommand = document.querySelector("#emoji-command");
+          if (emojiCommand) {
+            return true;
+          }
+        }
+      },
+    },
+    handlePaste: (_view, event) => {
+      if (!editorRef.current) return false;
+
+      return handlePaste(editorRef.current, event, pageId, currentUserId);
+    },
+    handleDrop: (_view, event, _slice, moved) => {
+      if (!editorRef.current) return false;
+
+      return handleFileDrop(editorRef.current, event, moved, pageId);
+    },
+  };
+}
+
+function EditorRuntimeView({
+  editor,
+  editable,
+  pageId,
+  showCommentPopup,
+}: {
+  editor: Editor;
+  editable: boolean;
+  pageId: string;
+  showCommentPopup: boolean;
+}) {
+  const menuContainerRef = useRef<HTMLDivElement | null>(null);
+  const store = useStore();
+  const editorIsEditable = useEditorState({
+    editor,
+    selector: (ctx) => ctx.editor?.isEditable ?? false,
+  });
+
+  useEffect(() => {
+    if (editor.isDestroyed) {
+      return;
+    }
+
+    store.set(readOnlyEditorAtom as any, null);
+    store.set(pageEditorAtom as any, editor);
+
+    return () => {
+      if (store.get(pageEditorAtom as any) === editor) {
+        store.set(pageEditorAtom as any, null);
+      }
+    };
+  }, [editor, store]);
+
+  return (
+    <div
+      className="editor-container"
+      style={{ position: "relative" }}
+      ref={menuContainerRef}
+    >
+      <EditorContent editor={editor} />
+
+      <SearchAndReplaceDialog editor={editor} editable={editable} />
+
+      {editorIsEditable && (
+        <div>
+          <EditorAiMenu editor={editor} />
+          <EditorBubbleMenu editor={editor} />
+          <TableMenu editor={editor} />
+          <TableCellMenu editor={editor} appendTo={menuContainerRef} />
+          <ImageMenu editor={editor} />
+          <VideoMenu editor={editor} />
+          <CalloutMenu editor={editor} />
+          <SubpagesMenu editor={editor} />
+          <ExcalidrawMenu editor={editor} />
+          <DrawioMenu editor={editor} />
+          <ColumnsMenu editor={editor} />
+          <LinkMenu editor={editor} appendTo={menuContainerRef} />
+        </div>
+      )}
+
+      {showCommentPopup && <CommentDialog editor={editor} pageId={pageId} />}
+
+      <div
+        onClick={() => editor.commands.focus("end")}
+        style={{ paddingBottom: "20vh" }}
+      ></div>
+    </div>
+  );
+}
+
+function StaticPageEditorPreview({
+  content,
+  pageId,
+}: {
+  content: any;
+  pageId: string;
+}) {
+  const store = useStore();
+  const isComponentMounted = useRef(false);
+  const previewEditorCreated = useRef(false);
+  const canScroll = useCallback(
+    () => isComponentMounted.current && previewEditorCreated.current,
+    [],
+  );
+  const initialScrollTo = window.location.hash
+    ? window.location.hash.slice(1)
+    : "";
+  const { handleScrollTo } = useEditorScroll({ canScroll, initialScrollTo });
+
+  useEffect(() => {
+    isComponentMounted.current = true;
+    store.set(pageEditorAtom as any, null);
+
+    return () => {
+      store.set(readOnlyEditorAtom as any, null);
+    };
+  }, [store]);
+
+  return (
+    <EditorProvider
+      editable={false}
+      immediatelyRender={true}
+      extensions={mainExtensions}
+      content={content}
+      onCreate={({ editor }) => {
+        if (!editor) return;
+
+        (editor.storage as { pageId?: string }).pageId = pageId;
+        store.set(readOnlyEditorAtom as any, editor);
+        handleScrollTo(editor);
+        previewEditorCreated.current = true;
+      }}
+    />
+  );
+}
+
+function LocalFallbackPageEditor({
+  pageId,
+  slugId,
+  editable,
+  content,
+  currentUserId,
+  userPageEditMode,
+  showCommentPopup,
+  onUnsavedChangesChange,
+  onSavePendingChange,
+  onLastSavedContentChange,
+}: {
+  pageId: string;
+  slugId?: string;
+  editable: boolean;
+  content: any;
+  currentUserId?: string;
+  userPageEditMode: PageEditMode;
+  showCommentPopup: boolean;
+  onUnsavedChangesChange: (value: boolean) => void;
+  onSavePendingChange: (value: boolean) => void;
+  onLastSavedContentChange: (value: string) => void;
+}) {
+  const store = useStore();
+  const localEditorRef = useRef<Editor | null>(null);
+  const isMountedRef = useRef(false);
+  const saveFailureNotifiedRef = useRef(false);
+  const queuedSaveRef = useRef<SerializedContent | null>(null);
+  const saveInFlightRef = useRef(false);
+  const lastSavedContentRef = useRef(serializeEditorContent(content));
+  const editorReadyRef = useRef(false);
+  const normalizedContent = useMemo(
+    () => normalizeProsemirrorContent(content),
+    [content],
+  );
+  const canScroll = useCallback(
+    () => isMountedRef.current && editorReadyRef.current,
+    [],
+  );
+  const { handleScrollTo } = useEditorScroll({ canScroll });
+
+  const persistLocalContent = useCallback(async () => {
+    if (saveInFlightRef.current || !queuedSaveRef.current) {
+      return;
+    }
+
+    const nextSave = queuedSaveRef.current;
+    queuedSaveRef.current = null;
+    saveInFlightRef.current = true;
+    onSavePendingChange(true);
+
+    try {
+      const page = await updatePage({
+        pageId,
+        content: nextSave.content,
+        operation: "replace",
+        format: "json",
+      });
+
+      updatePageData(page);
+      lastSavedContentRef.current = nextSave.serialized;
+      onLastSavedContentChange(nextSave.serialized);
+      onUnsavedChangesChange(false);
+      saveFailureNotifiedRef.current = false;
+    } catch {
+      queuedSaveRef.current = nextSave;
+      if (!saveFailureNotifiedRef.current) {
+        notifications.show({
+          message: "实时协作暂不可用，已切换为本地保存重试模式",
+          color: "yellow",
+        });
+        saveFailureNotifiedRef.current = true;
+      }
+    } finally {
+      saveInFlightRef.current = false;
+
+      if (queuedSaveRef.current) {
+        void persistLocalContent();
+      } else {
+        onSavePendingChange(false);
+      }
+    }
+  }, [pageId, onLastSavedContentChange, onSavePendingChange, onUnsavedChangesChange]);
+
+  const debouncedPersistLocalContent = useDebouncedCallback((editorJson: any) => {
+    const serialized = serializeEditorContent(editorJson);
+
+    if (!serialized || serialized === lastSavedContentRef.current) {
+      onUnsavedChangesChange(false);
+      onSavePendingChange(false);
+      return;
+    }
+
+    queuedSaveRef.current = { content: editorJson, serialized };
+    onSavePendingChange(true);
+    void persistLocalContent();
+  }, 1200);
+
+  const editor = useEditor(
+    {
+      extensions: mainExtensions,
+      editable,
+      content: normalizedContent,
+      immediatelyRender: true,
+      shouldRerenderOnTransaction: false,
+      editorProps: createEditorProps(localEditorRef, pageId, currentUserId),
+      onCreate({ editor }) {
+        localEditorRef.current = editor;
+        editorReadyRef.current = true;
+        (editor.storage as { pageId?: string }).pageId = pageId;
+        store.set(readOnlyEditorAtom as any, null);
+        store.set(pageEditorAtom as any, editor);
+        handleScrollTo(editor);
+      },
+      onUpdate({ editor }) {
+        if (editor.isEmpty) return;
+
+        const editorJson = editor.getJSON();
+        updateCachedPageContent(pageId, slugId, editorJson);
+        onUnsavedChangesChange(true);
+        debouncedPersistLocalContent(editorJson);
+      },
+    },
+    [pageId, editable, normalizedContent, currentUserId],
+  );
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      const currentEditor = localEditorRef.current;
+      if (currentEditor) {
+        const currentContent = currentEditor.getJSON();
+        const serialized = serializeEditorContent(currentContent);
+        if (serialized && serialized !== lastSavedContentRef.current) {
+          queuedSaveRef.current = { content: currentContent, serialized };
+          void persistLocalContent();
+        }
+      }
+
+      store.set(pageEditorAtom as any, null);
+      onUnsavedChangesChange(false);
+      onSavePendingChange(false);
+    };
+  }, [onSavePendingChange, onUnsavedChangesChange, persistLocalContent, store]);
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    store.set(readOnlyEditorAtom as any, null);
+    store.set(pageEditorAtom as any, editor);
+
+    return () => {
+      if (store.get(pageEditorAtom as any) === editor) {
+        store.set(pageEditorAtom as any, null);
+      }
+    };
+  }, [editor, store]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    if (userPageEditMode === PageEditMode.Edit && editable) {
+      editor.setEditable(true);
+      return;
+    }
+
+    editor.setEditable(false);
+  }, [editor, editable, userPageEditMode]);
+
+  if (!editor) {
+    return <StaticPageEditorPreview content={normalizedContent} pageId={pageId} />;
+  }
+
+  return (
+    <EditorRuntimeView
+      editor={editor}
+      editable={editable}
+      pageId={pageId}
+      showCommentPopup={showCommentPopup}
+    />
+  );
 }
 
 export default function PageEditor({
@@ -94,10 +489,13 @@ export default function PageEditor({
   const [showCommentPopup, setShowCommentPopup] = useAtom(showCommentPopupAtom);
   const [isLocalSynced, setIsLocalSynced] = useState(false);
   const [isRemoteSynced, setIsRemoteSynced] = useState(false);
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("preview");
+  const [localHasUnsavedChanges, setLocalHasUnsavedChanges] = useState(false);
+  const [isLocalSavePending, setIsLocalSavePending] = useState(false);
   const [yjsConnectionStatus, setYjsConnectionStatus] = useAtom(
     yjsConnectionStatusAtom,
   );
-  const menuContainerRef = useRef(null);
+  const [, setRuntimeModeAtom] = useAtom(pageEditorRuntimeModeAtom);
   const { data: collabQuery, refetch: refetchCollabToken } = useCollabToken();
   const { isIdle, resetIdle } = useIdle(FIVE_MINUTES, { initialState: false });
   const documentState = useDocumentVisibility();
@@ -105,7 +503,7 @@ export default function PageEditor({
   const slugId = extractPageSlugId(pageSlug);
   const userPageEditMode =
     localPageEditMode ??
-    currentUser?.user?.settings?.preferences?.pageEditMode ??
+    normalizePageEditMode(currentUser?.user?.settings?.preferences?.pageEditMode) ??
     PageEditMode.Edit;
   const normalizedContent = useMemo(
     () => normalizeProsemirrorContent(content),
@@ -113,19 +511,27 @@ export default function PageEditor({
   );
   const canScroll = useCallback(
     () => Boolean(isComponentMounted.current && editorRef.current),
-    [isComponentMounted],
+    [],
   );
   const { handleScrollTo } = useEditorScroll({ canScroll });
+  const lastSavedLocalContentRef = useRef(serializeEditorContent(normalizedContent));
+
+  useEffect(() => {
+    lastSavedLocalContentRef.current = serializeEditorContent(normalizedContent);
+  }, [normalizedContent]);
 
   useEffect(() => {
     isComponentMounted.current = true;
+    setRuntimeModeAtom("preview");
 
     return () => {
       store.set(pageEditorAtom as any, null);
+      store.set(readOnlyEditorAtom as any, null);
       setYjsConnectionStatus("");
+      setRuntimeModeAtom("preview");
     };
-  }, [setYjsConnectionStatus, store]);
-  // Providers only created once per pageId
+  }, [setRuntimeModeAtom, setYjsConnectionStatus, store]);
+
   const providersRef = useRef<{
     local: IndexeddbPersistence;
     remote: HocuspocusProvider;
@@ -199,17 +605,19 @@ export default function PageEditor({
     } else {
       setProvidersReady(true);
     }
-    // Only destroy on final unmount
+
     return () => {
       providersRef.current?.socket.destroy();
       providersRef.current?.remote.destroy();
       providersRef.current?.local.destroy();
       providersRef.current = null;
     };
-  }, [pageId]);
+  }, [collaborationURL, pageId]);
 
   useEffect(() => {
     if (!collabQuery?.token || !providersRef.current) return;
+
+    markEditorBootstrapStage(pageId, "collab-token-ready");
 
     const remoteProvider = providersRef.current.remote;
     const socket = providersRef.current.socket;
@@ -220,9 +628,8 @@ export default function PageEditor({
         socket.connect();
       }
     }
-  }, [collabQuery?.token, yjsConnectionStatus]);
+  }, [collabQuery?.token, pageId, providersReady, yjsConnectionStatus]);
 
-  // Only connect/disconnect on tab/idle, not destroy
   useEffect(() => {
     if (!providersReady || !providersRef.current) return;
     const socket = providersRef.current.socket;
@@ -242,10 +649,20 @@ export default function PageEditor({
       resetIdle();
       socket.connect();
     }
-  }, [isIdle, documentState, providersReady, resetIdle]);
+  }, [documentState, isIdle, providersReady, resetIdle, yjsConnectionStatus]);
 
-  // Attach here, to make sure the connection gets properly established
-  providersRef.current?.remote.attach();
+  useEffect(() => {
+    if (!providersReady || !providersRef.current) {
+      return;
+    }
+
+    const remoteProvider = providersRef.current.remote;
+    remoteProvider.attach();
+
+    return () => {
+      remoteProvider.detach();
+    };
+  }, [providersReady, pageId]);
 
   const extensions = useMemo(() => {
     if (!providersReady || !providersRef.current || !currentUser?.user) {
@@ -258,7 +675,7 @@ export default function PageEditor({
       ...mainExtensions,
       ...collabExtensions(remoteProvider, currentUser?.user),
     ];
-  }, [providersReady, currentUser?.user]);
+  }, [currentUser?.user, providersReady]);
 
   const editor = useEditor(
     {
@@ -266,94 +683,20 @@ export default function PageEditor({
       editable,
       immediatelyRender: true,
       shouldRerenderOnTransaction: false,
-      editorProps: {
-        scrollThreshold: 90,
-        scrollMargin: 90,
-        handleDOMEvents: {
-          keydown: (_view, event) => {
-            if ((event.ctrlKey || event.metaKey) && event.code === "KeyS") {
-              event.preventDefault();
-              return true;
-            }
-            if ((event.ctrlKey || event.metaKey) && event.code === "KeyK") {
-              searchSpotlight.open();
-              return true;
-            }
-            if (["ArrowUp", "ArrowDown", "Enter"].includes(event.key)) {
-              const slashCommand = document.querySelector("#slash-command");
-              if (slashCommand) {
-                return true;
-              }
-            }
-            if (
-              [
-                "ArrowUp",
-                "ArrowDown",
-                "ArrowLeft",
-                "ArrowRight",
-                "Enter",
-              ].includes(event.key)
-            ) {
-              const emojiCommand = document.querySelector("#emoji-command");
-              if (emojiCommand) {
-                return true;
-              }
-            }
-          },
-        },
-        handlePaste: (_view, event) => {
-          if (!editorRef.current) return false;
-
-          return handlePaste(
-            editorRef.current,
-            event,
-            pageId,
-            currentUser?.user.id,
-          );
-        },
-        handleDrop: (_view, event, _slice, moved) => {
-          if (!editorRef.current) return false;
-
-          return handleFileDrop(editorRef.current, event, moved, pageId);
-        },
-      },
+      editorProps: createEditorProps(editorRef, pageId, currentUser?.user.id),
       onCreate({ editor }) {
-        if (editor) {
-          // @ts-ignore
-          setPageEditor(editor);
-          // @ts-ignore
-          editor.storage.pageId = pageId;
-          handleScrollTo(editor);
-          editorRef.current = editor;
-        }
+        editorRef.current = editor;
+        (editor.storage as { pageId?: string }).pageId = pageId;
+        handleScrollTo(editor);
       },
       onUpdate({ editor }) {
         if (editor.isEmpty) return;
-        const editorJson = editor.getJSON();
-        //update local page cache to reduce flickers
-        debouncedUpdateContent(editorJson);
+
+        updateCachedPageContent(pageId, slugId, editor.getJSON());
       },
     },
-    [pageId, editable, extensions],
+    [pageId, editable, extensions, currentUser?.user.id],
   );
-
-  const editorIsEditable = useEditorState({
-    editor,
-    selector: (ctx) => {
-      return ctx.editor?.isEditable ?? false;
-    },
-  });
-
-  const debouncedUpdateContent = useDebouncedCallback((newContent: any) => {
-    const pageData = queryClient.getQueryData<IPage>(["pages", slugId]);
-
-    if (pageData) {
-      queryClient.setQueryData(["pages", slugId], {
-        ...pageData,
-        content: newContent,
-      });
-    }
-  }, 3000);
 
   const handleActiveCommentEvent = (event) => {
     const { commentId, resolved } = event.detail;
@@ -365,7 +708,6 @@ export default function PageEditor({
     setActiveCommentId(commentId);
     setAsideState({ tab: "comments", isAsideOpen: true });
 
-    //wait if aside is closed
     setTimeout(() => {
       const selector = `div[data-comment-id="${commentId}"]`;
       const commentElement = document.querySelector(selector);
@@ -387,9 +729,15 @@ export default function PageEditor({
     setActiveCommentId(null);
     setShowCommentPopup(false);
     setAsideState({ tab: "", isAsideOpen: false });
-  }, [pageId]);
+  }, [pageId, setActiveCommentId, setAsideState, setShowCommentPopup]);
 
   const isSynced = isLocalSynced && isRemoteSynced;
+  const collabReady =
+    Boolean(editor) &&
+    yjsConnectionStatus === WebSocketStatus.Connected &&
+    isSynced;
+  const canUseLocalFallback =
+    editable && userPageEditMode === PageEditMode.Edit;
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -399,80 +747,107 @@ export default function PageEditor({
     }, 7500);
 
     return () => clearTimeout(timeout);
-  }, [yjsConnectionStatus, isSynced]);
+  }, [isSynced, setYjsConnectionStatus, yjsConnectionStatus]);
+
   useEffect(() => {
-    // Only honor user default page edit mode preference and permissions
-    if (editor) {
-      if (userPageEditMode && editable) {
-        if (userPageEditMode === PageEditMode.Edit) {
-          editor.setEditable(true);
-        } else if (userPageEditMode === PageEditMode.Read) {
-          editor.setEditable(false);
-        }
-      } else {
-        editor.setEditable(false);
+    if (!editor) {
+      return;
+    }
+
+    if (userPageEditMode === PageEditMode.Edit && editable) {
+      editor.setEditable(true);
+      return;
+    }
+
+    editor.setEditable(false);
+  }, [editor, editable, userPageEditMode]);
+
+  useEffect(() => {
+    if (!collabReady) {
+      return;
+    }
+
+    markEditorBootstrapStage(pageId, "yjs-synced");
+
+    if (runtimeMode === "preview") {
+      setRuntimeMode("collab");
+    }
+  }, [collabReady, pageId, runtimeMode]);
+
+  useEffect(() => {
+    if (collabReady) {
+      return;
+    }
+
+    if (!canUseLocalFallback) {
+      if (runtimeMode !== "preview") {
+        setRuntimeMode("preview");
       }
+      return;
     }
-  }, [userPageEditMode, editor, editable]);
 
-  const hasConnectedOnceRef = useRef(false);
-  const [showStatic, setShowStatic] = useState(true);
+    if (runtimeMode === "preview") {
+      setRuntimeMode("local");
+    }
+  }, [canUseLocalFallback, collabReady, runtimeMode]);
 
   useEffect(() => {
-    if (
-      !hasConnectedOnceRef.current &&
-      yjsConnectionStatus === WebSocketStatus.Connected &&
-      isSynced
-    ) {
-      hasConnectedOnceRef.current = true;
-      setShowStatic(false);
+    if (runtimeMode !== "local") {
+      return;
     }
-  }, [yjsConnectionStatus, isSynced]);
 
-  if (showStatic) {
+    markEditorBootstrapStage(pageId, "local-fallback-activated", {
+      yjsConnectionStatus,
+    });
+  }, [pageId, runtimeMode, yjsConnectionStatus]);
+
+  useEffect(() => {
+    if (runtimeMode !== "local" || !collabReady || localHasUnsavedChanges || isLocalSavePending) {
+      return;
+    }
+
+    const collabSerialized = editor ? serializeEditorContent(editor.getJSON()) : "";
+    if (
+      !lastSavedLocalContentRef.current ||
+      collabSerialized === lastSavedLocalContentRef.current
+    ) {
+      setRuntimeMode("collab");
+    }
+  }, [collabReady, editor, isLocalSavePending, localHasUnsavedChanges, runtimeMode]);
+
+  useEffect(() => {
+    setRuntimeModeAtom(runtimeMode);
+  }, [runtimeMode, setRuntimeModeAtom]);
+
+  if (runtimeMode === "local") {
     return (
-      <EditorProvider
-        editable={false}
-        immediatelyRender={true}
-        extensions={mainExtensions}
+      <LocalFallbackPageEditor
+        pageId={pageId}
+        slugId={slugId}
+        editable={editable}
         content={normalizedContent}
+        currentUserId={currentUser?.user.id}
+        userPageEditMode={userPageEditMode}
+        showCommentPopup={showCommentPopup}
+        onUnsavedChangesChange={setLocalHasUnsavedChanges}
+        onSavePendingChange={setIsLocalSavePending}
+        onLastSavedContentChange={(value) => {
+          lastSavedLocalContentRef.current = value;
+        }}
       />
     );
   }
 
+  if (runtimeMode === "preview" || !editor) {
+    return <StaticPageEditorPreview content={normalizedContent} pageId={pageId} />;
+  }
+
   return (
-    <div
-      className="editor-container"
-      style={{ position: "relative" }}
-      ref={menuContainerRef}
-    >
-      <EditorContent editor={editor} />
-
-      {editor && (
-        <SearchAndReplaceDialog editor={editor} editable={editable} />
-      )}
-
-      {editor && editorIsEditable && (
-        <div>
-          <EditorAiMenu editor={editor} />
-          <EditorBubbleMenu editor={editor} />
-          <TableMenu editor={editor} />
-          <TableCellMenu editor={editor} appendTo={menuContainerRef} />
-          <ImageMenu editor={editor} />
-          <VideoMenu editor={editor} />
-          <CalloutMenu editor={editor} />
-          <SubpagesMenu editor={editor} />
-          <ExcalidrawMenu editor={editor} />
-          <DrawioMenu editor={editor} />
-          <ColumnsMenu editor={editor} />
-          <LinkMenu editor={editor} appendTo={menuContainerRef} />
-        </div>
-      )}
-      {showCommentPopup && <CommentDialog editor={editor} pageId={pageId} />}
-      <div
-        onClick={() => editor.commands.focus("end")}
-        style={{ paddingBottom: "20vh" }}
-      ></div>
-    </div>
+    <EditorRuntimeView
+      editor={editor}
+      editable={editable}
+      pageId={pageId}
+      showCommentPopup={showCommentPopup}
+    />
   );
 }

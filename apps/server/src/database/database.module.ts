@@ -27,6 +27,7 @@ import * as postgres from 'postgres';
 import { normalizePostgresUrl } from '../common/helpers';
 import { PageNodeMetaRepo } from './repos/page/page-node-meta.repo';
 import { WorkspaceReleaseChannelRepo } from './repos/workspace/workspace-release-channel.repo';
+import { SpaceSidebarCategoryRepo } from './repos/space/space-sidebar-category.repo';
 
 @Global()
 @Module({
@@ -83,6 +84,7 @@ import { WorkspaceReleaseChannelRepo } from './repos/workspace/workspace-release
     NotificationRepo,
     WatcherRepo,
     PageNodeMetaRepo,
+    SpaceSidebarCategoryRepo,
     WorkspaceReleaseChannelRepo,
     PageListener,
   ],
@@ -104,6 +106,7 @@ import { WorkspaceReleaseChannelRepo } from './repos/workspace/workspace-release
     NotificationRepo,
     WatcherRepo,
     PageNodeMetaRepo,
+    SpaceSidebarCategoryRepo,
     WorkspaceReleaseChannelRepo,
   ],
 })

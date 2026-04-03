@@ -84,8 +84,7 @@ export function TitleEditor({
     ],
     onCreate({ editor }) {
       if (editor) {
-        // @ts-ignore
-        setTitleEditor(editor);
+        store.set(titleEditorAtom as any, editor);
         setActivePageId(pageId);
       }
     },

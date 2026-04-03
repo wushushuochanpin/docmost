@@ -34,10 +34,17 @@ const handleImageUpload =
     if (!validated) return;
 
     const objectUrl = URL.createObjectURL(file);
+    let imageDimensions:
+      | { width: number; height: number }
+      | undefined;
 
-    const imageDimensions = imageDimensionsFromData(
-      new Uint8Array(await file.arrayBuffer()),
-    );
+    try {
+      imageDimensions = imageDimensionsFromData(
+        new Uint8Array(await file.arrayBuffer()),
+      );
+    } catch {
+      imageDimensions = undefined;
+    }
 
     const placeholderId = generateNodeId();
     const width = imageDimensions?.width ?? undefined;

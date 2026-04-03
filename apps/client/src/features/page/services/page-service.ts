@@ -14,6 +14,7 @@ import {
   IPageInput,
   IPageRenderedSegment,
   IPageRenderSegmentInput,
+  ISidebarCategoryAssignment,
   SidebarPagesParams,
 } from '@/features/page/types/page.types';
 import { QueryParams } from "@/lib/types";
@@ -122,6 +123,16 @@ export async function getSidebarPages(
   params: SidebarPagesParams,
 ): Promise<IPagination<IPage>> {
   const req = await api.post("/pages/sidebar-pages", params);
+  return req.data;
+}
+
+export async function assignSidebarCategory(
+  data: ISidebarCategoryAssignment,
+): Promise<{ pageId: string; sidebarCategoryId: string | null }> {
+  const req = await api.post<{ pageId: string; sidebarCategoryId: string | null }>(
+    "/pages/sidebar-category/assign",
+    data,
+  );
   return req.data;
 }
 

@@ -5,6 +5,21 @@ import { getFileUploadSizeLimit } from "@/lib/config.ts";
 import { formatBytes } from "@/lib";
 import i18n from "@/i18n.ts";
 
+const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|bmp|svg|tiff?|heic|heif)$/i;
+
+function isLikelyImageFile(file: File): boolean {
+  if (file.type.startsWith("image/")) {
+    return true;
+  }
+  if (
+    (!file.type || file.type === "application/octet-stream") &&
+    IMAGE_EXT_RE.test(file.name)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export const uploadImageAction = handleImageUpload({
   onUpload: async (file: File, pageId: string): Promise<any> => {
     try {
@@ -18,7 +33,7 @@ export const uploadImageAction = handleImageUpload({
     }
   },
   validateFn: (file) => {
-    if (!file.type.includes("image/")) {
+    if (!isLikelyImageFile(file)) {
       return false;
     }
     if (file.size > getFileUploadSizeLimit()) {

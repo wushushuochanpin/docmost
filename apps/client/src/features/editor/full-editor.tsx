@@ -10,6 +10,7 @@ import {
   extractEditorFontSizeFromUser,
   getEditorFontScale,
 } from "@/features/editor/utils/editor-font-size-utils";
+import { markEditorBootstrapStage } from "@/features/editor/lib/editor-bootstrap-metrics";
 
 const MemoizedTitleEditor = React.memo(TitleEditor);
 const MemoizedPageEditor = React.memo(PageEditor);
@@ -39,6 +40,10 @@ export function FullEditor({
   const editorFontScale = getEditorFontScale(
     localEditorFontSize ?? extractEditorFontSizeFromUser(user),
   );
+
+  React.useEffect(() => {
+    markEditorBootstrapStage(pageId, "editor-shell-mounted");
+  }, [pageId]);
 
   return (
     <Container

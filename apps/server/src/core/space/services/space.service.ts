@@ -28,11 +28,17 @@ import {
   AUDIT_SERVICE,
   IAuditService,
 } from '../../../integrations/audit/audit.service';
+import { SpaceSidebarCategoryRepo } from '@docmost/db/repos/space/space-sidebar-category.repo';
+import { generateJitteredKeyBetween } from 'fractional-indexing-jittered';
+import { SpaceSidebarCategory } from '@docmost/db/types/entity.types';
 
 @Injectable()
 export class SpaceService {
+  private static readonly MAX_SIDEBAR_CATEGORIES = 20;
+
   constructor(
     private spaceRepo: SpaceRepo,
+    private spaceSidebarCategoryRepo: SpaceSidebarCategoryRepo,
     private spaceMemberService: SpaceMemberService,
     private shareRepo: ShareRepo,
     private workspaceRepo: WorkspaceRepo,
@@ -256,5 +262,182 @@ export class SpaceService {
         },
       },
     });
+  }
+
+  async listSidebarCategories(
+    spaceId: string,
+    workspaceId: string,
+  ): Promise<SpaceSidebarCategory[]> {
+    await this.getSpaceInfo(spaceId, workspaceId);
+    return this.spaceSidebarCategoryRepo.listBySpace(spaceId, workspaceId);
+  }
+
+  async getSidebarCategory(
+    categoryId: string,
+    workspaceId: string,
+  ): Promise<SpaceSidebarCategory> {
+    const category = await this.spaceSidebarCategoryRepo.findById(
+      categoryId,
+      workspaceId,
+    );
+    if (!category) {
+      throw new NotFoundException('Sidebar category not found');
+    }
+    return category;
+  }
+
+  async createSidebarCategory(
+    user: User,
+    workspaceId: string,
+    payload: { spaceId: string; name: string },
+  ): Promise<SpaceSidebarCategory> {
+    await this.getSpaceInfo(payload.spaceId, workspaceId);
+
+    const count = await this.spaceSidebarCategoryRepo.countBySpace(
+      payload.spaceId,
+      workspaceId,
+    );
+    if (count >= SpaceService.MAX_SIDEBAR_CATEGORIES) {
+      throw new BadRequestException('SIDEBAR_CATEGORY_LIMIT_EXCEEDED');
+    }
+
+    const normalizedName = payload.name.trim();
+    const exists = await this.spaceSidebarCategoryRepo.nameExists(
+      payload.spaceId,
+      normalizedName,
+      workspaceId,
+    );
+    if (exists) {
+      throw new BadRequestException('SIDEBAR_CATEGORY_NAME_DUPLICATED');
+    }
+
+    const existing = await this.spaceSidebarCategoryRepo.listBySpace(
+      payload.spaceId,
+      workspaceId,
+    );
+    const lastSortKey = existing[existing.length - 1]?.sortKey ?? null;
+
+    return this.spaceSidebarCategoryRepo.insertCategory({
+      workspaceId,
+      spaceId: payload.spaceId,
+      name: normalizedName,
+      sortKey: generateJitteredKeyBetween(lastSortKey, null),
+      createdBy: user.id,
+    });
+  }
+
+  async updateSidebarCategory(
+    categoryId: string,
+    payload: { name: string },
+    workspaceId: string,
+  ): Promise<SpaceSidebarCategory> {
+    const category = await this.getSidebarCategory(categoryId, workspaceId);
+    const normalizedName = payload.name.trim();
+
+    const exists = await this.spaceSidebarCategoryRepo.nameExists(
+      category.spaceId,
+      normalizedName,
+      workspaceId,
+      categoryId,
+    );
+    if (exists) {
+      throw new BadRequestException('SIDEBAR_CATEGORY_NAME_DUPLICATED');
+    }
+
+    const updated = await this.spaceSidebarCategoryRepo.updateCategory(
+      categoryId,
+      { name: normalizedName },
+      workspaceId,
+    );
+    if (!updated) {
+      throw new NotFoundException('Sidebar category not found');
+    }
+
+    return updated;
+  }
+
+  async deleteSidebarCategory(
+    categoryId: string,
+    workspaceId: string,
+  ): Promise<{ categoryId: string; unassignedRootCount: number }> {
+    const category = await this.getSidebarCategory(categoryId, workspaceId);
+
+    return executeTx(this.db, async (trx) => {
+      const { count } = await trx
+        .selectFrom('pageNodeMeta')
+        .select((eb) => eb.fn.count('pageId').as('count'))
+        .where('workspaceId', '=', workspaceId)
+        .where('spaceId', '=', category.spaceId)
+        .where('sidebarCategoryId', '=', categoryId)
+        .executeTakeFirstOrThrow();
+
+      const unassignedRootCount = Number(count ?? 0);
+
+      await trx
+        .updateTable('pageNodeMeta')
+        .set({
+          sidebarCategoryId: null,
+          updatedAt: new Date(),
+        })
+        .where('workspaceId', '=', workspaceId)
+        .where('spaceId', '=', category.spaceId)
+        .where('sidebarCategoryId', '=', categoryId)
+        .execute();
+
+      await this.spaceSidebarCategoryRepo.deleteCategory(
+        categoryId,
+        workspaceId,
+        trx,
+      );
+
+      return {
+        categoryId,
+        unassignedRootCount,
+      };
+    });
+  }
+
+  async reorderSidebarCategories(
+    spaceId: string,
+    orderedCategoryIds: string[],
+    workspaceId: string,
+  ): Promise<SpaceSidebarCategory[]> {
+    const categories = await this.spaceSidebarCategoryRepo.listBySpace(
+      spaceId,
+      workspaceId,
+    );
+
+    if (!categories.length) {
+      throw new BadRequestException('SIDEBAR_CATEGORIES_NOT_FOUND');
+    }
+
+    if (orderedCategoryIds.length !== categories.length) {
+      throw new BadRequestException('SIDEBAR_CATEGORY_REORDER_INVALID');
+    }
+
+    const categoryIdSet = new Set(categories.map((item) => item.id));
+    const orderedIdSet = new Set(orderedCategoryIds);
+    if (
+      orderedIdSet.size !== categories.length ||
+      orderedCategoryIds.some((id) => !categoryIdSet.has(id))
+    ) {
+      throw new BadRequestException('SIDEBAR_CATEGORY_REORDER_INVALID');
+    }
+
+    await executeTx(this.db, async (trx) => {
+      let previousSortKey: string | null = null;
+
+      for (const categoryId of orderedCategoryIds) {
+        previousSortKey = generateJitteredKeyBetween(previousSortKey, null);
+        await this.spaceSidebarCategoryRepo.updateCategory(
+          categoryId,
+          { sortKey: previousSortKey },
+          workspaceId,
+          trx,
+        );
+      }
+    });
+
+    return this.spaceSidebarCategoryRepo.listBySpace(spaceId, workspaceId);
   }
 }

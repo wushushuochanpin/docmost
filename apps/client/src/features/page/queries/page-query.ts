@@ -28,6 +28,7 @@ import {
   IPageInput,
   IPageRenderSegmentInput,
   IPageRenderedSegment,
+  SidebarViewMode,
   SidebarPagesParams,
 } from "@/features/page/types/page.types";
 import { notifications } from "@mantine/notifications";
@@ -42,6 +43,53 @@ import { treeDataAtom } from "@/features/page/tree/atoms/tree-data-atom";
 import { SimpleTree } from "react-arborist";
 import { SpaceTreeNode } from "@/features/page/tree/types";
 import { useQueryEmit } from "@/features/websocket/use-query-emit";
+
+type RootSidebarQueryParams = {
+  spaceId: string;
+  viewMode?: SidebarViewMode;
+  categoryId?: string | null;
+};
+
+function normalizeRootSidebarQueryParams(
+  data: RootSidebarQueryParams,
+): Required<Pick<RootSidebarQueryParams, "spaceId" | "viewMode">> & {
+  categoryId: string | null;
+} {
+  const viewMode = data.viewMode ?? "all";
+  return {
+    spaceId: data.spaceId,
+    viewMode,
+    categoryId: viewMode === "category" ? (data.categoryId ?? null) : null,
+  };
+}
+
+export function buildRootSidebarQueryKey(
+  data: RootSidebarQueryParams,
+): QueryKey {
+  return ["root-sidebar-pages", normalizeRootSidebarQueryParams(data)];
+}
+
+export function isRootSidebarQueryForSpace(
+  queryKey: QueryKey,
+  spaceId?: string,
+): boolean {
+  if (queryKey[0] !== "root-sidebar-pages") {
+    return false;
+  }
+
+  if (!spaceId) {
+    return true;
+  }
+
+  const params = queryKey[1] as RootSidebarQueryParams | undefined;
+  return params?.spaceId === spaceId;
+}
+
+export function invalidateRootSidebarQueries(spaceId: string) {
+  return queryClient.invalidateQueries({
+    predicate: (query) => isRootSidebarQueryForSpace(query.queryKey, spaceId),
+  });
+}
 
 function buildPageQueryKey(pageInput: Partial<IPageInput>): QueryKey {
   if (
@@ -331,10 +379,22 @@ export function useGetSidebarPagesQuery(
 }
 
 export function useGetRootSidebarPagesQuery(data: SidebarPagesParams) {
+  const queryKey = buildRootSidebarQueryKey({
+    spaceId: data.spaceId!,
+    viewMode: data.viewMode,
+    categoryId: data.categoryId,
+  });
+
   return useInfiniteQuery({
-    queryKey: ["root-sidebar-pages", data.spaceId],
+    queryKey,
+    enabled: Boolean(data.spaceId),
     queryFn: async ({ pageParam }) => {
-      return getSidebarPages({ spaceId: data.spaceId, cursor: pageParam });
+      return getSidebarPages({
+        spaceId: data.spaceId,
+        cursor: pageParam,
+        viewMode: data.viewMode,
+        categoryId: data.categoryId,
+      });
     },
     initialPageParam: undefined,
     getNextPageParam: (lastPage) =>
@@ -389,6 +449,10 @@ export function useDeletedPagesQuery(
 }
 
 export function invalidateOnCreatePage(data: Partial<IPage>) {
+  if (!data.spaceId) {
+    return;
+  }
+
   const newPage: Partial<IPage> = {
     creatorId: data.creatorId,
     hasChildren: data.hasChildren,
@@ -399,14 +463,17 @@ export function invalidateOnCreatePage(data: Partial<IPage>) {
     parentPageId: data.parentPageId,
     pinnedAt: data.pinnedAt,
     position: data.position,
+    sidebarCategoryId: data.sidebarCategoryId ?? null,
     slugId: data.slugId,
     spaceId: data.spaceId,
     title: data.title,
   };
 
+  const isRootNode = data.parentPageId == null;
+
   let queryKey: QueryKey = null;
-  if (data.parentPageId === null) {
-    queryKey = ["root-sidebar-pages", data.spaceId];
+  if (isRootNode) {
+    invalidateRootSidebarQueries(data.spaceId);
   } else {
     queryKey = [
       "sidebar-pages",
@@ -414,28 +481,29 @@ export function invalidateOnCreatePage(data: Partial<IPage>) {
     ];
   }
 
-  //update all sidebar pages
-  queryClient.setQueryData<InfiniteData<IPagination<Partial<IPage>>>>(
-    queryKey,
-    (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        pages: old.pages.map((page, index) => {
-          if (index === old.pages.length - 1) {
-            return {
-              ...page,
-              items: [...page.items, newPage],
-            };
-          }
-          return page;
-        }),
-      };
-    },
-  );
+  if (!isRootNode) {
+    queryClient.setQueryData<InfiniteData<IPagination<Partial<IPage>>>>(
+      queryKey,
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page, index) => {
+            if (index === old.pages.length - 1) {
+              return {
+                ...page,
+                items: [...page.items, newPage],
+              };
+            }
+            return page;
+          }),
+        };
+      },
+    );
+  }
 
   //update sidebar haschildren
-  if (data.parentPageId !== null) {
+  if (!isRootNode) {
     //update sub sidebar pages haschildern
     const subSideBarMatches = queryClient.getQueriesData({
       queryKey: ["sidebar-pages"],
@@ -461,8 +529,7 @@ export function invalidateOnCreatePage(data: Partial<IPage>) {
 
     //update root sidebar pages haschildern
     const rootSideBarMatches = queryClient.getQueriesData({
-      queryKey: ["root-sidebar-pages", data.spaceId],
-      exact: false,
+      predicate: (query) => isRootSidebarQueryForSpace(query.queryKey, data.spaceId),
     });
 
     rootSideBarMatches.forEach(([key, d]) => {
@@ -496,16 +563,8 @@ export function invalidateOnUpdatePage(
   title: string,
   icon: string,
 ) {
-  let queryKey: QueryKey = null;
-  if (parentPageId === null) {
-    queryKey = ["root-sidebar-pages", spaceId];
-  } else {
-    queryKey = ["sidebar-pages", { pageId: parentPageId, spaceId: spaceId }];
-  }
-  //update all sidebar pages
-  queryClient.setQueryData<InfiniteData<IPagination<IPage>>>(
-    queryKey,
-    (old) => {
+  const updateCachedPages = (queryKey: QueryKey) => {
+    queryClient.setQueryData<InfiniteData<IPagination<IPage>>>(queryKey, (old) => {
       if (!old) return old;
       return {
         ...old,
@@ -518,8 +577,18 @@ export function invalidateOnUpdatePage(
           ),
         })),
       };
-    },
-  );
+    });
+  };
+
+  if (parentPageId === null) {
+    const rootSideBarMatches = queryClient.getQueriesData({
+      predicate: (query) => isRootSidebarQueryForSpace(query.queryKey, spaceId),
+    });
+
+    rootSideBarMatches.forEach(([key]) => updateCachedPages(key));
+  } else {
+    updateCachedPages(["sidebar-pages", { pageId: parentPageId, spaceId }]);
+  }
 
   //update recent changes
   queryClient.invalidateQueries({
@@ -534,25 +603,30 @@ export function updateCacheOnMovePage(
   newParentId: string | null,
   pageData: Partial<IPage>,
 ) {
-  // Remove page from old parent's cache
-  const oldQueryKey =
-    oldParentId === null
-      ? ["root-sidebar-pages", spaceId]
-      : ["sidebar-pages", { pageId: oldParentId, spaceId }];
+  const involvesRoot = oldParentId === null || newParentId === null;
 
-  queryClient.setQueryData<InfiniteData<IPagination<IPage>>>(
-    oldQueryKey,
-    (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        pages: old.pages.map((page) => ({
-          ...page,
-          items: page.items.filter((item) => item.id !== pageId),
-        })),
-      };
-    },
-  );
+  if (involvesRoot) {
+    invalidateRootSidebarQueries(spaceId);
+  }
+
+  // Remove page from old parent's cache
+  if (oldParentId !== null) {
+    const oldQueryKey = ["sidebar-pages", { pageId: oldParentId, spaceId }];
+
+    queryClient.setQueryData<InfiniteData<IPagination<IPage>>>(
+      oldQueryKey,
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            items: page.items.filter((item) => item.id !== pageId),
+          })),
+        };
+      },
+    );
+  }
 
   // Update old parent's hasChildren flag if it has no more children
   if (oldParentId !== null) {
@@ -567,7 +641,7 @@ export function updateCacheOnMovePage(
       // Update hasChildren in all caches where old parent appears
       const allSideBarMatches = queryClient.getQueriesData({
         predicate: (query) =>
-          query.queryKey[0] === "root-sidebar-pages" ||
+          isRootSidebarQueryForSpace(query.queryKey) ||
           query.queryKey[0] === "sidebar-pages",
       });
 
@@ -594,42 +668,41 @@ export function updateCacheOnMovePage(
   }
 
   // Add page to new parent's cache
-  const newQueryKey =
-    newParentId === null
-      ? ["root-sidebar-pages", spaceId]
-      : ["sidebar-pages", { pageId: newParentId, spaceId }];
+  if (newParentId !== null) {
+    const newQueryKey = ["sidebar-pages", { pageId: newParentId, spaceId }];
 
-  queryClient.setQueryData<InfiniteData<IPagination<Partial<IPage>>>>(
-    newQueryKey,
-    (old) => {
-      if (!old) return old;
+    queryClient.setQueryData<InfiniteData<IPagination<Partial<IPage>>>>(
+      newQueryKey,
+      (old) => {
+        if (!old) return old;
 
-      // Check if page already exists in new location
-      const exists = old.pages.some((page) =>
-        page.items.some((item) => item.id === pageId),
-      );
-      if (exists) return old;
+        // Check if page already exists in new location
+        const exists = old.pages.some((page) =>
+          page.items.some((item) => item.id === pageId),
+        );
+        if (exists) return old;
 
-      return {
-        ...old,
-        pages: old.pages.map((page, index) => {
-          if (index === old.pages.length - 1) {
-            return {
-              ...page,
-              items: [...page.items, pageData],
-            };
-          }
-          return page;
-        }),
-      };
-    },
-  );
+        return {
+          ...old,
+          pages: old.pages.map((page, index) => {
+            if (index === old.pages.length - 1) {
+              return {
+                ...page,
+                items: [...page.items, pageData],
+              };
+            }
+            return page;
+          }),
+        };
+      },
+    );
+  }
 
   // Update new parent's hasChildren flag
   if (newParentId !== null) {
     const allSideBarMatches = queryClient.getQueriesData({
       predicate: (query) =>
-        query.queryKey[0] === "root-sidebar-pages" ||
+        isRootSidebarQueryForSpace(query.queryKey) ||
         query.queryKey[0] === "sidebar-pages",
     });
 
@@ -654,7 +727,7 @@ export function invalidateOnDeletePage(pageId: string) {
   //update all sidebar pages
   const allSideBarMatches = queryClient.getQueriesData({
     predicate: (query) =>
-      query.queryKey[0] === "root-sidebar-pages" ||
+      isRootSidebarQueryForSpace(query.queryKey) ||
       query.queryKey[0] === "sidebar-pages",
   });
 

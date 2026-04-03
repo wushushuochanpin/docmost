@@ -56,6 +56,7 @@ export function buildTree(pages: IPage[]): SpaceTreeNode[] {
       nodeType: page.nodeType,
       isPinned: page.isPinned,
       pinnedAt: page.pinnedAt,
+      sidebarCategoryId: page.sidebarCategoryId ?? null,
       directChildCount: page.directChildCount ?? page.directChildFolderCount ?? 0,
       directChildFolderCount: page.directChildFolderCount ?? 0,
       descendantFolderCount: page.descendantFolderCount ?? 0,
@@ -237,21 +238,28 @@ export function appendNodeChildren(
 }
 
 /**
- * Merge root nodes; keep existing ones intact, append new ones,
+ * Replace the root list with the latest server result while keeping already
+ * loaded descendants for roots that still exist in the current view.
  */
-export function mergeRootTrees(
+export function reconcileRootTrees(
   prevRoots: SpaceTreeNode[],
   incomingRoots: SpaceTreeNode[],
 ): SpaceTreeNode[] {
-  const seen = new Set(prevRoots.map((r) => r.id));
+  const prevRootMap = new Map(prevRoots.map((root) => [root.id, root]));
 
-  // add new roots that were not present before
-  const merged = [...prevRoots];
-  incomingRoots.forEach((node) => {
-    if (!seen.has(node.id)) merged.push(node);
-  });
+  return sortPositionKeys(
+    incomingRoots.map((node) => {
+      const existing = prevRootMap.get(node.id);
+      if (!existing) {
+        return node;
+      }
 
-  return sortPositionKeys(merged);
+      return {
+        ...node,
+        children: existing.children ?? [],
+      };
+    }),
+  );
 }
 
 export const updateTreeNodePinnedState = (

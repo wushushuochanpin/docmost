@@ -10,7 +10,6 @@ import React, {
 } from "react";
 import { extractPageSlugId } from "@/lib";
 import { buildSharedPageUrl } from "@/features/page/page.utils.ts";
-import ShareBranding from "@/features/share/components/share-branding.tsx";
 import { useAtom, useSetAtom } from "jotai";
 import {
   sharedAccessTokenAtom,
@@ -248,7 +247,7 @@ export default function SharedPage() {
   });
 
   useEffect(() => {
-    if (!data) return;
+    if (!data || isLoading) return;
 
     const canonicalPath = buildSharedPageUrl({
       shareId: data.share.key,
@@ -258,7 +257,12 @@ export default function SharedPage() {
     const canonicalTarget = `${canonicalPath}${location.hash}`;
 
     if (shareId) {
-      if (location.pathname !== canonicalPath) {
+      // Only canonicalize when displayed data matches current URL; otherwise we would
+      // redirect back to the previous page while the new page is still loading.
+      const currentSlugId = extractPageSlugId(pageSlug);
+      const dataMatchesUrl =
+        String(data.page.slugId) === String(currentSlugId);
+      if (dataMatchesUrl && location.pathname !== canonicalPath) {
         navigate(canonicalTarget, { replace: true });
       }
       return;
@@ -274,6 +278,8 @@ export default function SharedPage() {
   }, [
     shareId,
     data,
+    isLoading,
+    pageSlug,
     navigate,
     shareLegacyRouteMode,
     location.hash,
@@ -659,7 +665,6 @@ export default function SharedPage() {
         )}
       </div>
 
-      {data && !shareId && !data.hasLicenseKey && <ShareBranding />}
     </div>
   );
 }

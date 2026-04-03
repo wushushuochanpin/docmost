@@ -13,9 +13,11 @@
     "editor-ext:build": "nx run @docmost/editor-ext:build",
     "client:dev": "nx run client:dev",
     "server:dev": "nx run server:start:dev",
+    "editor-ext:dev": "pnpm --filter @docmost/editor-ext run dev",
     "server:start": "nx run server:start:prod",
     "email:dev": "nx run server:email:dev",
     "dev": "pnpm concurrently -n \"frontend,backend\" -c \"cyan,green\" \"pnpm run client:dev\" \"pnpm run server:dev\"",
+    "dev:full": "pnpm concurrently -n \"editor,frontend,backend\" -c \"magenta,cyan,green\" \"pnpm run editor-ext:dev\" \"pnpm run client:dev\" \"pnpm run server:dev\"",
     "clean": "rm -rf apps/*/dist packages/*/dist apps/client/node_modules/.vite",
     "security:workspace-scope": "node scripts/security/check-workspace-scope.mjs"
   },

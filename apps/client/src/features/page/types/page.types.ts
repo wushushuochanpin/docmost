@@ -28,6 +28,7 @@ export interface IPage {
   nodeType?: "file" | "folder";
   isPinned?: boolean;
   pinnedAt?: Date | string | null;
+  sidebarCategoryId?: string | null;
   directChildCount?: number;
   directChildFolderCount?: number;
   descendantFolderCount?: number;
@@ -122,10 +123,21 @@ export interface SidebarPagesParams {
   spaceId?: string;
   pageId?: string;
   cursor?: string;
+  viewMode?: SidebarViewMode;
+  categoryId?: string | null;
+}
+
+export type SidebarViewMode = "all" | "pinned" | "category";
+
+export interface ISidebarCategoryAssignment {
+  pageId: string;
+  categoryId?: string | null;
 }
 
 export interface IPageInput {
   pageId: string;
+  content?: any;
+  operation?: "append" | "prepend" | "replace";
   format?: "json" | "markdown" | "html";
   title: string;
   parentPageId: string | null;

@@ -5,12 +5,23 @@
 .treeContainer {
     height: 100%;
     min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.treeViewport {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
     overflow-x: auto;
     overflow-y: hidden;
+}
 
-    > div, > div > .tree {
-        height: 100% !important;
-    }
+.treeViewport > div,
+.treeViewport > div > .tree {
+    height: 100% !important;
 }
 
 .node {
@@ -41,23 +52,25 @@
         gap: 2px;
         align-items: center;
         align-self: stretch;
+        flex: 0 0 auto;
         height: 100%;
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
-        transition: opacity 120ms ease;
-    }
-
-      &:hover .actions {
-       opacity: 1;
-       pointer-events: auto;
+        transform: translateX(2px);
+        transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
     }
 
 }
 
+.row:hover .actions,
+.node:focus-within .actions,
 .node:global(.isSelected) .actions,
 .node:global(.isFocused) .actions {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
+    transform: translateX(0);
 }
 
 .node:global(.willReceiveDrop) {

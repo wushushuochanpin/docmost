@@ -5,6 +5,7 @@ import { InfiniteData, useQueryClient } from "@tanstack/react-query";
 import { WebSocketEvent } from "@/features/websocket/types";
 import { IPagination } from "@/lib/types";
 import {
+  invalidateRootSidebarQueries,
   invalidateOnCreatePage,
   invalidateOnDeletePage,
   updateCacheOnMovePage,
@@ -183,9 +184,7 @@ export const useQuerySubscription = () => {
           break;
         case "refetchRootTreeNodeEvent": {
           const spaceId = data.spaceId;
-          queryClient.refetchQueries({
-            queryKey: ["root-sidebar-pages", spaceId],
-          });
+          invalidateRootSidebarQueries(spaceId);
 
           queryClient.invalidateQueries({
             queryKey: ["recent-changes", spaceId],

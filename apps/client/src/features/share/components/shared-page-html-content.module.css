@@ -14,7 +14,6 @@
   font-size: calc(clamp(2rem, 3.4vw, 3.2rem) * var(--editor-font-scale, 1));
   line-height: 1.08;
   letter-spacing: -0.035em;
-  text-wrap: balance;
 }
 
 .article {
@@ -33,7 +32,8 @@
   }
 
   .pageTitle {
-    font-size: clamp(1.8rem, 8vw, 2.35rem);
+    /* 固定字号避免 vw 随 viewport 宽度浮动导致跨平台行数不一致 */
+    font-size: 1.9rem;
   }
 
   .article {

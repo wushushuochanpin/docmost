@@ -15,14 +15,13 @@ import {
   IconWifiOff,
   IconWorld,
 } from "@tabler/icons-react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import useToggleAside from "@/hooks/use-toggle-aside.tsx";
 import { useAtom, useAtomValue } from "jotai";
 import { historyAtoms } from "@/features/page-history/atoms/history-atoms.ts";
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { useParams } from "react-router-dom";
-import { useLatestPageHistoryQuery } from "@/features/page-history/queries/page-history-query.ts";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import { notifications } from "@mantine/notifications";
 import { getAppUrl } from "@/lib/config.ts";
@@ -30,21 +29,30 @@ import { treeApiAtom } from "@/features/page/tree/atoms/tree-api-atom.ts";
 import { useDeletePageModal } from "@/features/page/hooks/use-delete-page-modal.tsx";
 import { PageWidthToggle } from "@/features/user/components/page-width-pref.tsx";
 import { Trans, useTranslation } from "react-i18next";
-import ExportModal from "@/components/common/export-modal";
-import { htmlToMarkdown } from "@docmost/editor-ext";
 import {
   pageEditorAtom,
+  pageEditorRuntimeModeAtom,
   readOnlyEditorAtom,
   yjsConnectionStatusAtom,
 } from "@/features/editor/atoms/editor-atoms.ts";
 import { formattedDate } from "@/lib/time.ts";
 import { PageStateSegmentedControl } from "@/features/user/components/page-state-pref.tsx";
 import { EditorFontSizeSegmentedControl } from "@/features/editor/components/editor-font-size-control.tsx";
-import MovePageModal from "@/features/page/components/move-page-modal.tsx";
 import { useTimeAgo } from "@/hooks/use-time-ago.tsx";
-import { ShareMenuContent } from "@/features/share/components/share-modal.tsx";
 import { IPage } from "@/features/page/types/page.types.ts";
 import { canUseStaticRenderedHtml } from "@/features/share/rendered-utils.ts";
+
+const LazyExportModal = React.lazy(
+  () => import("@/components/common/export-modal"),
+);
+const LazyMovePageModal = React.lazy(
+  () => import("@/features/page/components/move-page-modal.tsx"),
+);
+const LazyShareMenuContent = React.lazy(async () => {
+  const module = await import("@/features/share/components/share-modal.tsx");
+
+  return { default: module.ShareMenuContent };
+});
 
 interface PageHeaderMenuProps {
   readOnly?: boolean;
@@ -162,7 +170,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
     notifications.show({ message: t("Link copied") });
   };
 
-  const handleCopyAsMarkdown = () => {
+  const handleCopyAsMarkdown = async () => {
     const staticHtml =
       currentPage.rendered?.deliveryMode === "full" &&
       canUseStaticRenderedHtml(currentPage.rendered)
@@ -172,6 +180,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
 
     if (!html) return;
 
+    const { htmlToMarkdown } = await import("@docmost/editor-ext");
     const markdown = htmlToMarkdown(html);
     const title = currentPage.title ? `# ${currentPage.title}\n\n` : "";
     clipboard.copy(`${title}${markdown}`);
@@ -251,7 +260,9 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
                 borderBottom: "1px solid var(--ui-border-default)",
               }}
             >
-              <ShareMenuContent readOnly={readOnly} />
+              <Suspense fallback={<Text size="xs" c="dimmed">{t("Loading...")}</Text>}>
+                <LazyShareMenuContent readOnly={readOnly} />
+              </Suspense>
             </div>
           )}
 
@@ -371,20 +382,28 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
         </Menu.Dropdown>
       </Menu>
 
-      <ExportModal
-        type="page"
-        id={currentPage.id}
-        open={exportOpened}
-        onClose={closeExportModal}
-      />
+      {exportOpened && (
+        <Suspense fallback={null}>
+          <LazyExportModal
+            type="page"
+            id={currentPage.id}
+            open={exportOpened}
+            onClose={closeExportModal}
+          />
+        </Suspense>
+      )}
 
-      <MovePageModal
-        pageId={currentPage.id}
-        slugId={currentPage.slugId}
-        currentSpaceSlug={spaceSlug}
-        onClose={closeMoveSpaceModal}
-        open={movePageModalOpened}
-      />
+      {movePageModalOpened && (
+        <Suspense fallback={null}>
+          <LazyMovePageModal
+            pageId={currentPage.id}
+            slugId={currentPage.slugId}
+            currentSpaceSlug={spaceSlug}
+            onClose={closeMoveSpaceModal}
+            open={movePageModalOpened}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
@@ -455,10 +474,7 @@ function HeaderMeta({ page, pageId }: { page: IPage; pageId?: string }) {
       : readOnlyEditor && !readOnlyEditor.isDestroyed
         ? readOnlyEditor
         : null;
-  const { data: latestPageHistory } = useLatestPageHistoryQuery(
-    pageId || page.id,
-  );
-  const sourceUpdatedAt = latestPageHistory?.createdAt ?? page.updatedAt;
+  const sourceUpdatedAt = page.updatedAt;
   const sourceUpdatedAtTimestamp = sourceUpdatedAt
     ? new Date(sourceUpdatedAt).getTime()
     : NaN;
@@ -529,11 +545,21 @@ function HeaderMeta({ page, pageId }: { page: IPage; pageId?: string }) {
 function ConnectionWarning() {
   const { t } = useTranslation();
   const pageEditor = useAtomValue(pageEditorAtom);
+  const runtimeMode = useAtomValue(pageEditorRuntimeModeAtom);
   const yjsConnectionStatus = useAtomValue(yjsConnectionStatusAtom);
   const [showWarning, setShowWarning] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (runtimeMode === "local") {
+      setShowWarning(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      return;
+    }
+
     const isDisconnected = ["disconnected", "connecting"].includes(
       yjsConnectionStatus,
     );
@@ -549,7 +575,7 @@ function ConnectionWarning() {
       }
       setShowWarning(false);
     }
-  }, [yjsConnectionStatus]);
+  }, [runtimeMode, yjsConnectionStatus]);
 
   // Cleanup only on unmount
   useEffect(() => {
@@ -560,7 +586,25 @@ function ConnectionWarning() {
     };
   }, []);
 
-  if (!pageEditor || pageEditor.isDestroyed || !showWarning) return null;
+  if (!pageEditor || pageEditor.isDestroyed) return null;
+
+  if (runtimeMode === "local") {
+    return (
+      <Tooltip
+        label={t(
+          "Live collaboration is unavailable. Editing continues in fallback mode and changes are saved to the server.",
+        )}
+        openDelay={250}
+        withArrow
+      >
+        <ActionIcon variant="subtle" c="yellow.7">
+          <IconWifiOff size={18} stroke={1.75} />
+        </ActionIcon>
+      </Tooltip>
+    );
+  }
+
+  if (!showWarning) return null;
 
   return (
     <Tooltip

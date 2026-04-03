@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 import { SpaceIdDto } from './page.dto';
 
 export class SidebarPageDto {
@@ -9,4 +10,13 @@ export class SidebarPageDto {
   @IsOptional()
   @IsString()
   pageId: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value?.toLowerCase())
+  @IsIn(['all', 'pinned', 'category'])
+  viewMode?: 'all' | 'pinned' | 'category';
+
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
 }

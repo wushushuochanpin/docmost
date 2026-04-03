@@ -9,9 +9,14 @@ import {
 } from "react-arborist";
 import { useAtom } from "jotai";
 import { treeDataAtom } from "@/features/page/tree/atoms/tree-data-atom.ts";
-import { IMovePage, IPage } from "@/features/page/types/page.types.ts";
+import {
+  IMovePage,
+  IPage,
+  SidebarViewMode,
+} from "@/features/page/types/page.types.ts";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  invalidateRootSidebarQueries,
   useCreatePageMutation,
   useRemovePageMutation,
   useMovePageMutation,
@@ -25,8 +30,20 @@ import { getSpaceUrl } from "@/lib/config.ts";
 import { useQueryEmit } from "@/features/websocket/use-query-emit.ts";
 import { notifications } from "@mantine/notifications";
 import { useRef } from "react";
+import {
+  assignSidebarCategory,
+  pinPage,
+} from "@/features/page/services/page-service.ts";
 
-export function useTreeMutation<T>(spaceId: string) {
+type TreeMutationOptions = {
+  rootViewMode?: SidebarViewMode;
+  rootCategoryId?: string | null;
+};
+
+export function useTreeMutation<T>(
+  spaceId: string,
+  options?: TreeMutationOptions,
+) {
   const [data, setData] = useAtom(treeDataAtom);
   const tree = useMemo(() => new SimpleTree<SpaceTreeNode>(data), [data]);
   const createPageMutation = useCreatePageMutation();
@@ -86,6 +103,30 @@ export function useTreeMutation<T>(spaceId: string) {
     let createdPage: IPage;
     try {
       createdPage = await createPageMutation.mutateAsync(payload);
+
+      if (parentId === null && options?.rootViewMode === "pinned") {
+        const pinResult = await pinPage(createdPage.id);
+        createdPage = {
+          ...createdPage,
+          isPinned: pinResult.isPinned,
+          pinnedAt: pinResult.pinnedAt,
+        };
+      }
+
+      if (
+        parentId === null &&
+        options?.rootViewMode === "category" &&
+        options.rootCategoryId
+      ) {
+        const categoryResult = await assignSidebarCategory({
+          pageId: createdPage.id,
+          categoryId: options.rootCategoryId,
+        });
+        createdPage = {
+          ...createdPage,
+          sidebarCategoryId: categoryResult.sidebarCategoryId,
+        };
+      }
     } catch (err) {
       throw new Error("Failed to create page");
     }
@@ -102,6 +143,7 @@ export function useTreeMutation<T>(spaceId: string) {
       nodeType: createdPage.nodeType ?? nodeType,
       isPinned: createdPage.isPinned ?? false,
       pinnedAt: createdPage.pinnedAt ?? null,
+      sidebarCategoryId: createdPage.sidebarCategoryId ?? null,
       directChildCount:
         createdPage.directChildCount ?? createdPage.directChildFolderCount ?? 0,
       directChildFolderCount: createdPage.directChildFolderCount ?? 0,
@@ -256,6 +298,7 @@ export function useTreeMutation<T>(spaceId: string) {
       nodeType: nodeData.nodeType,
       isPinned: nodeData.isPinned,
       pinnedAt: nodeData.pinnedAt,
+      sidebarCategoryId: args.parentId ? null : nodeData.sidebarCategoryId ?? null,
       directChildCount:
         nodeData.directChildCount ?? nodeData.directChildFolderCount ?? 0,
       directChildFolderCount: nodeData.directChildFolderCount ?? 0,
@@ -267,7 +310,17 @@ export function useTreeMutation<T>(spaceId: string) {
     try {
       await movePageMutation.mutateAsync(payload);
 
-      updateCacheOnMovePage(spaceId, draggedNodeId, oldParentId, args.parentId, pageData);
+      updateCacheOnMovePage(
+        spaceId,
+        draggedNodeId,
+        oldParentId,
+        args.parentId,
+        pageData,
+      );
+
+      if (oldParentId === null || args.parentId === null) {
+        invalidateRootSidebarQueries(spaceId);
+      }
 
       setTimeout(() => {
         emit({

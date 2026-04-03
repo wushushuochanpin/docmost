@@ -40,6 +40,7 @@ import { DuplicatePageDto } from './dto/duplicate-page.dto';
 import { DeletedPageDto } from './dto/deleted-page.dto';
 import { BatchMovePageDto } from './dto/batch-move-page.dto';
 import { PinPageDto } from './dto/pin-page.dto';
+import { SidebarCategoryAssignmentDto } from './dto/sidebar-category-assignment.dto';
 import {
   RollbackFolderMigrationDto,
   StartFolderMigrationDto,
@@ -561,6 +562,10 @@ export class PageController {
       spaceId = page.spaceId;
     }
 
+    if (!dto.pageId && dto.viewMode === 'category' && !dto.categoryId) {
+      throw new BadRequestException('categoryId is required for category view');
+    }
+
     const ability = await this.spaceAbility.createForUser(user, spaceId);
     if (ability.cannot(SpaceCaslAction.Read, SpaceCaslSubject.Page)) {
       throw new ForbiddenException();
@@ -575,8 +580,38 @@ export class PageController {
       pagination,
       workspace.id,
       dto.pageId,
+      dto.viewMode,
+      dto.categoryId,
       user.id,
       spaceCanEdit,
+    );
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('sidebar-category/assign')
+  async assignSidebarCategory(
+    @Body() dto: SidebarCategoryAssignmentDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
+    if (!page) {
+      throw new NotFoundException('Page not found');
+    }
+
+    const ability = await this.spaceAbility.createForUser(user, page.spaceId);
+    if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Page)) {
+      throw new ForbiddenException();
+    }
+
+    await this.pageAccessService.validateCanEdit(page, user);
+
+    return this.pageService.assignSidebarCategory(
+      page.id,
+      dto.categoryId ?? null,
+      workspace.id,
     );
   }
 

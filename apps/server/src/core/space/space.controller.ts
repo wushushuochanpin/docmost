@@ -34,6 +34,13 @@ import {
 } from '../casl/interfaces/workspace-ability.type';
 import WorkspaceAbilityFactory from '../casl/abilities/workspace-ability.factory';
 import { CreateSpaceDto } from './dto/create-space.dto';
+import {
+  CreateSidebarCategoryDto,
+  DeleteSidebarCategoryDto,
+  ReorderSidebarCategoriesDto,
+  SidebarCategorySpaceDto,
+  UpdateSidebarCategoryDto,
+} from './dto/sidebar-category.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('spaces')
@@ -237,5 +244,92 @@ export class SpaceController {
         'please provide either a userId or groupId and both',
       );
     }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('sidebar-categories')
+  async getSidebarCategories(
+    @Body() dto: SidebarCategorySpaceDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const ability = await this.spaceAbility.createForUser(user, dto.spaceId);
+    if (ability.cannot(SpaceCaslAction.Read, SpaceCaslSubject.Page)) {
+      throw new ForbiddenException();
+    }
+
+    return this.spaceService.listSidebarCategories(dto.spaceId, workspace.id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('sidebar-categories/create')
+  async createSidebarCategory(
+    @Body() dto: CreateSidebarCategoryDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const ability = await this.spaceAbility.createForUser(user, dto.spaceId);
+    if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Settings)) {
+      throw new ForbiddenException();
+    }
+
+    return this.spaceService.createSidebarCategory(user, workspace.id, dto);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('sidebar-categories/update')
+  async updateSidebarCategory(
+    @Body() dto: UpdateSidebarCategoryDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const category = await this.spaceService.getSidebarCategory(
+      dto.categoryId,
+      workspace.id,
+    );
+    const ability = await this.spaceAbility.createForUser(user, category.spaceId);
+    if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Settings)) {
+      throw new ForbiddenException();
+    }
+
+    return this.spaceService.updateSidebarCategory(dto.categoryId, dto, workspace.id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('sidebar-categories/delete')
+  async deleteSidebarCategory(
+    @Body() dto: DeleteSidebarCategoryDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const category = await this.spaceService.getSidebarCategory(
+      dto.categoryId,
+      workspace.id,
+    );
+    const ability = await this.spaceAbility.createForUser(user, category.spaceId);
+    if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Settings)) {
+      throw new ForbiddenException();
+    }
+
+    return this.spaceService.deleteSidebarCategory(dto.categoryId, workspace.id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('sidebar-categories/reorder')
+  async reorderSidebarCategories(
+    @Body() dto: ReorderSidebarCategoriesDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const ability = await this.spaceAbility.createForUser(user, dto.spaceId);
+    if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Settings)) {
+      throw new ForbiddenException();
+    }
+
+    return this.spaceService.reorderSidebarCategories(
+      dto.spaceId,
+      dto.orderedCategoryIds,
+      workspace.id,
+    );
   }
 }

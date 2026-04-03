@@ -15,11 +15,16 @@ import {
 import {
   addSpaceMember,
   changeMemberRole,
+  createSidebarCategory,
   getSpaceById,
+  getSidebarCategories,
   getSpaceMembers,
   getSpaces,
+  deleteSidebarCategory,
   removeSpaceMember,
+  reorderSidebarCategories,
   createSpace,
+  updateSidebarCategory,
   updateSpace,
   deleteSpace,
 } from "@/features/space/services/space-service.ts";
@@ -30,6 +35,30 @@ import { queryClient } from "@/query-client.ts";
 import { getRecentChanges } from "@/features/page/services/page-service.ts";
 import { useEffect } from "react";
 import { validate as isValidUuid } from "uuid";
+import {
+  ICreateSidebarCategoryInput,
+  IDeleteSidebarCategoryInput,
+  IDeleteSidebarCategoryResult,
+  IReorderSidebarCategoriesInput,
+  ISidebarCategory,
+  IUpdateSidebarCategoryInput,
+} from "@/features/space/types/sidebar-category.types.ts";
+
+function invalidateSpaceSidebarNavigation(spaceId: string) {
+  queryClient.invalidateQueries({
+    queryKey: ["sidebar-categories", spaceId],
+  });
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      if (query.queryKey[0] !== "root-sidebar-pages") {
+        return false;
+      }
+
+      const params = query.queryKey[1] as { spaceId?: string } | undefined;
+      return params?.spaceId === spaceId;
+    },
+  });
+}
 
 export function useGetSpacesQuery(
   params?: QueryParams,
@@ -106,6 +135,17 @@ export function useGetSpaceBySlugQuery(
   });
 }
 
+export function useSidebarCategoriesQuery(
+  spaceId?: string,
+): UseQueryResult<ISidebarCategory[], Error> {
+  return useQuery({
+    queryKey: ["sidebar-categories", spaceId],
+    queryFn: () => getSidebarCategories(spaceId!),
+    enabled: Boolean(spaceId),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useUpdateSpaceMutation() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -132,6 +172,84 @@ export function useUpdateSpaceMutation() {
     onError: (error) => {
       const errorMessage = error["response"]?.data?.message;
       notifications.show({ message: errorMessage, color: "red" });
+    },
+  });
+}
+
+export function useCreateSidebarCategoryMutation() {
+  const { t } = useTranslation();
+
+  return useMutation<ISidebarCategory, Error, ICreateSidebarCategoryInput>({
+    mutationFn: (data) => createSidebarCategory(data),
+    onSuccess: (data) => {
+      notifications.show({ message: t("Category created") });
+      invalidateSpaceSidebarNavigation(data.spaceId);
+    },
+    onError: (error) => {
+      notifications.show({
+        message: error["response"]?.data?.message || t("Failed to create category"),
+        color: "red",
+      });
+    },
+  });
+}
+
+export function useUpdateSidebarCategoryMutation() {
+  const { t } = useTranslation();
+
+  return useMutation<ISidebarCategory, Error, IUpdateSidebarCategoryInput>({
+    mutationFn: (data) => updateSidebarCategory(data),
+    onSuccess: (data) => {
+      notifications.show({ message: t("Category updated") });
+      invalidateSpaceSidebarNavigation(data.spaceId);
+    },
+    onError: (error) => {
+      notifications.show({
+        message: error["response"]?.data?.message || t("Failed to update category"),
+        color: "red",
+      });
+    },
+  });
+}
+
+export function useDeleteSidebarCategoryMutation() {
+  const { t } = useTranslation();
+
+  return useMutation<
+    IDeleteSidebarCategoryResult,
+    Error,
+    IDeleteSidebarCategoryInput & { spaceId: string }
+  >({
+    mutationFn: ({ categoryId }) => deleteSidebarCategory({ categoryId }),
+    onSuccess: (_data, variables) => {
+      notifications.show({ message: t("Category deleted") });
+      invalidateSpaceSidebarNavigation(variables.spaceId);
+    },
+    onError: (error) => {
+      notifications.show({
+        message: error["response"]?.data?.message || t("Failed to delete category"),
+        color: "red",
+      });
+    },
+  });
+}
+
+export function useReorderSidebarCategoriesMutation() {
+  const { t } = useTranslation();
+
+  return useMutation<ISidebarCategory[], Error, IReorderSidebarCategoriesInput>({
+    mutationFn: (data) => reorderSidebarCategories(data),
+    onSuccess: (data, variables) => {
+      notifications.show({ message: t("Categories reordered") });
+      queryClient.setQueryData(["sidebar-categories", variables.spaceId], data);
+      invalidateSpaceSidebarNavigation(variables.spaceId);
+    },
+    onError: (error) => {
+      notifications.show({
+        message:
+          error["response"]?.data?.message || t("Failed to reorder categories"),
+        color: "red",
+      });
     },
   });
 }

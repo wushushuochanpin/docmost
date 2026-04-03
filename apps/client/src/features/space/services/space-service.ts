@@ -7,6 +7,14 @@ import {
   ISpace,
   ISpaceMember,
 } from "@/features/space/types/space.types";
+import {
+  ICreateSidebarCategoryInput,
+  IDeleteSidebarCategoryInput,
+  IDeleteSidebarCategoryResult,
+  IReorderSidebarCategoriesInput,
+  ISidebarCategory,
+  IUpdateSidebarCategoryInput,
+} from "@/features/space/types/sidebar-category.types.ts";
 import { IPagination, QueryParams } from "@/lib/types.ts";
 import { saveAs } from "file-saver";
 
@@ -77,4 +85,55 @@ export async function exportSpace(data: IExportSpaceParams): Promise<void> {
   }
 
   saveAs(req.data, decodedFileName);
+}
+
+export async function getSidebarCategories(
+  spaceId: string,
+): Promise<ISidebarCategory[]> {
+  const req = await api.post<{ items?: ISidebarCategory[] } | ISidebarCategory[]>(
+    "/spaces/sidebar-categories",
+    { spaceId },
+  );
+  const data = req.data;
+  return Array.isArray(data) ? data : (data.items ?? []);
+}
+
+export async function createSidebarCategory(
+  data: ICreateSidebarCategoryInput,
+): Promise<ISidebarCategory> {
+  const req = await api.post<ISidebarCategory>(
+    "/spaces/sidebar-categories/create",
+    data,
+  );
+  return req.data;
+}
+
+export async function updateSidebarCategory(
+  data: IUpdateSidebarCategoryInput,
+): Promise<ISidebarCategory> {
+  const req = await api.post<ISidebarCategory>(
+    "/spaces/sidebar-categories/update",
+    data,
+  );
+  return req.data;
+}
+
+export async function deleteSidebarCategory(
+  data: IDeleteSidebarCategoryInput,
+): Promise<IDeleteSidebarCategoryResult> {
+  const req = await api.post<IDeleteSidebarCategoryResult>(
+    "/spaces/sidebar-categories/delete",
+    data,
+  );
+  return req.data;
+}
+
+export async function reorderSidebarCategories(
+  data: IReorderSidebarCategoriesInput,
+): Promise<ISidebarCategory[]> {
+  const req = await api.post<ISidebarCategory[]>(
+    "/spaces/sidebar-categories/reorder",
+    data,
+  );
+  return req.data;
 }

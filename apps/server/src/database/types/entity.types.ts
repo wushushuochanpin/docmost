@@ -33,6 +33,7 @@ import {
   ScAuditRetention as _ScAuditRetention,
   WorkspaceReleaseChannel as _WorkspaceReleaseChannel,
   Audit as _Audit,
+  SpaceSidebarCategories as _SpaceSidebarCategories,
 } from './db';
 import { PageEmbeddings } from '@docmost/db/types/embeddings.types';
 
@@ -57,6 +58,14 @@ export type UpdatableUser = Updateable<Omit<Users, 'id'>>;
 export type Space = Selectable<Spaces>;
 export type InsertableSpace = Insertable<Spaces>;
 export type UpdatableSpace = Updateable<Omit<Spaces, 'id'>>;
+
+// Space Sidebar Category
+export type SpaceSidebarCategory = Selectable<_SpaceSidebarCategories>;
+export type InsertableSpaceSidebarCategory =
+  Insertable<_SpaceSidebarCategories>;
+export type UpdatableSpaceSidebarCategory = Updateable<
+  Omit<_SpaceSidebarCategories, 'id'>
+>;
 
 // SpaceMember
 export type SpaceMember = Selectable<SpaceMembers>;
