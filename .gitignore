@@ -24,6 +24,7 @@ lerna-debug.log*
 /.nyc_output
 
 # IDEs and editors
+.claude/
 /.idea
 .project
 .classpath
