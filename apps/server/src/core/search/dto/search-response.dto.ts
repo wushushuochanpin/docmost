@@ -2,6 +2,7 @@ import { Space } from '@docmost/db/types/entity.types';
 
 export class SearchResponseDto {
   id: string;
+  slugId: string;
   title: string;
   icon: string;
   parentPageId: string;

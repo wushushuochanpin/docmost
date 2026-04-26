@@ -34,6 +34,7 @@ import {
   markEditorBootstrapStage,
   resetEditorBootstrapTrace,
 } from "@/features/editor/lib/editor-bootstrap-metrics";
+import { recordRecentPage } from "@/features/page/hooks/use-recent-pages.ts";
 
 const MemoizedPageHeader = React.memo(PageHeader);
 const MemoizedHistoryModal = React.memo(HistoryModal);
@@ -136,6 +137,37 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
 
     store.set(currentRoutePageAtom as any, page);
   }, [page, store]);
+
+  useEffect(() => {
+    if (!page?.id) {
+      return;
+    }
+
+    recordRecentPage(
+      {
+        pageId: page.id,
+        slugId: page.slugId,
+        title: page.title || "Untitled",
+        icon: page.icon,
+        nodeType: page.nodeType === "folder" ? "folder" : "file",
+        spaceId: page.spaceId,
+        spaceName: page.space?.name || "",
+        spaceSlug: page.space?.slug || "",
+        workspaceId: page.workspaceId,
+      },
+      page.workspaceId,
+    );
+  }, [
+    page?.id,
+    page?.slugId,
+    page?.title,
+    page?.icon,
+    page?.nodeType,
+    page?.spaceId,
+    page?.space?.name,
+    page?.space?.slug,
+    page?.workspaceId,
+  ]);
 
   useEffect(() => {
     if (!page?.id || isFolder) {

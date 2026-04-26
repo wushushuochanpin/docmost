@@ -11,7 +11,10 @@ import { TokenService } from '../../auth/services/token.service';
 import { IntegrationTokenRepo } from '../repos/integration-token.repo';
 import { CreateIntegrationTokenDto } from '../dto/create-integration-token.dto';
 import { ListIntegrationTokensDto } from '../dto/list-integration-tokens.dto';
-import { WorkspaceCaslAction, WorkspaceCaslSubject } from '../../casl/interfaces/workspace-ability.type';
+import {
+  WorkspaceCaslAction,
+  WorkspaceCaslSubject,
+} from '../../casl/interfaces/workspace-ability.type';
 import WorkspaceAbilityFactory from '../../casl/abilities/workspace-ability.factory';
 import { AuditEvent, AuditResource } from '../../../common/events/audit-events';
 import {
@@ -60,11 +63,13 @@ export class IntegrationTokenService {
     dto: CreateIntegrationTokenDto,
   ) {
     const workspaceSettings = (workspace.settings ?? {}) as Record<string, any>;
-    const restrictToAdmins =
-      workspaceSettings?.api?.restrictToAdmins === true;
+    const restrictToAdmins = workspaceSettings?.api?.restrictToAdmins === true;
     const ability = this.workspaceAbility.createForUser(user, workspace);
 
-    if (restrictToAdmins && ability.cannot(WorkspaceCaslAction.Manage, WorkspaceCaslSubject.API)) {
+    if (
+      restrictToAdmins &&
+      ability.cannot(WorkspaceCaslAction.Manage, WorkspaceCaslSubject.API)
+    ) {
       throw new ForbiddenException('Only admins can create API keys');
     }
 
@@ -87,11 +92,7 @@ export class IntegrationTokenService {
     return this.createToken(user, workspace, dto, 'workspace');
   }
 
-  async revokePersonalToken(
-    user: User,
-    workspace: Workspace,
-    tokenId: string,
-  ) {
+  async revokePersonalToken(user: User, workspace: Workspace, tokenId: string) {
     const token = await this.tokenRepo.findTokenById(tokenId, workspace.id);
     if (!token || token.isWorkspaceManaged || token.ownerUserId !== user.id) {
       throw new ForbiddenException();
@@ -114,7 +115,10 @@ export class IntegrationTokenService {
     await this.revokeToken(workspace.id, tokenId, user.id);
   }
 
-  async validateApiToken(req: any, payload: { apiKeyId: string; sub: string; workspaceId: string }) {
+  async validateApiToken(
+    req: any,
+    payload: { apiKeyId: string; sub: string; workspaceId: string },
+  ) {
     const rawToken = extractBearerTokenFromHeader(req);
     if (!rawToken) {
       throw new UnauthorizedException();
@@ -154,7 +158,7 @@ export class IntegrationTokenService {
       lastUsedIp: req.ip ?? req.headers?.['x-real-ip'] ?? null,
     });
 
-    return { user, workspace };
+    return { user, workspace, apiToken: token };
   }
 
   private async createToken(
@@ -239,7 +243,11 @@ export class IntegrationTokenService {
     };
   }
 
-  private async revokeToken(workspaceId: string, tokenId: string, actorUserId: string) {
+  private async revokeToken(
+    workspaceId: string,
+    tokenId: string,
+    actorUserId: string,
+  ) {
     await this.tokenRepo.updateToken(tokenId, workspaceId, {
       status: 'revoked',
       revokedAt: new Date(),

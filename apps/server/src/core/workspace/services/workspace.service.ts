@@ -371,7 +371,6 @@ export class WorkspaceService {
     if (
       typeof updateWorkspaceDto.disablePublicSharing !== 'undefined' ||
       typeof updateWorkspaceDto.trashRetentionDays !== 'undefined' ||
-      typeof updateWorkspaceDto.mcpEnabled !== 'undefined' ||
       typeof updateWorkspaceDto.restrictApiToAdmins !== 'undefined'
     ) {
       const ws = await this.db

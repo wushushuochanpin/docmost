@@ -8,7 +8,6 @@ import {
   ActionIcon,
   Tooltip,
   Stack,
-  Alert,
 } from "@mantine/core";
 import { useAtom } from "jotai";
 import { workspaceAtom } from "@/features/user/atoms/current-user-atom.ts";
@@ -16,16 +15,14 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { updateWorkspace } from "@/features/workspace/services/workspace-service.ts";
 import { notifications } from "@mantine/notifications";
-import { useIsCloudEE } from "@/hooks/use-is-cloud-ee.tsx";
 import { getAppUrl } from "@/lib/config.ts";
-import { IconCheck, IconCopy, IconInfoCircle } from "@tabler/icons-react";
+import { IconCheck, IconCopy } from "@tabler/icons-react";
 import { CopyButton } from "@/components/common/copy-button.tsx";
 
 export default function McpSettings() {
   const { t } = useTranslation();
   const [workspace, setWorkspace] = useAtom(workspaceAtom);
   const [checked, setChecked] = useState(workspace?.settings?.ai?.mcp);
-  const hasAccess = useIsCloudEE();
 
   const mcpUrl = `${getAppUrl()}/mcp`;
 
@@ -45,18 +42,6 @@ export default function McpSettings() {
 
   return (
     <Stack gap="lg">
-      {!hasAccess && (
-        <Alert
-          icon={<IconInfoCircle />}
-          title={t("Enterprise feature")}
-          color="blue"
-        >
-          {t(
-            "MCP is only available in the Docmost enterprise edition. Contact sales@docmost.com.",
-          )}
-        </Alert>
-      )}
-
       <Group justify="space-between" wrap="nowrap" gap="xl">
         <div>
           <Text size="md">{t("Model Context Protocol (MCP)")}</Text>
@@ -76,11 +61,7 @@ export default function McpSettings() {
           </Text>
         </div>
 
-        <Switch
-          defaultChecked={checked}
-          onChange={handleChange}
-          disabled={!hasAccess}
-        />
+        <Switch checked={checked === true} onChange={handleChange} />
       </Group>
 
       {checked && (
@@ -89,11 +70,7 @@ export default function McpSettings() {
             {t("MCP Server URL")}
           </Text>
           <Group gap="xs">
-            <TextInput
-              value={mcpUrl}
-              readOnly
-              style={{ flex: 1 }}
-            />
+            <TextInput value={mcpUrl} readOnly style={{ flex: 1 }} />
             <CopyButton value={mcpUrl} timeout={2000}>
               {({ copied, copy }) => (
                 <Tooltip
@@ -123,12 +100,16 @@ export default function McpSettings() {
               {t("Supported tools")}
             </Text>
             <List size="sm" spacing={2}>
-              <List.Item><Text size="sm" c="dimmed" span>search_pages, get_page, create_page, update_page</Text></List.Item>
-              <List.Item><Text size="sm" c="dimmed" span>list_pages, list_child_pages, duplicate_page</Text></List.Item>
-              <List.Item><Text size="sm" c="dimmed" span>copy_page_to_space, move_page, move_page_to_space</Text></List.Item>
-              <List.Item><Text size="sm" c="dimmed" span>get_space, list_spaces, create_space, update_space</Text></List.Item>
-              <List.Item><Text size="sm" c="dimmed" span>get_comments, create_comment, update_comment</Text></List.Item>
-              <List.Item><Text size="sm" c="dimmed" span>search_attachments, list_workspace_members, get_current_user</Text></List.Item>
+              <List.Item>
+                <Text size="sm" c="dimmed" span>
+                  search
+                </Text>
+              </List.Item>
+              <List.Item>
+                <Text size="sm" c="dimmed" span>
+                  fetch
+                </Text>
+              </List.Item>
             </List>
           </div>
         </div>

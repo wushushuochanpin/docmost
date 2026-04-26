@@ -67,12 +67,13 @@ export class SharePreviewMetaService {
   }
 
   private buildPageSlug(pageSlugId: string, pageTitle?: string) {
-    const titleSlug = slugify(pageTitle?.substring(0, 70) || 'untitled', {
-      customReplacements: [
-        ['♥', ''],
-        ['🦄', ''],
-      ],
-    });
+    const titleSlug =
+      slugify(pageTitle?.substring(0, 70) || 'untitled', {
+        customReplacements: [
+          ['♥', ''],
+          ['🦄', ''],
+        ],
+      }) || 'untitled';
 
     return `${titleSlug}-${pageSlugId}`;
   }

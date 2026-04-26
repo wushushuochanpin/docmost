@@ -48,6 +48,9 @@ const LazyExportModal = React.lazy(
 const LazyMovePageModal = React.lazy(
   () => import("@/features/page/components/move-page-modal.tsx"),
 );
+const LazyMoveToModal = React.lazy(
+  () => import("@/features/page/components/move-to-modal.tsx"),
+);
 const LazyShareMenuContent = React.lazy(async () => {
   const module = await import("@/features/share/components/share-modal.tsx");
 
@@ -144,6 +147,10 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
   const [
     movePageModalOpened,
     { open: openMovePageModal, close: closeMoveSpaceModal },
+  ] = useDisclosure(false);
+  const [
+    moveToModalOpened,
+    { open: openMoveToModal, close: closeMoveToModal },
   ] = useDisclosure(false);
   const [menuOpened, setMenuOpened] = useState(false);
   const [shareExpanded, setShareExpanded] = useState(false);
@@ -260,7 +267,13 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
                 borderBottom: "1px solid var(--ui-border-default)",
               }}
             >
-              <Suspense fallback={<Text size="xs" c="dimmed">{t("Loading...")}</Text>}>
+              <Suspense
+                fallback={
+                  <Text size="xs" c="dimmed">
+                    {t("Loading...")}
+                  </Text>
+                }
+              >
                 <LazyShareMenuContent readOnly={readOnly} />
               </Suspense>
             </div>
@@ -307,12 +320,20 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
           <Menu.Divider />
 
           {!readOnly && (
-            <Menu.Item
-              leftSection={<IconArrowRight size={16} />}
-              onClick={openMovePageModal}
-            >
-              {t("Move")}
-            </Menu.Item>
+            <>
+              <Menu.Item
+                leftSection={<IconArrowRight size={16} />}
+                onClick={openMoveToModal}
+              >
+                {t("Move to...")}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<IconArrowRight size={16} />}
+                onClick={openMovePageModal}
+              >
+                {t("Move to space")}
+              </Menu.Item>
+            </>
           )}
 
           <Menu.Item
@@ -401,6 +422,21 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
             currentSpaceSlug={spaceSlug}
             onClose={closeMoveSpaceModal}
             open={movePageModalOpened}
+          />
+        </Suspense>
+      )}
+
+      {moveToModalOpened && (
+        <Suspense fallback={null}>
+          <LazyMoveToModal
+            pageId={currentPage.id}
+            pageTitle={currentPage.title}
+            pageNodeType={currentPage.nodeType === "folder" ? "folder" : "file"}
+            currentSpaceId={currentPage.spaceId}
+            slugId={currentPage.slugId}
+            recentScopeId={currentPage.workspaceId}
+            onClose={closeMoveToModal}
+            open={moveToModalOpened}
           />
         </Suspense>
       )}

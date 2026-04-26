@@ -76,11 +76,7 @@ import {
 } from "@/features/page/types/page.types.ts";
 import { queryClient } from "@/query-client.ts";
 import { OpenMap } from "react-arborist/dist/main/state/open-slice";
-import {
-  useDisclosure,
-  useElementSize,
-  useMergedRef,
-} from "@mantine/hooks";
+import { useDisclosure, useElementSize, useMergedRef } from "@mantine/hooks";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { dfs } from "react-arborist/dist/module/utils";
 import { useQueryEmit } from "@/features/websocket/use-query-emit.ts";
@@ -92,6 +88,7 @@ import { useDeletePageModal } from "@/features/page/hooks/use-delete-page-modal.
 import { useTranslation } from "react-i18next";
 import ExportModal from "@/components/common/export-modal";
 import MovePageModal from "../../components/move-page-modal.tsx";
+import MoveToModal from "../../components/move-to-modal.tsx";
 import { mobileSidebarAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
 import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-toggle-sidebar.ts";
 import CopyPageModal from "../../components/copy-page-modal.tsx";
@@ -99,12 +96,10 @@ import { duplicatePage } from "../../services/page-service.ts";
 import { AutoTooltipText } from "@/components/ui/auto-tooltip-text.tsx";
 import { useAtomValue } from "jotai";
 import { currentRoutePageAtom } from "@/features/page/atoms/current-route-page-atom.ts";
+import { workspaceAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { useSidebarCategoriesQuery } from "@/features/space/queries/space-query.ts";
 import { ISidebarCategory } from "@/features/space/types/sidebar-category.types.ts";
-import {
-  SidebarViewSelection,
-  SidebarViewTabs,
-} from "./sidebar-view-tabs.tsx";
+import { SidebarViewSelection, SidebarViewTabs } from "./sidebar-view-tabs.tsx";
 import { SidebarCategoryManageModal } from "./sidebar-category-manage-modal.tsx";
 
 interface SpaceTreeProps {
@@ -186,8 +181,10 @@ export default function SpaceTree({
   const [selectedViewKey, setSelectedViewKey] = useState(() =>
     readStoredSidebarView(spaceId),
   );
-  const [manageCategoriesOpened, { open: openManageCategories, close: closeManageCategories }] =
-    useDisclosure(false);
+  const [
+    manageCategoriesOpened,
+    { open: openManageCategories, close: closeManageCategories },
+  ] = useDisclosure(false);
   const {
     data: sidebarCategories = [],
     isFetched: areSidebarCategoriesLoaded,
@@ -196,11 +193,13 @@ export default function SpaceTree({
     () => parseSidebarViewSelection(selectedViewKey, sidebarCategories, t),
     [selectedViewKey, sidebarCategories, t],
   );
-  const { data, setData, controllers } =
-    useTreeMutation<SpaceTreeNode>(spaceId, {
+  const { data, setData, controllers } = useTreeMutation<SpaceTreeNode>(
+    spaceId,
+    {
       rootViewMode: currentView.viewMode,
       rootCategoryId: currentView.categoryId,
-    });
+    },
+  );
   const {
     data: pagesData,
     hasNextPage,
@@ -406,7 +405,7 @@ export default function SpaceTree({
             ? t("No pages in this category yet")
             : currentView.viewMode === "pinned"
               ? t("No pinned pages yet")
-            : t("No pages yet")}
+              : t("No pages yet")}
         </Text>
       )}
       <div ref={mergedRef} className={classes.treeViewport}>
@@ -446,8 +445,8 @@ export default function SpaceTree({
               }
 
               return args.dragNodes.some(
-                  (dragNode) => dragNode.data?.nodeType === "folder",
-                );
+                (dragNode) => dragNode.data?.nodeType === "folder",
+              );
             }}
             disableEdit={readOnly ? true : (data) => data.canEdit === false}
             {...controllers}
@@ -870,6 +869,7 @@ function NodeMenu({
   const { t } = useTranslation();
   const clipboard = useClipboard({ timeout: 500 });
   const { spaceSlug } = useParams();
+  const workspace = useAtomValue(workspaceAtom);
   const { openDeleteModal } = useDeletePageModal();
   const setData = useSetAtom(treeDataAtom);
   const emit = useQueryEmit();
@@ -879,6 +879,10 @@ function NodeMenu({
   const [
     movePageModalOpened,
     { open: openMovePageModal, close: closeMoveSpaceModal },
+  ] = useDisclosure(false);
+  const [
+    moveToModalOpened,
+    { open: openMoveToModal, close: closeMoveToModal },
   ] = useDisclosure(false);
   const [
     copyPageModalOpened,
@@ -897,7 +901,8 @@ function NodeMenu({
   const selectedMovableIds = selectedPageIds.filter((id) => id !== node.id);
   const canBatchMoveSelected =
     canEdit && isFolder && selectedMovableIds.length > 0;
-  const getCurrentTreeData = () => (treeApi.props.data as SpaceTreeNode[]) ?? [];
+  const getCurrentTreeData = () =>
+    (treeApi.props.data as SpaceTreeNode[]) ?? [];
 
   const refreshSidebarTree = () => {
     invalidateRootSidebarQueries(spaceId);
@@ -1019,8 +1024,7 @@ function NodeMenu({
       });
     } catch (err) {
       notifications.show({
-        message:
-          err.response?.data.message || t("Failed to update pin status"),
+        message: err.response?.data.message || t("Failed to update pin status"),
         color: "red",
       });
     }
@@ -1117,8 +1121,7 @@ function NodeMenu({
       refreshSidebarTree();
     } catch (err) {
       notifications.show({
-        message:
-          err.response?.data.message || t("Filtered batch move failed"),
+        message: err.response?.data.message || t("Filtered batch move failed"),
         color: "red",
       });
     }
@@ -1328,10 +1331,21 @@ function NodeMenu({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  openMoveToModal();
+                }}
+              >
+                {t("Move to...")}
+              </Menu.Item>
+
+              <Menu.Item
+                leftSection={<IconArrowRight size={16} />}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   openMovePageModal();
                 }}
               >
-                {t("Move")}
+                {t("Move to space")}
               </Menu.Item>
 
               <Menu.Item
@@ -1374,9 +1388,7 @@ function NodeMenu({
         <Modal.Overlay blur={1} />
         <Modal.Content style={{ overflow: "hidden" }}>
           <Modal.Header py={0}>
-            <Modal.Title fw={500}>
-              {t("Move filtered pages here")}
-            </Modal.Title>
+            <Modal.Title fw={500}>{t("Move filtered pages here")}</Modal.Title>
             <Modal.CloseButton />
           </Modal.Header>
           <Modal.Body>
@@ -1411,6 +1423,17 @@ function NodeMenu({
         currentSpaceSlug={spaceSlug}
         onClose={closeMoveSpaceModal}
         open={movePageModalOpened}
+      />
+
+      <MoveToModal
+        pageId={node.id}
+        pageTitle={node.data.name}
+        pageNodeType={node.data.nodeType === "folder" ? "folder" : "file"}
+        currentSpaceId={spaceId}
+        slugId={node.data.slugId}
+        recentScopeId={workspace?.id}
+        onClose={closeMoveToModal}
+        open={moveToModalOpened}
       />
 
       <CopyPageModal

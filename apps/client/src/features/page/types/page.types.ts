@@ -65,7 +65,7 @@ interface IDeletedBy {
 
 export interface IMovePage {
   pageId: string;
-  position?: string;
+  position?: string | null;
   after?: string;
   before?: string;
   parentPageId?: string | null;
@@ -143,6 +143,7 @@ export interface IPageInput {
   parentPageId: string | null;
   nodeType?: "file" | "folder";
   includeContent?: boolean;
+  includeSpace?: boolean;
   includeRendered?: boolean;
   preferStaticReadonly?: boolean;
   icon: string;

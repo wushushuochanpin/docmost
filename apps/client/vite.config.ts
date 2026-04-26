@@ -24,6 +24,11 @@ const manualChunkGroups = [
   },
 ];
 
+// Older iOS WeChat webviews inherit the system WebKit version.
+// Vite 7's default target keeps syntax such as optional chaining for Safari 16.4+,
+// which can white-screen older embedded webviews before React mounts.
+const compatBuildTargets = ["chrome87", "edge88", "firefox78", "safari13"];
+
 function resolveManualChunk(id: string) {
   if (!id.includes("node_modules")) {
     return undefined;
@@ -115,6 +120,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      target: compatBuildTargets,
       rollupOptions: {
         output: {
           manualChunks: resolveManualChunk,

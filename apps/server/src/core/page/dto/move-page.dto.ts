@@ -10,10 +10,11 @@ export class MovePageDto {
   @IsString()
   pageId: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(5)
   @MaxLength(12)
-  position: string;
+  position?: string | null;
 
   @IsOptional()
   @IsString()

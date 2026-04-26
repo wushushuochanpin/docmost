@@ -10,6 +10,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAtom } from "jotai";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom";
+import { clearRecentPages } from "@/features/page/hooks/use-recent-pages.ts";
 import {
   IForgotPassword,
   ILogin,
@@ -145,6 +146,7 @@ export default function useAuth() {
 
   const handleLogout = async () => {
     setCurrentUser(RESET);
+    clearRecentPages();
     await logout();
     window.location.replace(APP_ROUTE.AUTH.LOGIN);
   };

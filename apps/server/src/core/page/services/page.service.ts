@@ -1111,7 +1111,7 @@ export class PageService {
               sourcePage.id === rootPage.id &&
               isDuplicateInSameSpace &&
               !rootPage.parentPageId
-                ? sidebarCategoryIdBySourceId.get(sourcePage.id) ?? null
+                ? (sidebarCategoryIdBySourceId.get(sourcePage.id) ?? null)
                 : null,
           })),
         )
@@ -1213,13 +1213,6 @@ export class PageService {
         ? movedPage.parentPageId
         : dto.parentPageId;
 
-    // validate position value by attempting to generate a key
-    try {
-      generateJitteredKeyBetween(dto.position, null);
-    } catch (err) {
-      throw new BadRequestException('Invalid move position');
-    }
-
     let parentPageId = null;
     if (movedPage.parentPageId === targetParentId) {
       parentPageId = undefined;
@@ -1227,6 +1220,8 @@ export class PageService {
       // changing the page's parent
       let targetParentNodeType: PageNodeType | null = null;
       if (targetParentId) {
+        await this.assertValidMoveTargetParent(movedPage, targetParentId);
+
         const parentPage = await this.pageRepo.findById(targetParentId, {
           workspaceId: movedPage.workspaceId,
         });
@@ -1249,9 +1244,24 @@ export class PageService {
       });
     }
 
+    let position = dto.position;
+    if (position == null) {
+      position = await this.nextPagePosition(
+        movedPage.spaceId,
+        targetParentId ?? undefined,
+      );
+    } else {
+      // validate position value by attempting to generate a key
+      try {
+        generateJitteredKeyBetween(position, null);
+      } catch (err) {
+        throw new BadRequestException('Invalid move position');
+      }
+    }
+
     await this.pageRepo.updatePage(
       {
-        position: dto.position,
+        position,
         parentPageId: parentPageId,
       },
       dto.pageId,
@@ -1260,7 +1270,10 @@ export class PageService {
     );
 
     if (parentPageId) {
-      await this.clearSidebarCategoryForPages([dto.pageId], movedPage.workspaceId);
+      await this.clearSidebarCategoryForPages(
+        [dto.pageId],
+        movedPage.workspaceId,
+      );
     }
   }
 
@@ -1792,6 +1805,39 @@ export class PageService {
 
   private normalizeNodeType(nodeType: string | null | undefined): PageNodeType {
     return nodeType === 'folder' ? 'folder' : 'file';
+  }
+
+  private async assertValidMoveTargetParent(
+    movedPage: Page,
+    targetParentId: string,
+  ) {
+    const cycle = await this.db
+      .withRecursive('target_ancestors', (db) =>
+        db
+          .selectFrom('pages')
+          .select(['id', 'parentPageId'])
+          .where('id', '=', targetParentId)
+          .where('workspaceId', '=', movedPage.workspaceId)
+          .unionAll((exp) =>
+            exp
+              .selectFrom('pages as parent')
+              .innerJoin(
+                'target_ancestors as ancestor',
+                'ancestor.parentPageId',
+                'parent.id',
+              )
+              .select(['parent.id', 'parent.parentPageId'])
+              .where('parent.workspaceId', '=', movedPage.workspaceId),
+          ),
+      )
+      .selectFrom('target_ancestors')
+      .select('id')
+      .where('id', '=', movedPage.id)
+      .executeTakeFirst();
+
+    if (cycle) {
+      throw new BadRequestException('CANNOT_MOVE_PAGE_INTO_OWN_DESCENDANT');
+    }
   }
 
   private assertParentChildHierarchy(payload: {
