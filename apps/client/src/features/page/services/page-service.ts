@@ -188,6 +188,16 @@ export async function getRecentChanges(
   return req.data;
 }
 
+export async function getPagePrintHtml(
+  pageId: string,
+): Promise<{ title: string; bodyHtml: string }> {
+  const req = await api.post<{ title: string; bodyHtml: string }>(
+    "/pages/print-html",
+    { pageId },
+  );
+  return req.data;
+}
+
 export async function exportPage(data: IExportPageParams): Promise<void> {
   const endpoint =
     data.format === ExportFormat.PDF ? "/pages/export/pdf" : "/pages/export";

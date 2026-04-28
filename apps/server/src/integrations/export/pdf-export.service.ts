@@ -41,6 +41,27 @@ export class PdfExportService {
     private readonly exportService: ExportService,
   ) {}
 
+  async getPagePrintHtml(
+    page: Page,
+    userId: string,
+  ): Promise<{ title: string; bodyHtml: string }> {
+    const baseUrl = await this.getWorkspaceBaseUrl(page.workspaceId);
+    const content = await this.exportService.turnPageMentionsToLinks(
+      getProsemirrorContent(page.content),
+      page.workspaceId,
+      baseUrl,
+      userId,
+    );
+    const renderedHtml = this.renderAllSegments(content);
+    const hydratedHtml = await this.hydrateDocumentHtml(
+      renderedHtml,
+      content,
+      page.workspaceId,
+      baseUrl,
+    );
+    return { title: getPageTitle(page.title), bodyHtml: hydratedHtml };
+  }
+
   async exportPagePdf(page: Page, userId: string): Promise<Buffer> {
     const baseUrl = await this.getWorkspaceBaseUrl(page.workspaceId);
     const content = await this.exportService.turnPageMentionsToLinks(

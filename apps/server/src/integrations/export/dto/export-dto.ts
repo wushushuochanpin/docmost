@@ -17,6 +17,12 @@ export class ExportPagePdfDto {
   pageId: string;
 }
 
+export class PrintPageDto {
+  @IsString()
+  @IsNotEmpty()
+  pageId: string;
+}
+
 export class ExportPageDto {
   @IsString()
   @IsNotEmpty()

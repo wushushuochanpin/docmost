@@ -74,6 +74,9 @@ const ShareRedirect = lazyWithRetry(
 );
 const SpacesPage = lazyWithRetry(() => import("@/pages/spaces/spaces.tsx"));
 const SpaceTrash = lazyWithRetry(() => import("@/pages/space/space-trash.tsx"));
+const PrintPreviewPage = lazyWithRetry(
+  () => import("@/pages/page/print-preview.tsx"),
+);
 const UserApiKeys = lazyWithRetry(
   () => import("@/features/compliance-admin/api-keys/pages/user-api-keys.tsx"),
 );
@@ -230,6 +233,8 @@ export default function App() {
             {isCloud() && <Route path={"billing"} element={<Billing />} />}
           </Route>
         </Route>
+
+        <Route path={"/print/:pageId"} element={<PrintPreviewPage />} />
 
         <Route path="*" element={<Error404 />} />
       </Routes>

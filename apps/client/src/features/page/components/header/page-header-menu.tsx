@@ -195,9 +195,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
   };
 
   const handlePrint = () => {
-    setTimeout(() => {
-      window.print();
-    }, 250);
+    window.open(`/print/${currentPage.id}`, "_blank");
   };
 
   const openHistoryModal = () => {

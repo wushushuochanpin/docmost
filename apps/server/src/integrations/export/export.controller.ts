@@ -15,6 +15,7 @@ import {
   ExportPageDto,
   ExportPagePdfDto,
   ExportSpaceDto,
+  PrintPageDto,
 } from './dto/export-dto';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { User, Workspace } from '@docmost/db/types/entity.types';
@@ -148,6 +149,28 @@ export class ExportController {
     });
 
     res.send(pdfBuffer);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('pages/print-html')
+  async getPagePrintHtml(
+    @Body() dto: PrintPageDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+      includeContent: true,
+    });
+
+    if (!page || page.deletedAt) {
+      throw new NotFoundException('Page not found');
+    }
+
+    await this.pageAccessService.validateCanView(page, user);
+
+    return this.pdfExportService.getPagePrintHtml(page, user.id);
   }
 
   @UseGuards(JwtAuthGuard)
