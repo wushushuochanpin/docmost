@@ -139,7 +139,7 @@ export default function PrintPreviewPage() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100%", background: "#f3f4f6" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100%" }}>
       {/* Toolbar */}
       <div
         className="print-toolbar"
@@ -259,14 +259,16 @@ export default function PrintPreviewPage() {
         </div>
       </div>
 
-      {/* Paper preview area */}
+      {/* Paper preview area — gray canvas fills full remaining height */}
       <div
         style={{
           flex: 1,
           overflow: "auto",
-          padding: "32px 40px",
-          width: "100%",
-          boxSizing: "border-box",
+          background: "#e5e7eb",
+          padding: "32px 24px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
         }}
       >
         {error ? (
@@ -277,10 +279,10 @@ export default function PrintPreviewPage() {
           <div
             className="print-paper"
             style={{
-              width: "100%",
+              width: previewW,
               minHeight: Math.round(paperH * MM_TO_PX),
               background: "white",
-              boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
               padding: `${margins.top * MM_TO_PX}px ${margins.right * MM_TO_PX}px ${margins.bottom * MM_TO_PX}px ${margins.left * MM_TO_PX}px`,
               boxSizing: "border-box",
               fontFamily:
@@ -288,6 +290,7 @@ export default function PrintPreviewPage() {
               fontSize: 12,
               lineHeight: 1.72,
               color: "#111827",
+              flexShrink: 0,
             }}
           >
             {title && (
