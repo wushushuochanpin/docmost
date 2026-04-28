@@ -139,7 +139,7 @@ export default function PrintPreviewPage() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#f3f4f6" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100%", background: "#f3f4f6" }}>
       {/* Toolbar */}
       <div
         className="print-toolbar"
@@ -264,9 +264,9 @@ export default function PrintPreviewPage() {
         style={{
           flex: 1,
           overflow: "auto",
-          padding: "32px 24px",
-          display: "flex",
-          justifyContent: "center",
+          padding: "32px 40px",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         {error ? (
@@ -277,7 +277,7 @@ export default function PrintPreviewPage() {
           <div
             className="print-paper"
             style={{
-              width: previewW,
+              width: "100%",
               minHeight: Math.round(paperH * MM_TO_PX),
               background: "white",
               boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
