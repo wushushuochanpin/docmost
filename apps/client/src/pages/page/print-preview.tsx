@@ -115,18 +115,21 @@ export default function PrintPreviewPage() {
     if (!paperRef.current || bodyHtml === null) return;
     const measure = () => {
       const totalH = paperRef.current!.offsetHeight;
+      // Printable height per page = paper height minus top+bottom margins
+      const printableH = (paperH - margins.top - margins.bottom) * MM_TO_PX;
+      const topPadPx = margins.top * MM_TO_PX;
       const breaks: number[] = [];
-      let y = pageHeightPx;
-      while (y < totalH - 10) {
-        breaks.push(y);
-        y += pageHeightPx;
+      let y = topPadPx + printableH;
+      while (y < totalH - 5) {
+        breaks.push(Math.round(y));
+        y += printableH;
       }
       setPageBreaks(breaks);
     };
     // Delay to let images and fonts settle
-    const t = setTimeout(measure, 300);
+    const t = setTimeout(measure, 400);
     return () => clearTimeout(t);
-  }, [bodyHtml, pageHeightPx]);
+  }, [bodyHtml, paperH, margins.top, margins.bottom]);
 
   useEffect(() => {
     if (!styleRef.current) {
