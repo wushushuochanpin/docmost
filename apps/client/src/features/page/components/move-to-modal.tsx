@@ -1,8 +1,9 @@
 import {
   Alert,
+  Box,
   Button,
-  Divider,
   Group,
+  Kbd,
   Loader,
   Modal,
   ScrollArea,
@@ -11,11 +12,13 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconAlertTriangle, IconSearch } from "@tabler/icons-react";
+import { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useAtomValue } from "jotai";
 import MoveTargetItem from "@/features/page/components/move-target-item.tsx";
 import { treeDataAtom } from "@/features/page/tree/atoms/tree-data-atom.ts";
 import { useMoveTo } from "@/features/page/hooks/use-move-to.ts";
+import classes from "./move-to-modal.module.css";
 
 interface MoveToModalProps {
   pageId: string;
@@ -63,33 +66,50 @@ export default function MoveToModal({
   const targetDisabledReason = moveTo.targetPage
     ? moveTo.getDisabledReason(moveTo.targetPage)
     : null;
+  const canSubmit =
+    Boolean(moveTo.targetPage) && !targetDisabledReason && !moving;
+
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" && canSubmit) {
+      event.preventDefault();
+      moveTo.submitMove();
+    }
+  };
 
   return (
     <Modal.Root
       opened={open}
       onClose={moving ? () => undefined : onClose}
-      size={540}
-      padding="xl"
-      yOffset="10vh"
+      size={600}
+      padding={0}
+      yOffset="6vh"
       xOffset={0}
+      zIndex={1000}
       closeOnClickOutside={!moving}
       closeOnEscape={!moving}
       onClick={(event) => event.stopPropagation()}
     >
       <Modal.Overlay blur={1} />
-      <Modal.Content style={{ overflow: "hidden" }}>
-        <Modal.Header py={0}>
-          <Modal.Title fw={500}>
-            {t('Move "{{title}}" to...', {
-              title: pageTitle || t("Untitled"),
-            })}
-          </Modal.Title>
+      <Modal.Content className={classes.content}>
+        <Modal.Header className={classes.header}>
+          <Box className={classes.titleBlock}>
+            <Modal.Title className={classes.title}>
+              {t('Move "{{title}}" to...', {
+                title: pageTitle || t("Untitled"),
+              })}
+            </Modal.Title>
+            <Text size="xs" c="dimmed" truncate="end">
+              {moveTo.targetPage
+                ? moveTo.targetPage.parentPath || moveTo.targetPage.spaceName
+                : t("Search or paste a link...")}
+            </Text>
+          </Box>
           <Modal.CloseButton disabled={moving} />
         </Modal.Header>
 
-        <Modal.Body>
+        <Modal.Body className={classes.body}>
           {showCrossSpaceConfirm ? (
-            <Stack gap="md">
+            <Stack gap="md" p="lg">
               <Alert color="yellow" icon={<IconAlertTriangle size={18} />}>
                 <Text size="sm">
                   {t(
@@ -116,44 +136,30 @@ export default function MoveToModal({
               </Group>
             </Stack>
           ) : (
-            <Stack gap="sm">
+            <Stack gap={0}>
               <TextInput
                 leftSection={<IconSearch size={16} />}
                 placeholder={t("Search or paste a link...")}
                 value={moveTo.query}
                 onChange={(event) => moveTo.setQuery(event.currentTarget.value)}
+                onKeyDown={handleSearchKeyDown}
                 disabled={moving}
                 error={moveTo.urlError}
                 autoFocus
+                classNames={{
+                  root: classes.searchRoot,
+                  input: classes.searchInput,
+                }}
               />
 
-              {moveTo.targetPage && (
-                <Alert color="blue" variant="light" py="xs">
-                  <Group justify="space-between" gap="sm" wrap="nowrap">
-                    <div style={{ minWidth: 0 }}>
-                      <Text size="sm" fw={500} truncate="end">
-                        {t("Move to: {{title}}", {
-                          title: moveTo.targetPage.title || t("Untitled"),
-                        })}
-                      </Text>
-                      <Text size="xs" c="dimmed" truncate="end">
-                        {targetDisabledReason ||
-                          moveTo.targetPage.parentPath ||
-                          moveTo.targetPage.spaceName}
-                      </Text>
-                    </div>
-                    <Button
-                      size="xs"
-                      variant="subtle"
-                      onClick={moveTo.resetSelection}
-                    >
-                      {t("Clear")}
-                    </Button>
-                  </Group>
-                </Alert>
-              )}
-
-              <Divider label={listTitle} labelPosition="left" />
+              <Group className={classes.listHeader} justify="space-between">
+                <Text size="xs" fw={600} c="dimmed">
+                  {listTitle}
+                </Text>
+                <Group gap={6} visibleFrom="sm">
+                  <Kbd size="xs">↵</Kbd>
+                </Group>
+              </Group>
 
               <ScrollArea.Autosize mah={280} type="auto" offsetScrollbars>
                 {moveTo.isLoading && moveTo.phase !== "moving" ? (
@@ -182,22 +188,63 @@ export default function MoveToModal({
               </ScrollArea.Autosize>
 
               {moveTo.error && (
-                <Text size="sm" c="red">
+                <Text size="sm" c="red" px="lg" pt="sm">
                   {moveTo.error}
                 </Text>
               )}
 
-              <Group justify="end" mt="xs" gap="xs">
-                <Button variant="subtle" onClick={onClose} disabled={moving}>
-                  {t("Cancel")}
-                </Button>
-                <Button
-                  onClick={moveTo.submitMove}
-                  disabled={!moveTo.targetPage || Boolean(targetDisabledReason)}
-                  loading={moving}
-                >
-                  {t("Move Here")}
-                </Button>
+              <Group
+                className={classes.footer}
+                justify="space-between"
+                gap="sm"
+              >
+                <Box className={classes.footerTarget}>
+                  {moveTo.targetPage ? (
+                    <>
+                      <Text size="xs" c="dimmed">
+                        {t("Move to: {{title}}", {
+                          title: moveTo.targetPage.title || t("Untitled"),
+                        })}
+                      </Text>
+                      <Text
+                        size="xs"
+                        c={targetDisabledReason ? "red" : "dimmed"}
+                        truncate="end"
+                      >
+                        {targetDisabledReason ||
+                          moveTo.targetPage.parentPath ||
+                          moveTo.targetPage.spaceName}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text size="xs" c="dimmed">
+                      {t("Recently opened")}
+                    </Text>
+                  )}
+                </Box>
+                <Group gap="xs" wrap="nowrap">
+                  {moveTo.targetPage && (
+                    <Button
+                      size="sm"
+                      variant="subtle"
+                      color="gray"
+                      onClick={moveTo.resetSelection}
+                      disabled={moving}
+                    >
+                      {t("Clear")}
+                    </Button>
+                  )}
+                  <Button variant="subtle" onClick={onClose} disabled={moving}>
+                    {t("Cancel")}
+                  </Button>
+                  <Button
+                    onClick={moveTo.submitMove}
+                    disabled={!canSubmit}
+                    loading={moving}
+                  >
+                    {t("Move Here")}
+                  </Button>
+                </Group>
               </Group>
             </Stack>
           )}

@@ -7,7 +7,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "@mantine/core";
-import { IconFileText, IconFolder } from "@tabler/icons-react";
+import { IconCheck, IconFileText, IconFolder } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { MoveTargetPage } from "@/features/page/hooks/use-move-to.ts";
 
@@ -46,17 +46,15 @@ export default function MoveTargetItem({
       }}
       style={{
         width: "100%",
-        minHeight: 46,
-        borderRadius: 6,
+        minHeight: 52,
+        borderRadius: 8,
         opacity: isDisabled ? 0.55 : 1,
         cursor: isDisabled ? "not-allowed" : "pointer",
-        background: isSelected
-          ? "var(--mantine-color-blue-light)"
-          : "transparent",
-        borderLeft: isSelected
-          ? "3px solid var(--mantine-color-blue-filled)"
-          : "3px solid transparent",
-        padding: "6px 8px",
+        background: isSelected ? "rgba(37, 99, 235, 0.10)" : "transparent",
+        boxShadow: isSelected
+          ? "inset 0 0 0 1px rgba(37, 99, 235, 0.24)"
+          : "inset 0 0 0 1px transparent",
+        padding: "8px 10px",
       }}
     >
       <Group gap="sm" wrap="nowrap">
@@ -78,11 +76,17 @@ export default function MoveTargetItem({
           </Text>
         </Box>
 
-        <Badge variant="light" color="gray" size="sm" maw={120}>
-          <Text size="xs" truncate="end">
-            {page.spaceName}
-          </Text>
-        </Badge>
+        {isSelected ? (
+          <ThemeIcon variant="filled" color="blue" size={22} radius="xl">
+            <IconCheck size={14} stroke={2.4} />
+          </ThemeIcon>
+        ) : (
+          <Badge variant="light" color="gray" size="sm" maw={112}>
+            <Text size="xs" truncate="end">
+              {page.spaceName}
+            </Text>
+          </Badge>
+        )}
       </Group>
     </UnstyledButton>
   );
