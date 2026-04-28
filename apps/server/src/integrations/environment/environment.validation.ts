@@ -47,6 +47,10 @@ export class EnvironmentVariables {
   @IsString()
   APP_COMMIT_SHA: string;
 
+  @IsOptional()
+  @IsString()
+  PDF_EXPORT_CHROMIUM_PATH: string;
+
   @IsNotEmpty()
   @MinLength(32)
   @IsNotIn(['REPLACE_WITH_LONG_SECRET'])

@@ -30,6 +30,24 @@ const red: MantineColorsTuple = [
   "#93151b",
 ];
 
+const sansFontFamily = [
+  "Inter",
+  "'PingFang SC'",
+  "'Hiragino Sans GB'",
+  "'Microsoft YaHei'",
+  "'Noto Sans CJK SC'",
+  "'Noto Sans SC'",
+  "'Source Han Sans SC'",
+  "'WenQuanYi Micro Hei'",
+  "-apple-system",
+  "BlinkMacSystemFont",
+  "'Segoe UI'",
+  "Roboto",
+  "Helvetica",
+  "Arial",
+  "sans-serif",
+].join(", ");
+
 export const theme = createTheme({
   colors: {
     blue,
@@ -37,11 +55,9 @@ export const theme = createTheme({
   },
   primaryColor: "blue",
   defaultRadius: "md",
-  fontFamily:
-    "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  fontFamily: sansFontFamily,
   headings: {
-    fontFamily:
-      "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    fontFamily: sansFontFamily,
     fontWeight: "600",
   },
 });
@@ -61,8 +77,10 @@ export const mantineCssResolver: CSSVariablesResolver = (theme) => ({
     "--ui-accent-primary": "#2563eb",
     "--ui-accent-hover": "#1d4ed8",
     "--ui-shadow-sm": "0 1px 3px rgba(17, 24, 39, 0.08)",
-    "--ui-shadow-md": "0 8px 32px rgba(17, 24, 39, 0.12), 0 2px 8px rgba(17, 24, 39, 0.06)",
-    "--ui-shadow-lg": "0 16px 48px rgba(17, 24, 39, 0.16), 0 4px 16px rgba(17, 24, 39, 0.08)",
+    "--ui-shadow-md":
+      "0 8px 32px rgba(17, 24, 39, 0.12), 0 2px 8px rgba(17, 24, 39, 0.06)",
+    "--ui-shadow-lg":
+      "0 16px 48px rgba(17, 24, 39, 0.16), 0 4px 16px rgba(17, 24, 39, 0.08)",
   },
   light: {
     "--mantine-color-body": "var(--ui-bg-canvas)",
@@ -81,8 +99,10 @@ export const mantineCssResolver: CSSVariablesResolver = (theme) => ({
     "--ui-accent-primary": "#3b82f6",
     "--ui-accent-hover": "#60a5fa",
     "--ui-shadow-sm": "0 1px 3px rgba(0, 0, 0, 0.3)",
-    "--ui-shadow-md": "0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2)",
-    "--ui-shadow-lg": "0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3)",
+    "--ui-shadow-md":
+      "0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2)",
+    "--ui-shadow-lg":
+      "0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3)",
     "--mantine-color-body": "var(--ui-bg-canvas)",
     "--mantine-color-default-border": "var(--ui-border-default)",
   },

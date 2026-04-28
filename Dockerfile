@@ -18,7 +18,7 @@ RUN pnpm build
 FROM base AS installer
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl bash ca-certificates gnupg \
+  && apt-get install -y --no-install-recommends curl bash ca-certificates gnupg chromium fonts-noto-cjk \
   && install -d /usr/share/postgresql-common/pgdg \
   && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
     | gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg \

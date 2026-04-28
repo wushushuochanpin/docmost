@@ -11,6 +11,12 @@ export enum ExportFormat {
   Markdown = 'markdown',
 }
 
+export class ExportPagePdfDto {
+  @IsString()
+  @IsNotEmpty()
+  pageId: string;
+}
+
 export class ExportPageDto {
   @IsString()
   @IsNotEmpty()

@@ -11,7 +11,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ExportService } from './export.service';
-import { ExportPageDto, ExportSpaceDto } from './dto/export-dto';
+import {
+  ExportPageDto,
+  ExportPagePdfDto,
+  ExportSpaceDto,
+} from './dto/export-dto';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { User, Workspace } from '@docmost/db/types/entity.types';
 import SpaceAbilityFactory from '../../core/casl/abilities/space-ability.factory';
@@ -33,11 +37,13 @@ import {
   AUDIT_SERVICE,
   IAuditService,
 } from '../../integrations/audit/audit.service';
+import { PdfExportService } from './pdf-export.service';
 
 @Controller()
 export class ExportController {
   constructor(
     private readonly exportService: ExportService,
+    private readonly pdfExportService: PdfExportService,
     private readonly pageRepo: PageRepo,
     private readonly spaceAbility: SpaceAbilityFactory,
     private readonly pageAccessService: PageAccessService,
@@ -96,6 +102,52 @@ export class ExportController {
     });
 
     res.send(zipFileStream);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('pages/export/pdf')
+  async exportPagePdf(
+    @Body() dto: ExportPagePdfDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+    @Res() res: FastifyReply,
+  ) {
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+      includeContent: true,
+    });
+
+    if (!page || page.deletedAt) {
+      throw new NotFoundException('Page not found');
+    }
+
+    await this.pageAccessService.validateCanView(page, user);
+
+    const pdfBuffer = await this.pdfExportService.exportPagePdf(page, user.id);
+
+    this.auditService.log({
+      event: AuditEvent.PAGE_EXPORTED,
+      resourceType: AuditResource.PAGE,
+      resourceId: page.id,
+      spaceId: page.spaceId,
+      metadata: {
+        title: getPageTitle(page.title),
+        format: 'pdf',
+        spaceId: page.spaceId,
+      },
+    });
+
+    const fileName = sanitize(page.title || 'untitled') + '.pdf';
+
+    res.headers({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition':
+        'attachment; filename="' + encodeURIComponent(fileName) + '"',
+      'Content-Length': String(pdfBuffer.length),
+    });
+
+    res.send(pdfBuffer);
   }
 
   @UseGuards(JwtAuthGuard)

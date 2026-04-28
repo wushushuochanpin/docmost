@@ -73,6 +73,11 @@ export class EnvironmentService {
     return DEFAULT_SOURCE_REPO_URL;
   }
 
+  getPdfExportChromiumPath(): string | undefined {
+    const value = this.configService.get<string>('PDF_EXPORT_CHROMIUM_PATH');
+    return value?.trim() || undefined;
+  }
+
   getAppChannel(): 'prod' | 'staging' {
     const channel = this.configService
       .get<string>('APP_CHANNEL', 'prod')

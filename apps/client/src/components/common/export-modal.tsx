@@ -32,6 +32,7 @@ export default function ExportModal({
   const [includeAttachments, setIncludeAttachments] = useState<boolean>(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const { t } = useTranslation();
+  const isPagePdf = type === "page" && format === ExportFormat.PDF;
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -62,8 +63,12 @@ export default function ExportModal({
     }
   };
 
-  const handleChange = (format: ExportFormat) => {
-    setFormat(format);
+  const handleChange = (value: string | null) => {
+    if (!value) {
+      return;
+    }
+
+    setFormat(value as ExportFormat);
   };
 
   return (
@@ -88,10 +93,14 @@ export default function ExportModal({
             <div>
               <Text size="md">{t("Format")}</Text>
             </div>
-            <ExportFormatSelection format={format} onChange={handleChange} />
+            <ExportFormatSelection
+              type={type}
+              format={format}
+              onChange={handleChange}
+            />
           </Group>
 
-          {type === "page" && (
+          {type === "page" && !isPagePdf && (
             <>
               <Divider my="sm" />
 
@@ -143,7 +152,9 @@ export default function ExportModal({
             <Button onClick={onClose} variant="subtle">
               {t("Cancel")}
             </Button>
-            <Button onClick={handleExport} loading={isExporting}>{t("Export")}</Button>
+            <Button onClick={handleExport} loading={isExporting}>
+              {t("Export")}
+            </Button>
           </Group>
         </Modal.Body>
       </Modal.Content>
@@ -152,19 +163,32 @@ export default function ExportModal({
 }
 
 interface ExportFormatSelection {
+  type: "space" | "page";
   format: ExportFormat;
-  onChange: (value: string) => void;
+  onChange: (value: string | null) => void;
 }
-function ExportFormatSelection({ format, onChange }: ExportFormatSelection) {
+function ExportFormatSelection({
+  type,
+  format,
+  onChange,
+}: ExportFormatSelection) {
   const { t } = useTranslation();
+  const data =
+    type === "page"
+      ? [
+          { value: ExportFormat.Markdown, label: "Markdown" },
+          { value: ExportFormat.HTML, label: "HTML" },
+          { value: ExportFormat.PDF, label: "PDF" },
+        ]
+      : [
+          { value: ExportFormat.Markdown, label: "Markdown" },
+          { value: ExportFormat.HTML, label: "HTML" },
+        ];
 
   return (
     <Select
-      data={[
-        { value: "markdown", label: "Markdown" },
-        { value: "html", label: "HTML" },
-      ]}
-      defaultValue={format}
+      data={data}
+      value={format}
       onChange={onChange}
       styles={{ wrapper: { maxWidth: 120 } }}
       comboboxProps={{ width: "120" }}

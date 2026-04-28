@@ -171,4 +171,5 @@ export interface IExportPageParams {
 export enum ExportFormat {
   HTML = "html",
   Markdown = "markdown",
+  PDF = "pdf",
 }

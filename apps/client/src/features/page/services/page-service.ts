@@ -4,6 +4,7 @@ import {
   IBatchMoveResult,
   ICopyPageToSpace,
   IExportPageParams,
+  ExportFormat,
   IFolderMigrationRollbackPayload,
   IFolderMigrationRollbackResult,
   IFolderMigrationStartPayload,
@@ -16,13 +17,13 @@ import {
   IPageRenderSegmentInput,
   ISidebarCategoryAssignment,
   SidebarPagesParams,
-} from '@/features/page/types/page.types';
+} from "@/features/page/types/page.types";
 import { QueryParams } from "@/lib/types";
 import { IPagination } from "@/lib/types.ts";
 import { saveAs } from "file-saver";
 import { InfiniteData } from "@tanstack/react-query";
-import { IFileTask } from '@/features/file-task/types/file-task.types.ts';
-import { IAttachment } from '@/features/attachments/types/attachment.types.ts';
+import { IFileTask } from "@/features/file-task/types/file-task.types.ts";
+import { IAttachment } from "@/features/attachments/types/attachment.types.ts";
 
 export async function createPage(data: Partial<IPage>): Promise<IPage> {
   const req = await api.post<IPage>("/pages/create", data);
@@ -44,11 +45,17 @@ export async function updatePage(data: Partial<IPageInput>): Promise<IPage> {
 export async function getPageRenderedSegment(
   data: IPageRenderSegmentInput,
 ): Promise<IPageRenderedSegment> {
-  const req = await api.post<IPageRenderedSegment>("/pages/render-segment", data);
+  const req = await api.post<IPageRenderedSegment>(
+    "/pages/render-segment",
+    data,
+  );
   return req.data;
 }
 
-export async function deletePage(pageId: string, permanentlyDelete = false): Promise<void> {
+export async function deletePage(
+  pageId: string,
+  permanentlyDelete = false,
+): Promise<void> {
   await api.post("/pages/delete", { pageId, permanentlyDelete });
 }
 
@@ -69,24 +76,32 @@ export async function movePage(data: IMovePage): Promise<void> {
   await api.post<void>("/pages/move", data);
 }
 
-export async function batchMovePages(data: IBatchMovePages): Promise<IBatchMoveResult> {
+export async function batchMovePages(
+  data: IBatchMovePages,
+): Promise<IBatchMoveResult> {
   const req = await api.post<IBatchMoveResult>("/pages/batch-move", data);
   return req.data;
 }
 
-export async function pinPage(pageId: string): Promise<{ pageId: string; isPinned: boolean; pinnedAt: Date | null }> {
-  const req = await api.post<{ pageId: string; isPinned: boolean; pinnedAt: Date | null }>(
-    "/pages/pin",
-    { pageId },
-  );
+export async function pinPage(
+  pageId: string,
+): Promise<{ pageId: string; isPinned: boolean; pinnedAt: Date | null }> {
+  const req = await api.post<{
+    pageId: string;
+    isPinned: boolean;
+    pinnedAt: Date | null;
+  }>("/pages/pin", { pageId });
   return req.data;
 }
 
-export async function unpinPage(pageId: string): Promise<{ pageId: string; isPinned: boolean; pinnedAt: Date | null }> {
-  const req = await api.post<{ pageId: string; isPinned: boolean; pinnedAt: Date | null }>(
-    "/pages/unpin",
-    { pageId },
-  );
+export async function unpinPage(
+  pageId: string,
+): Promise<{ pageId: string; isPinned: boolean; pinnedAt: Date | null }> {
+  const req = await api.post<{
+    pageId: string;
+    isPinned: boolean;
+    pinnedAt: Date | null;
+  }>("/pages/unpin", { pageId });
   return req.data;
 }
 
@@ -129,10 +144,10 @@ export async function getSidebarPages(
 export async function assignSidebarCategory(
   data: ISidebarCategoryAssignment,
 ): Promise<{ pageId: string; sidebarCategoryId: string | null }> {
-  const req = await api.post<{ pageId: string; sidebarCategoryId: string | null }>(
-    "/pages/sidebar-category/assign",
-    data,
-  );
+  const req = await api.post<{
+    pageId: string;
+    sidebarCategoryId: string | null;
+  }>("/pages/sidebar-category/assign", data);
   return req.data;
 }
 
@@ -174,7 +189,11 @@ export async function getRecentChanges(
 }
 
 export async function exportPage(data: IExportPageParams): Promise<void> {
-  const req = await api.post("/pages/export", data, {
+  const endpoint =
+    data.format === ExportFormat.PDF ? "/pages/export/pdf" : "/pages/export";
+  const payload =
+    data.format === ExportFormat.PDF ? { pageId: data.pageId } : data;
+  const req = await api.post(endpoint, payload, {
     responseType: "blob",
   });
 

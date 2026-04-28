@@ -1,4 +1,35 @@
 @media print {
+  html,
+  body,
+  .mantine-AppShell-main,
+  .ProseMirror {
+    font-family:
+      Inter,
+      "PingFang SC",
+      "Hiragino Sans GB",
+      "Microsoft YaHei",
+      "Noto Sans CJK SC",
+      "Noto Sans SC",
+      "Source Han Sans SC",
+      "WenQuanYi Micro Hei",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif !important;
+  }
+
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: "JetBrainsMono", "Noto Sans Mono CJK SC", "Sarasa Mono SC",
+      "SFMono-Regular", ui-monospace, "Cascadia Code", "Source Code Pro", Menlo,
+      Consolas, monospace !important;
+  }
+
   .mantine-AppShell-header,
   .mantine-AppShell-navbar,
   .mantine-AppShell-aside,

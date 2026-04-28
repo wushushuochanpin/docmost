@@ -347,7 +347,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
             leftSection={<IconPrinter size={16} />}
             onClick={handlePrint}
           >
-            {t("Print PDF")}
+            {t("Print")}
           </Menu.Item>
 
           {!readOnly && (
