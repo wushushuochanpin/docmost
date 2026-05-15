@@ -15,6 +15,10 @@ services:
       DATABASE_URL: 'postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost?schema=public'
       REDIS_URL: 'redis://redis:6379'
       BACKUP_LOCAL_PATH: '/app/data/storage/backups'
+      EDITOR_SESSION_ENABLED: '${EDITOR_SESSION_ENABLED:-true}'
+      EDITOR_SESSION_STRICT_WRITE: '${EDITOR_SESSION_STRICT_WRITE:-true}'
+      EDITOR_SESSION_COLLAB_VALIDATE: '${EDITOR_SESSION_COLLAB_VALIDATE:-true}'
+      EDITOR_SESSION_FILE_ENABLED: '${EDITOR_SESSION_FILE_ENABLED:-true}'
     # Loopback-only so only Nginx (80/443) is public; debug via ssh -L
     ports:
       - "127.0.0.1:3000:3000"

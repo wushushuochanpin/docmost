@@ -1,6 +1,6 @@
 import { BubbleMenu as BaseBubbleMenu } from "@tiptap/react/menus";
 import { findParentNode, posToDOMRect, useEditorState } from "@tiptap/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Node as PMNode } from "@tiptap/pm/model";
 import {
   EditorMenuProps,
@@ -8,7 +8,9 @@ import {
 } from "@/features/editor/components/table/types/types.ts";
 import {
   ActionIcon,
+  LoadingOverlay,
   Modal,
+  Text,
   Tooltip,
   useComputedColorScheme,
 } from "@mantine/core";
@@ -23,17 +25,24 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-import { getDrawioUrl, getFileUrl } from "@/lib/config.ts";
+import {
+  getDrawioUrl,
+  getFileUrl,
+  isEditorSessionFileEnabled,
+} from "@/lib/config.ts";
 import { uploadFile } from "@/features/page/services/page-service.ts";
 import {
   DrawIoEmbed,
   DrawIoEmbedRef,
   EventExit,
+  EventExport,
   EventSave,
 } from "react-drawio";
 import { decodeBase64ToSvgString, svgStringToFile } from "@/lib/utils";
 import { IAttachment } from "@/features/attachments/types/attachment.types";
+import { modals } from "@mantine/modals";
 import classes from "../common/toolbar-menu.module.css";
+import { useEditorSessionLease } from "@/features/editor-session/use-editor-session-lease";
 
 export function DrawioMenu({ editor }: EditorMenuProps) {
   const { t } = useTranslation();
@@ -41,6 +50,10 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
   const [initialXML, setInitialXML] = useState<string>("");
   const drawioRef = useRef<DrawIoEmbedRef>(null);
   const computedColorScheme = useComputedColorScheme();
+  const isDirtyRef = useRef(false);
+  const isSavingRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const editorState = useEditorState({
     editor,
@@ -59,6 +72,15 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
         attachmentId: drawioAttr?.attachmentId || null,
       };
     },
+  });
+
+  const fileLease = useEditorSessionLease({
+    enabled:
+      isEditorSessionFileEnabled() &&
+      opened &&
+      Boolean(editorState?.attachmentId),
+    resourceType: "file",
+    resourceId: editorState?.attachmentId,
   });
 
   const shouldShow = useCallback(
@@ -131,9 +153,85 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
     editor.commands.deleteSelection();
   }, [editor]);
 
+  const saveData = useCallback(
+    async (svgXml: string) => {
+      if (isSavingRef.current) return;
+
+      isSavingRef.current = true;
+      setIsSaving(true);
+
+      try {
+        const svgString = decodeBase64ToSvgString(svgXml);
+        const fileName = "diagram.drawio.svg";
+        const drawioSVGFile = await svgStringToFile(svgString, fileName);
+
+        // @ts-ignore
+        const pageId = editor.storage?.pageId;
+        const attachmentId = editorState?.attachmentId;
+
+        let attachment: IAttachment = null;
+        if (attachmentId) {
+          if (isEditorSessionFileEnabled() && fileLease.status !== "active") {
+            return;
+          }
+          attachment = await uploadFile(
+            drawioSVGFile,
+            pageId,
+            attachmentId,
+            fileLease.editSession,
+          );
+        } else {
+          attachment = await uploadFile(drawioSVGFile, pageId);
+        }
+
+        editor.commands.updateAttributes("drawio", {
+          src: `/api/files/${attachment.id}/${attachment.fileName}?t=${new Date(attachment.updatedAt).getTime()}`,
+          title: attachment.fileName,
+          size: attachment.fileSize,
+          attachmentId: attachment.id,
+        });
+
+        isDirtyRef.current = false;
+      } finally {
+        isSavingRef.current = false;
+        setIsSaving(false);
+      }
+    },
+    [
+      editor,
+      editorState?.attachmentId,
+      fileLease.editSession,
+      fileLease.status,
+    ],
+  );
+
+  const handleClose = useCallback(() => {
+    if (!isDirtyRef.current) {
+      close();
+      return;
+    }
+
+    modals.openConfirmModal({
+      title: t("Unsaved changes"),
+      children: (
+        <Text size="sm">
+          {t("You have unsaved changes that will be lost.")}
+        </Text>
+      ),
+      centered: true,
+      labels: { confirm: t("Discard"), cancel: t("Cancel") },
+      confirmProps: { color: "red" },
+      onConfirm: () => {
+        isDirtyRef.current = false;
+        close();
+      },
+    });
+  }, [close, t]);
+
   const handleOpen = useCallback(async () => {
     if (!editorState?.src) return;
 
+    setIsLoading(true);
     try {
       const url = getFileUrl(editorState.src);
       const request = await fetch(url, {
@@ -151,38 +249,37 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
     } catch (err) {
       console.error(err);
     } finally {
+      setIsLoading(false);
+      isDirtyRef.current = false;
       open();
     }
   }, [editorState?.src, open]);
 
-  const handleSave = useCallback(
-    async (data: EventSave) => {
-      const svgString = decodeBase64ToSvgString(data.xml);
-      const fileName = "diagram.drawio.svg";
-      const drawioSVGFile = await svgStringToFile(svgString, fileName);
+  useEffect(() => {
+    if (!opened) return;
 
-      // @ts-ignore
-      const pageId = editor.storage?.pageId;
-      const attachmentId = editorState?.attachmentId;
-
-      let attachment: IAttachment = null;
-      if (attachmentId) {
-        attachment = await uploadFile(drawioSVGFile, pageId, attachmentId);
-      } else {
-        attachment = await uploadFile(drawioSVGFile, pageId);
+    const interval = setInterval(() => {
+      if (isDirtyRef.current && !isSavingRef.current && drawioRef.current) {
+        drawioRef.current.exportDiagram({ format: "xmlsvg" });
       }
+    }, 60_000);
 
-      editor.commands.updateAttributes("drawio", {
-        src: `/api/files/${attachment.id}/${attachment.fileName}?t=${new Date(attachment.updatedAt).getTime()}`,
-        title: attachment.fileName,
-        size: attachment.fileSize,
-        attachmentId: attachment.id,
-      });
+    return () => clearInterval(interval);
+  }, [opened]);
 
-      close();
-    },
-    [editor, editorState?.attachmentId, close],
-  );
+  useEffect(() => {
+    if (!opened) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [opened, handleClose]);
 
   return (
     <>
@@ -247,6 +344,7 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
               size="lg"
               aria-label={t("Edit")}
               variant="subtle"
+              loading={isLoading}
             >
               <IconEdit size={18} />
             </ActionIcon>
@@ -276,15 +374,22 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
         </div>
       </BaseBubbleMenu>
 
-      <Modal.Root opened={opened} onClose={close} fullScreen>
+      <Modal.Root
+        opened={opened}
+        onClose={handleClose}
+        fullScreen
+        closeOnEscape={false}
+      >
         <Modal.Overlay />
         <Modal.Content style={{ overflow: "hidden" }}>
-          <Modal.Body>
+          <Modal.Body pos="relative">
+            <LoadingOverlay visible={isSaving} />
             <div style={{ height: "100vh" }}>
               <DrawIoEmbed
                 ref={drawioRef}
                 xml={initialXML}
                 baseUrl={getDrawioUrl()}
+                autosave
                 urlParameters={{
                   ui: computedColorScheme === "light" ? "kennedy" : "dark",
                   spin: true,
@@ -296,13 +401,21 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
                   if (data.parentEvent !== "save") {
                     return;
                   }
-                  handleSave(data);
+                  saveData(data.xml)
+                    .then(() => close())
+                    .catch(() => {});
                 }}
                 onClose={(data: EventExit) => {
                   if (data.parentEvent) {
                     return;
                   }
-                  close();
+                  handleClose();
+                }}
+                onAutoSave={() => {
+                  isDirtyRef.current = true;
+                }}
+                onExport={(data: EventExport) => {
+                  saveData(data.data).catch(() => {});
                 }}
               />
             </div>

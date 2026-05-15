@@ -15,6 +15,7 @@ import {
   IconSparkles,
   IconDatabaseExport,
   IconHistory,
+  IconShieldCheck,
 } from "@tabler/icons-react";
 import { Link, useLocation } from "react-router-dom";
 import classes from "./settings.module.css";
@@ -23,6 +24,9 @@ import { isBackupEnabled, isCloud } from "@/lib/config.ts";
 import useUserRole from "@/hooks/use-user-role.tsx";
 import { useAtom } from "jotai";
 import { workspaceAtom } from "@/features/user/atoms/current-user-atom.ts";
+import { entitlementAtom } from "@/ee/entitlement/entitlement-atom";
+import { Feature } from "@/ee/features";
+import { useUpgradeLabel } from "@/ee/hooks/use-upgrade-label";
 import {
   prefetchApiKeyManagement,
   prefetchApiKeys,
@@ -33,6 +37,7 @@ import {
   prefetchShares,
   prefetchSpaces,
   prefetchSsoProviders,
+  prefetchVerifiedPages,
   prefetchWorkspaceMembers,
 } from "@/components/settings/settings-queries.tsx";
 import AppVersion from "@/components/settings/app-version.tsx";
@@ -54,6 +59,7 @@ interface DataItem {
   isSelfhosted?: boolean;
   showDisabledInNonEE?: boolean;
   capabilityKey?: CapabilityKey;
+  feature?: string;
 }
 
 interface DataGroup {
@@ -108,6 +114,12 @@ const groupedData: DataGroup[] = [
       { label: "Spaces", icon: IconSpaces, path: "/settings/spaces" },
       { label: "Public sharing", icon: IconWorld, path: "/settings/sharing" },
       {
+        label: "Verified pages",
+        icon: IconShieldCheck,
+        path: "/settings/verifications",
+        feature: Feature.PAGE_VERIFICATION,
+      },
+      {
         label: "API management",
         icon: IconKey,
         path: "/settings/api-keys",
@@ -161,6 +173,8 @@ export default function SettingsSidebar() {
   const { goBack } = useSettingsNavigation();
   const { isAdmin, isOwner } = useUserRole();
   const [workspace] = useAtom(workspaceAtom);
+  const [entitlements] = useAtom(entitlementAtom);
+  const upgradeLabel = useUpgradeLabel();
   const [mobileSidebarOpened] = useAtom(mobileSidebarAtom);
   const toggleMobileSidebar = useToggleSidebar(mobileSidebarAtom);
 
@@ -178,6 +192,9 @@ export default function SettingsSidebar() {
     if (!item.capabilityKey) return false;
     return Boolean(workspace?.capabilities?.[item.capabilityKey]);
   };
+
+  const hasFeature = (feature: string) =>
+    entitlements?.features?.includes(feature) ?? false;
 
   const canShowItem = (item: DataItem) => {
     if (item.path === "/settings/backup" && !isBackupEnabled()) {
@@ -219,6 +236,10 @@ export default function SettingsSidebar() {
   };
 
   const isItemDisabled = (item: DataItem) => {
+    if (item.feature) {
+      return !hasFeature(item.feature);
+    }
+
     if (item.capabilityKey && item.showDisabledInNonEE) {
       return !hasCapabilityAccess(item);
     }
@@ -278,6 +299,9 @@ export default function SettingsSidebar() {
             case "Audit log":
               prefetchHandler = prefetchAuditLogs;
               break;
+            case "Verified pages":
+              prefetchHandler = prefetchVerifiedPages;
+              break;
             default:
               break;
           }
@@ -314,7 +338,11 @@ export default function SettingsSidebar() {
             return (
               <Tooltip
                 key={item.label}
-                label={t("Available in enterprise edition")}
+                label={
+                  item.feature
+                    ? upgradeLabel
+                    : t("Available in enterprise edition")
+                }
                 position="right"
                 withArrow
               >

@@ -31,7 +31,9 @@ import useCollaborationUrl from "@/features/editor/hooks/use-collaboration-url";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom";
 import {
   pageEditorAtom,
+  pageEditorEditSessionAtom,
   pageEditorRuntimeModeAtom,
+  pageEditorSessionStatusAtom,
   readOnlyEditorAtom,
   yjsConnectionStatusAtom,
 } from "@/features/editor/atoms/editor-atoms";
@@ -72,10 +74,20 @@ import { EditorAiMenu } from "@/ee/ai/components/editor/ai-menu/ai-menu";
 import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 import ColumnsMenu from "@/features/editor/components/columns/columns-menu.tsx";
 import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
+import { Button, Group, Modal, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { updatePage } from "@/features/page/services/page-service";
 import { updatePageData } from "@/features/page/queries/page-query";
 import { markEditorBootstrapStage } from "@/features/editor/lib/editor-bootstrap-metrics";
+import { useEditorSessionLease } from "@/features/editor-session/use-editor-session-lease";
+import { encodeEditSessionForUrl } from "@/features/editor-session/client-id";
+import { saveEditorRecoveryDraft } from "@/features/editor-session/draft-store";
+import { isEditorSessionEnabled } from "@/lib/config";
+import type {
+  EditSession,
+  EditorSessionStatus,
+  EditorSessionWriteIntent,
+} from "@/features/editor-session/types";
 
 type RuntimeMode = "preview" | "local" | "collab";
 
@@ -102,6 +114,66 @@ function normalizePageEditMode(mode?: string | null): PageEditMode | undefined {
   return mode === PageEditMode.Edit || mode === PageEditMode.Read
     ? mode
     : undefined;
+}
+
+function EditorSessionOverlay({
+  opened,
+  status,
+  isContinuing,
+  onContinueHere,
+  onReadonly,
+}: {
+  opened: boolean;
+  status: EditorSessionStatus;
+  isContinuing: boolean;
+  onContinueHere: () => void;
+  onReadonly: () => void;
+}) {
+  const isPending = status === "pending_takeover";
+  const isCurrentTabStopped =
+    status === "takeover_requested" || status === "revoked";
+  const title = isPending
+    ? "正在接管编辑权"
+    : isCurrentTabStopped
+      ? "编辑已切换到另一端"
+      : "此页面已在另一端打开";
+  const description = isPending
+    ? "正在等待另一端完成交接，当前页面暂时只读。"
+    : isCurrentTabStopped
+      ? "当前标签页已停止编辑。继续在这里编辑会停止另一端编辑，并重新接管。"
+      : "当前页面已暂停编辑。继续在这里编辑会停止另一端编辑，并接管最新内容。";
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onReadonly}
+      centered
+      closeOnClickOutside={false}
+      closeOnEscape={!isPending}
+      withCloseButton={!isPending}
+      title={title}
+    >
+      <Stack gap="md">
+        <Text size="sm" c="dimmed">
+          {description}
+        </Text>
+        <Group justify="flex-end">
+          {!isPending && (
+            <Button variant="default" onClick={onReadonly}>
+              只读查看
+            </Button>
+          )}
+          <Button
+            onClick={onContinueHere}
+            loading={isContinuing || isPending}
+            disabled={isPending}
+          >
+            继续在这里编辑
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
 }
 
 function updateCachedPageContent(
@@ -297,6 +369,9 @@ function LocalFallbackPageEditor({
   onUnsavedChangesChange,
   onSavePendingChange,
   onLastSavedContentChange,
+  editSession,
+  leaseStatus,
+  onTakeoverAck,
 }: {
   pageId: string;
   slugId?: string;
@@ -308,6 +383,9 @@ function LocalFallbackPageEditor({
   onUnsavedChangesChange: (value: boolean) => void;
   onSavePendingChange: (value: boolean) => void;
   onLastSavedContentChange: (value: string) => void;
+  editSession?: EditSession;
+  leaseStatus: EditorSessionStatus;
+  onTakeoverAck: () => Promise<void>;
 }) {
   const store = useStore();
   const localEditorRef = useRef<Editor | null>(null);
@@ -317,6 +395,7 @@ function LocalFallbackPageEditor({
   const saveInFlightRef = useRef(false);
   const lastSavedContentRef = useRef(serializeEditorContent(content));
   const editorReadyRef = useRef(false);
+  const handoffStartedRef = useRef(false);
   const normalizedContent = useMemo(
     () => normalizeProsemirrorContent(content),
     [content],
@@ -327,62 +406,85 @@ function LocalFallbackPageEditor({
   );
   const { handleScrollTo } = useEditorScroll({ canScroll });
 
-  const persistLocalContent = useCallback(async () => {
-    if (saveInFlightRef.current || !queuedSaveRef.current) {
-      return;
-    }
+  const persistLocalContent = useCallback(
+    async (writeIntent: EditorSessionWriteIntent = "normal") => {
+      if (saveInFlightRef.current || !queuedSaveRef.current) {
+        return;
+      }
 
-    const nextSave = queuedSaveRef.current;
-    queuedSaveRef.current = null;
-    saveInFlightRef.current = true;
-    onSavePendingChange(true);
+      const nextSave = queuedSaveRef.current;
+      queuedSaveRef.current = null;
+      saveInFlightRef.current = true;
+      onSavePendingChange(true);
 
-    try {
-      const page = await updatePage({
-        pageId,
-        content: nextSave.content,
-        operation: "replace",
-        format: "json",
-      });
-
-      updatePageData(page);
-      lastSavedContentRef.current = nextSave.serialized;
-      onLastSavedContentChange(nextSave.serialized);
-      onUnsavedChangesChange(false);
-      saveFailureNotifiedRef.current = false;
-    } catch {
-      queuedSaveRef.current = nextSave;
-      if (!saveFailureNotifiedRef.current) {
-        notifications.show({
-          message: "实时协作暂不可用，已切换为本地保存重试模式",
-          color: "yellow",
+      try {
+        const page = await updatePage({
+          pageId,
+          content: nextSave.content,
+          operation: "replace",
+          format: "json",
+          editSession,
+          writeIntent,
         });
-        saveFailureNotifiedRef.current = true;
-      }
-    } finally {
-      saveInFlightRef.current = false;
 
-      if (queuedSaveRef.current) {
-        void persistLocalContent();
-      } else {
+        updatePageData(page);
+        lastSavedContentRef.current = nextSave.serialized;
+        onLastSavedContentChange(nextSave.serialized);
+        onUnsavedChangesChange(false);
+        saveFailureNotifiedRef.current = false;
+      } catch {
+        if (writeIntent === "handoff_flush") {
+          await saveEditorRecoveryDraft({
+            resourceType: "page",
+            resourceId: pageId,
+            content: nextSave.content,
+            reason: "handoff_flush_failed",
+          });
+        } else {
+          queuedSaveRef.current = nextSave;
+        }
+        if (!saveFailureNotifiedRef.current) {
+          notifications.show({
+            message: "实时协作暂不可用，已切换为本地保存重试模式",
+            color: "yellow",
+          });
+          saveFailureNotifiedRef.current = true;
+        }
+      } finally {
+        saveInFlightRef.current = false;
+
+        if (queuedSaveRef.current && writeIntent !== "handoff_flush") {
+          void persistLocalContent();
+        } else {
+          onSavePendingChange(false);
+        }
+      }
+    },
+    [
+      editSession,
+      pageId,
+      onLastSavedContentChange,
+      onSavePendingChange,
+      onUnsavedChangesChange,
+    ],
+  );
+
+  const debouncedPersistLocalContent = useDebouncedCallback(
+    (editorJson: any) => {
+      const serialized = serializeEditorContent(editorJson);
+
+      if (!serialized || serialized === lastSavedContentRef.current) {
+        onUnsavedChangesChange(false);
         onSavePendingChange(false);
+        return;
       }
-    }
-  }, [pageId, onLastSavedContentChange, onSavePendingChange, onUnsavedChangesChange]);
 
-  const debouncedPersistLocalContent = useDebouncedCallback((editorJson: any) => {
-    const serialized = serializeEditorContent(editorJson);
-
-    if (!serialized || serialized === lastSavedContentRef.current) {
-      onUnsavedChangesChange(false);
-      onSavePendingChange(false);
-      return;
-    }
-
-    queuedSaveRef.current = { content: editorJson, serialized };
-    onSavePendingChange(true);
-    void persistLocalContent();
-  }, 1200);
+      queuedSaveRef.current = { content: editorJson, serialized };
+      onSavePendingChange(true);
+      void persistLocalContent();
+    },
+    1200,
+  );
 
   const editor = useEditor(
     {
@@ -395,7 +497,11 @@ function LocalFallbackPageEditor({
       onCreate({ editor }) {
         localEditorRef.current = editor;
         editorReadyRef.current = true;
-        (editor.storage as { pageId?: string }).pageId = pageId;
+        (
+          editor.storage as { pageId?: string; editSession?: EditSession }
+        ).pageId = pageId;
+        (editor.storage as { editSession?: EditSession }).editSession =
+          editSession;
         store.set(readOnlyEditorAtom as any, null);
         store.set(pageEditorAtom as any, editor);
         handleScrollTo(editor);
@@ -450,16 +556,43 @@ function LocalFallbackPageEditor({
   useEffect(() => {
     if (!editor) return;
 
+    (editor.storage as { editSession?: EditSession }).editSession = editSession;
+
     if (userPageEditMode === PageEditMode.Edit && editable) {
       editor.setEditable(true);
       return;
     }
 
     editor.setEditable(false);
-  }, [editor, editable, userPageEditMode]);
+  }, [editSession, editor, editable, userPageEditMode]);
+
+  useEffect(() => {
+    if (
+      leaseStatus !== "takeover_requested" ||
+      handoffStartedRef.current ||
+      !localEditorRef.current ||
+      !editSession
+    ) {
+      return;
+    }
+
+    handoffStartedRef.current = true;
+    const currentContent = localEditorRef.current.getJSON();
+    const serialized = serializeEditorContent(currentContent);
+    queuedSaveRef.current = { content: currentContent, serialized };
+    localEditorRef.current.setEditable(false);
+
+    persistLocalContent("handoff_flush")
+      .catch(() => undefined)
+      .finally(() => {
+        void onTakeoverAck();
+      });
+  }, [editSession, leaseStatus, onTakeoverAck, persistLocalContent]);
 
   if (!editor) {
-    return <StaticPageEditorPreview content={normalizedContent} pageId={pageId} />;
+    return (
+      <StaticPageEditorPreview content={normalizedContent} pageId={pageId} />
+    );
   }
 
   return (
@@ -496,6 +629,7 @@ export default function PageEditor({
     yjsConnectionStatusAtom,
   );
   const [, setRuntimeModeAtom] = useAtom(pageEditorRuntimeModeAtom);
+  const [, setEditorSessionStatusAtom] = useAtom(pageEditorSessionStatusAtom);
   const { data: collabQuery, refetch: refetchCollabToken } = useCollabToken();
   const { isIdle, resetIdle } = useIdle(FIVE_MINUTES, { initialState: false });
   const documentState = useDocumentVisibility();
@@ -503,8 +637,38 @@ export default function PageEditor({
   const slugId = extractPageSlugId(pageSlug);
   const userPageEditMode =
     localPageEditMode ??
-    normalizePageEditMode(currentUser?.user?.settings?.preferences?.pageEditMode) ??
+    normalizePageEditMode(
+      currentUser?.user?.settings?.preferences?.pageEditMode,
+    ) ??
     PageEditMode.Edit;
+  const editorSessionFeatureEnabled = isEditorSessionEnabled();
+  const shouldAcquirePageLease =
+    editorSessionFeatureEnabled &&
+    editable &&
+    userPageEditMode === PageEditMode.Edit;
+  const pageLease = useEditorSessionLease({
+    enabled: shouldAcquirePageLease,
+    resourceType: "page",
+    resourceId: pageId,
+  });
+  const pageLeaseWritable =
+    !shouldAcquirePageLease || pageLease.status === "active";
+  const effectiveEditable = editable && pageLeaseWritable;
+  const collabEditSession = shouldAcquirePageLease
+    ? pageLease.editSession
+    : undefined;
+  const canStartCollabProvider =
+    Boolean(collabQuery?.token) &&
+    (!shouldAcquirePageLease ||
+      (pageLease.status === "active" && Boolean(collabEditSession)));
+  const collaborationURLWithSession = useMemo(() => {
+    const encodedEditSession = encodeEditSessionForUrl(collabEditSession);
+    if (!encodedEditSession) return collaborationURL;
+
+    const url = new URL(collaborationURL);
+    url.searchParams.set("editSession", encodedEditSession);
+    return url.toString();
+  }, [collabEditSession, collaborationURL]);
   const normalizedContent = useMemo(
     () => normalizeProsemirrorContent(content),
     [content],
@@ -514,11 +678,99 @@ export default function PageEditor({
     [],
   );
   const { handleScrollTo } = useEditorScroll({ canScroll });
-  const lastSavedLocalContentRef = useRef(serializeEditorContent(normalizedContent));
+  const lastSavedLocalContentRef = useRef(
+    serializeEditorContent(normalizedContent),
+  );
+  const takeoverAckSentRef = useRef(false);
+  const [dismissedOverlayKey, setDismissedOverlayKey] = useState<string | null>(
+    null,
+  );
+  const [isContinueHerePending, setIsContinueHerePending] = useState(false);
 
   useEffect(() => {
-    lastSavedLocalContentRef.current = serializeEditorContent(normalizedContent);
+    lastSavedLocalContentRef.current =
+      serializeEditorContent(normalizedContent);
   }, [normalizedContent]);
+
+  useEffect(() => {
+    if (pageLease.status === "active") {
+      takeoverAckSentRef.current = false;
+      return;
+    }
+
+    if (pageLease.status === "revoked" && editorRef.current) {
+      void saveEditorRecoveryDraft({
+        resourceType: "page",
+        resourceId: pageId,
+        content: editorRef.current.getJSON(),
+        reason: "editor_session_revoked",
+      }).catch(() => undefined);
+      return;
+    }
+
+    if (
+      pageLease.status !== "takeover_requested" ||
+      runtimeMode === "local" ||
+      takeoverAckSentRef.current
+    ) {
+      return;
+    }
+
+    takeoverAckSentRef.current = true;
+    const currentContent = editorRef.current?.getJSON();
+    void (async () => {
+      if (currentContent && pageLease.editSession) {
+        try {
+          const page = await updatePage({
+            pageId,
+            content: currentContent,
+            operation: "replace",
+            format: "json",
+            editSession: pageLease.editSession,
+            writeIntent: "handoff_flush",
+          });
+          updatePageData(page);
+        } catch {
+          await saveEditorRecoveryDraft({
+            resourceType: "page",
+            resourceId: pageId,
+            content: currentContent,
+            reason: "takeover_requested",
+          }).catch(() => undefined);
+        }
+      }
+
+      await pageLease.release("takeover_ack").catch(() => undefined);
+    })();
+  }, [pageId, pageLease, runtimeMode]);
+
+  useEffect(() => {
+    setEditorSessionStatusAtom(
+      shouldAcquirePageLease ? pageLease.status : "disabled",
+    );
+    store.set(
+      pageEditorEditSessionAtom as any,
+      shouldAcquirePageLease ? pageLease.editSession : undefined,
+    );
+
+    return () => {
+      setEditorSessionStatusAtom("disabled");
+      store.set(pageEditorEditSessionAtom as any, undefined);
+    };
+  }, [
+    pageLease.editSession,
+    pageLease.status,
+    setEditorSessionStatusAtom,
+    shouldAcquirePageLease,
+    store,
+  ]);
+
+  useEffect(() => {
+    if (pageLease.status === "active" || !shouldAcquirePageLease) {
+      setDismissedOverlayKey(null);
+      setIsContinueHerePending(false);
+    }
+  }, [pageLease.status, shouldAcquirePageLease]);
 
   useEffect(() => {
     isComponentMounted.current = true;
@@ -540,12 +792,17 @@ export default function PageEditor({
   const [providersReady, setProvidersReady] = useState(false);
 
   useEffect(() => {
+    if (!canStartCollabProvider) {
+      setProvidersReady(false);
+      return;
+    }
+
     if (!providersRef.current) {
       const documentName = `page.${pageId}`;
       const ydoc = new Y.Doc();
       const local = new IndexeddbPersistence(documentName, ydoc);
       const socket = new HocuspocusProviderWebsocket({
-        url: collaborationURL,
+        url: collaborationURLWithSession,
       });
       const onLocalSyncedHandler = () => {
         setIsLocalSynced(true);
@@ -563,12 +820,13 @@ export default function PageEditor({
             ? providerToken
             : collabQuery?.token;
 
-        let shouldRefreshToken = !currentToken;
+        let shouldRefreshToken = editorSessionFeatureEnabled || !currentToken;
         if (currentToken) {
           try {
             const payload = jwtDecode<{ exp?: number }>(currentToken);
             const now = Date.now().valueOf() / 1000;
-            shouldRefreshToken = !payload?.exp || now >= payload.exp;
+            shouldRefreshToken =
+              editorSessionFeatureEnabled || !payload?.exp || now >= payload.exp;
           } catch {
             shouldRefreshToken = true;
           }
@@ -612,7 +870,12 @@ export default function PageEditor({
       providersRef.current?.local.destroy();
       providersRef.current = null;
     };
-  }, [collaborationURL, pageId]);
+  }, [
+    canStartCollabProvider,
+    collaborationURLWithSession,
+    editorSessionFeatureEnabled,
+    pageId,
+  ]);
 
   useEffect(() => {
     if (!collabQuery?.token || !providersRef.current) return;
@@ -680,13 +943,17 @@ export default function PageEditor({
   const editor = useEditor(
     {
       extensions,
-      editable,
+      editable: effectiveEditable,
       immediatelyRender: true,
       shouldRerenderOnTransaction: false,
       editorProps: createEditorProps(editorRef, pageId, currentUser?.user.id),
       onCreate({ editor }) {
         editorRef.current = editor;
-        (editor.storage as { pageId?: string }).pageId = pageId;
+        (
+          editor.storage as { pageId?: string; editSession?: EditSession }
+        ).pageId = pageId;
+        (editor.storage as { editSession?: EditSession }).editSession =
+          collabEditSession;
         handleScrollTo(editor);
       },
       onUpdate({ editor }) {
@@ -695,7 +962,7 @@ export default function PageEditor({
         updateCachedPageContent(pageId, slugId, editor.getJSON());
       },
     },
-    [pageId, editable, extensions, currentUser?.user.id],
+    [pageId, effectiveEditable, extensions, currentUser?.user.id],
   );
 
   const handleActiveCommentEvent = (event) => {
@@ -714,6 +981,12 @@ export default function PageEditor({
       commentElement?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 400);
   };
+
+  useEffect(() => {
+    if (!editor) return;
+    (editor.storage as { editSession?: EditSession }).editSession =
+      collabEditSession;
+  }, [collabEditSession, editor]);
 
   useEffect(() => {
     document.addEventListener("ACTIVE_COMMENT_EVENT", handleActiveCommentEvent);
@@ -735,9 +1008,14 @@ export default function PageEditor({
   const collabReady =
     Boolean(editor) &&
     yjsConnectionStatus === WebSocketStatus.Connected &&
-    isSynced;
+    isSynced &&
+    pageLeaseWritable;
   const canUseLocalFallback =
-    editable && userPageEditMode === PageEditMode.Edit;
+    editable &&
+    userPageEditMode === PageEditMode.Edit &&
+    (!shouldAcquirePageLease ||
+      pageLease.status === "active" ||
+      (runtimeMode === "local" && pageLease.status === "takeover_requested"));
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -754,13 +1032,13 @@ export default function PageEditor({
       return;
     }
 
-    if (userPageEditMode === PageEditMode.Edit && editable) {
+    if (userPageEditMode === PageEditMode.Edit && effectiveEditable) {
       editor.setEditable(true);
       return;
     }
 
     editor.setEditable(false);
-  }, [editor, editable, userPageEditMode]);
+  }, [editor, effectiveEditable, userPageEditMode]);
 
   useEffect(() => {
     if (!collabReady) {
@@ -802,52 +1080,119 @@ export default function PageEditor({
   }, [pageId, runtimeMode, yjsConnectionStatus]);
 
   useEffect(() => {
-    if (runtimeMode !== "local" || !collabReady || localHasUnsavedChanges || isLocalSavePending) {
+    if (
+      runtimeMode !== "local" ||
+      !collabReady ||
+      localHasUnsavedChanges ||
+      isLocalSavePending
+    ) {
       return;
     }
 
-    const collabSerialized = editor ? serializeEditorContent(editor.getJSON()) : "";
+    const collabSerialized = editor
+      ? serializeEditorContent(editor.getJSON())
+      : "";
     if (
       !lastSavedLocalContentRef.current ||
       collabSerialized === lastSavedLocalContentRef.current
     ) {
       setRuntimeMode("collab");
     }
-  }, [collabReady, editor, isLocalSavePending, localHasUnsavedChanges, runtimeMode]);
+  }, [
+    collabReady,
+    editor,
+    isLocalSavePending,
+    localHasUnsavedChanges,
+    runtimeMode,
+  ]);
 
   useEffect(() => {
     setRuntimeModeAtom(runtimeMode);
   }, [runtimeMode, setRuntimeModeAtom]);
 
+  const overlayStatus: EditorSessionStatus | null = [
+    "blocked_by_other",
+    "pending_takeover",
+    "takeover_requested",
+    "revoked",
+  ].includes(pageLease.status)
+    ? pageLease.status
+    : null;
+  const overlayKey = `${pageId}:${pageLease.status}:${pageLease.takeoverId ?? ""}:${pageLease.activeClientId ?? ""}:${pageLease.pendingClientId ?? ""}`;
+  const showEditorSessionOverlay = Boolean(
+    shouldAcquirePageLease &&
+      overlayStatus &&
+      dismissedOverlayKey !== overlayKey,
+  );
+  const handleContinueHere = useCallback(() => {
+    setDismissedOverlayKey(null);
+    setIsContinueHerePending(true);
+    void pageLease
+      .takeover()
+      .catch(() => undefined)
+      .finally(() => {
+        setIsContinueHerePending(false);
+      });
+  }, [pageLease]);
+  const handleReadonlyView = useCallback(() => {
+    setDismissedOverlayKey(overlayKey);
+    if (pageLease.status === "pending_takeover") {
+      void pageLease.release("manual").catch(() => undefined);
+    }
+  }, [overlayKey, pageLease]);
+  const editorSessionOverlay = overlayStatus ? (
+    <EditorSessionOverlay
+      opened={showEditorSessionOverlay}
+      status={overlayStatus}
+      isContinuing={isContinueHerePending}
+      onContinueHere={handleContinueHere}
+      onReadonly={handleReadonlyView}
+    />
+  ) : null;
+
   if (runtimeMode === "local") {
     return (
-      <LocalFallbackPageEditor
-        pageId={pageId}
-        slugId={slugId}
-        editable={editable}
-        content={normalizedContent}
-        currentUserId={currentUser?.user.id}
-        userPageEditMode={userPageEditMode}
-        showCommentPopup={showCommentPopup}
-        onUnsavedChangesChange={setLocalHasUnsavedChanges}
-        onSavePendingChange={setIsLocalSavePending}
-        onLastSavedContentChange={(value) => {
-          lastSavedLocalContentRef.current = value;
-        }}
-      />
+      <>
+        {editorSessionOverlay}
+        <LocalFallbackPageEditor
+          pageId={pageId}
+          slugId={slugId}
+          editable={effectiveEditable}
+          content={normalizedContent}
+          currentUserId={currentUser?.user.id}
+          userPageEditMode={userPageEditMode}
+          showCommentPopup={showCommentPopup}
+          onUnsavedChangesChange={setLocalHasUnsavedChanges}
+          onSavePendingChange={setIsLocalSavePending}
+          onLastSavedContentChange={(value) => {
+            lastSavedLocalContentRef.current = value;
+          }}
+          editSession={pageLease.editSession}
+          leaseStatus={pageLease.status}
+          onTakeoverAck={() => pageLease.release("takeover_ack")}
+        />
+      </>
     );
   }
 
   if (runtimeMode === "preview" || !editor) {
-    return <StaticPageEditorPreview content={normalizedContent} pageId={pageId} />;
+    return (
+      <>
+        {editorSessionOverlay}
+        <StaticPageEditorPreview content={normalizedContent} pageId={pageId} />
+      </>
+    );
   }
 
   return (
-    <EditorRuntimeView
-      editor={editor}
-      editable={editable}
-      pageId={pageId}
-      showCommentPopup={showCommentPopup}
-    />
+    <>
+      {editorSessionOverlay}
+      <EditorRuntimeView
+        editor={editor}
+        editable={effectiveEditable}
+        pageId={pageId}
+        showCommentPopup={showCommentPopup}
+      />
+    </>
   );
 }

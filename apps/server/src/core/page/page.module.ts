@@ -7,11 +7,18 @@ import { StorageModule } from '../../integrations/storage/storage.module';
 import { CollaborationModule } from '../../collaboration/collaboration.module';
 import { WatcherModule } from '../watcher/watcher.module';
 import { ShareModule } from '../share/share.module';
+import { EditorSessionModule } from '../editor-session/editor-session.module';
 
 @Module({
   controllers: [PageController],
   providers: [PageService, PageHistoryService, TrashCleanupService],
   exports: [PageService, PageHistoryService],
-  imports: [StorageModule, CollaborationModule, WatcherModule, ShareModule],
+  imports: [
+    StorageModule,
+    CollaborationModule,
+    WatcherModule,
+    ShareModule,
+    EditorSessionModule,
+  ],
 })
 export class PageModule {}

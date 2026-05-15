@@ -1,11 +1,14 @@
 import type { Node, Schema } from '@tiptap/pm/model';
 import { DOMSerializer } from '@tiptap/pm/model';
-import { Window } from 'happy-dom';
+
+const { JSDOM } = require('jsdom') as {
+  JSDOM: new (...args: any[]) => any;
+};
 
 /**
  * Returns the HTML string representation of a given document node.
  *
- * @remarks **Important**: This function requires `happy-dom` to be installed in your project.
+ * @remarks **Important**: This function requires `jsdom` to be installed in your project.
  * @param doc - The document node to serialize.
  * @param schema - The Prosemirror schema to use for serialization.
  * @returns A promise containing the HTML string representation of the document fragment.
@@ -31,7 +34,8 @@ export function getHTMLFromFragment(
     return wrap.innerHTML;
   }
 
-  const localWindow = new Window();
+  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
+  const localWindow = dom.window;
   let result: string;
 
   try {
@@ -45,9 +49,7 @@ export function getHTMLFromFragment(
     const serializer = new localWindow.XMLSerializer();
     result = serializer.serializeToString(fragment as any);
   } finally {
-    // clean up happy-dom to avoid memory leaks
-    localWindow.happyDOM.abort();
-    localWindow.happyDOM.close();
+    localWindow.close();
   }
 
   return result;

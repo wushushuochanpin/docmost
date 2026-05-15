@@ -47,7 +47,7 @@ import {
   SharedStorage,
   Columns,
   Column,
-  Status
+  Status,
 } from "@docmost/editor-ext";
 import {
   randomElement,
@@ -317,6 +317,8 @@ export const mainExtensions = [
   Columns,
   Column,
 ] as any;
+
+export const templateExtensions = mainExtensions;
 
 type CollabExtensions = (provider: HocuspocusProvider, user: IUser) => any[];
 

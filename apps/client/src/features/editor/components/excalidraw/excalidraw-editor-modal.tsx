@@ -7,19 +7,17 @@ import {
   useHandleLibrary,
 } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
-import {
-  Button,
-  Group,
-  useComputedColorScheme,
-} from "@mantine/core";
+import { Button, Group, useComputedColorScheme } from "@mantine/core";
 import { useEffect, useState } from "react";
 import ReactClearModal from "react-clear-modal";
 import { useTranslation } from "react-i18next";
 import { uploadFile } from "@/features/page/services/page-service.ts";
 import type { IAttachment } from "@/features/attachments/types/attachment.types";
 import { getFileUrl } from "@/lib/config.ts";
+import { isEditorSessionFileEnabled } from "@/lib/config.ts";
 import { svgStringToFile } from "@/lib";
 import { localStorageLibraryAdapter } from "./excalidraw-utils.ts";
+import { useEditorSessionLease } from "@/features/editor-session/use-editor-session-lease";
 
 interface ExcalidrawEditorModalProps {
   attachmentId?: string | null;
@@ -44,6 +42,11 @@ export default function ExcalidrawEditorModal({
     useState<ExcalidrawImperativeAPI>(null);
   const [initialData, setInitialData] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const fileLease = useEditorSessionLease({
+    enabled: isEditorSessionFileEnabled() && opened && Boolean(attachmentId),
+    resourceType: "file",
+    resourceId: attachmentId,
+  });
 
   useHandleLibrary({
     excalidrawAPI,
@@ -114,9 +117,19 @@ export default function ExcalidrawEditorModal({
         "https://unpkg.com/@excalidraw/excalidraw@latest",
       );
 
-      const svgFile = await svgStringToFile(svgString, "diagram.excalidraw.svg");
+      const svgFile = await svgStringToFile(
+        svgString,
+        "diagram.excalidraw.svg",
+      );
+      if (
+        attachmentId &&
+        isEditorSessionFileEnabled() &&
+        fileLease.status !== "active"
+      ) {
+        return;
+      }
       const attachment = attachmentId
-        ? await uploadFile(svgFile, pageId, attachmentId)
+        ? await uploadFile(svgFile, pageId, attachmentId, fileLease.editSession)
         : await uploadFile(svgFile, pageId);
 
       onSaveSuccess(attachment);
@@ -143,7 +156,12 @@ export default function ExcalidrawEditorModal({
         },
       }}
     >
-      <Group justify="flex-end" wrap="nowrap" bg="var(--mantine-color-body)" p="xs">
+      <Group
+        justify="flex-end"
+        wrap="nowrap"
+        bg="var(--mantine-color-body)"
+        p="xs"
+      >
         <Button onClick={handleSave} size="compact-sm" loading={isSaving}>
           {t("Save & Exit")}
         </Button>

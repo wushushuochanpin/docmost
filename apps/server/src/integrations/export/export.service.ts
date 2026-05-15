@@ -29,8 +29,6 @@ import { PagePermissionRepo } from '@docmost/db/repos/page/page-permission.repo'
 import { Node } from '@tiptap/pm/model';
 import { EditorState } from '@tiptap/pm/state';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-import slugify = require('@sindresorhus/slugify');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require('../../../package.json');
 import { EnvironmentService } from '../environment/environment.service';
 import { DomainService } from '../environment/domain.service';
@@ -39,7 +37,9 @@ import {
   getProsemirrorContent,
 } from '../../common/helpers/prosemirror/utils';
 import { htmlToMarkdown } from '@docmost/editor-ext';
-import pLimit from 'p-limit';
+import { slugifyText } from '../../common/helpers';
+
+type AllowedAttachment = { id: string; fileName: string; filePath: string };
 
 @Injectable()
 export class ExportService {
@@ -155,6 +155,13 @@ export class ExportService {
     // set to null to make export of pages with parentId work
     pages[parentPageIndex].parentPageId = null;
 
+    const isSinglePage = pages.length === 1 && !includeAttachments;
+
+    if (isSinglePage) {
+      const pageContent = await this.exportPage(format, pages[0], true);
+      return { type: 'file' as const, content: pageContent, page: pages[0] };
+    }
+
     const tree = buildTree(pages as Page[]);
 
     const baseUrl = await this.getWorkspaceBaseUrl(pages[0].workspaceId);
@@ -175,7 +182,7 @@ export class ExportService {
       compression: 'DEFLATE',
     });
 
-    return zipFile;
+    return { type: 'zip' as const, stream: zipFile, page: pages[0] };
   }
 
   async exportSpace(
@@ -273,6 +280,12 @@ export class ExportService {
 
     computeLocalPath(tree, format, null, '', slugIdToPath);
 
+    // Batch resolve attachments once for the whole export so we only run the
+    // owning-page view check a single time, regardless of page count.
+    const allowedAttachments = includeAttachments
+      ? await this.resolveAccessibleAttachments(tree, userId, ignorePermissions)
+      : new Map<string, AllowedAttachment>();
+
     const stack: { folder: JSZip; parentPageId: string | null }[] = [
       { folder: zip, parentPageId: null },
     ];
@@ -298,14 +311,14 @@ export class ExportService {
           prosemirrorJson,
           slugIdToPath,
           currentPagePath,
+          baseUrl,
         );
 
         if (includeAttachments) {
           await this.zipAttachments(
             updatedJsonContent,
-            page.spaceId,
-            page.workspaceId,
             folder,
+            allowedAttachments,
           );
           updatedJsonContent =
             updateAttachmentUrlsToLocalPaths(updatedJsonContent);
@@ -354,38 +367,83 @@ export class ExportService {
 
   async zipAttachments(
     prosemirrorJson: any,
-    spaceId: string,
-    workspaceId: string,
     zip: JSZip,
+    allowed: Map<string, AllowedAttachment>,
   ) {
     const attachmentIds = getAttachmentIds(prosemirrorJson);
 
-    if (attachmentIds.length > 0) {
-      const limit = pLimit(4);
-      const attachments = await this.db
-        .selectFrom('attachments')
-        .selectAll()
-        .where('id', 'in', attachmentIds)
-        .where('workspaceId', '=', workspaceId)
-        .where('spaceId', '=', spaceId)
-        .execute();
+    await Promise.all(
+      attachmentIds.map(async (id) => {
+        const attachment = allowed.get(id);
+        if (!attachment) return;
+        try {
+          const fileBuffer = await this.storageService.read(
+            attachment.filePath,
+          );
+          const filePath = `/files/${attachment.id}/${attachment.fileName}`;
+          zip.file(filePath, fileBuffer);
+        } catch (err) {
+          this.logger.debug(`Attachment export error ${attachment.id}`, err);
+        }
+      }),
+    );
+  }
 
-      await Promise.all(
-        attachments.map((attachment) =>
-          limit(async () => {
-            try {
-              const fileStream = await this.storageService.readStream(
-                attachment.filePath,
-              );
-              const filePath = `/files/${attachment.id}/${attachment.fileName}`;
-              zip.file(filePath, fileStream as unknown as NodeJS.ReadableStream);
-            } catch (err) {
-              this.logger.debug(`Attachment export error ${attachment.id}`, err);
-            }
-          }),
+  private async resolveAccessibleAttachments(
+    tree: PageExportTree,
+    userId: string | undefined,
+    ignorePermissions: boolean,
+  ): Promise<Map<string, AllowedAttachment>> {
+    const allAttachmentIds = new Set<string>();
+    let spaceId: string | undefined;
+    let workspaceId: string | undefined;
+    for (const siblings of Object.values(tree)) {
+      for (const page of siblings) {
+        if (!spaceId) spaceId = page.spaceId;
+        if (!workspaceId) workspaceId = page.workspaceId;
+        for (const id of getAttachmentIds(
+          getProsemirrorContent(page.content),
+        )) {
+          allAttachmentIds.add(id);
+        }
+      }
+    }
+
+    if (allAttachmentIds.size === 0 || !spaceId) {
+      return new Map();
+    }
+
+    const attachments = await this.db
+      .selectFrom('attachments')
+      .select(['id', 'fileName', 'filePath', 'pageId'])
+      .where('id', 'in', [...allAttachmentIds])
+      .where('spaceId', '=', spaceId)
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
+      .execute();
+
+    let visible = attachments;
+    if (!ignorePermissions && userId) {
+      const ownerPageIds = [
+        ...new Set(
+          attachments.map((a) => a.pageId).filter((id): id is string => !!id),
         ),
+      ];
+      const accessible = ownerPageIds.length
+        ? await this.pagePermissionRepo.filterAccessiblePageIds({
+            pageIds: ownerPageIds,
+            userId,
+            spaceId,
+          })
+        : [];
+      const accessibleSet = new Set(accessible);
+      visible = attachments.filter(
+        (a) => a.pageId && accessibleSet.has(a.pageId),
       );
     }
+
+    return new Map(visible.map((a) => [a.id, a]));
   }
 
   async turnPageMentionsToLinks(
@@ -459,7 +517,7 @@ export class ExportService {
     ) => {
       const linkTitle = title || 'untitled';
       const truncatedTitle = linkTitle?.substring(0, 70);
-      const pageSlug = `${slugify(truncatedTitle)}-${slugId}`;
+      const pageSlug = `${slugifyText(truncatedTitle)}-${slugId}`;
 
       const link = `${baseUrl}/s/${spaceSlug}/p/${pageSlug}`;
 

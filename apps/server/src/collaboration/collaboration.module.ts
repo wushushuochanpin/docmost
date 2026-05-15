@@ -17,6 +17,7 @@ import { HistoryProcessor } from './processors/history.processor';
 import { LoggerExtension } from './extensions/logger.extension';
 import { CollaborationHandler } from './collaboration.handler';
 import { CollabHistoryService } from './services/collab-history.service';
+import { EditorSessionModule } from '../core/editor-session/editor-session.module';
 import { WatcherModule } from '../core/watcher/watcher.module';
 
 @Module({
@@ -30,7 +31,7 @@ import { WatcherModule } from '../core/watcher/watcher.module';
     CollaborationHandler,
   ],
   exports: [CollaborationGateway],
-  imports: [TokenModule, WatcherModule],
+  imports: [TokenModule, WatcherModule, EditorSessionModule],
 })
 export class CollaborationModule implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(CollaborationModule.name);

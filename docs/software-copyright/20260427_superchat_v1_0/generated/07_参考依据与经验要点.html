@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>07_参考依据与经验要点</title>
+  <style>
+    @page { size: A4; margin: 16mm 14mm; }
+    body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif; color: #111; font-size: 12px; line-height: 1.65; }
+    h1 { font-size: 22px; margin: 0 0 12px; }
+    h2 { font-size: 17px; margin: 22px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    h3 { font-size: 14px; margin: 16px 0 6px; }
+    p { margin: 6px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; table-layout: fixed; }
+    th, td { border: 1px solid #bbb; padding: 5px 6px; vertical-align: top; word-break: break-word; }
+    th { background: #f3f4f6; }
+    code { font-family: Consolas, monospace; font-size: 11px; }
+    pre { background: #f6f8fa; padding: 8px; white-space: pre-wrap; word-break: break-word; }
+    blockquote { border-left: 3px solid #999; margin: 8px 0; padding: 4px 10px; color: #333; }
+  </style>
+</head>
+<body>
+<h1>参考依据与经验要点</h1>
+<p><strong>成文日期</strong>：2026-04-27 19:54:02 UTC+8
+<strong>最后修订</strong>：2026-04-27 19:54:02 UTC+8</p>
+<p>本文档汇总本次软件著作权材料编写参考的官方规则和填表经验。阅读时当前系统实现可能已发生变化，请以实际代码与产品行为为准，谨慎参考。</p>
+<hr>
+<h2>一、官方依据</h2>
+<ol>
+<li><p>国家版权局《计算机软件著作权登记办法》</p>
+<ul>
+<li>链接：<a href="https://www.ncac.gov.cn/xxfb/flfg/bmgz/202410/P020241015604759788122.pdf">https://www.ncac.gov.cn/xxfb/flfg/bmgz/202410/P020241015604759788122.pdf</a></li>
+<li>要点：申请材料包括申请表、鉴别材料和相关证明文件；程序和文档鉴别材料通常由前、后各连续 30 页组成；程序每页不少于 50 行，文档每页不少于 30 行。</li>
+</ul>
+</li>
+<li><p>国家版权局《计算机软件保护条例》</p>
+<ul>
+<li>链接：<a href="https://www.ncac.gov.cn/xxfb/flfg/flfg_532/200701/t20070109_50527.html">https://www.ncac.gov.cn/xxfb/flfg/flfg_532/200701/t20070109_50527.html</a></li>
+<li>要点：软件包括计算机程序及其有关文档；软件登记证明文件是登记事项的初步证明；法人软件著作权保护期按条例规定计算。</li>
+</ul>
+</li>
+<li><p>国家版权局关于软件著作权登记办法修订公告</p>
+<ul>
+<li>链接：<a href="https://www.ncac.gov.cn/xxfb/tzgg/200303/t20030314_50162.html">https://www.ncac.gov.cn/xxfb/tzgg/200303/t20030314_50162.html</a></li>
+<li>要点：软件登记申请材料按一份提交，登记机构审查周期按修订规则执行。</li>
+</ul>
+</li>
+</ol>
+<h2>二、开源合规依据</h2>
+<ol>
+<li><p>最高人民法院知识产权法庭《开源协议适用范围及其对软件著作权侵权判定的影响》</p>
+<ul>
+<li>链接：<a href="https://ipc.court.gov.cn/zh-cn/news/view-842.html">https://ipc.court.gov.cn/zh-cn/news/view-842.html</a></li>
+<li>要点：开源软件并非公共领域软件，开源协议属于附条件的著作权许可；使用、修改和发布开源软件应遵守对应许可证。</li>
+</ul>
+</li>
+<li><p>本仓库根目录 <code>LICENSE</code></p>
+<ul>
+<li>要点：核心开源许可证为 GNU Affero General Public License Version 3。</li>
+</ul>
+</li>
+<li><p>本仓库 <code>README.md</code></p>
+<ul>
+<li>要点：README 中说明 SuperChat core 使用 AGPL 3.0，企业功能目录另有企业许可。</li>
+</ul>
+</li>
+</ol>
+<h2>三、填表经验依据</h2>
+<ol>
+<li><p>阿里云普通软件著作权申请材料在线填写指南</p>
+<ul>
+<li>链接：<a href="https://help.aliyun.com/zh/copyright-and-patent-service/software-copyright-registration/getting-started/limits-on-information-filling">https://help.aliyun.com/zh/copyright-and-patent-service/software-copyright-registration/getting-started/limits-on-information-filling</a></li>
+<li>要点：软件全称、版本号、源程序量、开发环境、运行环境、主要功能、技术特点、代码文档和说明文档应保持一致；代码材料需要与说明文档功能相关联。</li>
+</ul>
+</li>
+<li><p>常见代理机构与高校办理经验</p>
+<ul>
+<li>要点：源代码和说明书页眉的软件名称、版本号应与申请表完全一致；未发表软件不填写首次发表日期；文档材料建议覆盖登录、主界面、主要模块和操作流程。</li>
+</ul>
+</li>
+</ol>
+<h2>四、本次采用的成熟做法</h2>
+<ol>
+<li>不纳入 EE 目录，降低企业许可权属解释成本。</li>
+<li>申请范围写成“开源核心整体及自有二次开发成果”，避免把原开源软件表述为完全自有原创。</li>
+<li>权利取得方式填“原始取得”，开发方式填“独立开发”，软件作品说明建议填“修改”，三者分别对应权利取得、组织开发关系和作品来源。</li>
+<li>源程序量按排除 EE 后的源码行数填写为 <code>97817</code> 行。</li>
+<li>程序鉴别材料采用一般交存，生成前 30 页和后 30 页，每页 50 行。</li>
+<li>文档鉴别材料使用软件说明书，覆盖系统环境、架构、功能、流程、权限、安全和部署。</li>
+</ol>
+
+</body>
+</html>

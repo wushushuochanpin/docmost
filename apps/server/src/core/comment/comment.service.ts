@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { CreateCommentDto } from './dto/create-comment.dto';
+import { CreateCommentDto, yjsSelectionSchema } from './dto/create-comment.dto';
+import { CollaborationGateway } from '../../collaboration/collaboration.gateway';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { CommentRepo } from '@docmost/db/repos/comment/comment.repo';
 import { Comment, Page, User } from '@docmost/db/types/entity.types';
@@ -27,6 +28,7 @@ export class CommentService {
     private commentRepo: CommentRepo,
     private pageRepo: PageRepo,
     private wsService: WsService,
+    private collaborationGateway: CollaborationGateway,
     @InjectQueue(QueueName.GENERAL_QUEUE)
     private generalQueue: Queue,
     @InjectQueue(QueueName.NOTIFICATION_QUEUE)
@@ -46,10 +48,10 @@ export class CommentService {
   }
 
   async create(
-    opts: { userId: string; page: Page; workspaceId: string },
+    opts: { page: Page; workspaceId: string; user: User },
     createCommentDto: CreateCommentDto,
   ) {
-    const { userId, page, workspaceId } = opts;
+    const { page, workspaceId, user } = opts;
     const commentContent = JSON.parse(createCommentDto.content);
 
     if (createCommentDto.parentCommentId) {
@@ -75,19 +77,50 @@ export class CommentService {
       selection: createCommentDto?.selection?.substring(0, 250) ?? null,
       type: createCommentDto.type ?? 'page',
       parentCommentId: createCommentDto?.parentCommentId,
-      creatorId: userId,
+      creatorId: user.id,
       workspaceId: workspaceId,
       spaceId: page.spaceId,
     });
 
+    if (createCommentDto.yjsSelection) {
+      const parsed = yjsSelectionSchema.safeParse(
+        createCommentDto.yjsSelection,
+      );
+      if (!parsed.success) {
+        this.logger.warn(
+          `Invalid yjsSelection for comment ${inserted.id}: ${parsed.error.message}`,
+        );
+      } else {
+        const documentName = `page.${page.id}`;
+        try {
+          await this.collaborationGateway.handleYjsEvent(
+            'setCommentMark',
+            documentName,
+            {
+              yjsSelection: parsed.data,
+              commentId: inserted.id,
+              resolved: false,
+              user,
+            },
+          );
+        } catch (error) {
+          this.logger.warn(
+            `Failed to apply comment mark for comment ${inserted.id}, comment saved without inline highlight`,
+            error,
+          );
+        }
+      }
+    }
+
     const comment = await this.commentRepo.findById(inserted.id, {
+      workspaceId,
       includeCreator: true,
       includeResolvedBy: true,
     });
 
     this.generalQueue
       .add(QueueJob.ADD_PAGE_WATCHERS, {
-        userIds: [userId],
+        userIds: [user.id],
         pageId: page.id,
         spaceId: page.spaceId,
         workspaceId,
@@ -105,7 +138,7 @@ export class CommentService {
       page.id,
       page.spaceId,
       workspaceId,
-      userId,
+      user.id,
       !isReply,
       createCommentDto.parentCommentId,
     );
@@ -202,7 +235,8 @@ export class CommentService {
       (id) => id !== actorId && !oldMentionIds.includes(id),
     );
 
-    if (newMentionIds.length === 0 && !notifyWatchers && !parentCommentId) return;
+    if (newMentionIds.length === 0 && !notifyWatchers && !parentCommentId)
+      return;
 
     const jobData: ICommentNotificationJob = {
       commentId,
@@ -215,9 +249,6 @@ export class CommentService {
       notifyWatchers,
     };
 
-    await this.notificationQueue.add(
-      QueueJob.COMMENT_NOTIFICATION,
-      jobData,
-    );
+    await this.notificationQueue.add(QueueJob.COMMENT_NOTIFICATION, jobData);
   }
 }

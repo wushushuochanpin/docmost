@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>03_源代码材料说明</title>
+  <style>
+    @page { size: A4; margin: 16mm 14mm; }
+    body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif; color: #111; font-size: 12px; line-height: 1.65; }
+    h1 { font-size: 22px; margin: 0 0 12px; }
+    h2 { font-size: 17px; margin: 22px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    h3 { font-size: 14px; margin: 16px 0 6px; }
+    p { margin: 6px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; table-layout: fixed; }
+    th, td { border: 1px solid #bbb; padding: 5px 6px; vertical-align: top; word-break: break-word; }
+    th { background: #f3f4f6; }
+    code { font-family: Consolas, monospace; font-size: 11px; }
+    pre { background: #f6f8fa; padding: 8px; white-space: pre-wrap; word-break: break-word; }
+    blockquote { border-left: 3px solid #999; margin: 8px 0; padding: 4px 10px; color: #333; }
+  </style>
+</head>
+<body>
+<h1>源代码鉴别材料说明</h1>
+<p><strong>成文日期</strong>：2026-04-27 19:54:02 UTC+8
+<strong>最后修订</strong>：2026-04-27 19:54:02 UTC+8</p>
+<p>本文档说明本次软件著作权源代码鉴别材料的生成范围和规则。阅读时当前系统实现可能已发生变化，请以实际代码与产品行为为准，谨慎参考。</p>
+<hr>
+<h2>一、材料范围</h2>
+<p>本次程序鉴别材料覆盖当前可运行开源核心源码，纳入以下目录：</p>
+<ol>
+<li><code>apps/client/src</code></li>
+<li><code>apps/server/src</code></li>
+<li><code>packages/editor-ext/src</code></li>
+</ol>
+<p>排除以下内容：</p>
+<ol>
+<li><code>apps/server/src/ee</code></li>
+<li><code>apps/client/src/ee</code></li>
+<li><code>packages/ee</code></li>
+<li><code>dist</code> 构建产物</li>
+<li><code>node_modules</code> 第三方依赖</li>
+<li>锁文件、配置文件和非源码文档</li>
+</ol>
+<h2>二、源程序量</h2>
+<p>按 Git 跟踪源码统计，排除 EE 目录后源程序量为：</p>
+<pre><code class="language-text">97817 行
+</code></pre>
+<p>该数值建议填写到登记系统“源程序量”字段。</p>
+<h2>三、交存方式</h2>
+<p>建议选择：</p>
+<pre><code class="language-text">一般交存
+</code></pre>
+<p>生成规则为：</p>
+<ol>
+<li>以 Git 跟踪的源码文件顺序合并程序文本。</li>
+<li>抽取前 30 页源码。</li>
+<li>抽取后 30 页源码。</li>
+<li>每页 50 行。</li>
+<li>页眉标注软件名称、版本号、著作权人和页码。</li>
+</ol>
+<h2>四、生成文件</h2>
+<p>执行生成脚本后得到：</p>
+<pre><code class="language-text">generated/SuperChat_知识协作管理系统_V1.0_程序鉴别材料.pdf
+generated/SuperChat_知识协作管理系统_V1.0_程序鉴别材料.html
+generated/SuperChat_知识协作管理系统_V1.0_程序鉴别材料.txt
+</code></pre>
+<p>登记系统上传 PDF 文件即可。</p>
+<h2>五、注意事项</h2>
+<ol>
+<li>程序鉴别材料的软件名称必须与申请表一致。</li>
+<li>程序鉴别材料版本号必须与申请表一致。</li>
+<li>不建议将企业许可目录纳入本次程序鉴别材料。</li>
+<li>如登记系统或代理机构要求解释开源基础，请同时上传开源许可与二次开发说明。</li>
+</ol>
+
+</body>
+</html>

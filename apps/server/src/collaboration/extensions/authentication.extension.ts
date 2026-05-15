@@ -1,4 +1,8 @@
-import { Extension, onAuthenticatePayload } from '@hocuspocus/server';
+import {
+  beforeHandleMessagePayload,
+  Extension,
+  onAuthenticatePayload,
+} from '@hocuspocus/server';
 import {
   Injectable,
   Logger,
@@ -15,6 +19,9 @@ import { SpaceRole } from '../../common/helpers/types/permission';
 import { isUserDisabled } from '../../common/helpers';
 import { getPageId } from '../collaboration.util';
 import { JwtCollabPayload, JwtType } from '../../core/auth/dto/jwt-payload';
+import { EditorSessionService } from '../../core/editor-session/editor-session.service';
+import type { EditorSessionRef } from '../../core/editor-session/editor-session.types';
+import { EnvironmentService } from '../../integrations/environment/environment.service';
 
 @Injectable()
 export class AuthenticationExtension implements Extension {
@@ -26,6 +33,8 @@ export class AuthenticationExtension implements Extension {
     private pageRepo: PageRepo,
     private readonly spaceMemberRepo: SpaceMemberRepo,
     private readonly pagePermissionRepo: PagePermissionRepo,
+    private readonly editorSessionService: EditorSessionService,
+    private readonly environmentService: EnvironmentService,
   ) {}
 
   async onAuthenticate(data: onAuthenticatePayload) {
@@ -108,10 +117,63 @@ export class AuthenticationExtension implements Extension {
       data.connectionConfig.readOnly = true;
     }
 
+    const shouldValidateEditorSession =
+      !data.connectionConfig.readOnly &&
+      this.environmentService.isEditorSessionEnabled() &&
+      this.environmentService.isEditorSessionCollabValidate();
+    const editSession = shouldValidateEditorSession
+      ? this.parseEditSession(data.requestParameters)
+      : null;
+
+    if (shouldValidateEditorSession) {
+      if (!jwtPayload.sessionId) {
+        throw new UnauthorizedException('Missing collab session');
+      }
+
+      await this.editorSessionService.validateCollabConnection({
+        workspaceId,
+        userId: user.id,
+        pageId,
+        editSession,
+      });
+    }
+
     this.logger.debug(`Authenticated user ${user.id} on page ${pageId}`);
 
     return {
       user,
+      editSession,
     };
+  }
+
+  async beforeHandleMessage(data: beforeHandleMessagePayload) {
+    if (data.connection.readOnly) {
+      return;
+    }
+
+    const pageId = getPageId(data.documentName);
+    await this.editorSessionService.validateCollabConnection({
+      workspaceId: data.context?.user?.workspaceId,
+      userId: data.context?.user?.id,
+      pageId,
+      editSession: data.context?.editSession ?? null,
+    });
+  }
+
+  private parseEditSession(
+    requestParameters: URLSearchParams,
+  ): EditorSessionRef | null {
+    const raw = requestParameters.get('editSession');
+    if (!raw) return null;
+
+    try {
+      return JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+    } catch {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        throw new UnauthorizedException('Invalid editor session');
+      }
+    }
   }
 }

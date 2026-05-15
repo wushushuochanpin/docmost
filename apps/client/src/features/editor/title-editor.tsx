@@ -7,7 +7,9 @@ import { Text } from "@tiptap/extension-text";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { useAtomValue, useStore } from "jotai";
 import {
+  pageEditorEditSessionAtom,
   pageEditorAtom,
+  pageEditorSessionStatusAtom,
   titleEditorAtom,
 } from "@/features/editor/atoms/editor-atoms";
 import {
@@ -29,6 +31,7 @@ import { PageEditMode } from "@/features/user/types/user.types.ts";
 import { searchSpotlight } from "@/features/search/constants.ts";
 import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 import classes from "@/features/editor/styles/editor.module.css";
+import { isEditorSessionEnabled } from "@/lib/config";
 
 export interface TitleEditorProps {
   pageId: string;
@@ -54,6 +57,8 @@ export function TitleEditor({
     useUpdateTitlePageMutation();
   const store = useStore();
   const pageEditor = useAtomValue(pageEditorAtom);
+  const pageEditorSessionStatus = useAtomValue(pageEditorSessionStatusAtom);
+  const pageEditorEditSession = useAtomValue(pageEditorEditSessionAtom);
   const emit = useQueryEmit();
   const navigate = useNavigate();
   const [activePageId, setActivePageId] = useState(pageId);
@@ -63,6 +68,10 @@ export function TitleEditor({
     localPageEditMode ??
     currentUser?.user?.settings?.preferences?.pageEditMode ??
     PageEditMode.Edit;
+  const editorSessionFeatureEnabled = isEditorSessionEnabled();
+  const sessionAllowsEdit =
+    !editorSessionFeatureEnabled || pageEditorSessionStatus === "active";
+  const effectiveEditable = editable && sessionAllowsEdit;
 
   const titleEditor = useEditor({
     extensions: [
@@ -91,7 +100,7 @@ export function TitleEditor({
     onUpdate({ editor }) {
       debounceUpdate();
     },
-    editable: editable,
+    editable: effectiveEditable,
     content: title,
     immediatelyRender: true,
     shouldRerenderOnTransaction: false,
@@ -120,7 +129,7 @@ export function TitleEditor({
   }, [title]);
 
   const saveTitle = useCallback(() => {
-    if (!titleEditor || activePageId !== pageId) return;
+    if (!titleEditor || activePageId !== pageId || !effectiveEditable) return;
 
     if (
       titleEditor.getText() === title ||
@@ -132,6 +141,8 @@ export function TitleEditor({
     updateTitlePageMutationAsync({
       pageId: pageId,
       title: titleEditor.getText(),
+      editSession: pageEditorEditSession,
+      writeIntent: "normal",
     }).then((page) => {
       const event: UpdateEvent = {
         operation: "updateOne",
@@ -153,7 +164,13 @@ export function TitleEditor({
       localEmitter.emit("message", event);
       emit(event);
     });
-  }, [pageId, title, titleEditor]);
+  }, [
+    effectiveEditable,
+    pageEditorEditSession,
+    pageId,
+    title,
+    titleEditor,
+  ]);
 
   const debounceUpdate = useDebouncedCallback(saveTitle, 500);
 
@@ -181,14 +198,16 @@ export function TitleEditor({
 
   useEffect(() => {
     // honor user default page edit mode preference
-    if (userPageEditMode && titleEditor && editable) {
+    if (userPageEditMode && titleEditor && effectiveEditable) {
       if (userPageEditMode === PageEditMode.Edit) {
         titleEditor.setEditable(true);
       } else if (userPageEditMode === PageEditMode.Read) {
         titleEditor.setEditable(false);
       }
+      return;
     }
-  }, [userPageEditMode, titleEditor, editable]);
+    titleEditor?.setEditable(false);
+  }, [userPageEditMode, titleEditor, effectiveEditable]);
 
   const openSearchDialog = () => {
     const event = new CustomEvent("openFindDialogFromEditor", {});

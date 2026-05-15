@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>01_申请表填写卡</title>
+  <style>
+    @page { size: A4; margin: 16mm 14mm; }
+    body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif; color: #111; font-size: 12px; line-height: 1.65; }
+    h1 { font-size: 22px; margin: 0 0 12px; }
+    h2 { font-size: 17px; margin: 22px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    h3 { font-size: 14px; margin: 16px 0 6px; }
+    p { margin: 6px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; table-layout: fixed; }
+    th, td { border: 1px solid #bbb; padding: 5px 6px; vertical-align: top; word-break: break-word; }
+    th { background: #f3f4f6; }
+    code { font-family: Consolas, monospace; font-size: 11px; }
+    pre { background: #f6f8fa; padding: 8px; white-space: pre-wrap; word-break: break-word; }
+    blockquote { border-left: 3px solid #999; margin: 8px 0; padding: 4px 10px; color: #333; }
+  </style>
+</head>
+<body>
+<h1>R11 软件著作权登记申请表填写卡</h1>
+<p><strong>成文日期</strong>：2026-04-27 19:54:02 UTC+8
+<strong>最后修订</strong>：2026-04-27 19:54:02 UTC+8</p>
+<p>本文档用于辅助填写中国版权保护中心 R11 计算机软件著作权登记申请。阅读时当前系统实现可能已发生变化，请以实际代码与产品行为为准，谨慎参考。</p>
+<hr>
+<h2>一、软件基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>表单项</th>
+<th>建议填写</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>软件全称</td>
+<td>SuperChat 知识协作管理系统</td>
+</tr>
+<tr>
+<td>软件简称</td>
+<td>SuperChat</td>
+</tr>
+<tr>
+<td>版本号</td>
+<td>V1.0</td>
+</tr>
+<tr>
+<td>软件分类</td>
+<td>应用软件 / 企业管理软件 / 文档管理软件</td>
+</tr>
+<tr>
+<td>软件作品说明</td>
+<td>推荐选择“修改”，说明为“基于 Docmost / SuperChat 开源协作文档软件进行二次开发，形成面向企业知识协作、备份恢复、分享发布和 AI 知识检索接入的系统版本。”</td>
+</tr>
+<tr>
+<td>权利取得方式</td>
+<td>原始取得</td>
+</tr>
+<tr>
+<td>开发方式</td>
+<td>独立开发</td>
+</tr>
+<tr>
+<td>著作权人</td>
+<td>鲜知（北京）科技有限公司</td>
+</tr>
+<tr>
+<td>著作权人类型</td>
+<td>法人或者其他组织</td>
+</tr>
+<tr>
+<td>统一社会信用代码</td>
+<td>91110112MAKB9NUD2N</td>
+</tr>
+<tr>
+<td>公司类型</td>
+<td>有限责任公司（自然人独资）</td>
+</tr>
+<tr>
+<td>公司成立日期</td>
+<td>2026-04-08</td>
+</tr>
+<tr>
+<td>开发完成日期</td>
+<td>2026-04-27</td>
+</tr>
+<tr>
+<td>发表状态</td>
+<td>未发表</td>
+</tr>
+<tr>
+<td>首次发表日期</td>
+<td>未发表时不填</td>
+</tr>
+<tr>
+<td>首次发表地点</td>
+<td>未发表时不填</td>
+</tr>
+<tr>
+<td>源程序量</td>
+<td>97817 行</td>
+</tr>
+</tbody></table>
+<h2>二、软件功能与技术特点</h2>
+<table>
+<thead>
+<tr>
+<th>表单项</th>
+<th>建议填写</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>开发的硬件环境</td>
+<td>x86_64 架构 PC 或开发服务器，CPU 4 核及以上，内存 16GB 及以上，硬盘 100GB 及以上，支持 Docker、本地浏览器调试和数据库调试环境。</td>
+</tr>
+<tr>
+<td>运行的硬件环境</td>
+<td>x86_64 Linux 服务器或云服务器，建议 CPU 2 核及以上、内存 4GB 及以上、磁盘 20GB 及以上；客户端通过 PC 或移动端现代浏览器访问。</td>
+</tr>
+<tr>
+<td>开发该软件的操作系统</td>
+<td>Ubuntu 22.04/24.04、macOS、Windows 11 + WSL2。</td>
+</tr>
+<tr>
+<td>软件开发环境 / 开发工具</td>
+<td>Node.js 22、pnpm 10.4.0、TypeScript 5.7、Nx 22、Vite 7、React 18、Mantine 8、NestJS 11、Fastify、PostgreSQL 16、Redis 7、Docker、Docker Compose、Git、VS Code。</td>
+</tr>
+<tr>
+<td>该软件的运行平台 / 操作系统</td>
+<td>Linux 服务器，Docker 容器化部署；客户端支持 Chrome、Edge、Safari、Firefox 等现代浏览器。</td>
+</tr>
+<tr>
+<td>软件运行支撑环境 / 支持软件</td>
+<td>Node.js 22、PostgreSQL 16、Redis 7.2、Nginx 反向代理、Docker Compose；可选 S3/COS 对象存储、SMTP 邮件服务。</td>
+</tr>
+<tr>
+<td>编程语言</td>
+<td>勾选 JavaScript、SQL；“其他”填写 TypeScript、TSX、CSS。</td>
+</tr>
+<tr>
+<td>开发目的</td>
+<td>建设可自托管的企业知识库与协同文档系统，支持团队知识沉淀、在线协作、权限管理、内容检索、外部分享、备份恢复及 AI 工具安全接入。</td>
+</tr>
+<tr>
+<td>面向领域 / 行业</td>
+<td>企业知识管理、协同办公、研发文档管理、教育科研、组织内部信息化。</td>
+</tr>
+<tr>
+<td>软件的主要功能</td>
+<td>工作区与空间管理、页面树和文档管理、富文本编辑、实时协作、评论、权限与群组、页面历史、全文搜索、附件管理、外部分享、图表和白板、Mermaid 预览与下载、备份恢复、审计、API Key 管理、MCP 知识检索接入。</td>
+</tr>
+<tr>
+<td>软件的技术特点</td>
+<td>系统采用 B/S 架构和前后端分离设计，前端基于 React、Vite、Mantine 与 TipTap 构建交互式文档编辑界面，后端基于 NestJS、Fastify、PostgreSQL、Redis 实现多租户业务、权限、搜索、协作与异步任务处理。系统支持 Docker 化部署、Nginx 反向代理、对象存储备份、全文检索、WebSocket 实时协作、MCP 只读知识检索和 API Key 鉴权。</td>
+</tr>
+<tr>
+<td>软件技术特点选项</td>
+<td>建议勾选“云计算软件”。如登记系统允许多选，可根据实际上线能力补充“信息安全软件”，但不要勾选“人工智能软件”，避免引入额外 AI 合规解释。</td>
+</tr>
+</tbody></table>
+<h2>三、鉴别材料</h2>
+<table>
+<thead>
+<tr>
+<th>表单项</th>
+<th>建议填写</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>程序鉴别材料</td>
+<td>一般交存</td>
+</tr>
+<tr>
+<td>程序鉴别材料文件</td>
+<td>上传 <code>generated/SuperChat_知识协作管理系统_V1.0_程序鉴别材料.pdf</code></td>
+</tr>
+<tr>
+<td>文档鉴别材料</td>
+<td>一般交存</td>
+</tr>
+<tr>
+<td>文档鉴别材料文件</td>
+<td>上传 <code>generated/02_软件说明书.pdf</code></td>
+</tr>
+<tr>
+<td>其他相关证明文件</td>
+<td>可上传 <code>generated/04_开源许可与二次开发说明.pdf</code>、<code>generated/05_软件名称说明.pdf</code>；如系统要求，另上传营业执照扫描件、职务开发证明或权利保证签章页。</td>
+</tr>
+</tbody></table>
+<h2>四、修改软件说明建议文本</h2>
+<p>如表单在“软件作品说明=修改”后要求填写详细说明，可使用：</p>
+<blockquote>
+<p>本软件基于 Docmost / SuperChat 开源协作文档软件进行二次开发，保留开源许可要求下允许使用、复制、修改和传播的基础能力，并由鲜知（北京）科技有限公司在此基础上组织开发完成企业知识协作、页面分享性能优化、微信分享适配、备份恢复、API Key 管理、审计日志、MCP 只读知识检索接入、页面移动定位、侧边栏分类视图、Mermaid 预览缩放下载等功能。申请范围为当前可运行开源核心及上述二次开发成果，不包含企业许可目录 <code>apps/server/src/ee</code>、<code>apps/client/src/ee</code>、<code>packages/ee</code>。</p>
+</blockquote>
+<h2>五、联系人信息</h2>
+<p>以下信息需要申请人补充：</p>
+<table>
+<thead>
+<tr>
+<th>表单项</th>
+<th>待补</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>联系人姓名</td>
+<td>待补充</td>
+</tr>
+<tr>
+<td>联系电话</td>
+<td>待补充</td>
+</tr>
+<tr>
+<td>联系邮箱</td>
+<td>待补充</td>
+</tr>
+<tr>
+<td>联系地址</td>
+<td>待补充</td>
+</tr>
+<tr>
+<td>邮政编码</td>
+<td>待补充</td>
+</tr>
+<tr>
+<td>证书领取方式</td>
+<td>按登记系统可选项确定</td>
+</tr>
+</tbody></table>
+<h2>六、填表风险提示</h2>
+<ol>
+<li>“开发方式=独立开发”可表达本公司未委托、未合作、未由上级任务书开发；但“软件作品说明”仍建议如实选择“修改”，以匹配当前仓库基于开源项目改造的事实。</li>
+<li>如选择“原创”，源代码和文档中出现原开源项目、AGPL、Docmost 等信息时可能触发表述不一致。</li>
+<li>未发表状态下不要填写首次发表日期、地点；软件说明书中也不要写“已公开发布”。</li>
+<li>开发完成日期为 2026-04-27，材料中不要出现晚于该日期才完成的功能表述。</li>
+</ol>
+
+</body>
+</html>

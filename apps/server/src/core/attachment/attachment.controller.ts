@@ -33,6 +33,7 @@ import {
 import { getMimeType } from '../../common/helpers';
 import {
   AttachmentType,
+  inlineFileExtensions,
   MAX_AVATAR_SIZE,
 } from './attachment.constants';
 import {
@@ -59,18 +60,15 @@ import {
   AUDIT_SERVICE,
   IAuditService,
 } from '../../integrations/audit/audit.service';
+import { EditorSessionService } from '../editor-session/editor-session.service';
+import type {
+  EditorSessionRef,
+  EditorSessionWriteIntent,
+} from '../editor-session/editor-session.types';
 
 @Controller()
 export class AttachmentController {
   private readonly logger = new Logger(AttachmentController.name);
-  private readonly safeInlineMimeByExt: Record<string, string[]> = {
-    '.jpg': ['image/jpeg'],
-    '.jpeg': ['image/jpeg'],
-    '.png': ['image/png'],
-    '.pdf': ['application/pdf'],
-    '.mp4': ['video/mp4'],
-    '.mov': ['video/quicktime', 'video/mp4'],
-  };
 
   constructor(
     private readonly attachmentService: AttachmentService,
@@ -82,6 +80,7 @@ export class AttachmentController {
     private readonly environmentService: EnvironmentService,
     private readonly tokenService: TokenService,
     private readonly pageAccessService: PageAccessService,
+    private readonly editorSessionService: EditorSessionService,
     @Inject(AUDIT_SERVICE) private readonly auditService: IAuditService,
   ) {}
 
@@ -100,7 +99,7 @@ export class AttachmentController {
     let file = null;
     try {
       file = await req.file({
-        limits: { fileSize: maxFileSize, fields: 3, files: 1 },
+        limits: { fileSize: maxFileSize, fields: 5, files: 1 },
       });
     } catch (err: any) {
       this.logger.error(err.message);
@@ -138,6 +137,20 @@ export class AttachmentController {
       throw new BadRequestException('Invalid attachment id');
     }
 
+    if (attachmentId) {
+      await this.editorSessionService.validateFileWrite({
+        workspaceId: workspace.id,
+        userId: user.id,
+        attachmentId,
+        editSession: this.parseEditSessionField(
+          file.fields?.editSession?.value,
+        ),
+        writeIntent: this.parseWriteIntentField(
+          file.fields?.writeIntent?.value,
+        ),
+      });
+    }
+
     try {
       const fileResponse = await this.attachmentService.uploadFile({
         filePromise: file,
@@ -172,6 +185,25 @@ export class AttachmentController {
     }
   }
 
+  private parseEditSessionField(value: unknown): EditorSessionRef | null {
+    if (!value || typeof value !== 'string') {
+      return null;
+    }
+
+    try {
+      return JSON.parse(value) as EditorSessionRef;
+    } catch {
+      throw new BadRequestException('Invalid edit session');
+    }
+  }
+
+  private parseWriteIntentField(value: unknown): EditorSessionWriteIntent {
+    if (value === 'handoff_flush') {
+      return 'handoff_flush';
+    }
+    return 'normal';
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('/files/:fileId/:fileName')
   async getFile(
@@ -180,26 +212,7 @@ export class AttachmentController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
     @Param('fileId') fileId: string,
-  ) {
-    return this.sendFileByAttachmentId(res, user, workspace, fileId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('/files/by-id/:fileId')
-  async getFileById(
-    @Res() res: FastifyReply,
-    @AuthUser() user: User,
-    @AuthWorkspace() workspace: Workspace,
-    @Param('fileId') fileId: string,
-  ) {
-    return this.sendFileByAttachmentId(res, user, workspace, fileId);
-  }
-
-  private async sendFileByAttachmentId(
-    res: FastifyReply,
-    user: User,
-    workspace: Workspace,
-    fileId: string,
+    @Param('fileName') fileName?: string,
   ) {
     if (!isValidUUID(fileId)) {
       throw new NotFoundException('Invalid file id');
@@ -208,44 +221,50 @@ export class AttachmentController {
     const attachment = await this.attachmentRepo.findById(fileId, {
       workspaceId: workspace.id,
     });
-    if (
-      !attachment ||
-      attachment.workspaceId !== workspace.id ||
-      !attachment.pageId ||
-      !attachment.spaceId
-    ) {
+    if (!attachment || attachment.workspaceId !== workspace.id) {
       throw new NotFoundException();
     }
 
-    const page = await this.pageRepo.findById(attachment.pageId);
-    if (!page) {
-      throw new NotFoundException();
-    }
-
-    await this.pageAccessService.validateCanView(page, user);
-
-    try {
-      const fileStream = await this.storageService.readStream(
-        attachment.filePath,
-      );
-      res.headers({
-        'Content-Type': attachment.mimeType,
-        'Cache-Control': 'private, max-age=3600',
-        'X-Content-Type-Options': 'nosniff',
-      });
-
-      if (!this.isSafeInlineAttachment(attachment.fileExt, attachment.mimeType)) {
-        res.header(
-          'Content-Disposition',
-          `attachment; filename="${encodeURIComponent(attachment.fileName)}"`,
-        );
+    if (attachment.aiChatId) {
+      // Chat-owned attachment: only the user who uploaded (and therefore
+      // owns the chat, per AttachmentRepo.claimAttachmentsForChat) can
+      // read it back.
+      if (attachment.creatorId !== user.id) {
+        throw new NotFoundException();
+      }
+    } else {
+      if (!attachment.pageId || !attachment.spaceId) {
+        throw new NotFoundException();
       }
 
-      return res.send(fileStream);
+      const page = await this.pageRepo.findById(attachment.pageId, {
+        workspaceId: workspace.id,
+      });
+      if (!page) {
+        throw new NotFoundException();
+      }
+
+      await this.pageAccessService.validateCanView(page, user);
+    }
+
+    try {
+      return await this.sendFileResponse(req, res, attachment, 'private');
     } catch (err) {
       this.logger.error(err);
       throw new NotFoundException('File not found');
     }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('/files/by-id/:fileId')
+  async getFileById(
+    @Req() req: FastifyRequest,
+    @Res() res: FastifyReply,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+    @Param('fileId') fileId: string,
+  ) {
+    return this.getFile(req, res, user, workspace, fileId);
   }
 
   @Get('/files/public/:fileId/:fileName')
@@ -291,23 +310,7 @@ export class AttachmentController {
     }
 
     try {
-      const fileStream = await this.storageService.readStream(
-        attachment.filePath,
-      );
-      res.headers({
-        'Content-Type': attachment.mimeType,
-        'Cache-Control': 'public, max-age=3600',
-        'X-Content-Type-Options': 'nosniff',
-      });
-
-      if (!this.isSafeInlineAttachment(attachment.fileExt, attachment.mimeType)) {
-        res.header(
-          'Content-Disposition',
-          `attachment; filename="${encodeURIComponent(attachment.fileName)}"`,
-        );
-      }
-
-      return res.send(fileStream);
+      return await this.sendFileResponse(req, res, attachment, 'public');
     } catch (err) {
       this.logger.error(err);
       throw new NotFoundException('File not found');
@@ -412,9 +415,19 @@ export class AttachmentController {
       throw new BadRequestException('Invalid image attachment type');
     }
 
-    const filenameWithoutExt = path.basename(fileName, path.extname(fileName));
-    if (!isValidUUID(filenameWithoutExt)) {
-      throw new BadRequestException('Invalid file id');
+    if (!fileName) {
+      throw new BadRequestException('Invalid file name');
+    }
+
+    const ext = path.extname(fileName);
+    const filenameWithoutExt = path.basename(fileName, ext);
+
+    if (
+      !ext ||
+      !isValidUUID(filenameWithoutExt) ||
+      `${filenameWithoutExt}${ext}` !== fileName
+    ) {
+      throw new BadRequestException('Invalid file name');
     }
 
     const filePath = `${getAttachmentFolderPath(attachmentType, workspace.id)}/${fileName}`;
@@ -424,7 +437,6 @@ export class AttachmentController {
       res.headers({
         'Content-Type': getMimeType(filePath),
         'Cache-Control': 'private, max-age=86400',
-        'X-Content-Type-Options': 'nosniff',
       });
       return res.send(fileStream);
     } catch (err) {
@@ -441,7 +453,9 @@ export class AttachmentController {
     @AuthWorkspace() workspace: Workspace,
     @AuthUser() user: User,
   ) {
-    const attachment = await this.attachmentRepo.findById(dto.attachmentId);
+    const attachment = await this.attachmentRepo.findById(dto.attachmentId, {
+      workspaceId: workspace.id,
+    });
     if (
       !attachment ||
       !attachment.pageId ||
@@ -451,7 +465,9 @@ export class AttachmentController {
       throw new NotFoundException('File not found');
     }
 
-    const page = await this.pageRepo.findById(attachment.pageId);
+    const page = await this.pageRepo.findById(attachment.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page) {
       throw new NotFoundException('File not found');
     }
@@ -512,18 +528,73 @@ export class AttachmentController {
     }
   }
 
-  private isSafeInlineAttachment(fileExt?: string, mimeType?: string): boolean {
-    const normalizedExt = fileExt?.toLowerCase();
-    const normalizedMime = mimeType?.toLowerCase();
-    if (!normalizedExt || !normalizedMime) {
-      return false;
+  private async sendFileResponse(
+    req: FastifyRequest,
+    res: FastifyReply,
+    attachment: Attachment,
+    cacheScope: 'private' | 'public',
+  ) {
+    const fileSize = Number(attachment.fileSize);
+    const rangeHeader = req.headers.range;
+
+    res.header('Accept-Ranges', 'bytes');
+    res.header(
+      'Content-Security-Policy',
+      "base-uri 'none'; object-src 'self'; default-src 'self';",
+    );
+
+    if (!inlineFileExtensions.includes(attachment.fileExt)) {
+      res.header(
+        'Content-Disposition',
+        `attachment; filename="${encodeURIComponent(attachment.fileName)}"`,
+      );
     }
 
-    const allowedMimeTypes = this.safeInlineMimeByExt[normalizedExt];
-    if (!allowedMimeTypes) {
-      return false;
+    if (rangeHeader && fileSize) {
+      const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+      if (match) {
+        const start = parseInt(match[1], 10);
+        const end = match[2]
+          ? Math.min(parseInt(match[2], 10), fileSize - 1)
+          : fileSize - 1;
+
+        if (start >= fileSize || start > end) {
+          res.status(416);
+          res.header('Content-Range', `bytes */${fileSize}`);
+          return res.send();
+        }
+
+        const fileStream = await this.storageService.readRangeStream(
+          attachment.filePath,
+          { start, end },
+        );
+
+        res.status(206);
+        res.headers({
+          'Content-Type': attachment.mimeType,
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Content-Length': end - start + 1,
+          'Cache-Control': `${cacheScope}, max-age=3600`,
+        });
+
+        return res.send(fileStream);
+      }
     }
 
-    return allowedMimeTypes.includes(normalizedMime);
+    const fileStream = await this.storageService.readStream(
+      attachment.filePath,
+    );
+
+    res.headers({
+      'Content-Type': attachment.mimeType,
+      'Cache-Control': `${cacheScope}, max-age=3600`,
+    });
+
+    const isSvg = attachment.fileExt === '.svg';
+    if (fileSize && !isSvg) {
+      res.header('Content-Length', fileSize);
+    }
+
+    return res.send(fileStream);
   }
 }

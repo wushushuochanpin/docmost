@@ -24,6 +24,10 @@ import { saveAs } from "file-saver";
 import { InfiniteData } from "@tanstack/react-query";
 import { IFileTask } from "@/features/file-task/types/file-task.types.ts";
 import { IAttachment } from "@/features/attachments/types/attachment.types.ts";
+import type {
+  EditSession,
+  EditorSessionWriteIntent,
+} from "@/features/editor-session/types";
 
 export async function createPage(data: Partial<IPage>): Promise<IPage> {
   const req = await api.post<IPage>("/pages/create", data);
@@ -159,7 +163,11 @@ export async function getAllSidebarPages(
   const pageParams: (string | undefined)[] = [];
 
   do {
-    const req = await api.post("/pages/sidebar-pages", { ...params, cursor });
+    const req = await api.post("/pages/sidebar-pages", {
+      ...params,
+      cursor,
+      limit: 100,
+    });
 
     const data: IPagination<IPage> = req.data;
     pages.push(data);
@@ -182,9 +190,16 @@ export async function getPageBreadcrumbs(
 }
 
 export async function getRecentChanges(
-  spaceId?: string,
+  params?: QueryParams & { spaceId?: string },
 ): Promise<IPagination<IPage>> {
-  const req = await api.post("/pages/recent", { spaceId });
+  const req = await api.post("/pages/recent", params);
+  return req.data;
+}
+
+export async function getCreatedByPages(
+  params?: QueryParams & { userId?: string; spaceId?: string },
+): Promise<IPagination<IPage>> {
+  const req = await api.post("/pages/created-by-user", params);
   return req.data;
 }
 
@@ -267,10 +282,16 @@ export async function uploadFile(
   file: File,
   pageId: string,
   attachmentId?: string,
+  editSession?: EditSession | null,
+  writeIntent: EditorSessionWriteIntent = "normal",
 ): Promise<IAttachment> {
   const formData = new FormData();
   if (attachmentId) {
     formData.append("attachmentId", attachmentId);
+  }
+  if (editSession) {
+    formData.append("editSession", JSON.stringify(editSession));
+    formData.append("writeIntent", writeIntent);
   }
   formData.append("pageId", pageId);
   formData.append("file", file);

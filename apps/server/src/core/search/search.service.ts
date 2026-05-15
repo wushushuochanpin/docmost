@@ -114,6 +114,13 @@ export class SearchService {
 
       await this.assertPublicShareAccess(share, searchParams.accessToken);
 
+      const isRestricted = await this.pagePermissionRepo.hasRestrictedAncestor(
+        share.pageId,
+      );
+      if (isRestricted) {
+        return { items: [] };
+      }
+
       const pageIdsToSearch = [];
       const sharedPageNodeMeta = await this.pageNodeMetaRepo.findByPageId(
         share.pageId,
@@ -121,13 +128,14 @@ export class SearchService {
       const canSearchDescendants =
         share.includeSubPages || sharedPageNodeMeta?.nodeType === 'folder';
       if (canSearchDescendants) {
-        const pageList = await this.pageRepo.getPageAndDescendants(
-          share.pageId,
-          {
-            includeContent: false,
-            workspaceId: opts.workspaceId,
-          },
-        );
+        const pageList =
+          await this.pageRepo.getPageAndDescendantsExcludingRestricted(
+            share.pageId,
+            {
+              includeContent: false,
+              workspaceId: opts.workspaceId,
+            },
+          );
 
         pageIdsToSearch.push(...pageList.map((page) => page.id));
       } else {

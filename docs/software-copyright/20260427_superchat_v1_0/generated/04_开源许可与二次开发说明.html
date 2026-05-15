@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>04_开源许可与二次开发说明</title>
+  <style>
+    @page { size: A4; margin: 16mm 14mm; }
+    body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif; color: #111; font-size: 12px; line-height: 1.65; }
+    h1 { font-size: 22px; margin: 0 0 12px; }
+    h2 { font-size: 17px; margin: 22px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    h3 { font-size: 14px; margin: 16px 0 6px; }
+    p { margin: 6px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; table-layout: fixed; }
+    th, td { border: 1px solid #bbb; padding: 5px 6px; vertical-align: top; word-break: break-word; }
+    th { background: #f3f4f6; }
+    code { font-family: Consolas, monospace; font-size: 11px; }
+    pre { background: #f6f8fa; padding: 8px; white-space: pre-wrap; word-break: break-word; }
+    blockquote { border-left: 3px solid #999; margin: 8px 0; padding: 4px 10px; color: #333; }
+  </style>
+</head>
+<body>
+<h1>开源许可与二次开发说明</h1>
+<p><strong>成文日期</strong>：2026-04-27 19:54:02 UTC+8
+<strong>最后修订</strong>：2026-04-27 19:54:02 UTC+8</p>
+<p>本文档可作为软件著作权登记的其他相关证明文件使用。阅读时当前系统实现可能已发生变化，请以实际代码与产品行为为准，谨慎参考。</p>
+<hr>
+<h2>一、软件信息</h2>
+<ul>
+<li>软件全称：SuperChat 知识协作管理系统</li>
+<li>版本号：V1.0</li>
+<li>著作权人：鲜知（北京）科技有限公司</li>
+<li>统一社会信用代码：91110112MAKB9NUD2N</li>
+<li>开发完成日期：2026-04-27</li>
+<li>发表状态：未发表</li>
+</ul>
+<h2>二、开源基础说明</h2>
+<p>本软件基于 Docmost / SuperChat 开源协作文档软件进行二次开发。仓库根目录 <code>LICENSE</code> 文件为 GNU Affero General Public License Version 3。仓库 README 中同时说明核心代码使用 AGPL 3.0，企业功能目录另有企业许可。</p>
+<p>本次申请材料不纳入以下企业许可目录：</p>
+<ol>
+<li><code>apps/server/src/ee</code></li>
+<li><code>apps/client/src/ee</code></li>
+<li><code>packages/ee</code></li>
+</ol>
+<p>本次申请材料覆盖开源许可允许范围内的可运行核心代码及鲜知（北京）科技有限公司组织开发形成的二次开发成果。</p>
+<h2>三、二次开发内容</h2>
+<p>鲜知（北京）科技有限公司在现有开源基础上组织完成了以下主要改造和功能扩展：</p>
+<ol>
+<li>SuperChat 品牌与部署配置调整。</li>
+<li>Docker 部署、Nginx 反向代理和本地绑定安全配置。</li>
+<li>工作区备份、备份产物存储和恢复方案相关能力。</li>
+<li>页面分享性能优化、分享页面静态渲染和微信分享适配。</li>
+<li>Mermaid 图表遮罩预览、缩放、拖拽和 PNG/SVG 下载。</li>
+<li>页面移动到目标目录的定位弹窗、最近访问、URL 解析和跨空间确认。</li>
+<li>侧边栏分类视图、首级目录分类和置顶视图优化。</li>
+<li>API Key 管理、审计日志和合规管理页面。</li>
+<li>MCP 只读知识检索接入、权限感知搜索和页面读取服务。</li>
+<li>编辑器只读渲染、分享端资源加载、页面树交互和多处用户体验优化。</li>
+</ol>
+<h2>四、权利范围声明</h2>
+<p>本次软件著作权申请不主张超出申请人依法享有或开源许可允许范围之外的权利。对于原开源软件及第三方组件，申请人遵守其开源许可证或第三方许可要求。本次申请的权利范围为申请人组织开发、修改、组合和改进形成的软件表达及二次开发成果。</p>
+<h2>五、材料一致性说明</h2>
+<p>本次申请表、源代码鉴别材料和软件说明书均使用以下统一名称：</p>
+<pre><code class="language-text">SuperChat 知识协作管理系统 V1.0
+</code></pre>
+<p>若登记系统需要填写修改说明，可使用 <code>01_申请表填写卡.md</code> 中的“修改软件说明建议文本”。</p>
+<h2>六、参考依据</h2>
+<ol>
+<li>《计算机软件著作权登记办法》规定，申请登记的软件应为独立开发，或经原著作权人许可对原有软件修改后形成的在功能或性能方面有重要改进的软件。</li>
+<li>《计算机软件保护条例》规定，软件包括计算机程序及其有关文档，软件登记证明文件是登记事项的初步证明。</li>
+<li>最高人民法院知识产权法庭相关文章指出，开源软件并非公共领域软件，开源协议是附条件的著作权许可。</li>
+</ol>
+
+</body>
+</html>

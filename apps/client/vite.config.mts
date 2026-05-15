@@ -1,0 +1,143 @@
+import { defineConfig, loadEnv } from "vite";
+import react from "@vitejs/plugin-react";
+import * as path from "path";
+
+const envPath = path.resolve(process.cwd(), "..", "..");
+
+const manualChunkGroups = [
+  {
+    name: "react-vendor",
+    matchers: [
+      "/node_modules/react/",
+      "/node_modules/react-dom/",
+      "/node_modules/scheduler/",
+    ],
+  },
+  {
+    name: "mantine-vendor",
+    matchers: [
+      "/@mantine/core/",
+      "/@mantine/hooks/",
+      "/@mantine/spotlight/",
+      "/@floating-ui/",
+    ],
+  },
+];
+
+// Older iOS WeChat webviews inherit the system WebKit version.
+// Vite 7's default target keeps syntax such as optional chaining for Safari 16.4+,
+// which can white-screen older embedded webviews before React mounts.
+const compatBuildTargets = ["chrome87", "edge88", "firefox78", "safari13"];
+
+function resolveManualChunk(id: string) {
+  if (!id.includes("node_modules")) {
+    return undefined;
+  }
+
+  for (const group of manualChunkGroups) {
+    if (group.matchers.some((matcher) => id.includes(matcher))) {
+      return group.name;
+    }
+  }
+
+  return undefined;
+}
+
+export default defineConfig(({ mode }) => {
+  const {
+    APP_URL,
+    VITE_PROXY_TARGET,
+    FILE_UPLOAD_SIZE_LIMIT,
+    FILE_IMPORT_SIZE_LIMIT,
+    DRAWIO_URL,
+    BACKUP_ENABLED,
+    BACKUP_S3_ENABLED,
+    CLOUD,
+    SUBDOMAIN_HOST,
+    COLLAB_URL,
+    BILLING_TRIAL_DAYS,
+    POSTHOG_HOST,
+    POSTHOG_KEY,
+  } = loadEnv(mode, envPath, "");
+
+  const proxyTarget = VITE_PROXY_TARGET || APP_URL;
+
+  return {
+    envPrefix: [
+      "VITE_",
+      "APP_",
+      "FILE_",
+      "DRAWIO_",
+      "BACKUP_",
+      "CLOUD",
+      "SUBDOMAIN_",
+      "COLLAB_",
+      "BILLING_",
+      "POSTHOG_",
+      "SHARE_",
+    ],
+    define: {
+      "process.env": {
+        APP_URL,
+        FILE_UPLOAD_SIZE_LIMIT,
+        FILE_IMPORT_SIZE_LIMIT,
+        DRAWIO_URL,
+        BACKUP_ENABLED,
+        BACKUP_S3_ENABLED,
+        CLOUD,
+        SUBDOMAIN_HOST,
+        COLLAB_URL,
+        BILLING_TRIAL_DAYS,
+        POSTHOG_HOST,
+        POSTHOG_KEY,
+      },
+      APP_VERSION: JSON.stringify(process.env.npm_package_version),
+    },
+    plugins: [react()],
+    resolve: {
+      alias: {
+        "@": "/src",
+      },
+    },
+    server: {
+      host: process.env.VITE_DEV_HOST === "true" ? "0.0.0.0" : false,
+      allowedHosts: true,
+      proxy: {
+        "/api": {
+          target: proxyTarget,
+          changeOrigin: false,
+        },
+        "/socket.io": {
+          target: proxyTarget,
+          ws: true,
+          rewriteWsOrigin: true,
+        },
+        "/collab": {
+          target: proxyTarget,
+          ws: true,
+          rewriteWsOrigin: true,
+        },
+      },
+    },
+    build: {
+      target: compatBuildTargets,
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              { name: "vendor-mantine", test: /@mantine/ },
+              { name: "vendor-mermaid", test: /mermaid|cytoscape|elkjs/ },
+              { name: "vendor-excalidraw", test: /excalidraw/ },
+              { name: "vendor-katex", test: /katex/ },
+            ],
+          },
+        },
+      },
+      rollupOptions: {
+        output: {
+          manualChunks: resolveManualChunk,
+        },
+      },
+    },
+  };
+});

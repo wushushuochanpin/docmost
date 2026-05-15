@@ -13,10 +13,6 @@ export class UpdateUserDto extends PartialType(
   OmitType(CreateUserDto, ['password'] as const),
 ) {
   @IsOptional()
-  @IsString()
-  avatarUrl: string;
-
-  @IsOptional()
   @IsBoolean()
   fullPageWidth: boolean;
 
@@ -39,4 +35,24 @@ export class UpdateUserDto extends PartialType(
   @MaxLength(70)
   @IsString()
   confirmPassword: string;
+
+  @IsOptional()
+  @IsBoolean()
+  notificationPageUpdates: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  notificationPageUserMention: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  notificationCommentUserMention: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  notificationCommentCreated: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  notificationCommentResolved: boolean;
 }

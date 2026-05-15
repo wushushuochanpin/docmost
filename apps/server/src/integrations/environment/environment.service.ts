@@ -116,6 +116,10 @@ export class EnvironmentService {
     return new Date(Date.now() + msUntilExpiry);
   }
 
+  getGotenbergUrl(): string | undefined {
+    return this.configService.get<string>('GOTENBERG_URL');
+  }
+
   getStorageDriver(): string {
     return this.configService.get<string>('STORAGE_DRIVER', 'local');
   }
@@ -301,6 +305,22 @@ export class EnvironmentService {
     return isStandalone === 'true';
   }
 
+  isEditorSessionEnabled(): boolean {
+    return this.getBoolean('EDITOR_SESSION_ENABLED', false);
+  }
+
+  isEditorSessionStrictWrite(): boolean {
+    return this.getBoolean('EDITOR_SESSION_STRICT_WRITE', false);
+  }
+
+  isEditorSessionCollabValidate(): boolean {
+    return this.getBoolean('EDITOR_SESSION_COLLAB_VALIDATE', false);
+  }
+
+  isEditorSessionFileEnabled(): boolean {
+    return this.getBoolean('EDITOR_SESSION_FILE_ENABLED', false);
+  }
+
   isDisableTelemetry(): boolean {
     const disable = this.configService
       .get<string>('DISABLE_TELEMETRY', 'false')
@@ -366,11 +386,24 @@ export class EnvironmentService {
     return this.configService.get<string>('AI_COMPLETION_MODEL');
   }
 
+  getAiChatModel(): string {
+    return (
+      this.configService.get<string>('AI_CHAT_MODEL') ||
+      this.configService.get<string>('AI_COMPLETION_MODEL')
+    );
+  }
+
   getAiEmbeddingDimension(): number {
     return parseInt(
       this.configService.get<string>('AI_EMBEDDING_DIMENSION'),
       10,
     );
+  }
+
+  getAiEmbeddingSupportsMrl(): boolean | undefined {
+    const val = this.configService.get<string>('AI_EMBEDDING_SUPPORTS_MRL');
+    if (val === undefined || val === null || val === '') return undefined;
+    return val === 'true';
   }
 
   getOpenAiApiKey(): string {
@@ -400,5 +433,12 @@ export class EnvironmentService {
 
   getClickHouseUrl(): string {
     return this.configService.get<string>('CLICKHOUSE_URL');
+  }
+
+  private getBoolean(key: string, defaultValue: boolean): boolean {
+    const raw = this.configService
+      .get<string>(key, defaultValue ? 'true' : 'false')
+      .toLowerCase();
+    return raw === 'true' || raw === '1';
   }
 }

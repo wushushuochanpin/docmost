@@ -17,10 +17,13 @@ import { KyselyDB } from '@docmost/db/types/kysely.types';
 import * as process from 'node:process';
 import { MigrationService } from '@docmost/db/services/migration.service';
 import { UserTokenRepo } from './repos/user-token/user-token.repo';
+import { UserSessionRepo } from '@docmost/db/repos/session/user-session.repo';
 import { BacklinkRepo } from '@docmost/db/repos/backlink/backlink.repo';
 import { ShareRepo } from '@docmost/db/repos/share/share.repo';
 import { NotificationRepo } from '@docmost/db/repos/notification/notification.repo';
 import { WatcherRepo } from '@docmost/db/repos/watcher/watcher.repo';
+import { FavoriteRepo } from '@docmost/db/repos/favorite/favorite.repo';
+import { TemplateRepo } from '@docmost/db/repos/template/template.repo';
 import { PageListener } from '@docmost/db/listeners/page.listener';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import * as postgres from 'postgres';
@@ -77,12 +80,15 @@ import { SpaceSidebarCategoryRepo } from './repos/space/space-sidebar-category.r
     PagePermissionRepo,
     PageHistoryRepo,
     CommentRepo,
+    FavoriteRepo,
     AttachmentRepo,
     UserTokenRepo,
+    UserSessionRepo,
     BacklinkRepo,
     ShareRepo,
     NotificationRepo,
     WatcherRepo,
+    TemplateRepo,
     PageNodeMetaRepo,
     SpaceSidebarCategoryRepo,
     WorkspaceReleaseChannelRepo,
@@ -99,12 +105,15 @@ import { SpaceSidebarCategoryRepo } from './repos/space/space-sidebar-category.r
     PagePermissionRepo,
     PageHistoryRepo,
     CommentRepo,
+    FavoriteRepo,
     AttachmentRepo,
     UserTokenRepo,
+    UserSessionRepo,
     BacklinkRepo,
     ShareRepo,
     NotificationRepo,
     WatcherRepo,
+    TemplateRepo,
     PageNodeMetaRepo,
     SpaceSidebarCategoryRepo,
     WorkspaceReleaseChannelRepo,

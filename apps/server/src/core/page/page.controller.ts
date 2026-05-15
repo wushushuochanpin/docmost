@@ -36,6 +36,7 @@ import {
 import SpaceAbilityFactory from '../casl/abilities/space-ability.factory';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { RecentPageDto } from './dto/recent-page.dto';
+import { CreatedByUserDto } from './dto/created-by-user.dto';
 import { DuplicatePageDto } from './dto/duplicate-page.dto';
 import { DeletedPageDto } from './dto/deleted-page.dto';
 import { BatchMovePageDto } from './dto/batch-move-page.dto';
@@ -457,6 +458,29 @@ export class PageController {
     }
 
     return this.pageService.getRecentPages(user.id, workspace.id, pagination);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('created-by-user')
+  async getCreatedByPages(
+    @Body() dto: CreatedByUserDto,
+    @Body() pagination: PaginationOptions,
+    @AuthUser() user: User,
+  ) {
+    const targetUserId = dto.userId ?? user.id;
+
+    if (dto.spaceId) {
+      const ability = await this.spaceAbility.createForUser(
+        user,
+        dto.spaceId,
+      );
+
+      if (ability.cannot(SpaceCaslAction.Read, SpaceCaslSubject.Page)) {
+        throw new ForbiddenException();
+      }
+    }
+
+    return this.pageService.getCreatedByPages(targetUserId, user.id, pagination, dto.spaceId);
   }
 
   @HttpCode(HttpStatus.OK)

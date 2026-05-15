@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { htmlEscape } from '../../common/helpers/html-escaper';
-import slugify = require('@sindresorhus/slugify');
+import { slugifyText } from '../../common/helpers';
 
 type BuildPublicMetaInput = {
   origin: string;
@@ -31,13 +31,18 @@ export class SharePreviewMetaService {
       }),
       input.origin,
     ).toString();
-    const title = this.truncate(this.normalizeText(input.pageTitle) || 'untitled', 80);
+    const title = this.truncate(
+      this.normalizeText(input.pageTitle) || 'untitled',
+      80,
+    );
     const description = this.truncate(
       this.normalizeText(input.textContent),
       160,
     );
-    const previewImageUrl = new URL('/icons/app-icon-512x512.png', input.origin)
-      .toString();
+    const previewImageUrl = new URL(
+      '/icons/app-icon-512x512.png',
+      input.origin,
+    ).toString();
 
     const metaTags = [
       `<meta name="description" content="${htmlEscape(description || title)}" />`,
@@ -67,13 +72,7 @@ export class SharePreviewMetaService {
   }
 
   private buildPageSlug(pageSlugId: string, pageTitle?: string) {
-    const titleSlug =
-      slugify(pageTitle?.substring(0, 70) || 'untitled', {
-        customReplacements: [
-          ['♥', ''],
-          ['🦄', ''],
-        ],
-      }) || 'untitled';
+    const titleSlug = slugifyText(pageTitle?.substring(0, 70) || 'untitled');
 
     return `${titleSlug}-${pageSlugId}`;
   }

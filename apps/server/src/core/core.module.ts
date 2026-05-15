@@ -22,11 +22,14 @@ import { WorkspaceChannelMiddleware } from '../common/middlewares/workspace-chan
 import { ShareModule } from './share/share.module';
 import { NotificationModule } from './notification/notification.module';
 import { WatcherModule } from './watcher/watcher.module';
+import { FavoriteModule } from './favorite/favorite.module';
+import { SessionModule } from './session/session.module';
 import { AUDIT_SERVICE } from '../integrations/audit/audit.service';
 import { IntegrationTokenModule } from './integration-token/integration-token.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { AuditLogService } from './audit-log/services/audit-log.service';
 import { McpModule } from './mcp/mcp.module';
+import { EditorSessionModule } from './editor-session/editor-session.module';
 
 @Global()
 @Module({
@@ -37,6 +40,7 @@ import { McpModule } from './mcp/mcp.module';
     PageModule,
     AttachmentModule,
     CommentModule,
+    FavoriteModule,
     SearchModule,
     SpaceModule,
     GroupModule,
@@ -45,9 +49,11 @@ import { McpModule } from './mcp/mcp.module';
     ShareModule,
     NotificationModule,
     WatcherModule,
+    SessionModule,
     IntegrationTokenModule,
     AuditLogModule,
     McpModule,
+    EditorSessionModule,
   ],
   providers: [
     {

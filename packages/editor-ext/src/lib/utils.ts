@@ -4,7 +4,28 @@ import { EditorView } from "@tiptap/pm/view";
 import { CellSelection, TableMap } from "@tiptap/pm/tables";
 import { Node, ResolvedPos } from "@tiptap/pm/model";
 import { sanitizeUrl as braintreeSanitizeUrl } from "@braintree/sanitize-url";
-import { customAlphabet } from "nanoid";
+
+function customAlphabet(alphabet: string, defaultSize: number) {
+  return (size = defaultSize) => {
+    const bytes = new Uint8Array(size);
+    const crypto = globalThis.crypto;
+
+    if (crypto?.getRandomValues) {
+      crypto.getRandomValues(bytes);
+    } else {
+      for (let index = 0; index < size; index++) {
+        bytes[index] = Math.floor(Math.random() * 256);
+      }
+    }
+
+    let id = "";
+    for (let index = 0; index < size; index++) {
+      id += alphabet[bytes[index] % alphabet.length];
+    }
+
+    return id;
+  };
+}
 
 export const isRectSelected = (rect: any) => (selection: CellSelection) => {
   const map = TableMap.get(selection.$anchorCell.node(-1));
@@ -380,6 +401,12 @@ export function sanitizeUrl(url: string | undefined): string {
 
   // Return empty string instead of "about:blank"
   return sanitized === "about:blank" ? "" : sanitized;
+}
+
+export function isInternalFileUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  const normalized = url.trim();
+  return normalized.startsWith("/api/files/") || normalized.startsWith("/files/");
 }
 
 const alphabet = "abcdefghijklmnopqrstuvwxyz";

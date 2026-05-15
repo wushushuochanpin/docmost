@@ -18,13 +18,12 @@ export class AuditContextMiddleware implements NestMiddleware {
 
   use(req: FastifyRequest['raw'], res: FastifyReply['raw'], next: () => void) {
     const workspaceId = (req as any).workspaceId ?? null;
-    const ipAddress = this.extractIpAddress(req);
 
     const auditContext: AuditContext = {
       workspaceId,
       actorId: null,
       actorType: 'user',
-      ipAddress,
+      ipAddress: this.extractIpAddress(req),
       userAgent: this.extractUserAgent(req),
     };
 

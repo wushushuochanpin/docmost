@@ -14,6 +14,10 @@ import { Error404 } from "@/components/ui/error-404.tsx";
 import { Box, Center, Loader, Text } from "@mantine/core";
 import APP_ROUTE from "@/lib/app-route.ts";
 import { Navigate, useLocation } from "react-router-dom";
+import {
+  ensureUniqueEditorSessionClientId,
+  startEditorSessionClientIdResponder,
+} from "@/features/editor-session/client-id";
 
 export function UserProvider({ children }: React.PropsWithChildren) {
   const [, setCurrentUser] = useAtom(currentUserAtom);
@@ -23,6 +27,10 @@ export function UserProvider({ children }: React.PropsWithChildren) {
   const location = useLocation();
   // fetch collab token on load
   const { data: collab } = useCollabToken();
+
+  useEffect(() => {
+    startEditorSessionClientIdResponder();
+  }, []);
 
   useEffect(() => {
     if (isLoading || isError) {
@@ -39,6 +47,12 @@ export function UserProvider({ children }: React.PropsWithChildren) {
 
     newSocket.on("connect", () => {
       console.log("ws connected");
+      ensureUniqueEditorSessionClientId().then((clientId) => {
+        newSocket.emit("message", {
+          operation: "editorSession.registerClient",
+          clientId,
+        });
+      });
     });
 
     return () => {

@@ -1,11 +1,14 @@
 import type { Extensions } from '@tiptap/core';
 import { getSchema } from '@tiptap/core';
 import { type ParseOptions, DOMParser as PMDOMParser } from '@tiptap/pm/model';
-import { Window } from 'happy-dom';
+
+const { JSDOM } = require('jsdom') as {
+  JSDOM: new (...args: any[]) => any;
+};
 
 /**
  * Generates a JSON object from the given HTML string and converts it into a Prosemirror node with content.
- * @remarks **Important**: This function requires `happy-dom` to be installed in your project.
+ * @remarks **Important**: This function requires `jsdom` to be installed in your project.
  * @param {string} html - The HTML string to be converted into a Prosemirror node.
  * @param {Extensions} extensions - The extensions to be used for generating the schema.
  * @param {ParseOptions} options - The options to be supplied to the parser.
@@ -27,7 +30,8 @@ export function generateJSON(
     );
   }
 
-  const localWindow = new Window();
+  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
+  const localWindow = dom.window;
   const localDOMParser = new localWindow.DOMParser();
   let result: Record<string, any>;
 
@@ -46,9 +50,7 @@ export function generateJSON(
       .parse(doc.body as unknown as Node, options)
       .toJSON();
   } finally {
-    // clean up happy-dom to avoid memory leaks
-    localWindow.happyDOM.abort();
-    localWindow.happyDOM.close();
+    localWindow.close();
   }
 
   return result;

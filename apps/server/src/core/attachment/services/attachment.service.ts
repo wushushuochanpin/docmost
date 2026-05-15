@@ -27,7 +27,6 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { QueueJob, QueueName } from '../../../integrations/queue/constants';
 import { Queue } from 'bullmq';
 import { createByteCountingStream } from '../../../common/helpers/utils';
-import { getMimeType } from '../../../common/helpers';
 
 @Injectable()
 export class AttachmentService {
@@ -57,14 +56,14 @@ export class AttachmentService {
 
     let isUpdate = false;
     let attachmentId = null;
-    let existingAttachment: Attachment = null;
 
     // passing attachmentId to allow for updating diagrams
     // instead of creating new files for each save
     if (opts?.attachmentId) {
-      existingAttachment = await this.attachmentRepo.findById(opts.attachmentId, {
-        workspaceId,
-      });
+      const existingAttachment = await this.attachmentRepo.findById(
+        opts.attachmentId,
+        { workspaceId },
+      );
       if (!existingAttachment) {
         throw new NotFoundException(
           'Existing attachment to overwrite not found',
@@ -74,8 +73,8 @@ export class AttachmentService {
       if (
         existingAttachment.pageId !== pageId ||
         existingAttachment.spaceId !== spaceId ||
-        existingAttachment.workspaceId !== workspaceId ||
-        existingAttachment.fileExt !== preparedFile.fileExtension
+        existingAttachment.fileExt !== preparedFile.fileExtension ||
+        existingAttachment.workspaceId !== workspaceId
       ) {
         throw new BadRequestException('File attachment does not match');
       }
@@ -85,15 +84,7 @@ export class AttachmentService {
       attachmentId = uuid7();
     }
 
-    const targetFileName = isUpdate
-      ? existingAttachment.fileName
-      : preparedFile.fileName;
-    const detectedMimeType = getMimeType(targetFileName);
-
-    preparedFile.fileName = targetFileName;
-    preparedFile.mimeType = detectedMimeType;
-
-    const filePath = `${getAttachmentFolderPath(AttachmentType.File, workspaceId)}/${attachmentId}/${targetFileName}`;
+    const filePath = `${getAttachmentFolderPath(AttachmentType.File, workspaceId)}/${attachmentId}/${preparedFile.fileName}`;
 
     const { stream, getBytesRead } = createByteCountingStream(
       preparedFile.multiPartFile.file,
@@ -109,11 +100,7 @@ export class AttachmentService {
       if (isUpdate) {
         attachment = await this.attachmentRepo.updateAttachment(
           {
-            fileName: targetFileName,
-            filePath: filePath,
             fileSize: preparedFile.fileSize,
-            mimeType: detectedMimeType,
-            fileExt: preparedFile.fileExtension,
             updatedAt: new Date(),
           },
           attachmentId,
@@ -250,7 +237,10 @@ export class AttachmentService {
   async deleteRedundantFile(filePath: string, workspaceId?: string) {
     try {
       await this.storageService.delete(filePath);
-      await this.attachmentRepo.deleteAttachmentByFilePath(filePath, workspaceId);
+      await this.attachmentRepo.deleteAttachmentByFilePath(
+        filePath,
+        workspaceId,
+      );
     } catch (error) {
       this.logger.error('deleteRedundantFile', error);
     }
@@ -303,6 +293,36 @@ export class AttachmentService {
       },
       trx,
     );
+  }
+
+  async handleDeleteAiChatAttachments(aiChatId: string, workspaceId?: string) {
+    try {
+      const attachments = await this.attachmentRepo.findByAiChatId(aiChatId, {
+        workspaceId,
+      });
+      if (!attachments || attachments.length === 0) {
+        return;
+      }
+
+      await Promise.all(
+        attachments.map(async (attachment) => {
+          try {
+            await this.storageService.delete(attachment.filePath);
+            await this.attachmentRepo.deleteAttachmentById(
+              attachment.id,
+              workspaceId,
+            );
+          } catch (err) {
+            this.logger.log(
+              `DeleteAiChatAttachments: failed to delete attachment ${attachment.id}:`,
+              err,
+            );
+          }
+        }),
+      );
+    } catch (err) {
+      throw err;
+    }
   }
 
   async handleDeleteSpaceAttachments(spaceId: string, workspaceId?: string) {

@@ -18,6 +18,7 @@ import {
   movePage,
   getPageBreadcrumbs,
   getRecentChanges,
+  getCreatedByPages,
   getAllSidebarPages,
   getDeletedPages,
   restorePage,
@@ -129,21 +130,30 @@ export function usePageQuery(
         ...prev,
         ...query.data,
       }));
-      queryClient.setQueryData(["pages", query.data.slugId], (prev?: IPage) => ({
-        ...prev,
-        ...query.data,
-      }));
+      queryClient.setQueryData(
+        ["pages", query.data.slugId],
+        (prev?: IPage) => ({
+          ...prev,
+          ...query.data,
+        }),
+      );
 
       if (isValidUuid(pageInput.pageId)) {
-        queryClient.setQueryData(buildPageQueryKey({ pageId: query.data.slugId }), (prev?: IPage) => ({
-          ...prev,
-          ...query.data,
-        }));
+        queryClient.setQueryData(
+          buildPageQueryKey({ pageId: query.data.slugId }),
+          (prev?: IPage) => ({
+            ...prev,
+            ...query.data,
+          }),
+        );
       } else {
-        queryClient.setQueryData(buildPageQueryKey({ pageId: query.data.id }), (prev?: IPage) => ({
-          ...prev,
-          ...query.data,
-        }));
+        queryClient.setQueryData(
+          buildPageQueryKey({ pageId: query.data.id }),
+          (prev?: IPage) => ({
+            ...prev,
+            ...query.data,
+          }),
+        );
       }
     }
   }, [pageInput.pageId, query.data]);
@@ -224,15 +234,7 @@ export function useUpdatePageMutation() {
   return useMutation<IPage, Error, Partial<IPageInput>>({
     mutationFn: (data) => updatePage(data),
     onSuccess: (data) => {
-      updatePage(data);
-
-      invalidateOnUpdatePage(
-        data.spaceId,
-        data.parentPageId,
-        data.id,
-        data.title,
-        data.icon,
-      );
+      updatePageData(data);
     },
   });
 }
@@ -371,10 +373,10 @@ export function useGetSidebarPagesQuery(
   return useInfiniteQuery({
     queryKey: ["sidebar-pages", data],
     enabled: !!data?.pageId || !!data?.spaceId,
-    queryFn: ({ pageParam }) => getSidebarPages({ ...data, cursor: pageParam }),
+    queryFn: ({ pageParam }) =>
+      getSidebarPages({ ...data, cursor: pageParam, limit: 100 }),
     initialPageParam: undefined,
-    getNextPageParam: (lastPage) =>
-      lastPage.meta?.nextCursor ?? undefined,
+    getNextPageParam: (lastPage) => lastPage.meta?.nextCursor ?? undefined,
   });
 }
 
@@ -392,13 +394,13 @@ export function useGetRootSidebarPagesQuery(data: SidebarPagesParams) {
       return getSidebarPages({
         spaceId: data.spaceId,
         cursor: pageParam,
+        limit: data.limit ?? 100,
         viewMode: data.viewMode,
         categoryId: data.categoryId,
       });
     },
     initialPageParam: undefined,
-    getNextPageParam: (lastPage) =>
-      lastPage.meta?.nextCursor ?? undefined,
+    getNextPageParam: (lastPage) => lastPage.meta?.nextCursor ?? undefined,
   });
 }
 
@@ -424,12 +426,30 @@ export async function fetchAllAncestorChildren(params: SidebarPagesParams) {
   return buildTree(allItems);
 }
 
-export function useRecentChangesQuery(
-  spaceId?: string,
-): UseQueryResult<IPagination<IPage>, Error> {
-  return useQuery({
+export function useRecentChangesQuery(spaceId?: string) {
+  return useInfiniteQuery({
     queryKey: ["recent-changes", spaceId],
-    queryFn: () => getRecentChanges(spaceId),
+    queryFn: ({ pageParam }) =>
+      getRecentChanges({ spaceId, cursor: pageParam, limit: 15 }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.hasNextPage ? lastPage.meta.nextCursor : undefined,
+    refetchOnMount: true,
+  });
+}
+
+export function useCreatedByQuery(params?: {
+  userId?: string;
+  spaceId?: string;
+}) {
+  const { userId, spaceId } = params ?? {};
+  return useInfiniteQuery({
+    queryKey: ["pages-created-by-user", { userId, spaceId }],
+    queryFn: ({ pageParam }) =>
+      getCreatedByPages({ userId, spaceId, cursor: pageParam, limit: 15 }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.hasNextPage ? lastPage.meta.nextCursor : undefined,
     refetchOnMount: true,
   });
 }
@@ -529,7 +549,8 @@ export function invalidateOnCreatePage(data: Partial<IPage>) {
 
     //update root sidebar pages haschildern
     const rootSideBarMatches = queryClient.getQueriesData({
-      predicate: (query) => isRootSidebarQueryForSpace(query.queryKey, data.spaceId),
+      predicate: (query) =>
+        isRootSidebarQueryForSpace(query.queryKey, data.spaceId),
     });
 
     rootSideBarMatches.forEach(([key, d]) => {
@@ -564,20 +585,23 @@ export function invalidateOnUpdatePage(
   icon: string,
 ) {
   const updateCachedPages = (queryKey: QueryKey) => {
-    queryClient.setQueryData<InfiniteData<IPagination<IPage>>>(queryKey, (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        pages: old.pages.map((page) => ({
-          ...page,
-          items: page.items.map((sidebarPage: IPage) =>
-            sidebarPage.id === id
-              ? { ...sidebarPage, title: title, icon: icon }
-              : sidebarPage,
-          ),
-        })),
-      };
-    });
+    queryClient.setQueryData<InfiniteData<IPagination<IPage>>>(
+      queryKey,
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            items: page.items.map((sidebarPage: IPage) =>
+              sidebarPage.id === id
+                ? { ...sidebarPage, title: title, icon: icon }
+                : sidebarPage,
+            ),
+          })),
+        };
+      },
+    );
   };
 
   if (parentPageId === null) {

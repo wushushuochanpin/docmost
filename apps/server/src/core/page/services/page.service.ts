@@ -47,6 +47,10 @@ import { QueueJob, QueueName } from '../../../integrations/queue/constants';
 import { EventName } from '../../../common/events/event.contants';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CollaborationGateway } from '../../../collaboration/collaboration.gateway';
+import {
+  INTERNAL_LINK_REGEX,
+  extractPageSlugId,
+} from '../../../integrations/export/utils';
 import { markdownToHtml } from '@docmost/editor-ext';
 import { WatcherService } from '../../watcher/watcher.service';
 import {
@@ -56,6 +60,7 @@ import {
 import { BatchMovePageDto } from '../dto/batch-move-page.dto';
 import { sql } from 'kysely';
 import { SpaceSidebarCategoryRepo } from '@docmost/db/repos/space/space-sidebar-category.repo';
+import { EditorSessionService } from '../../editor-session/editor-session.service';
 
 type SidebarCountFields = {
   directChildCount: number;
@@ -83,6 +88,7 @@ export class PageService {
     private eventEmitter: EventEmitter2,
     private collaborationGateway: CollaborationGateway,
     private readonly watcherService: WatcherService,
+    private readonly editorSessionService: EditorSessionService,
   ) {}
 
   async findById(
@@ -282,6 +288,16 @@ export class PageService {
     updatePageDto: UpdatePageDto,
     user: User,
   ): Promise<Page> {
+    if (this.hasPageWriteFields(updatePageDto)) {
+      await this.editorSessionService.validatePageWrite({
+        workspaceId: page.workspaceId,
+        userId: user.id,
+        pageId: page.id,
+        editSession: updatePageDto.editSession,
+        writeIntent: updatePageDto.writeIntent ?? 'normal',
+      });
+    }
+
     const contributors = new Set<string>(page.contributorIds);
     contributors.add(user.id);
     const contributorIds = Array.from(contributors);
@@ -313,7 +329,7 @@ export class PageService {
       );
 
     if (
-      updatePageDto.content &&
+      updatePageDto.content !== undefined &&
       updatePageDto.operation &&
       updatePageDto.format
     ) {
@@ -350,6 +366,16 @@ export class PageService {
       'updatePageContent',
       documentName,
       { operation, prosemirrorJson, user },
+    );
+  }
+
+  private hasPageWriteFields(updatePageDto: UpdatePageDto): boolean {
+    return (
+      updatePageDto.title !== undefined ||
+      updatePageDto.icon !== undefined ||
+      updatePageDto.themeColor !== undefined ||
+      updatePageDto.themePattern !== undefined ||
+      updatePageDto.content !== undefined
     );
   }
 
@@ -903,6 +929,20 @@ export class PageService {
           .where('pageId', 'in', pageIdsToMove)
           .execute();
 
+        // Update page verifications
+        await trx
+          .updateTable('pageVerifications')
+          .set({ spaceId: spaceId })
+          .where('pageId', 'in', pageIdsToMove)
+          .execute();
+
+        // Update notifications — access follows the page after a move
+        await trx
+          .updateTable('notifications')
+          .set({ spaceId: spaceId })
+          .where('pageId', 'in', pageIdsToMove)
+          .execute();
+
         // Update attachments
         await this.attachmentRepo.updateAttachmentsByPageId(
           { spaceId },
@@ -971,6 +1011,11 @@ export class PageService {
       });
     });
 
+    const slugIdMap = new Map<string, CopyPageMapEntry>();
+    for (const [, entry] of pageMap) {
+      slugIdMap.set(entry.oldSlugId, entry);
+    }
+
     const attachmentMap = new Map<string, ICopyPageAttachment>();
 
     const insertablePages: InsertablePage[] = await Promise.all(
@@ -1035,6 +1080,28 @@ export class PageService {
               node.attrs.entityId = mappedPage.newPageId;
               //@ts-ignore
               node.attrs.slugId = mappedPage.newSlugId;
+            }
+          }
+
+          // Update internal page links in link marks
+          for (const mark of node.marks) {
+            if (
+              mark.type.name === 'link' &&
+              mark.attrs.internal &&
+              mark.attrs.href
+            ) {
+              const match = mark.attrs.href.match(INTERNAL_LINK_REGEX);
+              if (match) {
+                const slugId = extractPageSlugId(match[5]);
+                if (slugId && slugIdMap.has(slugId)) {
+                  const mappedPage = slugIdMap.get(slugId);
+                  //@ts-ignore
+                  mark.attrs.href = mark.attrs.href.replace(
+                    slugId,
+                    mappedPage.newSlugId,
+                  );
+                }
+              }
             }
           }
         });
@@ -2114,6 +2181,33 @@ export class PageService {
         });
       const accessibleSet = new Set(accessibleIds);
       result.items = result.items.filter((page) => accessibleSet.has(page.id));
+    }
+
+    return result;
+  }
+
+  async getCreatedByPages(
+    creatorId: string,
+    requestingUserId: string,
+    pagination: PaginationOptions,
+    spaceId?: string,
+  ): Promise<CursorPaginationResult<Page>> {
+    const result = await this.pageRepo.getCreatedByPages(
+      creatorId,
+      requestingUserId,
+      pagination,
+      spaceId,
+    );
+
+    if (result.items.length > 0) {
+      const pageIds = result.items.map((p) => p.id);
+      const accessibleIds =
+        await this.pagePermissionRepo.filterAccessiblePageIds({
+          pageIds,
+          userId: requestingUserId,
+        });
+      const accessibleSet = new Set(accessibleIds);
+      result.items = result.items.filter((p) => accessibleSet.has(p.id));
     }
 
     return result;

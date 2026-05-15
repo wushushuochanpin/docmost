@@ -4,10 +4,12 @@ import { EditorTopToolbar } from "@/features/editor/components/editor-top-toolba
 import { ActionIcon, Tooltip } from "@mantine/core";
 import { IconList, IconX } from "@tabler/icons-react";
 import useToggleAside from "@/hooks/use-toggle-aside.tsx";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { asideStateAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
 import { useTranslation } from "react-i18next";
 import { IPage } from "@/features/page/types/page.types.ts";
+import { pageEditorSessionStatusAtom } from "@/features/editor/atoms/editor-atoms.ts";
+import { isEditorSessionEnabled } from "@/lib/config";
 
 interface Props {
   readOnly?: boolean;
@@ -27,7 +29,17 @@ export default function PageHeader({
   const { t } = useTranslation();
   const toggleAside = useToggleAside();
   const [asideState, setAsideState] = useAtom(asideStateAtom);
+  const editorSessionStatus = useAtomValue(pageEditorSessionStatusAtom);
   const isTocOpen = asideState.isAsideOpen && asideState.tab === "toc";
+  const shouldGateEditorSession = Boolean(
+    showEditorToolbar && editable && isEditorSessionEnabled(),
+  );
+  const sessionAllowsEdit =
+    !shouldGateEditorSession || editorSessionStatus === "active";
+  const effectiveEditable = Boolean(editable && sessionAllowsEdit);
+  const effectiveReadOnly = Boolean(
+    readOnly || (shouldGateEditorSession && !sessionAllowsEdit),
+  );
 
   const closeToc = () => {
     setAsideState({ tab: "toc", isAsideOpen: false });
@@ -65,12 +77,16 @@ export default function PageHeader({
 
         {showEditorToolbar && pageId && (
           <div className={classes.toolbarLayer}>
-            <EditorTopToolbar editable={Boolean(editable)} />
+            <EditorTopToolbar editable={effectiveEditable} />
           </div>
         )}
 
         <div className={classes.actions}>
-          <PageHeaderMenu readOnly={readOnly} pageId={pageId} page={page} />
+          <PageHeaderMenu
+            readOnly={effectiveReadOnly}
+            pageId={pageId}
+            page={page}
+          />
         </div>
       </div>
     </div>

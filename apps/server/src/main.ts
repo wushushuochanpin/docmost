@@ -11,6 +11,7 @@ import { WsRedisIoAdapter } from './ws/adapter/ws-redis.adapter';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCompress from '@fastify/compress';
+import fastifyIp from 'fastify-ip';
 import { InternalLogFilter } from './common/logger/internal-log-filter';
 
 async function bootstrap() {
@@ -49,6 +50,7 @@ async function bootstrap() {
 
   app.useWebSocketAdapter(redisIoAdapter);
 
+  await app.register(fastifyIp);
   await app.register(fastifyMultipart);
   await app.register(fastifyCookie);
   await app.register(fastifyCompress, {
@@ -79,6 +81,7 @@ async function bootstrap() {
         '/api/sso/google',
         '/api/workspace/create',
         '/api/workspace/joined',
+        '/api/workspace/find-by-email',
       ];
 
       if (
@@ -119,7 +122,9 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   const host = process.env.HOST || '0.0.0.0';
   await app.listen(port, host, () => {
-    logger.log(`Listening on http://127.0.0.1:${port} / ${process.env.APP_URL}`);
+    logger.log(
+      `Listening on http://127.0.0.1:${port} / ${process.env.APP_URL}`,
+    );
   });
 }
 

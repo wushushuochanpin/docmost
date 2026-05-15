@@ -48,6 +48,7 @@ export interface ISharedPage extends IShare {
     sharedPage: { id: string; slugId: string; title: string; icon: string };
   };
   hasLicenseKey: boolean;
+  features?: string[];
   pageTree?: Partial<IPage[]>;
   rendered?: ISharedPageRendered | null;
 }
@@ -115,7 +116,7 @@ export interface IReshareShareInput {
 export interface ISharedPageTree {
   share: IShare;
   pageTree: Partial<IPage[]>;
-  hasLicenseKey: boolean;
+  features?: string[];
 }
 
 export interface ISharedPageRendered {

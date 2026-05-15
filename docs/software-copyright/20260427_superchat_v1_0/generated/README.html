@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>README</title>
+  <style>
+    @page { size: A4; margin: 16mm 14mm; }
+    body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif; color: #111; font-size: 12px; line-height: 1.65; }
+    h1 { font-size: 22px; margin: 0 0 12px; }
+    h2 { font-size: 17px; margin: 22px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    h3 { font-size: 14px; margin: 16px 0 6px; }
+    p { margin: 6px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; table-layout: fixed; }
+    th, td { border: 1px solid #bbb; padding: 5px 6px; vertical-align: top; word-break: break-word; }
+    th { background: #f3f4f6; }
+    code { font-family: Consolas, monospace; font-size: 11px; }
+    pre { background: #f6f8fa; padding: 8px; white-space: pre-wrap; word-break: break-word; }
+    blockquote { border-left: 3px solid #999; margin: 8px 0; padding: 4px 10px; color: #333; }
+  </style>
+</head>
+<body>
+<h1>SuperChat 知识协作管理系统 V1.0 软件著作权材料</h1>
+<p><strong>成文日期</strong>：2026-04-27 19:54:02 UTC+8
+<strong>最后修订</strong>：2026-04-27 19:54:02 UTC+8</p>
+<p>本文档为本次软件著作权申请材料包入口。阅读时当前系统实现可能已发生变化，请以实际代码与产品行为为准，谨慎参考。</p>
+<hr>
+<h2>一、申请口径</h2>
+<ul>
+<li>软件全称：SuperChat 知识协作管理系统</li>
+<li>版本号：V1.0</li>
+<li>著作权人：鲜知（北京）科技有限公司</li>
+<li>统一社会信用代码：91110112MAKB9NUD2N</li>
+<li>公司类型：有限责任公司（自然人独资）</li>
+<li>公司成立日期：2026-04-08</li>
+<li>开发完成日期：2026-04-27</li>
+<li>发表状态：未发表</li>
+<li>权利取得方式：原始取得</li>
+<li>开发方式：独立开发，非委托开发、非合作开发、非下达任务开发</li>
+<li>软件作品说明建议：修改。当前仓库基于 Docmost / SuperChat 开源代码体系改造，建议在申请材料中如实说明开源许可和二次开发范围。</li>
+<li>申请范围：当前可运行开源核心整体，不纳入 <code>apps/server/src/ee</code>、<code>apps/client/src/ee</code>、<code>packages/ee</code> 等企业许可目录。</li>
+</ul>
+<h2>二、为什么不纳入 EE</h2>
+<p>仓库 README 已明确核心部分使用 AGPL 3.0，EE 目录另按企业许可处理。将 EE 一并纳入会增加权利边界说明成本，也更容易触发权属证明补正。当前申请以开源核心与自有二次开发成果为范围，材料更一致。</p>
+<h2>三、材料清单</h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>01_申请表填写卡.md</code></td>
+<td>R11 表单逐项复制填写</td>
+</tr>
+<tr>
+<td><code>02_软件说明书.md</code></td>
+<td>文档鉴别材料原稿，可生成 PDF 上传</td>
+</tr>
+<tr>
+<td><code>03_源代码材料说明.md</code></td>
+<td>程序鉴别材料生成规则与范围说明</td>
+</tr>
+<tr>
+<td><code>04_开源许可与二次开发说明.md</code></td>
+<td>其他证明文件，可按需上传</td>
+</tr>
+<tr>
+<td><code>05_软件名称说明.md</code></td>
+<td>其他证明文件，解释 SuperChat 名称含义</td>
+</tr>
+<tr>
+<td><code>06_待补资料清单.md</code></td>
+<td>仍需用户补充或盖章的资料</td>
+</tr>
+<tr>
+<td><code>07_参考依据与经验要点.md</code></td>
+<td>官方规则、开源合规和填表经验依据</td>
+</tr>
+<tr>
+<td><code>tools/generate-materials.mjs</code></td>
+<td>生成 PDF 与源代码鉴别材料</td>
+</tr>
+</tbody></table>
+<h2>四、生成 PDF</h2>
+<p>在仓库根目录执行：</p>
+<pre><code class="language-bash">node docs/software-copyright/20260427_superchat_v1_0/tools/generate-materials.mjs
+</code></pre>
+<p>脚本会输出到：</p>
+<pre><code class="language-text">docs/software-copyright/20260427_superchat_v1_0/generated/
+</code></pre>
+<h2>五、注意事项</h2>
+<ol>
+<li>在线表单、源代码 PDF、说明书 PDF 中的软件名称和版本号必须完全一致。</li>
+<li>源程序量建议填 <code>97817</code> 行，该数字排除了 EE 目录和构建产物。</li>
+<li>如果登记系统要求“软件作品说明”只能在原创/修改二选一，当前仓库事实更建议选“修改”，并上传开源许可与二次开发说明。</li>
+<li>如果坚持选择“原创”，需先完成更严格的代码权属审计，避免源程序或文档中出现与原项目不一致的权利声明。</li>
+</ol>
+
+</body>
+</html>

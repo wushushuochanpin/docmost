@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import type { StringValue } from 'ms';
 import { EnvironmentService } from '../../../integrations/environment/environment.service';
 import {
   JwtApiKeyPayload,
@@ -12,6 +13,8 @@ import {
   JwtExchangePayload,
   JwtMfaTokenPayload,
   JwtPayload,
+  JwtPdfExportDownloadPayload,
+  JwtPdfRenderPayload,
   JwtShareAccessPayload,
   JwtType,
 } from '../dto/jwt-payload';
@@ -25,7 +28,7 @@ export class TokenService {
     private environmentService: EnvironmentService,
   ) {}
 
-  async generateAccessToken(user: User): Promise<string> {
+  async generateAccessToken(user: User, sessionId: string): Promise<string> {
     if (isUserDisabled(user)) {
       throw new ForbiddenException();
     }
@@ -35,11 +38,16 @@ export class TokenService {
       email: user.email,
       workspaceId: user.workspaceId,
       type: JwtType.ACCESS,
+      sessionId,
     };
     return this.jwtService.sign(payload);
   }
 
-  async generateCollabToken(user: User, workspaceId: string): Promise<string> {
+  async generateCollabToken(
+    user: User,
+    workspaceId: string,
+    sessionId?: string | null,
+  ): Promise<string> {
     if (isUserDisabled(user)) {
       throw new ForbiddenException();
     }
@@ -48,6 +56,7 @@ export class TokenService {
       sub: user.id,
       workspaceId,
       type: JwtType.COLLAB,
+      ...(sessionId ? { sessionId } : {}),
     };
     const expiresIn = '24h';
     return this.jwtService.sign(payload, { expiresIn });
@@ -97,7 +106,7 @@ export class TokenService {
     shareId: string;
     workspaceId: string;
     securityVersion: number;
-    expiresIn: string | number;
+    expiresIn: StringValue | number;
   }): Promise<string> {
     const { shareId, workspaceId, securityVersion, expiresIn } = opts;
     const payload: JwtShareAccessPayload = {
@@ -114,7 +123,7 @@ export class TokenService {
     apiKeyId: string;
     user: User;
     workspaceId: string;
-    expiresIn?: string | number;
+    expiresIn?: StringValue | number;
   }): Promise<string> {
     const { apiKeyId, user, workspaceId, expiresIn } = opts;
     if (isUserDisabled(user)) {
@@ -129,6 +138,30 @@ export class TokenService {
     };
 
     return this.jwtService.sign(payload, expiresIn ? { expiresIn } : {});
+  }
+
+  async generatePdfRenderToken(
+    pageId: string,
+    workspaceId: string,
+  ): Promise<string> {
+    const payload: JwtPdfRenderPayload = {
+      pageId,
+      workspaceId,
+      type: JwtType.PDF_RENDER,
+    };
+    return this.jwtService.sign(payload, { expiresIn: '60s' });
+  }
+
+  async generatePdfExportDownloadToken(
+    fileTaskId: string,
+    workspaceId: string,
+  ): Promise<string> {
+    const payload: JwtPdfExportDownloadPayload = {
+      fileTaskId,
+      workspaceId,
+      type: JwtType.PDF_EXPORT_DOWNLOAD,
+    };
+    return this.jwtService.sign(payload, { expiresIn: '1h' });
   }
 
   async verifyJwt(token: string, tokenType: string) {

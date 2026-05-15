@@ -10,7 +10,7 @@ import {
   validateSync,
 } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { IsISO6391 } from '../../common/validator/is-iso6391';
+import { IsISO6391 } from '../../common/validators/is-iso6391';
 
 export class EnvironmentVariables {
   @IsNotEmpty()
@@ -105,6 +105,22 @@ export class EnvironmentVariables {
   COLLAB_URL: string;
 
   @IsOptional()
+  @IsIn(['true', 'false', '1', '0'])
+  EDITOR_SESSION_ENABLED: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false', '1', '0'])
+  EDITOR_SESSION_STRICT_WRITE: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false', '1', '0'])
+  EDITOR_SESSION_COLLAB_VALIDATE: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false', '1', '0'])
+  EDITOR_SESSION_FILE_ENABLED: string;
+
+  @IsOptional()
   CLOUD: boolean;
 
   @IsOptional()
@@ -168,6 +184,12 @@ export class EnvironmentVariables {
   @IsIn(['768', '1024', '1536', '2000', '3072'])
   @IsString()
   AI_EMBEDDING_DIMENSION: string;
+
+  @IsOptional()
+  @ValidateIf((obj) => obj.AI_EMBEDDING_SUPPORTS_MRL)
+  @IsIn(['true', 'false'])
+  @IsString()
+  AI_EMBEDDING_SUPPORTS_MRL: string;
 
   @ValidateIf((obj) => obj.AI_DRIVER)
   @IsString()

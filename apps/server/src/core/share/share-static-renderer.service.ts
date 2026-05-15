@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { load } from 'cheerio';
 import { createHash } from 'crypto';
 import { sanitizeUrl } from '@braintree/sanitize-url';
-import slugify = require('@sindresorhus/slugify');
 import { getProsemirrorContent } from '../../common/helpers/prosemirror/utils';
 import { jsonToHtml } from '../../collaboration/collaboration.util';
+import { slugifyText } from '../../common/helpers';
 
 export interface ShareRenderedTocItem {
   id: string;
@@ -76,10 +76,7 @@ export class ShareStaticRendererService {
     return this.clonePayload(this.getOrCreateRenderCacheEntry(content).payload);
   }
 
-  getSegment(
-    content: any,
-    cursor: string,
-  ): ShareRenderedSegmentPayload | null {
+  getSegment(content: any, cursor: string): ShareRenderedSegmentPayload | null {
     const cacheEntry = this.getOrCreateRenderCacheEntry(content);
     const segmentIndex = this.parseSegmentCursor(cursor);
 
@@ -191,7 +188,7 @@ export class ShareStaticRendererService {
     const deliveryMode = segments.length > 1 ? 'segmented' : 'full';
     const payload: ShareRenderedPayload = {
       html: deliveryMode === 'full' ? (root.html() ?? '') : null,
-      headHtml: deliveryMode === 'segmented' ? segments[0]?.html ?? '' : null,
+      headHtml: deliveryMode === 'segmented' ? (segments[0]?.html ?? '') : null,
       deliveryMode,
       nextCursor: segments.length > 1 ? this.createSegmentCursor(1) : null,
       segmentCount: segments.length,
@@ -401,7 +398,10 @@ export class ShareStaticRendererService {
     return blocks;
   }
 
-  private shouldSegment(topLevelBlockCount: number, htmlLength: number): boolean {
+  private shouldSegment(
+    topLevelBlockCount: number,
+    htmlLength: number,
+  ): boolean {
     return (
       topLevelBlockCount > SEGMENT_TRIGGER_BLOCK_COUNT ||
       htmlLength > SEGMENT_TRIGGER_HTML_LENGTH
@@ -409,7 +409,7 @@ export class ShareStaticRendererService {
   }
 
   private createHeadingId(text: string, index: number): string {
-    const base = slugify(text).trim() || `section-${index + 1}`;
+    const base = slugifyText(text, `section-${index + 1}`);
     return base;
   }
 

@@ -72,6 +72,7 @@ export interface ScApiTokenEvents {
 }
 
 export interface Attachments {
+  aiChatId: string | null;
   createdAt: Generated<Timestamp>;
   creatorId: string;
   deletedAt: Timestamp | null;
@@ -226,6 +227,17 @@ export interface Comments {
   workspaceId: string;
 }
 
+export interface Favorites {
+  id: Generated<string>;
+  userId: string;
+  pageId: string | null;
+  spaceId: string | null;
+  templateId: string | null;
+  type: string;
+  workspaceId: string;
+  createdAt: Generated<Timestamp>;
+}
+
 export interface FileTasks {
   createdAt: Generated<Timestamp>;
   creatorId: string | null;
@@ -236,6 +248,8 @@ export interface FileTasks {
   filePath: string;
   fileSize: Int8 | null;
   id: Generated<string>;
+  metadata: Json | null;
+  pageId: string | null;
   source: string | null;
   spaceId: string | null;
   status: string | null;
@@ -556,6 +570,7 @@ export interface Notifications {
   pageId: string | null;
   spaceId: string | null;
   commentId: string | null;
+  pageVerificationId: string | null;
   data: Json | null;
   readAt: Timestamp | null;
   emailedAt: Timestamp | null;
@@ -597,7 +612,101 @@ export interface PagePermissions {
   updatedAt: Generated<Timestamp>;
 }
 
+export interface PageVerifications {
+  id: Generated<string>;
+  pageId: string;
+  workspaceId: string;
+  spaceId: string;
+  type: Generated<string>;
+  status: string | null;
+  mode: string | null;
+  periodAmount: number | null;
+  periodUnit: string | null;
+  verifiedAt: Timestamp | null;
+  verifiedById: string | null;
+  expiresAt: Timestamp | null;
+  requestedAt: Timestamp | null;
+  requestedById: string | null;
+  rejectedAt: Timestamp | null;
+  rejectedById: string | null;
+  rejectionComment: string | null;
+  data: Json | null;
+  creatorId: string | null;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface PageVerifiers {
+  id: Generated<string>;
+  pageVerificationId: string;
+  userId: string;
+  isPrimary: Generated<boolean>;
+  addedById: string | null;
+  createdAt: Generated<Timestamp>;
+}
+
+export interface Templates {
+  id: Generated<string>;
+  title: string | null;
+  description: string | null;
+  content: Json | null;
+  ydoc: Buffer | null;
+  icon: string | null;
+  spaceId: string | null;
+  workspaceId: string;
+  creatorId: string | null;
+  lastUpdatedById: string | null;
+  collaboratorIds: string[] | null;
+  textContent: string | null;
+  tsv: string | null;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+  deletedAt: Timestamp | null;
+}
+
+export interface AiChats {
+  id: Generated<string>;
+  workspaceId: string;
+  creatorId: string;
+  title: string | null;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+  deletedAt: Timestamp | null;
+}
+
+export interface AiChatMessages {
+  id: Generated<string>;
+  chatId: string;
+  workspaceId: string;
+  userId: string | null;
+  role: string;
+  content: string | null;
+  toolCalls: Json | null;
+  metadata: Json | null;
+  tsv: string | null;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+  deletedAt: Timestamp | null;
+}
+
+export interface UserSessions {
+  id: Generated<string>;
+  userId: string;
+  workspaceId: string;
+  deviceName: string | null;
+  userAgent: string | null;
+  ipAddress: string | null;
+  geoLocation: string | null;
+  metadata: Json | null;
+  lastActiveAt: Generated<Timestamp>;
+  expiresAt: Timestamp;
+  revokedAt: Timestamp | null;
+  createdAt: Generated<Timestamp>;
+}
+
 export interface DB {
+  aiChats: AiChats;
+  aiChatMessages: AiChatMessages;
   apiKeys: ApiKeys;
   scApiTokenEvents: ScApiTokenEvents;
   scApiTokens: ScApiTokens;
@@ -613,6 +722,7 @@ export interface DB {
   backlinks: Backlinks;
   billing: Billing;
   comments: Comments;
+  favorites: Favorites;
   fileTasks: FileTasks;
   folderMigrationJobItems: FolderMigrationJobItems;
   folderMigrationJobs: FolderMigrationJobs;
@@ -623,13 +733,17 @@ export interface DB {
   pagePermissions: PagePermissions;
   pageHistory: PageHistory;
   pageNodeMeta: PageNodeMeta;
+  pageVerifications: PageVerifications;
+  pageVerifiers: PageVerifiers;
   pages: Pages;
   shares: Shares;
   spaceSidebarCategories: SpaceSidebarCategories;
   spaceMembers: SpaceMembers;
   spaces: Spaces;
+  templates: Templates;
   userMfa: UserMfa;
   users: Users;
+  userSessions: UserSessions;
   userTokens: UserTokens;
   watchers: Watchers;
   workspaceInvitations: WorkspaceInvitations;

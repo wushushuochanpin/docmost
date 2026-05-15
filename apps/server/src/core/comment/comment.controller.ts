@@ -60,13 +60,13 @@ export class CommentController {
       throw new NotFoundException('Page not found');
     }
 
-    await this.pageAccessService.validateCanEdit(page, user);
+    await this.pageAccessService.validateCanComment(page, user, workspace.id);
 
     const comment = await this.commentService.create(
       {
-        userId: user.id,
         page,
         workspaceId: workspace.id,
+        user,
       },
       createCommentDto,
     );
@@ -154,7 +154,7 @@ export class CommentController {
       throw new NotFoundException('Page not found');
     }
 
-    await this.pageAccessService.validateCanEdit(page, user);
+    await this.pageAccessService.validateCanComment(page, user, workspace.id);
 
     return this.commentService.update(comment, dto, user);
   }
@@ -180,7 +180,7 @@ export class CommentController {
       throw new NotFoundException('Page not found');
     }
 
-    await this.pageAccessService.validateCanEdit(page, user);
+    await this.pageAccessService.validateCanComment(page, user, workspace.id);
 
     const ability = await this.spaceAbility.createForUser(
       user,
@@ -212,9 +212,7 @@ export class CommentController {
     } else {
       // Space admin can delete any comment
       if (ability.cannot(SpaceCaslAction.Manage, SpaceCaslSubject.Settings)) {
-        throw new ForbiddenException(
-          'You can only delete your own comments or must be a space admin',
-        );
+        throw new ForbiddenException('You can only delete your own comments');
       }
       await this.commentRepo.deleteComment(comment.id, workspace.id);
     }

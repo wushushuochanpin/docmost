@@ -2,6 +2,7 @@ import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { getCollabToken, verifyUserToken } from "../services/auth-service";
 import { ICollabToken, IVerifyUserToken } from "../types/auth.types";
 import { isAxiosError } from "axios";
+import { isEditorSessionEnabled } from "@/lib/config";
 
 export function useVerifyUserTokenQuery(
   verify: IVerifyUserToken,
@@ -15,13 +16,15 @@ export function useVerifyUserTokenQuery(
 }
 
 export function useCollabToken(): UseQueryResult<ICollabToken, Error> {
+  const editorSessionEnabled = isEditorSessionEnabled();
+
   return useQuery({
     queryKey: ["collab-token"],
     queryFn: () => getCollabToken(),
-    staleTime: 20 * 60 * 60 * 1000, //20hrs
+    staleTime: editorSessionEnabled ? 0 : 20 * 60 * 60 * 1000, //20hrs
     //refetchInterval: 12 * 60 * 60 * 1000, // 12hrs
     //refetchIntervalInBackground: true,
-    refetchOnMount: true,
+    refetchOnMount: editorSessionEnabled ? "always" : true,
     //@ts-ignore
     retry: (failureCount, error) => {
       if (isAxiosError(error) && error.response.status === 404) {

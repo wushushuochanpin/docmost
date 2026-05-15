@@ -8,7 +8,6 @@ import {
   onLoadDocumentPayload,
 } from '@hocuspocus/server';
 import RedisClient from 'ioredis';
-import { readVarString } from 'lib0/decoding.js';
 import { CollabProxySocket } from './collab-proxy-socket';
 import {
   BaseWebSocket,
@@ -31,6 +30,42 @@ export type { Pack, SerializedHTTPRequest } from './redis-sync.types';
 type ServerId = string;
 type DocumentName = string;
 type SocketId = string;
+
+type VarStringDecoder = {
+  arr: Uint8Array;
+  pos: number;
+};
+
+const textDecoder = new TextDecoder();
+
+function readVarUint(decoder: VarStringDecoder) {
+  let num = 0;
+  let mult = 1;
+
+  while (decoder.pos < decoder.arr.length) {
+    const value = decoder.arr[decoder.pos++];
+    num += (value & 0x7f) * mult;
+    mult *= 128;
+
+    if (value < 0x80) {
+      return num;
+    }
+
+    if (num > Number.MAX_SAFE_INTEGER) {
+      throw new Error('Integer out of range');
+    }
+  }
+
+  throw new Error('Unexpected end of array');
+}
+
+function readVarString(decoder: VarStringDecoder) {
+  const length = readVarUint(decoder);
+  const value = decoder.arr.subarray(decoder.pos, decoder.pos + length);
+  decoder.pos += length;
+
+  return textDecoder.decode(value);
+}
 
 export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
   priority = 1000;

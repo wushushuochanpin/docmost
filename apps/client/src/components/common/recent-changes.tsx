@@ -35,6 +35,7 @@ function prefetchRecentPage(page: Pick<IPage, "slugId">) {
 export default function RecentChanges({ spaceId }: Props) {
   const { t } = useTranslation();
   const { data: pages, isLoading, isError } = useRecentChangesQuery(spaceId);
+  const items = pages?.pages.flatMap((page) => page.items) ?? [];
 
   if (isLoading) {
     return <PageListSkeleton />;
@@ -44,11 +45,11 @@ export default function RecentChanges({ spaceId }: Props) {
     return <Text>{t("Failed to fetch recent pages")}</Text>;
   }
 
-  return pages && pages.items.length > 0 ? (
+  return items.length > 0 ? (
     <Table.ScrollContainer minWidth={500}>
       <Table highlightOnHover verticalSpacing="sm">
         <Table.Tbody>
-          {pages.items.map((page) => (
+          {items.map((page) => (
             <Table.Tr key={page.id}>
               <Table.Td>
                 <UnstyledButton

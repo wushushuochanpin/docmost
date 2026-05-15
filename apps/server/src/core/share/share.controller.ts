@@ -36,10 +36,10 @@ import { Public } from '../../common/decorators/public.decorator';
 import { ShareRepo } from '@docmost/db/repos/share/share.repo';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
-import { hasLicenseOrEE } from '../../common/helpers';
 import { FastifyRequest } from 'fastify';
 import { ShareErrorCode } from './share.constants';
 import { ShareWechatService } from './share-wechat.service';
+import { LicenseCheckService } from '../../integrations/environment/license-check.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('shares')
@@ -51,6 +51,7 @@ export class ShareController {
     private readonly pageRepo: PageRepo,
     private readonly environmentService: EnvironmentService,
     private readonly shareWechatService: ShareWechatService,
+    private readonly licenseCheckService: LicenseCheckService,
   ) {}
 
   @HttpCode(HttpStatus.OK)
@@ -86,11 +87,10 @@ export class ShareController {
 
     return {
       ...shareData,
-      hasLicenseKey: hasLicenseOrEE({
-        licenseKey: workspace.licenseKey,
-        isCloud: this.environmentService.isCloud(),
-        plan: workspace.plan,
-      }),
+      features: this.licenseCheckService.resolveFeatures(
+        workspace.licenseKey,
+        workspace.plan,
+      ),
     };
   }
 
@@ -224,7 +224,11 @@ export class ShareController {
       throw new ForbiddenException();
     }
 
-    return this.shareService.updateShare(share.id, updateShareDto, workspace.id);
+    return this.shareService.updateShare(
+      share.id,
+      updateShareDto,
+      workspace.id,
+    );
   }
 
   @HttpCode(HttpStatus.OK)
@@ -361,11 +365,10 @@ export class ShareController {
 
     return {
       ...treeData,
-      hasLicenseKey: hasLicenseOrEE({
-        licenseKey: workspace.licenseKey,
-        isCloud: this.environmentService.isCloud(),
-        plan: workspace.plan,
-      }),
+      features: this.licenseCheckService.resolveFeatures(
+        workspace.licenseKey,
+        workspace.plan,
+      ),
     };
   }
 

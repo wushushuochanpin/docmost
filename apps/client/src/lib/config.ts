@@ -1,6 +1,7 @@
 import bytes from "bytes";
 import { castToBoolean } from "@/lib/utils.tsx";
 import { AvatarIconType } from "@/features/attachments/types/attachment.types.ts";
+import { sanitizeUrl } from "@docmost/editor-ext";
 
 declare global {
   interface Window {
@@ -50,11 +51,20 @@ export function getBackendUrl(): string {
 }
 
 export function getCollaborationUrl(): string {
-  const baseUrl = getConfigValue("COLLAB_URL") || getServerAppUrl() || getAppUrl();
+  const baseUrl =
+    getConfigValue("COLLAB_URL") || getServerAppUrl() || getAppUrl();
 
   const collabUrl = new URL("/collab", baseUrl);
   collabUrl.protocol = collabUrl.protocol === "https:" ? "wss:" : "ws:";
   return collabUrl.toString();
+}
+
+export function isEditorSessionEnabled(): boolean {
+  return castToBoolean(getConfigValue("EDITOR_SESSION_ENABLED", "false"));
+}
+
+export function isEditorSessionFileEnabled(): boolean {
+  return castToBoolean(getConfigValue("EDITOR_SESSION_FILE_ENABLED", "false"));
 }
 
 export function getSubdomainHost(): string {
@@ -112,7 +122,7 @@ export function getFileUrl(src: string) {
   if (src.startsWith("/files/")) {
     return getBackendUrl() + src;
   }
-  return src;
+  return sanitizeUrl(src);
 }
 
 export function getFileUploadSizeLimit(): number {

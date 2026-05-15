@@ -1,6 +1,7 @@
 import { SpaceTreeNode } from "@/features/page/tree/types.ts";
 import { IPage } from "@/features/page/types/page.types";
 import { IComment } from "@/features/comment/types/comment.types";
+import { EditorSessionSocketEvent } from "@/features/editor-session/types";
 
 export type InvalidateEvent = {
   operation: "invalidate";
@@ -85,6 +86,11 @@ export type RefetchRootTreeNodeEvent = {
   spaceId: string;
 };
 
+export type VerificationUpdatedEvent = {
+  operation: "verificationUpdated";
+  pageId: string;
+};
+
 export type WebSocketEvent =
   | InvalidateEvent
   | CommentCreatedEvent
@@ -96,4 +102,6 @@ export type WebSocketEvent =
   | AddTreeNodeEvent
   | MoveTreeNodeEvent
   | DeleteTreeNodeEvent
-  | RefetchRootTreeNodeEvent;
+  | RefetchRootTreeNodeEvent
+  | VerificationUpdatedEvent
+  | EditorSessionSocketEvent;

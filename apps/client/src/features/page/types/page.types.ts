@@ -3,6 +3,10 @@ import {
   ISharedPageRendered,
   ISharedPageRenderedSegment,
 } from "@/features/share/types/share.types.ts";
+import type {
+  EditSession,
+  EditorSessionWriteIntent,
+} from "@/features/editor-session/types";
 
 export interface IPage {
   id: string;
@@ -38,12 +42,19 @@ export interface IPage {
   creator: ICreator;
   lastUpdatedBy: ILastUpdatedBy;
   deletedBy: IDeletedBy;
+  contributors?: IContributor[];
   space: Partial<ISpace>;
   permissions?: {
     canEdit: boolean;
     hasRestriction: boolean;
   };
   rendered?: ISharedPageRendered | null;
+}
+
+export interface IContributor {
+  id: string;
+  name: string;
+  avatarUrl: string;
 }
 
 interface ICreator {
@@ -123,6 +134,7 @@ export interface SidebarPagesParams {
   spaceId?: string;
   pageId?: string;
   cursor?: string;
+  limit?: number;
   viewMode?: SidebarViewMode;
   categoryId?: string | null;
 }
@@ -139,6 +151,8 @@ export interface IPageInput {
   content?: any;
   operation?: "append" | "prepend" | "replace";
   format?: "json" | "markdown" | "html";
+  editSession?: EditSession;
+  writeIntent?: EditorSessionWriteIntent;
   title: string;
   parentPageId: string | null;
   nodeType?: "file" | "folder";

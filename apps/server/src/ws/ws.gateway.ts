@@ -14,6 +14,14 @@ import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
 import { WsService } from './ws.service';
 import { getSpaceRoomName, getUserRoomName } from './ws.utils';
 import * as cookie from 'cookie';
+import { EditorSessionService } from '../core/editor-session/editor-session.service';
+import { OnEvent } from '@nestjs/event-emitter';
+import {
+  EDITOR_SESSION_GRANTED_EVENT,
+  EDITOR_SESSION_REVOKED_EVENT,
+  EDITOR_SESSION_TAKEOVER_REQUESTED_EVENT,
+} from '../core/editor-session/editor-session.constants';
+import type { EditorSessionEventPayload } from '../core/editor-session/editor-session.types';
 
 @WebSocketGateway({
   cors: { origin: '*' },
@@ -29,6 +37,7 @@ export class WsGateway
     private tokenService: TokenService,
     private spaceMemberRepo: SpaceMemberRepo,
     private wsService: WsService,
+    private editorSessionService: EditorSessionService,
   ) {}
 
   afterInit(server: Server): void {
@@ -58,6 +67,7 @@ export class WsGateway
 
       client.data.workspaceId = workspaceId;
       client.data.userId = userId;
+      client.data.sessionId = token.sessionId ?? null;
       client.data.allowedSpaceIds = userSpaceIds;
 
       const userRoom = getUserRoomName(userId);
@@ -80,6 +90,24 @@ export class WsGateway
 
     if (!workspaceId) {
       client.emit('Unauthorized');
+      return;
+    }
+
+    if (data?.operation === 'editorSession.registerClient') {
+      const userId = client.data?.userId as string | undefined;
+      const clientId = data?.clientId as string | undefined;
+      if (!userId || !clientId) {
+        client.emit('Forbidden');
+        return;
+      }
+
+      await this.editorSessionService.registerClient({
+        workspaceId,
+        userId,
+        sessionId: client.data?.sessionId ?? null,
+        clientId,
+        socketId: client.id,
+      });
       return;
     }
 
@@ -121,6 +149,7 @@ export class WsGateway
     });
   }
 
+  /*
   @SubscribeMessage('join-room')
   handleJoinRoom(client: Socket, @MessageBody() roomName: string): void {
     // if room is a space, check if user has permissions
@@ -131,10 +160,46 @@ export class WsGateway
   handleLeaveRoom(client: Socket, @MessageBody() roomName: string): void {
     client.leave(roomName);
   }
+ */
 
   onModuleDestroy() {
     if (this.server) {
       this.server.close();
     }
+  }
+
+  @OnEvent(EDITOR_SESSION_TAKEOVER_REQUESTED_EVENT)
+  handleEditorSessionTakeoverRequested(payload: EditorSessionEventPayload) {
+    this.emitEditorSessionEvent('editorSession.takeoverRequested', payload);
+  }
+
+  @OnEvent(EDITOR_SESSION_GRANTED_EVENT)
+  handleEditorSessionGranted(payload: EditorSessionEventPayload) {
+    this.emitEditorSessionEvent('editorSession.granted', payload);
+  }
+
+  @OnEvent(EDITOR_SESSION_REVOKED_EVENT)
+  handleEditorSessionRevoked(payload: EditorSessionEventPayload) {
+    this.emitEditorSessionEvent('editorSession.revoked', payload);
+  }
+
+  private emitEditorSessionEvent(
+    operation: string,
+    payload: EditorSessionEventPayload,
+  ) {
+    if (!payload.socketId || !this.server) return;
+
+    this.server.to(payload.socketId).emit('message', {
+      operation,
+      resourceType: payload.resourceType,
+      resourceId: payload.resourceId,
+      clientId: payload.clientId,
+      status: payload.status,
+      writable: payload.writable,
+      takeoverId: payload.takeoverId,
+      editSession: payload.lease,
+      graceUntil: payload.graceUntil,
+      workspaceId: payload.workspaceId,
+    });
   }
 }

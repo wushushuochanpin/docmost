@@ -367,6 +367,57 @@ export class PageRepo {
     });
   }
 
+  async getCreatedByPages(
+    creatorId: string,
+    requestingUserId: string,
+    pagination: PaginationOptions,
+    workspaceId?: string,
+    spaceId?: string,
+  ) {
+    let query = this.db
+      .selectFrom('pages')
+      .select(this.baseFields)
+      .select((eb) => this.withSpace(eb))
+      .where('creatorId', '=', creatorId)
+      .$if(Boolean(workspaceId), (qb) =>
+        qb.where('workspaceId', '=', workspaceId!),
+      )
+      .where('deletedAt', 'is', null);
+
+    if (spaceId) {
+      query = query.where('spaceId', '=', spaceId);
+    } else if (workspaceId) {
+      query = query.where(
+        'spaceId',
+        'in',
+        this.spaceMemberRepo.getUserSpaceIdsQueryByWorkspace(
+          requestingUserId,
+          workspaceId,
+        ),
+      );
+    } else {
+      query = query.where(
+        'spaceId',
+        'in',
+        this.spaceMemberRepo.getUserSpaceIdsQuery(requestingUserId),
+      );
+    }
+
+    return executeWithCursorPagination(query, {
+      perPage: pagination.limit,
+      cursor: pagination.cursor,
+      beforeCursor: pagination.beforeCursor,
+      fields: [
+        { expression: 'updatedAt', direction: 'desc' },
+        { expression: 'id', direction: 'desc' },
+      ],
+      parseCursor: (cursor) => ({
+        updatedAt: new Date(cursor.updatedAt),
+        id: cursor.id,
+      }),
+    });
+  }
+
   async getDeletedPagesInSpace(
     spaceId: string,
     pagination: PaginationOptions,
@@ -537,6 +588,74 @@ export class PageRepo {
       )
       .selectFrom('page_hierarchy')
       .selectAll()
+      .execute();
+  }
+
+  async getPageAndDescendantsExcludingRestricted(
+    parentPageId: string,
+    opts: { includeContent: boolean; workspaceId?: string },
+  ) {
+    return this.db
+      .withRecursive('page_hierarchy', (db) =>
+        db
+          .selectFrom('pages')
+          .leftJoin('pageAccess', 'pageAccess.pageId', 'pages.id')
+          .leftJoin('pageNodeMeta as pnm', 'pnm.pageId', 'pages.id')
+          .select([
+            'pages.id',
+            'pages.slugId',
+            'pages.title',
+            'pages.icon',
+            'pages.themeColor',
+            'pages.themePattern',
+            'pages.position',
+            'pages.parentPageId',
+            'pages.spaceId',
+            'pages.workspaceId',
+            'pages.createdAt',
+            'pages.updatedAt',
+            sql<boolean>`page_access.id IS NOT NULL`.as('isRestricted'),
+            sql<string>`COALESCE("pnm"."node_type", 'file')`.as('nodeType'),
+          ])
+          .$if(opts?.includeContent, (qb) => qb.select('pages.content'))
+          .$if(Boolean(opts?.workspaceId), (qb) =>
+            qb.where('pages.workspaceId', '=', opts!.workspaceId!),
+          )
+          .where('pages.id', '=', parentPageId)
+          .where('pages.deletedAt', 'is', null)
+          .unionAll((exp) =>
+            exp
+              .selectFrom('pages as p')
+              .innerJoin('page_hierarchy as ph', 'p.parentPageId', 'ph.id')
+              .leftJoin('pageAccess', 'pageAccess.pageId', 'p.id')
+              .leftJoin('pageNodeMeta as pnm', 'pnm.pageId', 'p.id')
+              .select([
+                'p.id',
+                'p.slugId',
+                'p.title',
+                'p.icon',
+                'p.themeColor',
+                'p.themePattern',
+                'p.position',
+                'p.parentPageId',
+                'p.spaceId',
+                'p.workspaceId',
+                'p.createdAt',
+                'p.updatedAt',
+                sql<boolean>`page_access.id IS NOT NULL`.as('isRestricted'),
+                sql<string>`COALESCE("pnm"."node_type", 'file')`.as('nodeType'),
+              ])
+              .$if(opts?.includeContent, (qb) => qb.select('p.content'))
+              .$if(Boolean(opts?.workspaceId), (qb) =>
+                qb.where('p.workspaceId', '=', opts!.workspaceId!),
+              )
+              .where('p.deletedAt', 'is', null)
+              .where('ph.isRestricted', '=', false),
+          ),
+      )
+      .selectFrom('page_hierarchy')
+      .selectAll()
+      .where('isRestricted', '=', false)
       .execute();
   }
 }

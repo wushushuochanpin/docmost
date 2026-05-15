@@ -49,6 +49,10 @@ export class StaticModule implements OnModuleInit {
           ? this.environmentService.getSubdomainHost()
           : undefined,
         COLLAB_URL: this.environmentService.getCollabUrl(),
+        EDITOR_SESSION_ENABLED:
+          this.environmentService.isEditorSessionEnabled(),
+        EDITOR_SESSION_FILE_ENABLED:
+          this.environmentService.isEditorSessionFileEnabled(),
         BILLING_TRIAL_DAYS: this.environmentService.isCloud()
           ? this.environmentService.getBillingTrialDays()
           : undefined,
