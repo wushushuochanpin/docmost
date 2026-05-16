@@ -14,6 +14,7 @@ import { UserRepo } from '@docmost/db/repos/user/user.repo';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
 import { PagePermissionRepo } from '@docmost/db/repos/page/page-permission.repo';
+import { WorkspaceRepo } from '@docmost/db/repos/workspace/workspace.repo';
 import { findHighestUserSpaceRole } from '@docmost/db/repos/space/utils';
 import { SpaceRole } from '../../common/helpers/types/permission';
 import { isUserDisabled } from '../../common/helpers';
@@ -33,6 +34,7 @@ export class AuthenticationExtension implements Extension {
     private pageRepo: PageRepo,
     private readonly spaceMemberRepo: SpaceMemberRepo,
     private readonly pagePermissionRepo: PagePermissionRepo,
+    private readonly workspaceRepo: WorkspaceRepo,
     private readonly editorSessionService: EditorSessionService,
     private readonly environmentService: EnvironmentService,
   ) {}
@@ -40,6 +42,10 @@ export class AuthenticationExtension implements Extension {
   async onAuthenticate(data: onAuthenticatePayload) {
     const { documentName, token } = data;
     const pageId = getPageId(documentName);
+
+    if (!this.environmentService.isCollabEnabled()) {
+      throw new UnauthorizedException('Collaboration disabled');
+    }
 
     let jwtPayload: JwtCollabPayload;
 
@@ -51,6 +57,11 @@ export class AuthenticationExtension implements Extension {
 
     const userId = jwtPayload.sub;
     const workspaceId = jwtPayload.workspaceId;
+    const workspace = await this.workspaceRepo.findById(workspaceId);
+
+    if (!workspace || !this.isWorkspaceCollaborationEnabled(workspace)) {
+      throw new UnauthorizedException('Collaboration disabled');
+    }
 
     const user = await this.userRepo.findById(userId, workspaceId);
 
@@ -175,5 +186,13 @@ export class AuthenticationExtension implements Extension {
         throw new UnauthorizedException('Invalid editor session');
       }
     }
+  }
+
+  private isWorkspaceCollaborationEnabled(workspace: { settings?: unknown }) {
+    const settings = (workspace.settings ?? {}) as {
+      collaboration?: { enabled?: boolean };
+    };
+
+    return settings.collaboration?.enabled !== false;
   }
 }

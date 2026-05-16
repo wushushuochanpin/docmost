@@ -36,7 +36,9 @@ export interface IVerifyUserToken {
 }
 
 export interface ICollabToken {
+  enabled?: boolean;
   token?: string;
+  disabledReason?: "instance" | "workspace";
 }
 
 export interface ILoginResponse {

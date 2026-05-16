@@ -192,7 +192,7 @@ export class AuthController {
   ) {
     return this.authService.getCollabToken(
       user,
-      workspace.id,
+      workspace,
       (req.raw as any).sessionId,
     );
   }

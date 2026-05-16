@@ -1,0 +1,49 @@
+.resultContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.titleText {
+  min-width: 0;
+}
+
+.pathRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--ui-text-tertiary);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.pathSegment {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  max-width: 180px;
+  flex: 0 1 auto;
+}
+
+.pathIcon,
+.pathSeparator {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  color: var(--ui-text-tertiary);
+}
+
+.pathLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.highlight {
+  margin-top: 2px;
+}

@@ -298,6 +298,10 @@ export class EnvironmentService {
     return this.configService.get<string>('COLLAB_URL');
   }
 
+  isCollabEnabled(): boolean {
+    return this.getBoolean('COLLAB_ENABLED', true);
+  }
+
   isCollabDisableRedis(): boolean {
     const isStandalone = this.configService
       .get<string>('COLLAB_DISABLE_REDIS', 'false')

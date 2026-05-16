@@ -23,9 +23,9 @@ export const useQuerySubscription = () => {
       pageId: string,
       updater: (comment: IComment) => IComment | null,
     ) => {
-      const cache = queryClient.getQueryData(
-        RQ_KEY(pageId),
-      ) as InfiniteData<IPagination<IComment>> | undefined;
+      const cache = queryClient.getQueryData(RQ_KEY(pageId)) as
+        | InfiniteData<IPagination<IComment>>
+        | undefined;
 
       if (!cache) {
         return false;
@@ -77,9 +77,9 @@ export const useQuerySubscription = () => {
           });
           break;
         case "commentCreated": {
-          const createCache = queryClient.getQueryData(
-            RQ_KEY(data.pageId),
-          ) as InfiniteData<IPagination<IComment>> | undefined;
+          const createCache = queryClient.getQueryData(RQ_KEY(data.pageId)) as
+            | InfiniteData<IPagination<IComment>>
+            | undefined;
 
           if (createCache && createCache.pages.length > 0) {
             const alreadyExists = createCache.pages.some((page) =>
@@ -105,7 +105,8 @@ export const useQuerySubscription = () => {
         case "commentResolved": {
           const didUpdateInfinite = updateInfiniteComments(
             data.pageId,
-            (comment) => (comment.id === data.comment.id ? data.comment : comment),
+            (comment) =>
+              comment.id === data.comment.id ? data.comment : comment,
           );
 
           if (!didUpdateInfinite) {
@@ -116,8 +117,9 @@ export const useQuerySubscription = () => {
           break;
         }
         case "commentDeleted": {
-          const didUpdateInfinite = updateInfiniteComments(data.pageId, (comment) =>
-            comment.id === data.commentId ? null : comment,
+          const didUpdateInfinite = updateInfiniteComments(
+            data.pageId,
+            (comment) => (comment.id === data.commentId ? null : comment),
           );
 
           if (!didUpdateInfinite) {
@@ -195,6 +197,30 @@ export const useQuerySubscription = () => {
           queryClient.invalidateQueries({
             queryKey: ["page-verification-info", data.pageId],
           });
+          break;
+        case "workspaceCollaborationUpdated":
+          queryClient.setQueryData(["currentUser"], (currentUser: any) => {
+            if (!currentUser?.workspace) {
+              return currentUser;
+            }
+
+            return {
+              ...currentUser,
+              workspace: {
+                ...currentUser.workspace,
+                settings: {
+                  ...(currentUser.workspace.settings ?? {}),
+                  collaboration: {
+                    ...(currentUser.workspace.settings?.collaboration ?? {}),
+                    enabled: data.enabled,
+                  },
+                },
+              },
+            };
+          });
+          queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+          queryClient.invalidateQueries({ queryKey: ["collab-token"] });
+          queryClient.invalidateQueries({ queryKey: ["workspace"] });
           break;
       }
     });

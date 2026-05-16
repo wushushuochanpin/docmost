@@ -318,17 +318,33 @@ export class AuthService {
 
   async getCollabToken(
     user: User,
-    workspaceId: string,
+    workspace: Workspace,
     sessionId?: string | null,
   ) {
+    if (!this.environmentService.isCollabEnabled()) {
+      return { enabled: false, disabledReason: 'instance' };
+    }
+
+    if (!this.isWorkspaceCollaborationEnabled(workspace)) {
+      return { enabled: false, disabledReason: 'workspace' };
+    }
+
     const normalizedSessionId = this.environmentService.isEditorSessionEnabled()
-      ? sessionId ?? EDITOR_SESSION_LEGACY_SESSION_ID
+      ? (sessionId ?? EDITOR_SESSION_LEGACY_SESSION_ID)
       : sessionId;
     const token = await this.tokenService.generateCollabToken(
       user,
-      workspaceId,
+      workspace.id,
       normalizedSessionId,
     );
-    return { token };
+    return { enabled: true, token };
+  }
+
+  private isWorkspaceCollaborationEnabled(workspace: Workspace): boolean {
+    const settings = (workspace.settings ?? {}) as {
+      collaboration?: { enabled?: boolean };
+    };
+
+    return settings.collaboration?.enabled !== false;
   }
 }

@@ -91,6 +91,12 @@ export type VerificationUpdatedEvent = {
   pageId: string;
 };
 
+export type WorkspaceCollaborationUpdatedEvent = {
+  operation: "workspaceCollaborationUpdated";
+  workspaceId: string;
+  enabled: boolean;
+};
+
 export type WebSocketEvent =
   | InvalidateEvent
   | CommentCreatedEvent
@@ -104,4 +110,5 @@ export type WebSocketEvent =
   | DeleteTreeNodeEvent
   | RefetchRootTreeNodeEvent
   | VerificationUpdatedEvent
+  | WorkspaceCollaborationUpdatedEvent
   | EditorSessionSocketEvent;

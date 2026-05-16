@@ -5,6 +5,17 @@ import type { EditSession } from "@/features/editor-session/types";
 export const pageEditorAtom = atom<Editor | null>(null);
 
 export type PageEditorRuntimeMode = "preview" | "local" | "collab";
+export type PageEditorCollaborationStatus =
+  | "disabled"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "local"
+  | "error";
+export type PageEditorCollaborationDisabledReason =
+  | "instance"
+  | "workspace"
+  | null;
 export type PageEditorSessionStatus =
   | "disabled"
   | "active"
@@ -20,6 +31,8 @@ export const readOnlyEditorAtom = atom<Editor | null>(null);
 export const yjsConnectionStatusAtom = atom<string>("");
 
 export const pageEditorRuntimeModeAtom = atom<PageEditorRuntimeMode>("preview");
+export const pageEditorCollaborationStatusAtom =
+  atom<PageEditorCollaborationStatus>("connecting");
 export const pageEditorSessionStatusAtom =
   atom<PageEditorSessionStatus>("disabled");
 export const pageEditorEditSessionAtom = atom<EditSession | undefined>(

@@ -35,6 +35,7 @@ export interface IWorkspace {
   generativeAi?: boolean;
   disablePublicSharing?: boolean;
   mcpEnabled?: boolean;
+  collaborationEnabled?: boolean;
   trashRetentionDays?: number;
   restrictApiToAdmins?: boolean;
   capabilities?: IWorkspaceCapabilities;
@@ -46,6 +47,7 @@ export interface IWorkspaceSettings {
   sharing?: IWorkspaceSharingSettings;
   api?: IWorkspaceApiSettings;
   templates?: IWorkspaceTemplateSettings;
+  collaboration?: IWorkspaceCollaborationSettings;
 }
 
 export interface IWorkspaceApiSettings {
@@ -65,6 +67,10 @@ export interface IWorkspaceSharingSettings {
 
 export interface IWorkspaceTemplateSettings {
   allowMemberTemplates?: boolean;
+}
+
+export interface IWorkspaceCollaborationSettings {
+  enabled?: boolean;
 }
 
 export interface ICreateInvite {

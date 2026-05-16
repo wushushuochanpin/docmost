@@ -106,6 +106,10 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsIn(['true', 'false', '1', '0'])
+  COLLAB_ENABLED: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false', '1', '0'])
   EDITOR_SESSION_ENABLED: string;
 
   @IsOptional()

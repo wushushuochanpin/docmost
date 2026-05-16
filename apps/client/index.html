@@ -2,8 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+    <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0 user-scalable=no" />
     <title>SuperChat</title>
     <meta name="theme-color" content="#1f1f1f" media="(prefers-color-scheme: dark)" />
@@ -23,8 +24,12 @@
   <body>
     <div id="root">
       <div id="app-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f6f7f9;font-family:'Inter',system-ui,sans-serif;">
-        <img src="/icons/favicon-32x32.png" alt="" style="width:40px;height:40px;margin-bottom:16px;animation:app-loading-pulse 1.5s ease-in-out infinite;" />
+        <img id="app-loading-logo" src="/icons/logo.svg" alt="" style="width:240px;height:112px;object-fit:contain;object-position:center;margin-bottom:16px;animation:app-loading-pulse 1.5s ease-in-out infinite;" />
         <style>
+          @media (prefers-color-scheme: dark) {
+            #app-loading { background:#111827 !important; }
+            #app-loading-logo { filter: drop-shadow(0 0 1px rgba(255,255,255,0.7)) drop-shadow(0 6px 16px rgba(0,0,0,0.35)); }
+          }
           @keyframes app-loading-pulse {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.5; transform: scale(0.95); }

@@ -1,4 +1,4 @@
-import { Badge, Group, Text, Tooltip, UnstyledButton } from "@mantine/core";
+import { Badge, Group, Tooltip, UnstyledButton } from "@mantine/core";
 import classes from "./app-header.module.css";
 import React from "react";
 import TopMenu from "@/components/layouts/global/top-menu.tsx";
@@ -95,24 +95,17 @@ export function AppHeader() {
             </>
           )}
 
-          <Text
-            size="md"
-            fw={600}
-            style={{
-              cursor: "pointer",
-              userSelect: "none",
-              background: "linear-gradient(135deg, var(--ui-accent-primary), #7c3aed)",
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              letterSpacing: "0.01em",
-              fontWeight: 700,
-            }}
-            component={Link}
+          <Link
             to="/home"
+            className={classes.brandLogoLink}
+            aria-label="SuperChat"
           >
-            SuperChat
-          </Text>
+            <img
+              src="/icons/logo.svg"
+              alt="SuperChat"
+              className={classes.brandLogo}
+            />
+          </Link>
 
           <Group ml={50} gap={5} className={classes.links} visibleFrom="sm">
             {items}

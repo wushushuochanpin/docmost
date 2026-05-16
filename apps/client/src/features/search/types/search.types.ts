@@ -3,10 +3,19 @@ import { IGroup } from "@/features/group/types/group.types.ts";
 import { ISpace } from "@/features/space/types/space.types.ts";
 import { IPage } from "@/features/page/types/page.types.ts";
 
+export interface IPageSearchPathItem {
+  id: string;
+  slugId: string;
+  title: string;
+  icon?: string | null;
+  nodeType: "file" | "folder";
+}
+
 export interface IPageSearch {
   id: string;
   title: string;
   icon: string;
+  nodeType?: "file" | "folder";
   parentPageId: string;
   slugId: string;
   creatorId: string;
@@ -15,6 +24,7 @@ export interface IPageSearch {
   rank: string;
   highlight: string;
   space: Partial<ISpace>;
+  path?: IPageSearchPathItem[];
 }
 
 export interface SearchSuggestionParams {

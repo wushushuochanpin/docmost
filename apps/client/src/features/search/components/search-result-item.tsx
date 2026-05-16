@@ -3,27 +3,117 @@ import {
   Group,
   Center,
   Text,
-  Badge,
   ActionIcon,
   Tooltip,
   getDefaultZIndex,
 } from "@mantine/core";
 import { Spotlight } from "@mantine/spotlight";
 import { Link } from "react-router-dom";
-import { IconFile, IconDownload } from "@tabler/icons-react";
+import {
+  IconBuilding,
+  IconChevronRight,
+  IconDownload,
+  IconFile,
+  IconFileDescription,
+  IconFolder,
+} from "@tabler/icons-react";
 import { buildPageUrl } from "@/features/page/page.utils";
 import { getPageIcon } from "@/lib";
 import {
   IAttachmentSearch,
   IPageSearch,
+  IPageSearchPathItem,
 } from "@/features/search/types/search.types";
 import DOMPurify from "dompurify";
 import { useTranslation } from "react-i18next";
+import classes from "./search-result-item.module.css";
 
 interface SearchResultItemProps {
   result: IPageSearch | IAttachmentSearch;
   isAttachmentResult: boolean;
   showSpace?: boolean;
+}
+
+function PageNodeIcon({ nodeType }: { nodeType?: "file" | "folder" }) {
+  if (nodeType === "folder") {
+    return <IconFolder size={13} stroke={1.8} />;
+  }
+
+  return <IconFileDescription size={13} stroke={1.8} />;
+}
+
+function PageResultIcon({ page }: { page: IPageSearch }) {
+  if (page.icon) {
+    return <>{getPageIcon(page.icon)}</>;
+  }
+
+  if (page.nodeType === "folder") {
+    return <IconFolder size={18} stroke={1.75} />;
+  }
+
+  return <>{getPageIcon(page.icon)}</>;
+}
+
+function SearchResultPath({
+  page,
+  showSpace,
+}: {
+  page: IPageSearch;
+  showSpace?: boolean;
+}) {
+  const segments: Array<
+    | {
+        id: string;
+        title?: string | null;
+        kind: "space";
+      }
+    | (IPageSearchPathItem & { kind: "page" })
+  > = [
+    ...(showSpace && page.space
+      ? [
+          {
+            id: page.space.id || "space",
+            title: page.space.name,
+            kind: "space" as const,
+          },
+        ]
+      : []),
+    ...(page.path || []).map((pathItem) => ({
+      ...pathItem,
+      kind: "page" as const,
+    })),
+  ];
+
+  if (segments.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={classes.pathRow}>
+      {segments.map((segment, index) => (
+        <React.Fragment key={`${segment.kind}-${segment.id}-${index}`}>
+          {index > 0 && (
+            <IconChevronRight
+              size={11}
+              stroke={2}
+              className={classes.pathSeparator}
+            />
+          )}
+
+          <span className={classes.pathSegment} title={segment.title || ""}>
+            <span className={classes.pathIcon}>
+              {segment.kind === "space" ? (
+                <IconBuilding size={13} stroke={1.8} />
+              ) : (
+                <PageNodeIcon nodeType={segment.nodeType} />
+              )}
+            </span>
+            <span className={classes.pathLabel}>{segment.title}</span>
+          </span>
+        </React.Fragment>
+      ))}
+    </div>
+  );
 }
 
 export function SearchResultItem({
@@ -59,14 +149,17 @@ export function SearchResultItem({
             <IconFile size={16} />
           </Center>
 
-          <div style={{ flex: 1 }}>
-            <Text>{attachmentResult.fileName}</Text>
+          <div className={classes.resultContent}>
+            <Text className={classes.titleText} truncate="end">
+              {attachmentResult.fileName}
+            </Text>
             <Text size="xs" opacity={0.6}>
               {attachmentResult.space.name} • {attachmentResult.page.title}
             </Text>
 
             {attachmentResult?.highlight && (
               <Text
+                className={classes.highlight}
                 opacity={0.6}
                 size="xs"
                 dangerouslySetInnerHTML={{
@@ -105,19 +198,20 @@ export function SearchResultItem({
         style={{ userSelect: "none" }}
       >
         <Group wrap="nowrap" w="100%">
-          <Center>{getPageIcon(pageResult?.icon)}</Center>
+          <Center>
+            <PageResultIcon page={pageResult} />
+          </Center>
 
-          <div style={{ flex: 1 }}>
-            <Text>{pageResult.title}</Text>
+          <div className={classes.resultContent}>
+            <Text className={classes.titleText} truncate="end">
+              {pageResult.title}
+            </Text>
 
-            {showSpace && pageResult.space && (
-              <Badge variant="light" size="xs" color="gray">
-                {pageResult.space.name}
-              </Badge>
-            )}
+            <SearchResultPath page={pageResult} showSpace={showSpace} />
 
             {pageResult?.highlight && (
               <Text
+                className={classes.highlight}
                 opacity={0.6}
                 size="xs"
                 dangerouslySetInnerHTML={{

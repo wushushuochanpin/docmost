@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { LicenseCheckService } from '../../../integrations/environment/license-check.service';
 import { UserSessionRepo } from '@docmost/db/repos/session/user-session.repo';
@@ -53,6 +54,7 @@ import {
   IAuditService,
 } from '../../../integrations/audit/audit.service';
 import { buildWorkspaceClientState } from '../workspace-capabilities';
+import { WsService } from '../../../ws/ws.service';
 
 @Injectable()
 export class WorkspaceService {
@@ -78,6 +80,7 @@ export class WorkspaceService {
     @InjectQueue(QueueName.AI_QUEUE) private aiQueue: Queue,
     @Inject(AUDIT_SERVICE) private readonly auditService: IAuditService,
     private userSessionRepo: UserSessionRepo,
+    @Optional() private wsService?: WsService,
   ) {}
 
   async findById(workspaceId: string) {
@@ -521,6 +524,20 @@ export class WorkspaceService {
         );
       }
 
+      if (typeof updateWorkspaceDto.collaborationEnabled !== 'undefined') {
+        const prev = settingsBefore?.collaboration?.enabled ?? true;
+        if (prev !== updateWorkspaceDto.collaborationEnabled) {
+          before.collaborationEnabled = prev;
+          after.collaborationEnabled = updateWorkspaceDto.collaborationEnabled;
+        }
+        await this.workspaceRepo.updateCollaborationSettings(
+          workspaceId,
+          'enabled',
+          updateWorkspaceDto.collaborationEnabled,
+          trx,
+        );
+      }
+
       if (typeof updateWorkspaceDto.allowMemberTemplates !== 'undefined') {
         const prev = settingsBefore?.templates?.allowMemberTemplates ?? false;
         if (prev !== updateWorkspaceDto.allowMemberTemplates) {
@@ -554,6 +571,7 @@ export class WorkspaceService {
       delete updateWorkspaceDto.generativeAi;
       delete updateWorkspaceDto.disablePublicSharing;
       delete updateWorkspaceDto.mcpEnabled;
+      delete updateWorkspaceDto.collaborationEnabled;
       delete updateWorkspaceDto.allowMemberTemplates;
       delete updateWorkspaceDto.aiChat;
 
@@ -604,6 +622,14 @@ export class WorkspaceService {
         resourceType: AuditResource.WORKSPACE,
         resourceId: workspaceId,
         changes: { before, after },
+      });
+    }
+
+    if (typeof after.collaborationEnabled === 'boolean') {
+      this.wsService?.emitToWorkspace(workspaceId, {
+        operation: 'workspaceCollaborationUpdated',
+        workspaceId,
+        enabled: after.collaborationEnabled,
       });
     }
 

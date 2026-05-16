@@ -18,6 +18,7 @@ services:
       APP_SECRET: "${APP_SECRET:-REPLACE_WITH_LONG_SECRET}"
       DATABASE_URL: "postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost?schema=public"
       REDIS_URL: "redis://redis:6379"
+      COLLAB_ENABLED: "${COLLAB_ENABLED:-true}"
       STORAGE_DRIVER: "${STORAGE_DRIVER:-s3}"
       BACKUP_ENABLED: "${BACKUP_ENABLED:-true}"
       BACKUP_S3_ENABLED: "${BACKUP_S3_ENABLED:-true}"

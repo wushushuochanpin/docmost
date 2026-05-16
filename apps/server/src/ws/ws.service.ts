@@ -54,7 +54,12 @@ export class WsService {
       return;
     }
 
-    await this.broadcastToAuthorizedUsers(room, client.data.userId, pageId, data);
+    await this.broadcastToAuthorizedUsers(
+      room,
+      client.data.userId,
+      pageId,
+      data,
+    );
   }
 
   async invalidateSpaceRestrictionCache(spaceId: string): Promise<void> {
@@ -90,6 +95,11 @@ export class WsService {
     if (userIds.length === 0) return;
     const rooms = userIds.map((id) => getUserRoomName(id));
     this.server.to(rooms).emit('message', data);
+  }
+
+  emitToWorkspace(workspaceId: string, data: any): void {
+    if (!this.server) return;
+    this.server.to(`workspace-${workspaceId}`).emit('message', data);
   }
 
   async emitToSpaceExceptUsers(

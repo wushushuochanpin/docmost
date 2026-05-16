@@ -1,7 +1,7 @@
 # 同页面同文件多端编辑互踢 PRD
 
 **成文日期**：2026-05-14 18:53:37 UTC+8  
-**最后修订**：2026-05-15 11:19:46 UTC+8
+**最后修订**：2026-05-15 11:26:27 UTC+8
 
 本文档用于指导“同页面、同文件、多端互踢”能力开工设计与验收。阅读时当前系统实现可能已发生变化，请以实际代码与产品行为为准，谨慎参考。
 
@@ -16,7 +16,7 @@
 | 档位 | small，单文件开工 PRD；内容按 medium 详细度展开 |
 | 产物模式 | 单文件 PRD，避免中途切换目录包影响开工读取 |
 | 落盘路径 | `docs/prd/20260514_01_editor-session-takeover.md` |
-| 需求状态 | ready_for_implementation_after_full_viewport_overlay_revision |
+| 需求状态 | implemented_in_test_full_viewport_overlay |
 | 改造策略 | migrate，增量接入编辑会话，不替换现有 Yjs 协同 |
 | 主要风险 | 内容覆盖、旧端离线后重放保存、Ydoc/JSON 状态不一致、误伤多人协同 |
 
@@ -1012,6 +1012,7 @@ prd_struct:
 
 | 日期时间 | 说明 |
 |---|---|
+| 2026-05-15 11:26:27 UTC+8 | 落地记录：全应用遮罩实现为挂载到 `document.body` 的 viewport fixed portal，测试环境重建部署后验证健康接口、端口暴露和启动日志正常。 |
 | 2026-05-15 11:19:46 UTC+8 | 遮罩修订：明确 `EditorSessionOverlay` 必须覆盖整个网页应用 viewport，包括顶部导航、搜索、用户菜单、左侧空间树、页面工具栏和正文区域；浏览器书签栏/地址栏不属于覆盖范围。 |
 | 2026-05-15 10:13:45 UTC+8 | 交互修订：打开同页不再自动互踢，`acquire` 返回 `blocked_by_other`；新增显式 `takeover` 接口；前端改为页面级单遮罩，点击“继续在这里编辑”后才接管，点击“只读查看”保持只读。 |
 | 2026-05-14 19:02:22 UTC+8 | 审计修订：补齐二阶段接管协议、Yjs 入口阻断、页面所有写字段前置校验、Socket client 注册、collab token sessionId、file canonical id、IndexedDB 恢复草稿、strict 验收口径与机器摘要一致性。 |

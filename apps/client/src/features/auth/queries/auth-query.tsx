@@ -15,12 +15,16 @@ export function useVerifyUserTokenQuery(
   });
 }
 
-export function useCollabToken(): UseQueryResult<ICollabToken, Error> {
+export function useCollabToken(
+  options: { enabled?: boolean } = {},
+): UseQueryResult<ICollabToken, Error> {
   const editorSessionEnabled = isEditorSessionEnabled();
+  const { enabled = true } = options;
 
   return useQuery({
     queryKey: ["collab-token"],
     queryFn: () => getCollabToken(),
+    enabled,
     staleTime: editorSessionEnabled ? 0 : 20 * 60 * 60 * 1000, //20hrs
     //refetchInterval: 12 * 60 * 60 * 1000, // 12hrs
     //refetchIntervalInBackground: true,

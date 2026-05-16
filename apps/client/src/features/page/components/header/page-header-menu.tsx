@@ -1,4 +1,4 @@
-import { ActionIcon, Group, Menu, Text, Tooltip } from "@mantine/core";
+import { ActionIcon, Group, Loader, Menu, Text, Tooltip } from "@mantine/core";
 import {
   IconArrowRight,
   IconArrowsHorizontal,
@@ -12,28 +12,29 @@ import {
   IconMessage,
   IconPrinter,
   IconTrash,
+  IconWifi,
   IconWifiOff,
   IconWorld,
 } from "@tabler/icons-react";
-import React, { Suspense, useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import useToggleAside from "@/hooks/use-toggle-aside.tsx";
 import { useAtom, useAtomValue } from "jotai";
 import { historyAtoms } from "@/features/page-history/atoms/history-atoms.ts";
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useClipboard } from "@/hooks/use-clipboard";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import { notifications } from "@mantine/notifications";
 import { getAppUrl } from "@/lib/config.ts";
+import APP_ROUTE from "@/lib/app-route.ts";
 import { treeApiAtom } from "@/features/page/tree/atoms/tree-api-atom.ts";
 import { useDeletePageModal } from "@/features/page/hooks/use-delete-page-modal.tsx";
 import { PageWidthToggle } from "@/features/user/components/page-width-pref.tsx";
 import { Trans, useTranslation } from "react-i18next";
 import {
   pageEditorAtom,
-  pageEditorRuntimeModeAtom,
+  pageEditorCollaborationStatusAtom,
   readOnlyEditorAtom,
-  yjsConnectionStatusAtom,
 } from "@/features/editor/atoms/editor-atoms.ts";
 import { formattedDate } from "@/lib/time.ts";
 import { PageStateSegmentedControl } from "@/features/user/components/page-state-pref.tsx";
@@ -91,7 +92,7 @@ export default function PageHeaderMenu({
   return (
     <Group wrap="nowrap" gap={14}>
       <HeaderMeta page={page} pageId={pageId} />
-      <ConnectionWarning />
+      <CollaborationStatusIndicator readOnly={readOnly} />
 
       {!readOnly && <PageStateSegmentedControl size="xs" />}
       <EditorFontSizeSegmentedControl size="xs" />
@@ -211,8 +212,8 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
     getWordCountFromText(currentPage.textContent);
   const canCopyAsMarkdown = Boolean(
     activeEditor ||
-      (currentPage.rendered?.deliveryMode === "full" &&
-        canUseStaticRenderedHtml(currentPage.rendered)),
+    (currentPage.rendered?.deliveryMode === "full" &&
+      canUseStaticRenderedHtml(currentPage.rendered)),
   );
 
   const toggleSharePanel = () => {
@@ -576,78 +577,64 @@ function HeaderMeta({ page, pageId }: { page: IPage; pageId?: string }) {
   );
 }
 
-function ConnectionWarning() {
+function CollaborationStatusIndicator({ readOnly }: { readOnly?: boolean }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const pageEditor = useAtomValue(pageEditorAtom);
-  const runtimeMode = useAtomValue(pageEditorRuntimeModeAtom);
-  const yjsConnectionStatus = useAtomValue(yjsConnectionStatusAtom);
-  const [showWarning, setShowWarning] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const collaborationStatus = useAtomValue(pageEditorCollaborationStatusAtom);
 
-  useEffect(() => {
-    if (runtimeMode === "local") {
-      setShowWarning(false);
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      return;
-    }
+  if (readOnly || pageEditor?.isDestroyed) return null;
 
-    const isDisconnected = ["disconnected", "connecting"].includes(
-      yjsConnectionStatus,
-    );
+  const statusConfig = {
+    connected: {
+      label: t("Live collaboration is connected"),
+      color: "teal",
+      icon: <IconWifi size={18} stroke={1.75} />,
+    },
+    connecting: {
+      label: t("Connecting live collaboration"),
+      color: "blue",
+      icon: <Loader size={14} />,
+    },
+    reconnecting: {
+      label: t("Live collaboration connection lost. Retrying..."),
+      color: "red",
+      icon: <IconWifiOff size={18} stroke={1.75} />,
+    },
+    local: {
+      label: t("Collaboration is unavailable. Saving changes locally."),
+      color: "yellow.7",
+      icon: <IconWifiOff size={18} stroke={1.75} />,
+    },
+    disabled: {
+      label: t("Live collaboration is off. Changes are saved locally."),
+      color: "gray",
+      icon: <IconWifiOff size={18} stroke={1.75} />,
+    },
+    error: {
+      label: t("Live collaboration is unavailable"),
+      color: "red",
+      icon: <IconWifiOff size={18} stroke={1.75} />,
+    },
+  }[collaborationStatus];
 
-    if (isDisconnected) {
-      if (!timeoutRef.current) {
-        timeoutRef.current = setTimeout(() => setShowWarning(true), 5000);
-      }
-    } else {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      setShowWarning(false);
-    }
-  }, [runtimeMode, yjsConnectionStatus]);
-
-  // Cleanup only on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  if (!pageEditor || pageEditor.isDestroyed) return null;
-
-  if (runtimeMode === "local") {
-    return (
-      <Tooltip
-        label={t(
-          "Live collaboration is unavailable. Editing continues in fallback mode and changes are saved to the server.",
-        )}
-        openDelay={250}
-        withArrow
-      >
-        <ActionIcon variant="subtle" c="yellow.7">
-          <IconWifiOff size={18} stroke={1.75} />
-        </ActionIcon>
-      </Tooltip>
-    );
+  if (!statusConfig) {
+    return null;
   }
 
-  if (!showWarning) return null;
+  const tooltipLabel = `${statusConfig.label}. ${t(
+    "Click to open Workspace settings.",
+  )}`;
 
   return (
-    <Tooltip
-      label={t("Real-time editor connection lost. Retrying...")}
-      openDelay={250}
-      withArrow
-    >
-      <ActionIcon variant="subtle" c="red">
-        <IconWifiOff size={18} stroke={1.75} />
+    <Tooltip label={tooltipLabel} openDelay={250} withArrow>
+      <ActionIcon
+        variant="subtle"
+        c={statusConfig.color}
+        aria-label={tooltipLabel}
+        onClick={() => navigate(APP_ROUTE.SETTINGS.WORKSPACE.GENERAL)}
+      >
+        {statusConfig.icon}
       </ActionIcon>
     </Tooltip>
   );

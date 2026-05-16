@@ -23,3 +23,33 @@
         color: var(--ui-text-primary);
     }
 }
+
+.brandLogoLink {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: rem(92px);
+    height: rem(28px);
+    overflow: hidden;
+    flex: 0 0 auto;
+    text-decoration: none;
+}
+
+.brandLogo {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+}
+
+[data-mantine-color-scheme="dark"] .brandLogo {
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.65)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
+}
+
+@media (max-width: $mantine-breakpoint-xs) {
+    .brandLogoLink {
+        width: rem(84px);
+        height: rem(24px);
+    }
+}

@@ -9,7 +9,6 @@ import { SOCKET_URL } from "@/features/websocket/types";
 import { useQuerySubscription } from "@/features/websocket/use-query-subscription.ts";
 import { useTreeSocket } from "@/features/websocket/use-tree-socket.ts";
 import { useNotificationSocket } from "@/features/notification/hooks/use-notification-socket.ts";
-import { useCollabToken } from "@/features/auth/queries/auth-query.tsx";
 import { Error404 } from "@/components/ui/error-404.tsx";
 import { Box, Center, Loader, Text } from "@mantine/core";
 import APP_ROUTE from "@/lib/app-route.ts";
@@ -25,8 +24,6 @@ export function UserProvider({ children }: React.PropsWithChildren) {
   const { i18n } = useTranslation();
   const [, setSocket] = useAtom(socketAtom);
   const location = useLocation();
-  // fetch collab token on load
-  const { data: collab } = useCollabToken();
 
   useEffect(() => {
     startEditorSessionClientIdResponder();

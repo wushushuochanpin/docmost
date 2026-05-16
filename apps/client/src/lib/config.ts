@@ -59,6 +59,10 @@ export function getCollaborationUrl(): string {
   return collabUrl.toString();
 }
 
+export function isCollaborationEnabled(): boolean {
+  return castToBoolean(getConfigValue("COLLAB_ENABLED", "true"));
+}
+
 export function isEditorSessionEnabled(): boolean {
   return castToBoolean(getConfigValue("EDITOR_SESSION_ENABLED", "false"));
 }

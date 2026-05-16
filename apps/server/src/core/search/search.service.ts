@@ -5,7 +5,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { SearchDTO, SearchSuggestionDTO } from './dto/search.dto';
-import { SearchResponseDto } from './dto/search-response.dto';
+import {
+  SearchResponseDto,
+  SearchResultPathItemDto,
+} from './dto/search-response.dto';
 import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB } from '@docmost/db/types/kysely.types';
 import { sql } from 'kysely';
@@ -40,65 +43,100 @@ export class SearchService {
       workspaceId: string;
     },
   ): Promise<{ items: SearchResponseDto[] }> {
-    const { query } = searchParams;
+    const query = searchParams.query.trim();
 
     if (query.length < 1) {
       return { items: [] };
     }
-    const searchQuery = tsquery(query.trim() + '*');
+    const searchQuery = tsquery(query + '*');
+    const likeQuery = `%${query}%`;
+    const shouldUseContentSubstringSearch =
+      /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(
+        query,
+      );
 
     let queryResults = this.db
       .selectFrom('pages')
+      .leftJoin('pageNodeMeta as pnm', 'pnm.pageId', 'pages.id')
       .select([
-        'id',
-        'slugId',
-        'title',
-        'icon',
-        'parentPageId',
-        'creatorId',
-        'createdAt',
-        'updatedAt',
-        sql<number>`ts_rank(tsv, to_tsquery('english', f_unaccent(${searchQuery})))`.as(
+        'pages.id as id',
+        'pages.slugId as slugId',
+        'pages.title as title',
+        'pages.icon as icon',
+        'pages.parentPageId as parentPageId',
+        'pages.creatorId as creatorId',
+        'pages.createdAt as createdAt',
+        'pages.updatedAt as updatedAt',
+        sql<'file' | 'folder'>`COALESCE("pnm"."node_type", 'file')`.as(
+          'nodeType',
+        ),
+        this.pagePathExpression(),
+        sql<number>`ts_rank(pages.tsv, to_tsquery('english', f_unaccent(${searchQuery})))`.as(
           'rank',
         ),
-        sql<string>`ts_headline('english', text_content, to_tsquery('english', f_unaccent(${searchQuery})),'MinWords=9, MaxWords=10, MaxFragments=3')`.as(
+        sql<string>`ts_headline('english', coalesce(pages.text_content, ''), to_tsquery('english', f_unaccent(${searchQuery})),'MinWords=9, MaxWords=10, MaxFragments=3')`.as(
           'highlight',
         ),
       ])
-      .where(
-        'tsv',
-        '@@',
-        sql<string>`to_tsquery('english', f_unaccent(${searchQuery}))`,
-      )
+      .where((eb) => {
+        const predicates = [
+          eb(
+            'pages.tsv',
+            '@@',
+            sql<string>`to_tsquery('english', f_unaccent(${searchQuery}))`,
+          ),
+          eb(
+            sql`LOWER(f_unaccent(pages.title))`,
+            'like',
+            sql`LOWER(f_unaccent(${likeQuery}))`,
+          ),
+        ];
+
+        if (shouldUseContentSubstringSearch) {
+          predicates.push(
+            eb(
+              sql`LOWER(f_unaccent(coalesce(pages.text_content, '')))`,
+              'like',
+              sql`LOWER(f_unaccent(${likeQuery}))`,
+            ),
+          );
+        }
+
+        return eb.or(predicates);
+      })
       .$if(Boolean(searchParams.creatorId), (qb) =>
-        qb.where('creatorId', '=', searchParams.creatorId),
+        qb.where('pages.creatorId', '=', searchParams.creatorId),
       )
-      .where('deletedAt', 'is', null)
+      .where('pages.deletedAt', 'is', null)
+      .orderBy(
+        sql<number>`CASE WHEN LOWER(f_unaccent(pages.title)) LIKE LOWER(f_unaccent(${likeQuery})) THEN 1 ELSE 0 END`,
+        'desc',
+      )
       .orderBy('rank', 'desc')
       .limit(searchParams.limit || 25)
       .offset(searchParams.offset || 0);
 
     if (!searchParams.shareId) {
-      queryResults = queryResults.select((eb) => this.pageRepo.withSpace(eb));
+      queryResults = queryResults.select(this.pageSpaceExpression());
     }
 
     if (searchParams.spaceId) {
       // search by spaceId
       queryResults = queryResults
-        .where('spaceId', '=', searchParams.spaceId)
-        .where('workspaceId', '=', opts.workspaceId);
+        .where('pages.spaceId', '=', searchParams.spaceId)
+        .where('pages.workspaceId', '=', opts.workspaceId);
     } else if (opts.userId && !searchParams.spaceId) {
       // only search spaces the user is a member of
       queryResults = queryResults
         .where(
-          'spaceId',
+          'pages.spaceId',
           'in',
           this.spaceMemberRepo.getUserSpaceIdsQueryByWorkspace(
             opts.userId,
             opts.workspaceId,
           ),
         )
-        .where('workspaceId', '=', opts.workspaceId);
+        .where('pages.workspaceId', '=', opts.workspaceId);
     } else if (searchParams.shareId && !searchParams.spaceId && !opts.userId) {
       // search in shares
       const shareId = searchParams.shareId;
@@ -144,8 +182,8 @@ export class SearchService {
 
       if (pageIdsToSearch.length > 0) {
         queryResults = queryResults
-          .where('id', 'in', pageIdsToSearch)
-          .where('workspaceId', '=', opts.workspaceId);
+          .where('pages.id', 'in', pageIdsToSearch)
+          .where('pages.workspaceId', '=', opts.workspaceId);
       } else {
         return { items: [] };
       }
@@ -178,6 +216,75 @@ export class SearchService {
     });
 
     return { items: searchResults };
+  }
+
+  private pagePathExpression() {
+    return sql<SearchResultPathItemDto[]>`
+      COALESCE(
+        (
+          WITH RECURSIVE ancestors AS (
+            SELECT
+              ancestor_pages.id,
+              ancestor_pages.slug_id,
+              ancestor_pages.title,
+              ancestor_pages.icon,
+              ancestor_pages.parent_page_id,
+              COALESCE(ancestor_meta.node_type, 'file') AS node_type,
+              0 AS depth
+            FROM pages ancestor_pages
+            LEFT JOIN page_node_meta ancestor_meta
+              ON ancestor_meta.page_id = ancestor_pages.id
+            WHERE ancestor_pages.id = pages.parent_page_id
+              AND ancestor_pages.workspace_id = pages.workspace_id
+              AND ancestor_pages.deleted_at IS NULL
+
+            UNION ALL
+
+            SELECT
+              parent_pages.id,
+              parent_pages.slug_id,
+              parent_pages.title,
+              parent_pages.icon,
+              parent_pages.parent_page_id,
+              COALESCE(parent_meta.node_type, 'file') AS node_type,
+              ancestors.depth + 1 AS depth
+            FROM pages parent_pages
+            LEFT JOIN page_node_meta parent_meta
+              ON parent_meta.page_id = parent_pages.id
+            INNER JOIN ancestors
+              ON ancestors.parent_page_id = parent_pages.id
+            WHERE parent_pages.workspace_id = pages.workspace_id
+              AND parent_pages.deleted_at IS NULL
+          )
+          SELECT jsonb_agg(
+            jsonb_build_object(
+              'id', id,
+              'slugId', slug_id,
+              'title', title,
+              'icon', icon,
+              'nodeType', node_type
+            )
+            ORDER BY depth DESC
+          )
+          FROM ancestors
+        ),
+        '[]'::jsonb
+      )
+    `.as('path');
+  }
+
+  private pageSpaceExpression() {
+    return sql`
+      (
+        SELECT jsonb_build_object(
+          'id', spaces.id,
+          'name', spaces.name,
+          'slug', spaces.slug
+        )
+        FROM spaces
+        WHERE spaces.id = pages.space_id
+      )
+    `.as('space');
   }
 
   async searchSuggestions(

@@ -15,6 +15,7 @@ services:
       DATABASE_URL: 'postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost?schema=public'
       REDIS_URL: 'redis://redis:6379'
       BACKUP_LOCAL_PATH: '/app/data/storage/backups'
+      COLLAB_ENABLED: '${COLLAB_ENABLED:-true}'
       EDITOR_SESSION_ENABLED: '${EDITOR_SESSION_ENABLED:-true}'
       EDITOR_SESSION_STRICT_WRITE: '${EDITOR_SESSION_STRICT_WRITE:-true}'
       EDITOR_SESSION_COLLAB_VALIDATE: '${EDITOR_SESSION_COLLAB_VALIDATE:-true}'

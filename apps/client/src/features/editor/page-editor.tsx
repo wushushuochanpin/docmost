@@ -31,6 +31,7 @@ import useCollaborationUrl from "@/features/editor/hooks/use-collaboration-url";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom";
 import {
   pageEditorAtom,
+  pageEditorCollaborationStatusAtom,
   pageEditorEditSessionAtom,
   pageEditorRuntimeModeAtom,
   pageEditorSessionStatusAtom,
@@ -74,7 +75,15 @@ import { EditorAiMenu } from "@/ee/ai/components/editor/ai-menu/ai-menu";
 import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 import ColumnsMenu from "@/features/editor/components/columns/columns-menu.tsx";
 import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
-import { Button, Group, Modal, Stack, Text } from "@mantine/core";
+import {
+  Button,
+  CloseButton,
+  Group,
+  Paper,
+  Portal,
+  Stack,
+  Text,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { updatePage } from "@/features/page/services/page-service";
 import { updatePageData } from "@/features/page/queries/page-query";
@@ -82,12 +91,13 @@ import { markEditorBootstrapStage } from "@/features/editor/lib/editor-bootstrap
 import { useEditorSessionLease } from "@/features/editor-session/use-editor-session-lease";
 import { encodeEditSessionForUrl } from "@/features/editor-session/client-id";
 import { saveEditorRecoveryDraft } from "@/features/editor-session/draft-store";
-import { isEditorSessionEnabled } from "@/lib/config";
+import { isCollaborationEnabled, isEditorSessionEnabled } from "@/lib/config";
 import type {
   EditSession,
   EditorSessionStatus,
   EditorSessionWriteIntent,
 } from "@/features/editor-session/types";
+import type { PageEditorCollaborationDisabledReason } from "@/features/editor/atoms/editor-atoms";
 
 type RuntimeMode = "preview" | "local" | "collab";
 
@@ -143,36 +153,71 @@ function EditorSessionOverlay({
       ? "当前标签页已停止编辑。继续在这里编辑会停止另一端编辑，并重新接管。"
       : "当前页面已暂停编辑。继续在这里编辑会停止另一端编辑，并接管最新内容。";
 
+  if (!opened) {
+    return null;
+  }
+
   return (
-    <Modal
-      opened={opened}
-      onClose={onReadonly}
-      centered
-      closeOnClickOutside={false}
-      closeOnEscape={!isPending}
-      withCloseButton={!isPending}
-      title={title}
-    >
-      <Stack gap="md">
-        <Text size="sm" c="dimmed">
-          {description}
-        </Text>
-        <Group justify="flex-end">
-          {!isPending && (
-            <Button variant="default" onClick={onReadonly}>
-              只读查看
-            </Button>
-          )}
-          <Button
-            onClick={onContinueHere}
-            loading={isContinuing || isPending}
-            disabled={isPending}
+    <Portal>
+      <div
+        role="presentation"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 10000,
+          width: "100vw",
+          minHeight: "100vh",
+          overflow: "auto",
+          display: "grid",
+          placeItems: "center",
+          padding: 16,
+          backgroundColor: "rgba(0, 0, 0, 0.52)",
+        }}
+      >
+        <Paper
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="editor-session-overlay-title"
+          radius="md"
+          shadow="xl"
+          p="lg"
+          style={{ width: "min(440px, calc(100vw - 32px))" }}
+        >
+          <Group
+            justify="space-between"
+            align="flex-start"
+            mb="sm"
+            wrap="nowrap"
           >
-            继续在这里编辑
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
+            <Text id="editor-session-overlay-title" fw={700} size="md">
+              {title}
+            </Text>
+            {!isPending && (
+              <CloseButton onClick={onReadonly} aria-label="只读查看" />
+            )}
+          </Group>
+          <Stack gap="md">
+            <Text size="sm" c="dimmed">
+              {description}
+            </Text>
+            <Group justify="flex-end">
+              {!isPending && (
+                <Button variant="default" onClick={onReadonly}>
+                  只读查看
+                </Button>
+              )}
+              <Button
+                onClick={onContinueHere}
+                loading={isContinuing || isPending}
+                disabled={isPending}
+              >
+                继续在这里编辑
+              </Button>
+            </Group>
+          </Stack>
+        </Paper>
+      </div>
+    </Portal>
   );
 }
 
@@ -629,8 +674,29 @@ export default function PageEditor({
     yjsConnectionStatusAtom,
   );
   const [, setRuntimeModeAtom] = useAtom(pageEditorRuntimeModeAtom);
+  const [, setCollaborationStatusAtom] = useAtom(
+    pageEditorCollaborationStatusAtom,
+  );
   const [, setEditorSessionStatusAtom] = useAtom(pageEditorSessionStatusAtom);
-  const { data: collabQuery, refetch: refetchCollabToken } = useCollabToken();
+  const instanceCollaborationEnabled = isCollaborationEnabled();
+  const workspaceCollaborationEnabled =
+    currentUser?.workspace?.settings?.collaboration?.enabled !== false;
+  const configuredCollaborationDisabledReason: PageEditorCollaborationDisabledReason =
+    !instanceCollaborationEnabled
+      ? "instance"
+      : !workspaceCollaborationEnabled
+        ? "workspace"
+        : null;
+  const canRequestCollabToken = !configuredCollaborationDisabledReason;
+  const { data: collabQuery, refetch: refetchCollabToken } = useCollabToken({
+    enabled: canRequestCollabToken,
+  });
+  const collaborationDisabledReason: PageEditorCollaborationDisabledReason =
+    configuredCollaborationDisabledReason ??
+    (collabQuery?.enabled === false
+      ? (collabQuery.disabledReason ?? "workspace")
+      : null);
+  const collaborationEnabled = !collaborationDisabledReason;
   const { isIdle, resetIdle } = useIdle(FIVE_MINUTES, { initialState: false });
   const documentState = useDocumentVisibility();
   const { pageSlug } = useParams();
@@ -658,6 +724,8 @@ export default function PageEditor({
     ? pageLease.editSession
     : undefined;
   const canStartCollabProvider =
+    collaborationEnabled &&
+    collabQuery?.enabled !== false &&
     Boolean(collabQuery?.token) &&
     (!shouldAcquirePageLease ||
       (pageLease.status === "active" && Boolean(collabEditSession)));
@@ -781,8 +849,14 @@ export default function PageEditor({
       store.set(readOnlyEditorAtom as any, null);
       setYjsConnectionStatus("");
       setRuntimeModeAtom("preview");
+      setCollaborationStatusAtom("connecting");
     };
-  }, [setRuntimeModeAtom, setYjsConnectionStatus, store]);
+  }, [
+    setCollaborationStatusAtom,
+    setRuntimeModeAtom,
+    setYjsConnectionStatus,
+    store,
+  ]);
 
   const providersRef = useRef<{
     local: IndexeddbPersistence;
@@ -826,7 +900,9 @@ export default function PageEditor({
             const payload = jwtDecode<{ exp?: number }>(currentToken);
             const now = Date.now().valueOf() / 1000;
             shouldRefreshToken =
-              editorSessionFeatureEnabled || !payload?.exp || now >= payload.exp;
+              editorSessionFeatureEnabled ||
+              !payload?.exp ||
+              now >= payload.exp;
           } catch {
             shouldRefreshToken = true;
           }
@@ -835,7 +911,10 @@ export default function PageEditor({
         if (!shouldRefreshToken) return;
 
         refetchCollabToken().then((result) => {
-          if (!result.data?.token) return;
+          if (!result.data?.token) {
+            socket.disconnect();
+            return;
+          }
 
           const remoteProvider = providersRef.current?.remote;
           if (!remoteProvider) return;
@@ -1006,6 +1085,7 @@ export default function PageEditor({
 
   const isSynced = isLocalSynced && isRemoteSynced;
   const collabReady =
+    collaborationEnabled &&
     Boolean(editor) &&
     yjsConnectionStatus === WebSocketStatus.Connected &&
     isSynced &&
@@ -1018,6 +1098,10 @@ export default function PageEditor({
       (runtimeMode === "local" && pageLease.status === "takeover_requested"));
 
   useEffect(() => {
+    if (!collaborationEnabled) {
+      return;
+    }
+
     const timeout = setTimeout(() => {
       if (yjsConnectionStatus === WebSocketStatus.Connecting || !isSynced) {
         setYjsConnectionStatus(WebSocketStatus.Disconnected);
@@ -1025,7 +1109,12 @@ export default function PageEditor({
     }, 7500);
 
     return () => clearTimeout(timeout);
-  }, [isSynced, setYjsConnectionStatus, yjsConnectionStatus]);
+  }, [
+    collaborationEnabled,
+    isSynced,
+    setYjsConnectionStatus,
+    yjsConnectionStatus,
+  ]);
 
   useEffect(() => {
     if (!editor) {
@@ -1110,6 +1199,40 @@ export default function PageEditor({
     setRuntimeModeAtom(runtimeMode);
   }, [runtimeMode, setRuntimeModeAtom]);
 
+  useEffect(() => {
+    if (collaborationDisabledReason) {
+      setCollaborationStatusAtom("disabled");
+      return;
+    }
+
+    if (runtimeMode === "local") {
+      setCollaborationStatusAtom("local");
+      return;
+    }
+
+    if (collabReady) {
+      setCollaborationStatusAtom("connected");
+      return;
+    }
+
+    if (
+      providersReady &&
+      yjsConnectionStatus === WebSocketStatus.Disconnected
+    ) {
+      setCollaborationStatusAtom("reconnecting");
+      return;
+    }
+
+    setCollaborationStatusAtom("connecting");
+  }, [
+    collabReady,
+    collaborationDisabledReason,
+    providersReady,
+    runtimeMode,
+    setCollaborationStatusAtom,
+    yjsConnectionStatus,
+  ]);
+
   const overlayStatus: EditorSessionStatus | null = [
     "blocked_by_other",
     "pending_takeover",
@@ -1121,8 +1244,8 @@ export default function PageEditor({
   const overlayKey = `${pageId}:${pageLease.status}:${pageLease.takeoverId ?? ""}:${pageLease.activeClientId ?? ""}:${pageLease.pendingClientId ?? ""}`;
   const showEditorSessionOverlay = Boolean(
     shouldAcquirePageLease &&
-      overlayStatus &&
-      dismissedOverlayKey !== overlayKey,
+    overlayStatus &&
+    dismissedOverlayKey !== overlayKey,
   );
   const handleContinueHere = useCallback(() => {
     setDismissedOverlayKey(null);
