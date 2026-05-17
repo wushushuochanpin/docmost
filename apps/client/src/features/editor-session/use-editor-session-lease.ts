@@ -6,6 +6,7 @@ import {
   acquireEditorSession,
   heartbeatEditorSession,
   releaseEditorSession,
+  releaseEditorSessionOnUnload,
   takeoverEditorSession,
 } from "./services";
 import {
@@ -150,6 +151,21 @@ export function useEditorSessionLease(opts: {
   useEffect(() => {
     if (!enabled || !opts.resourceId) return;
 
+    const releaseOnUnload = () => {
+      const editSession = editSessionRef.current;
+      if (!editSession) return;
+
+      releaseEditorSessionOnUnload({
+        resourceType: opts.resourceType,
+        resourceId: opts.resourceId!,
+        editSession,
+        reason: "unload",
+      });
+    };
+
+    window.addEventListener("pagehide", releaseOnUnload);
+    window.addEventListener("beforeunload", releaseOnUnload);
+
     const interval = window.setInterval(() => {
       const editSession = editSessionRef.current;
       if (!editSession) return;
@@ -166,7 +182,11 @@ export function useEditorSessionLease(opts: {
         });
     }, 5000);
 
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("pagehide", releaseOnUnload);
+      window.removeEventListener("beforeunload", releaseOnUnload);
+    };
   }, [applyResponse, enabled, opts.resourceId, opts.resourceType]);
 
   useEffect(() => {

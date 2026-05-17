@@ -1,6 +1,7 @@
 import {
   MessageBody,
   OnGatewayConnection,
+  OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
@@ -28,7 +29,11 @@ import type { EditorSessionEventPayload } from '../core/editor-session/editor-se
   transports: ['websocket'],
 })
 export class WsGateway
-  implements OnGatewayConnection, OnGatewayInit, OnModuleDestroy
+  implements
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnGatewayInit,
+    OnModuleDestroy
 {
   @WebSocketServer()
   server: Server;
@@ -81,6 +86,31 @@ export class WsGateway
     }
   }
 
+  async handleDisconnect(client: Socket): Promise<void> {
+    const workspaceId = client.data?.workspaceId as string | undefined;
+    const userId = client.data?.userId as string | undefined;
+    const clientIds = Array.isArray(client.data?.editorSessionClientIds)
+      ? (client.data.editorSessionClientIds as string[])
+      : [];
+
+    if (!workspaceId || !userId || clientIds.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      clientIds.map((clientId) =>
+        this.editorSessionService
+          .unregisterClientSocket({
+            workspaceId,
+            userId,
+            clientId,
+            socketId: client.id,
+          })
+          .catch(() => undefined),
+      ),
+    );
+  }
+
   @SubscribeMessage('message')
   async handleMessage(client: Socket, data: any): Promise<void> {
     const workspaceId = client.data?.workspaceId as string | undefined;
@@ -108,6 +138,14 @@ export class WsGateway
         clientId,
         socketId: client.id,
       });
+      const existingClientIds = Array.isArray(
+        client.data?.editorSessionClientIds,
+      )
+        ? (client.data.editorSessionClientIds as string[])
+        : [];
+      client.data.editorSessionClientIds = Array.from(
+        new Set([...existingClientIds, clientId]),
+      );
       return;
     }
 

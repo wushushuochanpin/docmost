@@ -53,3 +53,27 @@ export async function releaseEditorSession(data: {
   );
   return req.data;
 }
+
+export function releaseEditorSessionOnUnload(data: {
+  resourceType: EditorSessionResourceType;
+  resourceId: string;
+  editSession: EditSession;
+  reason?: "unload" | "takeover_ack" | "manual";
+}) {
+  const payload = JSON.stringify(data);
+
+  if (navigator.sendBeacon) {
+    const body = new Blob([payload], { type: "application/json" });
+    if (navigator.sendBeacon("/api/editor-sessions/release", body)) {
+      return;
+    }
+  }
+
+  void fetch("/api/editor-sessions/release", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: payload,
+    keepalive: true,
+  }).catch(() => undefined);
+}

@@ -1,11 +1,9 @@
 {
   "files.watcherExclude": {
-    "**/.git/objects/**": true,
-    "**/.git/subtree-cache/**": true,
+    "**/.git/**": true,
     "**/node_modules/**": true,
     "**/.nx/**": true,
     "**/.pnpm-store/**": true,
-    "**/.git/**": true,
     "**/.turbo/**": true,
     "**/.cache/**": true,
     "**/.next/**": true,
@@ -16,10 +14,10 @@
     "**/tmp/**": true
   },
   "search.exclude": {
+    "**/.git": true,
     "**/node_modules": true,
     "**/.nx": true,
     "**/.pnpm-store": true,
-    "**/.git": true,
     "**/.turbo": true,
     "**/.cache": true,
     "**/.next": true,

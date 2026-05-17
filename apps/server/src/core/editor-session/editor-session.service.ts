@@ -552,6 +552,26 @@ export class EditorSessionService {
     );
   }
 
+  async unregisterClientSocket(opts: {
+    workspaceId: string;
+    userId: string;
+    clientId: string;
+    socketId: string;
+  }) {
+    const key = this.socketKey(opts.workspaceId, opts.userId, opts.clientId);
+    const raw = await this.redis.get(key);
+    if (!raw) return;
+
+    try {
+      const registration = JSON.parse(raw) as EditorSessionSocketRegistration;
+      if (registration.socketId === opts.socketId) {
+        await this.redis.del(key);
+      }
+    } catch {
+      await this.redis.del(key);
+    }
+  }
+
   async validatePageWrite(opts: {
     workspaceId: string;
     userId: string;

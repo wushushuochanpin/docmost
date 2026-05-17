@@ -1,0 +1,4 @@
+# dev-proxy remote lean mode
+# Keep Cursor Remote-SSH responsive by disabling full codebase indexing on this server.
+# Remove this file or restore the backup if you want Cursor @Codebase indexing again.
+*
