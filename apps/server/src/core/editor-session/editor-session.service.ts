@@ -482,14 +482,17 @@ export class EditorSessionService {
             opts,
             opts.editSession,
           ),
-          events: [
-            this.realtimeEvent(EDITOR_SESSION_REVOKED_EVENT, {
-              state,
-              lease: state.active,
-              status: 'revoked',
-              writable: false,
-            }),
-          ],
+          events:
+            opts.reason === 'unload'
+              ? []
+              : [
+                  this.realtimeEvent(EDITOR_SESSION_REVOKED_EVENT, {
+                    state,
+                    lease: state.active,
+                    status: 'revoked',
+                    writable: false,
+                  }),
+                ],
         };
       }
 

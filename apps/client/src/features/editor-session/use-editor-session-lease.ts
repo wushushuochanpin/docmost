@@ -1,4 +1,5 @@
 import { useAtom } from "jotai";
+import { isAxiosError } from "axios";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isEditorSessionEnabled } from "@/lib/config";
 import { socketAtom } from "@/features/websocket/atoms/socket-atom";
@@ -36,6 +37,28 @@ const DISABLED_STATE: LeaseState = {
   writable: true,
 };
 
+function isSameEditSession(
+  left?: EditSession | null,
+  right?: EditSession | null,
+) {
+  return Boolean(
+    left &&
+      right &&
+      left.sessionId === right.sessionId &&
+      left.clientId === right.clientId &&
+      left.leaseId === right.leaseId &&
+      left.token === right.token,
+  );
+}
+
+function isEditorSessionConflict(error: unknown) {
+  return (
+    isAxiosError(error) &&
+    error.response?.status === 409 &&
+    error.response?.data?.code === "EDITOR_SESSION_CONFLICT"
+  );
+}
+
 export function useEditorSessionLease(opts: {
   enabled: boolean;
   resourceType: EditorSessionResourceType;
@@ -45,6 +68,7 @@ export function useEditorSessionLease(opts: {
   const featureEnabled = isEditorSessionEnabled();
   const [state, setState] = useState<LeaseState>(DISABLED_STATE);
   const editSessionRef = useRef<EditSession | undefined>(undefined);
+  const heartbeatRecoveryRef = useRef(false);
   const enabled = featureEnabled && opts.enabled && Boolean(opts.resourceId);
 
   const applyResponse = useCallback((response: EditorSessionResponse) => {
@@ -101,7 +125,41 @@ export function useEditorSessionLease(opts: {
       clientId,
     });
     applyResponse(response);
-  }, [applyResponse, enabled, opts.resourceId, opts.resourceType, registerClient]);
+  }, [
+    applyResponse,
+    enabled,
+    opts.resourceId,
+    opts.resourceType,
+    registerClient,
+  ]);
+
+  const reacquire = useCallback(async () => {
+    if (!enabled || !opts.resourceId || heartbeatRecoveryRef.current) return;
+
+    heartbeatRecoveryRef.current = true;
+    try {
+      const clientId = await ensureUniqueEditorSessionClientId();
+      registerClient(clientId);
+
+      const response = await acquireEditorSession({
+        resourceType: opts.resourceType,
+        resourceId: opts.resourceId,
+        clientId,
+      });
+      applyResponse(response);
+    } catch {
+      editSessionRef.current = undefined;
+      setState({ status: "revoked", writable: false });
+    } finally {
+      heartbeatRecoveryRef.current = false;
+    }
+  }, [
+    applyResponse,
+    enabled,
+    opts.resourceId,
+    opts.resourceType,
+    registerClient,
+  ]);
 
   useEffect(() => {
     if (!enabled || !opts.resourceId) {
@@ -146,7 +204,13 @@ export function useEditorSessionLease(opts: {
         }).catch(() => undefined);
       }
     };
-  }, [applyResponse, enabled, opts.resourceId, opts.resourceType, registerClient]);
+  }, [
+    applyResponse,
+    enabled,
+    opts.resourceId,
+    opts.resourceType,
+    registerClient,
+  ]);
 
   useEffect(() => {
     if (!enabled || !opts.resourceId) return;
@@ -162,8 +226,12 @@ export function useEditorSessionLease(opts: {
         reason: "unload",
       });
     };
+    const releaseOnPageHide = (event: PageTransitionEvent) => {
+      if (event.persisted) return;
+      releaseOnUnload();
+    };
 
-    window.addEventListener("pagehide", releaseOnUnload);
+    window.addEventListener("pagehide", releaseOnPageHide);
     window.addEventListener("beforeunload", releaseOnUnload);
 
     const interval = window.setInterval(() => {
@@ -176,18 +244,20 @@ export function useEditorSessionLease(opts: {
         editSession,
       })
         .then(applyResponse)
-        .catch(() => {
-          editSessionRef.current = undefined;
-          setState({ status: "revoked", writable: false });
+        .catch((error) => {
+          if (isEditorSessionConflict(error)) {
+            void reacquire();
+            return;
+          }
         });
     }, 5000);
 
     return () => {
       window.clearInterval(interval);
-      window.removeEventListener("pagehide", releaseOnUnload);
+      window.removeEventListener("pagehide", releaseOnPageHide);
       window.removeEventListener("beforeunload", releaseOnUnload);
     };
-  }, [applyResponse, enabled, opts.resourceId, opts.resourceType]);
+  }, [applyResponse, enabled, opts.resourceId, opts.resourceType, reacquire]);
 
   useEffect(() => {
     if (!enabled || !opts.resourceId || !socket) return;
@@ -202,11 +272,20 @@ export function useEditorSessionLease(opts: {
         return;
       }
 
-      editSessionRef.current = event.editSession ?? editSessionRef.current;
+      const currentEditSession = editSessionRef.current;
+      if (
+        currentEditSession &&
+        event.editSession &&
+        !isSameEditSession(event.editSession, currentEditSession)
+      ) {
+        return;
+      }
+
+      editSessionRef.current = event.editSession ?? currentEditSession;
       setState({
         status: event.status,
         writable: event.writable,
-        editSession: event.editSession ?? editSessionRef.current,
+        editSession: event.editSession ?? currentEditSession,
         takeoverId: event.takeoverId,
         graceUntil: event.graceUntil,
       });
