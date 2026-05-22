@@ -8,7 +8,10 @@ import { useAtom, useAtomValue } from "jotai";
 import { asideStateAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
 import { useTranslation } from "react-i18next";
 import { IPage } from "@/features/page/types/page.types.ts";
-import { pageEditorSessionStatusAtom } from "@/features/editor/atoms/editor-atoms.ts";
+import {
+  isPageEditorSessionWritable,
+  pageEditorSessionStatusAtom,
+} from "@/features/editor/atoms/editor-atoms.ts";
 import { isEditorSessionEnabled } from "@/lib/config";
 
 interface Props {
@@ -35,7 +38,11 @@ export default function PageHeader({
     showEditorToolbar && editable && isEditorSessionEnabled(),
   );
   const sessionAllowsEdit =
-    !shouldGateEditorSession || editorSessionStatus === "active";
+    !shouldGateEditorSession ||
+    isPageEditorSessionWritable(
+      isEditorSessionEnabled(),
+      editorSessionStatus,
+    );
   const effectiveEditable = Boolean(editable && sessionAllowsEdit);
   const effectiveReadOnly = Boolean(
     readOnly || (shouldGateEditorSession && !sessionAllowsEdit),

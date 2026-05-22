@@ -30,6 +30,7 @@ import {
   useBackupJobsQuery,
   useRunBackupMutation,
   useCleanupStaleJobsMutation,
+  useClearFailedJobsMutation,
   useDeleteBackupArtifactMutation,
 } from "@/features/backup/queries/backup-query";
 import type {
@@ -108,8 +109,11 @@ export default function BackupPage() {
   });
   const isInProgress = (status: string) =>
     status === "running" || status === "pending";
+  const hasActiveBackup =
+    data?.items?.some((job) => isInProgress(job.status)) ?? false;
   const runMutation = useRunBackupMutation();
   const cleanupMutation = useCleanupStaleJobsMutation();
+  const clearFailedMutation = useClearFailedJobsMutation();
   const deleteArtifactMutation = useDeleteBackupArtifactMutation();
 
   const goNext = useCallback(
@@ -159,6 +163,23 @@ export default function BackupPage() {
     [deleteArtifactMutation, t],
   );
 
+  const openClearFailedModal = useCallback(() => {
+    modals.openConfirmModal({
+      title: t("Clear failed backup jobs"),
+      children: (
+        <Text size="sm">
+          {t(
+            "This removes failed backup job records only. Successful backups and backup artifacts are not affected.",
+          )}
+        </Text>
+      ),
+      centered: true,
+      labels: { confirm: t("Clear failed jobs"), cancel: t("Cancel") },
+      confirmProps: { color: "red" },
+      onConfirm: () => clearFailedMutation.mutate(),
+    });
+  }, [clearFailedMutation, t]);
+
   return (
     <>
       <Helmet>
@@ -183,25 +204,42 @@ export default function BackupPage() {
         </Text>
       </Alert>
 
-      <Group justify="space-between" mb="md">
+      <Group justify="space-between" mb="md" align="center">
         <Text size="sm" c="dimmed">
           {t("Trigger a full backup or download a previous backup.")}
         </Text>
-        <Button
-          leftSection={<IconPlayerPlay size={16} />}
-          loading={runMutation.isPending}
-          onClick={() => runMutation.mutate()}
-        >
-          {t("Run backup now")}
-        </Button>
-        <Button
-          variant="light"
-          leftSection={<IconRefresh size={16} />}
-          loading={cleanupMutation.isPending}
-          onClick={() => cleanupMutation.mutate()}
-        >
-          {t("Cleanup stale jobs")}
-        </Button>
+        <Group gap="sm">
+          <Button
+            leftSection={<IconPlayerPlay size={16} />}
+            loading={runMutation.isPending}
+            disabled={hasActiveBackup}
+            title={
+              hasActiveBackup
+                ? t("A backup job is already pending or running.")
+                : undefined
+            }
+            onClick={() => runMutation.mutate()}
+          >
+            {t("Run backup now")}
+          </Button>
+          <Button
+            variant="light"
+            leftSection={<IconRefresh size={16} />}
+            loading={cleanupMutation.isPending}
+            onClick={() => cleanupMutation.mutate()}
+          >
+            {t("Cleanup stale jobs")}
+          </Button>
+          <Button
+            variant="light"
+            color="red"
+            leftSection={<IconTrash size={16} />}
+            loading={clearFailedMutation.isPending}
+            onClick={openClearFailedModal}
+          >
+            {t("Clear failed jobs")}
+          </Button>
+        </Group>
       </Group>
 
       <Space h="md" />
@@ -260,9 +298,7 @@ export default function BackupPage() {
                             size="sm"
                             radius="xl"
                             variant={
-                              copyAvailability.hasLocalCopy
-                                ? "light"
-                                : "subtle"
+                              copyAvailability.hasLocalCopy ? "light" : "subtle"
                             }
                             color={
                               copyAvailability.hasLocalCopy ? "teal" : "gray"

@@ -849,9 +849,12 @@ export default function PageEditor({
       store.set(readOnlyEditorAtom as any, null);
       setYjsConnectionStatus("");
       setRuntimeModeAtom("preview");
-      setCollaborationStatusAtom("connecting");
+      setCollaborationStatusAtom(
+        collaborationDisabledReason ? "disabled" : "connecting",
+      );
     };
   }, [
+    collaborationDisabledReason,
     setCollaborationStatusAtom,
     setRuntimeModeAtom,
     setYjsConnectionStatus,

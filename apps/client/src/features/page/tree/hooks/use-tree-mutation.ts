@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useAtomValue } from "jotai";
 import {
   CreateHandler,
   DeleteHandler,
@@ -22,6 +23,7 @@ import {
   useMovePageMutation,
   useUpdatePageMutation,
   updateCacheOnMovePage,
+  updatePageData,
 } from "@/features/page/queries/page-query.ts";
 import { generateJitteredKeyBetween } from "fractional-indexing-jittered";
 import { SpaceTreeNode } from "@/features/page/tree/types.ts";
@@ -34,6 +36,16 @@ import {
   assignSidebarCategory,
   pinPage,
 } from "@/features/page/services/page-service.ts";
+import {
+  pageEditorEditSessionAtom,
+  pageEditorSessionStatusAtom,
+} from "@/features/editor/atoms/editor-atoms.ts";
+import { currentRoutePageAtom } from "@/features/page/atoms/current-route-page-atom.ts";
+import { useTranslation } from "react-i18next";
+import { isAxiosError } from "axios";
+import { isEditorSessionEnabled } from "@/lib/config";
+import localEmitter from "@/lib/local-emitter.ts";
+import { getDefaultStore } from "jotai";
 
 type TreeMutationOptions = {
   rootViewMode?: SidebarViewMode;
@@ -55,6 +67,10 @@ export function useTreeMutation<T>(
   const { pageSlug } = useParams();
   const emit = useQueryEmit();
   const pendingFolderNavigationRef = useRef<Record<string, string>>({});
+  const { t } = useTranslation();
+  const editSession = useAtomValue(pageEditorEditSessionAtom);
+  const editorSessionStatus = useAtomValue(pageEditorSessionStatusAtom);
+  const currentRoutePage = useAtomValue(currentRoutePageAtom);
 
   const onCreate: CreateHandler<T> = async ({ parentId, index, type }) => {
     const parentNode = parentId ? tree.find(parentId) : null;
@@ -342,12 +358,64 @@ export function useTreeMutation<T>(
   };
 
   const onRename: RenameHandler<T> = ({ name, id }) => {
+    const isCurrentRoutePage = currentRoutePage?.id === id;
+    const hasActiveEditorSession =
+      Boolean(editSession) &&
+      (!isEditorSessionEnabled() || editorSessionStatus === "active");
+    const sessionForRename =
+      isCurrentRoutePage && hasActiveEditorSession ? editSession : undefined;
+
+    if (isEditorSessionEnabled() && !sessionForRename) {
+      notifications.show({
+        color: "yellow",
+        message: isCurrentRoutePage
+          ? t(
+              "Wait for this page to finish loading editing before renaming it in the sidebar.",
+            )
+          : t(
+              "Open this page and wait for editing to start before renaming it in the sidebar.",
+            ),
+      });
+      return;
+    }
+
     tree.update({ id, changes: { name } as any });
     setData(tree.data);
 
     updatePageMutation
-      .mutateAsync({ pageId: id, title: name })
-      .then(() => {
+      .mutateAsync({
+        pageId: id,
+        title: name,
+        editSession: sessionForRename,
+        writeIntent: "normal",
+      })
+      .then((page) => {
+        updatePageData(page);
+
+        const updateEvent = {
+          operation: "updateOne" as const,
+          spaceId: page.spaceId,
+          entity: ["pages"] as ["pages"],
+          id: page.id,
+          payload: {
+            title: page.title,
+            slugId: page.slugId,
+            parentPageId: page.parentPageId,
+            icon: page.icon,
+          },
+        };
+        localEmitter.emit("message", updateEvent);
+        emit(updateEvent);
+
+        if (isCurrentRoutePage) {
+          getDefaultStore().set(currentRoutePageAtom, page);
+          if (spaceSlug) {
+            navigate(buildPageUrl(spaceSlug, page.slugId, page.title), {
+              replace: true,
+            });
+          }
+        }
+
         const createdFolderSlugId = pendingFolderNavigationRef.current[id];
         if (!createdFolderSlugId) {
           return;
@@ -356,6 +424,15 @@ export function useTreeMutation<T>(
         navigate(buildPageUrl(spaceSlug, createdFolderSlugId, name));
       })
       .catch((error) => {
+        const message = isAxiosError(error)
+          ? error.response?.data?.message
+          : undefined;
+        notifications.show({
+          color: "red",
+          message:
+            message ||
+            t("Failed to save page title. Please try again in a moment."),
+        });
         console.error("Error updating page title:", error);
       });
   };

@@ -302,16 +302,27 @@ export class PageService {
     contributors.add(user.id);
     const contributorIds = Array.from(contributors);
 
+    const pagePatch: Record<string, unknown> = {
+      lastUpdatedById: user.id,
+      updatedAt: new Date(),
+      contributorIds: contributorIds,
+    };
+
+    if (updatePageDto.title !== undefined) {
+      pagePatch.title = updatePageDto.title;
+    }
+    if (updatePageDto.icon !== undefined) {
+      pagePatch.icon = updatePageDto.icon;
+    }
+    if (updatePageDto.themeColor !== undefined) {
+      pagePatch.themeColor = updatePageDto.themeColor;
+    }
+    if (updatePageDto.themePattern !== undefined) {
+      pagePatch.themePattern = updatePageDto.themePattern;
+    }
+
     await this.pageRepo.updatePage(
-      {
-        title: updatePageDto.title,
-        icon: updatePageDto.icon,
-        themeColor: updatePageDto.themeColor,
-        themePattern: updatePageDto.themePattern,
-        lastUpdatedById: user.id,
-        updatedAt: new Date(),
-        contributorIds: contributorIds,
-      },
+      pagePatch as any,
       page.id,
       undefined,
       page.workspaceId,

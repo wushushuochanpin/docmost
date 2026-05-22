@@ -187,6 +187,19 @@ export class BackupJobService {
   ): Promise<BackupJobRow> {
     await this.cleanupStaleJobsByWorkspace(workspaceId);
 
+    const activeJob = await this.db
+      .selectFrom('backupJobs')
+      .select(['id', 'status'])
+      .where('workspaceId', '=', workspaceId)
+      .where('status', 'in', ['pending', 'running'])
+      .executeTakeFirst();
+
+    if (activeJob) {
+      throw new ConflictException(
+        'A backup job is already pending or running for this workspace',
+      );
+    }
+
     const [row] = await this.db
       .insertInto('backupJobs')
       .values({
@@ -305,6 +318,17 @@ export class BackupJobService {
     },
   ): Promise<void> {
     const set: Record<string, unknown> = { status };
+
+    if (status === 'pending' || status === 'running' || status === 'success') {
+      set.errorCode = null;
+      set.errorMessage = null;
+    }
+
+    if (status === 'running') {
+      set.endedAt = null;
+      set.durationMs = null;
+    }
+
     if (opts?.startedAt) set.startedAt = opts.startedAt;
     if (opts?.endedAt) set.endedAt = opts.endedAt;
     if (opts?.durationMs != null) set.durationMs = String(opts.durationMs);
@@ -320,6 +344,16 @@ export class BackupJobService {
       .set(set)
       .where('id', '=', jobId)
       .execute();
+  }
+
+  async clearFailedJobsByWorkspace(workspaceId: string): Promise<number> {
+    const result = await this.db
+      .deleteFrom('backupJobs')
+      .where('workspaceId', '=', workspaceId)
+      .where('status', '=', 'failed')
+      .executeTakeFirst();
+
+    return Number(result.numDeletedRows ?? 0);
   }
 
   async getJob(

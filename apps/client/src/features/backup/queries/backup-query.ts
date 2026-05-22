@@ -9,8 +9,8 @@ import {
   getBackupJobs,
   runBackup,
   cleanupStaleBackupJobs,
+  clearFailedBackupJobs,
   deleteBackupArtifact,
-  type BackupJob,
   type ListBackupJobsResult,
 } from "../services/backup-service";
 
@@ -68,6 +68,29 @@ export function useCleanupStaleJobsMutation() {
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       const msg = err.response?.data?.message ?? "Failed to cleanup stale jobs";
+      notifications.show({ message: msg, color: "red" });
+    },
+  });
+}
+
+export function useClearFailedJobsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: clearFailedBackupJobs,
+    onSuccess: (result) => {
+      const count = result?.clearedCount ?? 0;
+      notifications.show({
+        message:
+          count > 0
+            ? `Cleared ${count} failed backup job(s)`
+            : "No failed backup jobs found",
+      });
+      queryClient.invalidateQueries({ queryKey: ["backupJobs"] });
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      const msg =
+        err.response?.data?.message ?? "Failed to clear failed backup jobs";
       notifications.show({ message: msg, color: "red" });
     },
   });

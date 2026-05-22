@@ -25,7 +25,7 @@ import { useClipboard } from "@/hooks/use-clipboard";
 import { useNavigate, useParams } from "react-router-dom";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import { notifications } from "@mantine/notifications";
-import { getAppUrl } from "@/lib/config.ts";
+import { getAppUrl, isCollaborationEnabled } from "@/lib/config.ts";
 import APP_ROUTE from "@/lib/app-route.ts";
 import { treeApiAtom } from "@/features/page/tree/atoms/tree-api-atom.ts";
 import { useDeletePageModal } from "@/features/page/hooks/use-delete-page-modal.tsx";
@@ -41,6 +41,7 @@ import { PageStateSegmentedControl } from "@/features/user/components/page-state
 import { EditorFontSizeSegmentedControl } from "@/features/editor/components/editor-font-size-control.tsx";
 import { useTimeAgo } from "@/hooks/use-time-ago.tsx";
 import { IPage } from "@/features/page/types/page.types.ts";
+import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { canUseStaticRenderedHtml } from "@/features/share/rendered-utils.ts";
 
 const LazyExportModal = React.lazy(
@@ -582,8 +583,23 @@ function CollaborationStatusIndicator({ readOnly }: { readOnly?: boolean }) {
   const navigate = useNavigate();
   const pageEditor = useAtomValue(pageEditorAtom);
   const collaborationStatus = useAtomValue(pageEditorCollaborationStatusAtom);
+  const currentUser = useAtomValue(currentUserAtom);
+  const hasActivePageEditor = Boolean(pageEditor && !pageEditor.isDestroyed);
+  const workspaceCollaborationEnabled =
+    currentUser?.workspace?.settings?.collaboration?.enabled !== false;
+  const collaborationConfiguredOff =
+    !isCollaborationEnabled() || !workspaceCollaborationEnabled;
 
-  if (readOnly || pageEditor?.isDestroyed) return null;
+  if (readOnly) return null;
+
+  if (!hasActivePageEditor && !collaborationConfiguredOff) {
+    return null;
+  }
+
+  const effectiveStatus =
+    !hasActivePageEditor && collaborationConfiguredOff
+      ? "disabled"
+      : collaborationStatus;
 
   const statusConfig = {
     connected: {
@@ -616,7 +632,7 @@ function CollaborationStatusIndicator({ readOnly }: { readOnly?: boolean }) {
       color: "red",
       icon: <IconWifiOff size={18} stroke={1.75} />,
     },
-  }[collaborationStatus];
+  }[effectiveStatus];
 
   if (!statusConfig) {
     return null;

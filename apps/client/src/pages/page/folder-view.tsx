@@ -114,6 +114,7 @@ export default function FolderView({
       className={classes.container}
     >
       <TitleEditor
+        key={folderPage.id}
         pageId={folderPage.id}
         slugId={folderPage.slugId}
         title={folderPage.title}

@@ -100,6 +100,19 @@ export class BackupController {
     return { cleanedCount };
   }
 
+  @Post('jobs/clear-failed')
+  async clearFailedJobs(
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    this.ensureBackupEnabled();
+    this.ensureCanManageBackup(user, workspace);
+    const clearedCount = await this.backupJobService.clearFailedJobsByWorkspace(
+      workspace.id,
+    );
+    return { clearedCount };
+  }
+
   @Get('jobs/cleanup-stale')
   async cleanupStaleJobsGet(
     @AuthUser() user: User,

@@ -1,6 +1,8 @@
 import "@/features/editor/styles/index.css";
-import React, { useCallback, useEffect, useState } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import React, { useCallback, useEffect, useRef } from "react";
+import { notifications } from "@mantine/notifications";
+import { isAxiosError } from "axios";
+import { Editor, EditorContent, useEditor } from "@tiptap/react";
 import { Document } from "@tiptap/extension-document";
 import { Heading } from "@tiptap/extension-heading";
 import { Text } from "@tiptap/extension-text";
@@ -19,7 +21,6 @@ import {
 import { useDebouncedCallback, getHotkeyHandler } from "@mantine/hooks";
 import { useAtom } from "jotai";
 import { useQueryEmit } from "@/features/websocket/use-query-emit.ts";
-import { History } from "@tiptap/extension-history";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -32,6 +33,37 @@ import { searchSpotlight } from "@/features/search/constants.ts";
 import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 import classes from "@/features/editor/styles/editor.module.css";
 import { isEditorSessionEnabled } from "@/lib/config";
+import { useEditorSessionLease } from "@/features/editor-session/use-editor-session-lease";
+import type { EditSession } from "@/features/editor-session/types";
+
+function isEditorSessionConflict(error: unknown) {
+  return (
+    isAxiosError(error) &&
+    error.response?.status === 409 &&
+    error.response?.data?.code === "EDITOR_SESSION_CONFLICT"
+  );
+}
+
+function normalizeTitleValue(title: string | null | undefined) {
+  return title ?? "";
+}
+
+function buildTitleDocument(title: string) {
+  if (!title) {
+    return { type: "doc", content: [{ type: "heading", attrs: { level: 1 } }] };
+  }
+
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 1 },
+        content: [{ type: "text", text: title }],
+      },
+    ],
+  };
+}
 
 export interface TitleEditorProps {
   pageId: string;
@@ -57,11 +89,9 @@ export function TitleEditor({
     useUpdateTitlePageMutation();
   const store = useStore();
   const pageEditor = useAtomValue(pageEditorAtom);
-  const pageEditorSessionStatus = useAtomValue(pageEditorSessionStatusAtom);
   const pageEditorEditSession = useAtomValue(pageEditorEditSessionAtom);
   const emit = useQueryEmit();
   const navigate = useNavigate();
-  const [activePageId, setActivePageId] = useState(pageId);
   const [currentUser] = useAtom(currentUserAtom);
   const [localPageEditMode] = useAtom(pageEditModePreferenceAtom);
   const userPageEditMode =
@@ -69,9 +99,154 @@ export function TitleEditor({
     currentUser?.user?.settings?.preferences?.pageEditMode ??
     PageEditMode.Edit;
   const editorSessionFeatureEnabled = isEditorSessionEnabled();
-  const sessionAllowsEdit =
-    !editorSessionFeatureEnabled || pageEditorSessionStatus === "active";
-  const effectiveEditable = editable && sessionAllowsEdit;
+  const hasActivePageEditor = Boolean(pageEditor && !pageEditor.isDestroyed);
+  const shouldAcquireTitleLease =
+    editorSessionFeatureEnabled &&
+    editable &&
+    userPageEditMode === PageEditMode.Edit &&
+    !hasActivePageEditor;
+  const titleLease = useEditorSessionLease({
+    enabled: shouldAcquireTitleLease,
+    resourceType: "page",
+    resourceId: pageId,
+  });
+
+  const titleEditorRef = useRef<Editor | null>(null);
+  const isMountedRef = useRef(true);
+  const titleDirtyRef = useRef(false);
+  const saveInFlightRef = useRef(false);
+  const lastSavedTitleRef = useRef(normalizeTitleValue(title));
+  const pageIdRef = useRef(pageId);
+  const editableRef = useRef(editable);
+  const editSessionRef = useRef<EditSession | undefined>(undefined);
+
+  pageIdRef.current = pageId;
+  editableRef.current = editable;
+  editSessionRef.current = hasActivePageEditor
+    ? pageEditorEditSession
+    : titleLease.editSession;
+
+  const sessionReady =
+    !editorSessionFeatureEnabled || editSessionRef.current !== undefined;
+  const effectiveEditable =
+    editable && userPageEditMode === PageEditMode.Edit && sessionReady;
+
+  const syncPageSlug = useCallback(
+    (nextTitle?: string | null) => {
+      const anchorId = window.location.hash
+        ? window.location.hash.substring(1)
+        : undefined;
+      navigate(
+        buildPageUrl(spaceSlug, slugId, nextTitle ?? undefined, anchorId),
+        { replace: true },
+      );
+    },
+    [navigate, slugId, spaceSlug],
+  );
+
+  const applyServerTitle = useCallback((editor: Editor, nextTitle: string) => {
+    if (editor.getText() === nextTitle) {
+      return;
+    }
+
+    editor.commands.setContent(buildTitleDocument(nextTitle), {
+      emitUpdate: false,
+    });
+  }, []);
+
+  const saveTitle = useCallback(() => {
+    const titleEditor = titleEditorRef.current;
+    if (
+      !titleEditor ||
+      !isMountedRef.current ||
+      !pageIdRef.current ||
+      !editableRef.current ||
+      !titleEditor.isEditable ||
+      saveInFlightRef.current
+    ) {
+      return;
+    }
+
+    const nextTitle = titleEditor.getText();
+    if (nextTitle === lastSavedTitleRef.current) {
+      titleDirtyRef.current = false;
+      return;
+    }
+
+    if (editorSessionFeatureEnabled && !editSessionRef.current) {
+      return;
+    }
+
+    saveInFlightRef.current = true;
+
+    updateTitlePageMutationAsync({
+      pageId: pageIdRef.current,
+      title: nextTitle,
+      editSession: editSessionRef.current,
+      writeIntent: "normal",
+    })
+      .then((page) => {
+        const syncedTitle = normalizeTitleValue(page.title);
+        lastSavedTitleRef.current = syncedTitle;
+
+        if (titleEditor.getText() === nextTitle) {
+          titleDirtyRef.current = false;
+          if (syncedTitle !== nextTitle) {
+            applyServerTitle(titleEditor, syncedTitle);
+          }
+        }
+
+        updatePageData(page);
+        syncPageSlug(page.title);
+
+        const event: UpdateEvent = {
+          operation: "updateOne",
+          spaceId: page.spaceId,
+          entity: ["pages"],
+          id: page.id,
+          payload: {
+            title: page.title,
+            slugId: page.slugId,
+            parentPageId: page.parentPageId,
+            icon: page.icon,
+          },
+        };
+        localEmitter.emit("message", event);
+        emit(event);
+      })
+      .catch((error) => {
+        if (!isMountedRef.current || isEditorSessionConflict(error)) {
+          return;
+        }
+
+        const message = isAxiosError(error)
+          ? error.response?.data?.message
+          : undefined;
+        notifications.show({
+          color: "red",
+          message:
+            message ||
+            t("Failed to save page title. Please try again in a moment."),
+        });
+      })
+      .finally(() => {
+        saveInFlightRef.current = false;
+      });
+  }, [
+    applyServerTitle,
+    editorSessionFeatureEnabled,
+    emit,
+    syncPageSlug,
+    t,
+    updateTitlePageMutationAsync,
+  ]);
+
+  const saveTitleRef = useRef(saveTitle);
+  saveTitleRef.current = saveTitle;
+
+  const debounceUpdate = useDebouncedCallback(() => {
+    saveTitleRef.current();
+  }, 500);
 
   const titleEditor = useEditor({
     extensions: [
@@ -86,163 +261,104 @@ export function TitleEditor({
         placeholder: t("Untitled"),
         showOnlyWhenEditable: false,
       }),
-      History.configure({
-        depth: 20,
-      }),
       EmojiCommand,
     ],
     onCreate({ editor }) {
-      if (editor) {
-        store.set(titleEditorAtom as any, editor);
-        setActivePageId(pageId);
-      }
+      titleEditorRef.current = editor;
+      store.set(titleEditorAtom as any, editor);
+      const initialTitle = normalizeTitleValue(title);
+      lastSavedTitleRef.current = initialTitle;
+      titleDirtyRef.current = false;
+      applyServerTitle(editor, initialTitle);
+      syncPageSlug(title);
     },
-    onUpdate({ editor }) {
+    onUpdate() {
+      titleDirtyRef.current = true;
       debounceUpdate();
     },
     editable: effectiveEditable,
-    content: title,
+    content: buildTitleDocument(normalizeTitleValue(title)),
     immediatelyRender: true,
     shouldRerenderOnTransaction: false,
     editorProps: {
       handleDOMEvents: {
-        keydown: (_view, event) => {
-          if ((event.ctrlKey || event.metaKey) && event.code === "KeyS") {
-            event.preventDefault();
-            return true;
-          }
-          if ((event.ctrlKey || event.metaKey) && event.code === "KeyK") {
-            searchSpotlight.open();
-            return true;
-          }
+        blur: () => {
+          saveTitleRef.current();
+          return false;
         },
       },
     },
   });
 
   useEffect(() => {
-    const anchorId = window.location.hash
-      ? window.location.hash.substring(1)
-      : undefined;
-    const pageSlug = buildPageUrl(spaceSlug, slugId, title, anchorId);
-    navigate(pageSlug, { replace: true });
-  }, [title]);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      debounceUpdate.cancel();
+    };
+  }, [pageId]);
 
-  const saveTitle = useCallback(() => {
-    if (!titleEditor || activePageId !== pageId || !effectiveEditable) return;
-
-    if (
-      titleEditor.getText() === title ||
-      (titleEditor.getText() === "" && title === null)
-    ) {
+  useEffect(() => {
+    if (!shouldAcquireTitleLease) {
       return;
     }
 
-    updateTitlePageMutationAsync({
-      pageId: pageId,
-      title: titleEditor.getText(),
-      editSession: pageEditorEditSession,
-      writeIntent: "normal",
-    }).then((page) => {
-      const event: UpdateEvent = {
-        operation: "updateOne",
-        spaceId: page.spaceId,
-        entity: ["pages"],
-        id: page.id,
-        payload: {
-          title: page.title,
-          slugId: page.slugId,
-          parentPageId: page.parentPageId,
-          icon: page.icon,
-        },
-      };
+    store.set(pageEditorEditSessionAtom as any, titleLease.editSession);
+    store.set(pageEditorSessionStatusAtom as any, titleLease.status);
 
-      if (page.title !== titleEditor.getText()) return;
-
-      updatePageData(page);
-
-      localEmitter.emit("message", event);
-      emit(event);
-    });
+    return () => {
+      store.set(pageEditorEditSessionAtom as any, undefined);
+      store.set(pageEditorSessionStatusAtom as any, "disabled");
+    };
   }, [
-    effectiveEditable,
-    pageEditorEditSession,
-    pageId,
-    title,
-    titleEditor,
+    shouldAcquireTitleLease,
+    store,
+    titleLease.editSession,
+    titleLease.status,
   ]);
 
-  const debounceUpdate = useDebouncedCallback(saveTitle, 500);
-
   useEffect(() => {
-    if (titleEditor && title !== titleEditor.getText()) {
-      titleEditor.commands.setContent(title);
+    if (!titleEditor) {
+      return;
     }
-  }, [pageId, title, titleEditor]);
 
-  useEffect(() => {
-    setTimeout(() => {
-      // guard against Cannot access view['hasFocus'] error
-      if (!titleEditor?.isInitialized) return;
-      titleEditor?.commands?.focus("end");
-    }, 300);
-  }, [titleEditor]);
+    titleEditor.setEditable(effectiveEditable);
+  }, [effectiveEditable, titleEditor]);
 
   useEffect(() => {
     return () => {
-      // force-save title on navigation
-      saveTitle();
+      titleEditorRef.current = null;
       store.set(titleEditorAtom as any, null);
     };
-  }, [pageId, saveTitle, store]);
-
-  useEffect(() => {
-    // honor user default page edit mode preference
-    if (userPageEditMode && titleEditor && effectiveEditable) {
-      if (userPageEditMode === PageEditMode.Edit) {
-        titleEditor.setEditable(true);
-      } else if (userPageEditMode === PageEditMode.Read) {
-        titleEditor.setEditable(false);
-      }
-      return;
-    }
-    titleEditor?.setEditable(false);
-  }, [userPageEditMode, titleEditor, effectiveEditable]);
+  }, [pageId, store]);
 
   const openSearchDialog = () => {
-    const event = new CustomEvent("openFindDialogFromEditor", {});
-    document.dispatchEvent(event);
+    document.dispatchEvent(new CustomEvent("openFindDialogFromEditor", {}));
   };
 
-  function handleTitleKeyDown(event: any) {
+  function handleTitleKeyDown(event: React.KeyboardEvent) {
     if (!titleEditor || !pageEditor || event.shiftKey) return;
 
-    // Prevent focus shift when IME composition is active
-    // `keyCode === 229` is added to support Safari where `isComposing` may not be reliable
-    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
       return;
+    }
 
     const { key } = event;
     const { $head } = titleEditor.state.selection;
 
     if (key === "Enter") {
       event.preventDefault();
+      saveTitleRef.current();
 
       const { $from } = titleEditor.state.selection;
       const titleText = titleEditor.getText();
-
-      // Get the text offset within the heading node (not document position)
       const textOffset = $from.parentOffset;
-
       const textAfterCursor = titleText.slice(textOffset);
-
-      // Delete text after cursor from title (this will be in undo history)
       const endPos = titleEditor.state.doc.content.size;
       if (textAfterCursor) {
         titleEditor.commands.deleteRange({ from: $from.pos, to: endPos });
       }
 
-      // Don't add to history so undo in page editor won't remove this split
       pageEditor
         .chain()
         .command(({ tr }) => {
@@ -277,10 +393,7 @@ export function TitleEditor({
         <EditorContent
           editor={titleEditor}
           onKeyDown={(event) => {
-            // First handle the search hotkey
             getHotkeyHandler([["mod+F", openSearchDialog]])(event);
-
-            // Then handle other key events
             handleTitleKeyDown(event);
           }}
         />

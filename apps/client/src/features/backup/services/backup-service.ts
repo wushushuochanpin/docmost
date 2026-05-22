@@ -64,6 +64,10 @@ export interface CleanupStaleJobsResult {
   cleanedCount: number;
 }
 
+export interface ClearFailedJobsResult {
+  clearedCount: number;
+}
+
 // Backend wraps responses as { data, success, status }
 function unwrap<T>(res: unknown): T {
   const obj = res as { data?: T };
@@ -105,6 +109,11 @@ export async function cleanupStaleBackupJobs(): Promise<CleanupStaleJobsResult> 
     }
     throw err;
   }
+}
+
+export async function clearFailedBackupJobs(): Promise<ClearFailedJobsResult> {
+  const res = await api.post("/backups/jobs/clear-failed");
+  return unwrap<ClearFailedJobsResult>(res);
 }
 
 export async function getBackupDownloadUrl(

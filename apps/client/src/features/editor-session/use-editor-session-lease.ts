@@ -69,6 +69,7 @@ export function useEditorSessionLease(opts: {
   const [state, setState] = useState<LeaseState>(DISABLED_STATE);
   const editSessionRef = useRef<EditSession | undefined>(undefined);
   const heartbeatRecoveryRef = useRef(false);
+  const localReleaseRef = useRef<EditSession | undefined>(undefined);
   const enabled = featureEnabled && opts.enabled && Boolean(opts.resourceId);
 
   const applyResponse = useCallback((response: EditorSessionResponse) => {
@@ -89,6 +90,10 @@ export function useEditorSessionLease(opts: {
     async (reason: "unload" | "takeover_ack" | "manual" = "manual") => {
       const editSession = editSessionRef.current;
       if (!enabled || !opts.resourceId || !editSession) return;
+
+      if (reason !== "unload") {
+        localReleaseRef.current = editSession;
+      }
 
       const response = await releaseEditorSession({
         resourceType: opts.resourceType,
@@ -282,6 +287,19 @@ export function useEditorSessionLease(opts: {
       }
 
       editSessionRef.current = event.editSession ?? currentEditSession;
+      if (event.status === "revoked") {
+        const isLocalRelease = isSameEditSession(
+          event.editSession,
+          localReleaseRef.current,
+        );
+        if (isLocalRelease) {
+          localReleaseRef.current = undefined;
+        } else {
+          void reacquire();
+          return;
+        }
+      }
+
       setState({
         status: event.status,
         writable: event.writable,
@@ -295,7 +313,7 @@ export function useEditorSessionLease(opts: {
     return () => {
       socket.off("message", handler);
     };
-  }, [enabled, opts.resourceId, opts.resourceType, socket]);
+  }, [enabled, opts.resourceId, opts.resourceType, reacquire, socket]);
 
   return {
     ...state,

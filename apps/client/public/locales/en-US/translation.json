@@ -970,6 +970,10 @@
   "Backup & Restore": "Backup & Restore",
   "Run backup now": "Run backup now",
   "Cleanup stale jobs": "Cleanup stale jobs",
+  "Clear failed jobs": "Clear failed jobs",
+  "Clear failed backup jobs": "Clear failed backup jobs",
+  "This removes failed backup job records only. Successful backups and backup artifacts are not affected.": "This removes failed backup job records only. Successful backups and backup artifacts are not affected.",
+  "A backup job is already pending or running.": "A backup job is already pending or running.",
   "Trigger a full backup or download a previous backup.": "Trigger a full backup or download a previous backup.",
   "Current backup mode: local disk + COS/S3 replica.": "Current backup mode: local disk + COS/S3 replica.",
   "Current backup mode: local disk only. COS/S3 replica is disabled.": "Current backup mode: local disk only. COS/S3 replica is disabled.",
@@ -1067,5 +1071,8 @@
   "When turned off, editing pages switch to local saving and other members will not see typed changes in real time.": "When turned off, editing pages switch to local saving and other members will not see typed changes in real time.",
   "Allow multiple members to edit the same page together and see collaborator cursors. When off, editing uses local saving.": "Allow multiple members to edit the same page together and see collaborator cursors. When off, editing uses local saving.",
   "Toggle live collaboration": "Toggle live collaboration",
-  "Direct children (1 level): {{directChildCount}} · All descendants: {{descendantTotalCount}}": "Direct children (1 level): {{directChildCount}} · All descendants: {{descendantTotalCount}}"
+  "Direct children (1 level): {{directChildCount}} · All descendants: {{descendantTotalCount}}": "Direct children (1 level): {{directChildCount}} · All descendants: {{descendantTotalCount}}",
+  "Open this page and wait for editing to start before renaming it in the sidebar.": "Open this page and wait for editing to start before renaming it in the sidebar.",
+  "Wait for this page to finish loading editing before renaming it in the sidebar.": "Wait for this page to finish loading editing before renaming it in the sidebar.",
+  "Failed to save page title. Please try again in a moment.": "Failed to save page title. Please try again in a moment."
 }

@@ -200,20 +200,18 @@ export function useCreatePageMutation() {
   });
 }
 
+/** Merge page fields into every react-query cache keyed by this page id or slugId. */
+export function patchPageInQueryCache(
+  page: Pick<IPage, "id" | "slugId"> & Partial<IPage>,
+) {
+  const merge = (old?: IPage) => (old ? { ...old, ...page } : old);
+
+  queryClient.setQueriesData({ queryKey: ["pages", page.id] }, merge);
+  queryClient.setQueriesData({ queryKey: ["pages", page.slugId] }, merge);
+}
+
 export function updatePageData(data: IPage) {
-  const pageBySlug = queryClient.getQueryData<IPage>(["pages", data.slugId]);
-  const pageById = queryClient.getQueryData<IPage>(["pages", data.id]);
-
-  if (pageBySlug) {
-    queryClient.setQueryData(["pages", data.slugId], {
-      ...pageBySlug,
-      ...data,
-    });
-  }
-
-  if (pageById) {
-    queryClient.setQueryData(["pages", data.id], { ...pageById, ...data });
-  }
+  patchPageInQueryCache(data);
 
   invalidateOnUpdatePage(
     data.spaceId,

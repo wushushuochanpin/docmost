@@ -17,6 +17,7 @@ const DOCMOST_VERSION = process.env.npm_package_version ?? '0.0.0';
 
 // Prefer full path so backup works in containers where PATH may not include /usr/bin
 const PG_DUMP_BIN = process.env.PG_DUMP_PATH || '/usr/bin/pg_dump';
+const TAR_BIN = process.env.TAR_PATH || 'tar';
 
 export interface BackupResult {
   artifactPath: string;
@@ -44,6 +45,7 @@ export class BackupPackageService {
 
     const tmpId = randomBytes(8).toString('hex');
     const workDir = path.join(tmpdir(), `docmost-backup-${tmpId}`);
+    let artifactPathToCleanup: string | null = null;
     await fs.ensureDir(workDir);
 
     try {
@@ -57,7 +59,7 @@ export class BackupPackageService {
         const storageDest = path.join(workDir, 'storage');
         await fs.ensureDir(storageDest);
         if (await fs.pathExists(LOCAL_STORAGE_PATH)) {
-          await fs.copy(LOCAL_STORAGE_PATH, storageDest);
+          await this.copyLocalStorage(LOCAL_STORAGE_PATH, storageDest);
         }
       }
 
@@ -89,6 +91,7 @@ export class BackupPackageService {
       const artifactName = `backup-${workspaceId}-${timestamp}.tar.gz`;
       const artifactPath = path.join(outDir, artifactName);
       const artifactRelativePath = path.join(workspaceId, artifactName);
+      artifactPathToCleanup = artifactPath;
 
       await this.createTarGz(workDir, artifactPath);
 
@@ -98,30 +101,31 @@ export class BackupPackageService {
         stat.size,
       );
 
-      try {
-        metadata = await this.backupArtifactStorageService.attachRemoteReplica(
-          metadata,
-          artifactPath,
-          workspaceId,
-          artifactName,
-          stat.size,
-        );
-      } catch (err) {
-        await fs
-          .remove(artifactPath)
-          .catch((cleanupErr) =>
-            this.logger.warn(
-              `Cleanup failed for incomplete backup artifact ${artifactPath}: ${cleanupErr}`,
-            ),
-          );
-        throw err;
-      }
+      metadata = await this.backupArtifactStorageService.attachRemoteReplica(
+        metadata,
+        artifactPath,
+        workspaceId,
+        artifactName,
+        stat.size,
+      );
 
+      artifactPathToCleanup = null;
       return {
         artifactPath: artifactRelativePath,
         artifactSizeBytes: stat.size,
         metadata,
       };
+    } catch (err) {
+      if (artifactPathToCleanup) {
+        await fs
+          .remove(artifactPathToCleanup)
+          .catch((cleanupErr) =>
+            this.logger.warn(
+              `Cleanup failed for incomplete backup artifact ${artifactPathToCleanup}: ${cleanupErr}`,
+            ),
+          );
+      }
+      throw err;
     } finally {
       await fs
         .remove(workDir)
@@ -217,12 +221,79 @@ export class BackupPackageService {
     });
   }
 
+  private async copyLocalStorage(sourceDir: string, destDir: string) {
+    const backupRoot = path.resolve(
+      this.environmentService.getBackupLocalPath(),
+    );
+
+    await fs.copy(sourceDir, destDir, {
+      filter: (src) => {
+        const resolved = path.resolve(src);
+        return (
+          resolved !== backupRoot &&
+          !resolved.startsWith(`${backupRoot}${path.sep}`)
+        );
+      },
+    });
+  }
+
   private async createTarGz(sourceDir: string, outPath: string): Promise<void> {
-    const { execSync } = await import('child_process');
-    const escapedOut = outPath.replace(/"/g, '\\"');
-    const escapedSrc = sourceDir.replace(/"/g, '\\"');
-    execSync(`tar -czf "${escapedOut}" -C "${escapedSrc}" .`, {
-      maxBuffer: 50 * 1024 * 1024,
+    return new Promise((resolve, reject) => {
+      const tar = spawn(TAR_BIN, ['-cf', '-', '-C', sourceDir, '.'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      const gzip = createGzip();
+      const out = createWriteStream(outPath);
+
+      let stderr = '';
+      let tarClosed = false;
+      let outFinished = false;
+      let rejected = false;
+
+      const rejectOnce = (err: Error) => {
+        if (rejected) return;
+        rejected = true;
+        tar.kill();
+        gzip.destroy();
+        out.destroy();
+        reject(err);
+      };
+
+      const resolveIfDone = () => {
+        if (!rejected && tarClosed && outFinished) {
+          resolve();
+        }
+      };
+
+      tar.stdout?.pipe(gzip).pipe(out);
+
+      tar.stderr?.on('data', (chunk) => {
+        stderr += chunk.toString();
+      });
+
+      tar.on('error', (err) => {
+        rejectOnce(new Error(`tar failed: ${err.message}. Is tar installed?`));
+      });
+      gzip.on('error', rejectOnce);
+      out.on('error', rejectOnce);
+      out.on('finish', () => {
+        outFinished = true;
+        resolveIfDone();
+      });
+
+      tar.on('close', (code) => {
+        if (code === 0) {
+          tarClosed = true;
+          resolveIfDone();
+          return;
+        }
+
+        rejectOnce(
+          new Error(
+            `tar exited ${code}: ${stderr.trim() || 'no stderr output'}`,
+          ),
+        );
+      });
     });
   }
 }

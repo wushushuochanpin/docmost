@@ -32,7 +32,22 @@ export const yjsConnectionStatusAtom = atom<string>("");
 
 export const pageEditorRuntimeModeAtom = atom<PageEditorRuntimeMode>("preview");
 export const pageEditorCollaborationStatusAtom =
-  atom<PageEditorCollaborationStatus>("connecting");
+  atom<PageEditorCollaborationStatus>("disabled");
+
+/** Folder/title-only views have no PageEditor; "disabled" means no active lease. */
+export function isPageEditorSessionWritable(
+  editorSessionFeatureEnabled: boolean,
+  pageEditorSessionStatus: PageEditorSessionStatus,
+): boolean {
+  if (!editorSessionFeatureEnabled) {
+    return true;
+  }
+
+  return (
+    pageEditorSessionStatus === "active" ||
+    pageEditorSessionStatus === "disabled"
+  );
+}
 export const pageEditorSessionStatusAtom =
   atom<PageEditorSessionStatus>("disabled");
 export const pageEditorEditSessionAtom = atom<EditSession | undefined>(

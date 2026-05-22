@@ -10,6 +10,7 @@ import {
   invalidateOnDeletePage,
   updateCacheOnMovePage,
   invalidateOnUpdatePage,
+  patchPageInQueryCache,
 } from "../page/queries/page-query";
 import { RQ_KEY } from "../comment/queries/comment-query";
 import { IComment } from "@/features/comment/types/comment.types";
@@ -147,21 +148,11 @@ export const useQuerySubscription = () => {
         case "updateOne":
           entity = data.entity[0];
           if (entity === "pages") {
-            // we have to do this because the usePageQuery cache key is the slugId.
-            queryKeyId = data.payload.slugId;
-          } else {
-            queryKeyId = data.id;
-          }
-
-          // only update if data was already in cache
-          if (queryClient.getQueryData([...data.entity, queryKeyId])) {
-            queryClient.setQueryData([...data.entity, queryKeyId], {
-              ...queryClient.getQueryData([...data.entity, queryKeyId]),
+            patchPageInQueryCache({
+              id: data.id,
+              slugId: data.payload.slugId,
               ...data.payload,
             });
-          }
-
-          if (entity === "pages") {
             invalidateOnUpdatePage(
               data.spaceId,
               data.payload.parentPageId,
@@ -169,6 +160,17 @@ export const useQuerySubscription = () => {
               data.payload.title,
               data.payload.icon,
             );
+            break;
+          }
+
+          queryKeyId = data.id;
+
+          // only update if data was already in cache
+          if (queryClient.getQueryData([...data.entity, queryKeyId])) {
+            queryClient.setQueryData([...data.entity, queryKeyId], {
+              ...queryClient.getQueryData([...data.entity, queryKeyId]),
+              ...data.payload,
+            });
           }
 
           /*

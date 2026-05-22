@@ -154,6 +154,19 @@ export class EditorSessionService {
         };
       }
 
+      this.logger.warn(
+        `Editor session blocked ${this.describeResource(
+          opts.workspaceId,
+          opts.user.id,
+          opts.resourceType,
+          opts.resourceId,
+        )} requester=${this.describeClient(
+          opts.sessionId,
+          opts.clientId,
+        )} active=${this.describeLease(state.active)} pending=${this.describeLease(
+          state.pending,
+        )}`,
+      );
       return {
         nextState: state,
         response: this.buildResponse(
@@ -294,6 +307,19 @@ export class EditorSessionService {
         updatedAt: now,
       };
 
+      this.logger.warn(
+        `Editor session takeover requested ${this.describeResource(
+          opts.workspaceId,
+          opts.user.id,
+          opts.resourceType,
+          opts.resourceId,
+        )} requester=${this.describeClient(
+          opts.sessionId,
+          opts.clientId,
+        )} active=${this.describeLease(active)} pending=${this.describeLease(
+          nextState.pending,
+        )}`,
+      );
       const events: RealtimeEvent[] = [
         this.realtimeEvent(EDITOR_SESSION_TAKEOVER_REQUESTED_EVENT, {
           state: nextState,
@@ -415,6 +441,18 @@ export class EditorSessionService {
         };
       }
 
+      this.logger.warn(
+        `Editor session heartbeat conflict ${this.describeResource(
+          opts.workspaceId,
+          opts.userId,
+          opts.resourceType,
+          opts.resourceId,
+        )} editSession=${this.describeEditSession(
+          opts.editSession,
+        )} active=${this.describeLease(state.active)} pending=${this.describeLease(
+          state.pending,
+        )}`,
+      );
       throw new EditorSessionConflictException('Editor session is not active');
     });
 
@@ -683,6 +721,18 @@ export class EditorSessionService {
       state.status !== 'active' ||
       !this.matchesLease(state.active, opts.editSession)
     ) {
+      this.logger.warn(
+        `Editor session write conflict ${this.describeResource(
+          opts.workspaceId,
+          opts.userId,
+          opts.resourceType,
+          opts.resourceId,
+        )} editSession=${this.describeEditSession(
+          opts.editSession,
+        )} state=${state?.status ?? 'none'} active=${this.describeLease(
+          state?.active,
+        )} pending=${this.describeLease(state?.pending)}`,
+      );
       throw new EditorSessionConflictException('Editor session is not active');
     }
   }
@@ -1064,6 +1114,47 @@ export class EditorSessionService {
 
   private isExpired(lease: EditorSessionLeaseRecord, now: number): boolean {
     return now - lease.lastHeartbeatAt > EDITOR_SESSION_HEARTBEAT_TIMEOUT_MS;
+  }
+
+  private describeResource(
+    workspaceId: string,
+    userId: string,
+    resourceType: EditorSessionResourceType,
+    resourceId: string,
+  ): string {
+    return `workspace=${workspaceId} user=${userId} resource=${resourceType}:${resourceId}`;
+  }
+
+  private describeClient(
+    sessionId: string | null | undefined,
+    clientId: string,
+  ): string {
+    return `session=${this.normalizeSessionId(sessionId)},client=${clientId}`;
+  }
+
+  private describeEditSession(editSession?: EditorSessionRef | null): string {
+    if (!editSession) return 'none';
+
+    return [
+      `session=${this.normalizeSessionId(editSession.sessionId)}`,
+      `client=${editSession.clientId}`,
+      `lease=${editSession.leaseId}`,
+      `token=${editSession.token}`,
+      `takeover=${editSession.takeoverId ?? 'none'}`,
+    ].join(',');
+  }
+
+  private describeLease(lease?: EditorSessionLeaseRecord | null): string {
+    if (!lease) return 'none';
+
+    return [
+      `session=${lease.sessionId}`,
+      `client=${lease.clientId}`,
+      `lease=${lease.leaseId}`,
+      `token=${lease.token}`,
+      `socket=${lease.socketId ?? 'none'}`,
+      `lastHeartbeatAt=${lease.lastHeartbeatAt}`,
+    ].join(',');
   }
 
   private isPromotionDue(state: EditorSessionState, now: number): boolean {

@@ -34,6 +34,8 @@ import {
   markEditorBootstrapStage,
   resetEditorBootstrapTrace,
 } from "@/features/editor/lib/editor-bootstrap-metrics";
+import { pageEditorCollaborationStatusAtom } from "@/features/editor/atoms/editor-atoms.ts";
+import { isCollaborationEnabled } from "@/lib/config.ts";
 import { recordRecentPage } from "@/features/page/hooks/use-recent-pages.ts";
 
 const MemoizedPageHeader = React.memo(PageHeader);
@@ -56,10 +58,11 @@ function PageContentLoader() {
 export default function Page() {
   const { t } = useTranslation();
   const { pageSlug } = useParams();
+  const pageSlugId = extractPageSlugId(pageSlug);
 
   return (
     <ErrorBoundary
-      resetKeys={[pageSlug]}
+      resetKeys={[pageSlugId]}
       fallbackRender={({ resetErrorBoundary }) => (
         <EmptyState
           icon={IconAlertTriangle}
@@ -88,6 +91,7 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
   const localPageEditMode = useAtomValue(pageEditModePreferenceAtom);
   const localEditorFontSize = useAtomValue(editorFontSizePreferenceAtom);
   const setPageStaticToc = useSetAtom(pageStaticTocAtom);
+  const setCollaborationStatus = useSetAtom(pageEditorCollaborationStatusAtom);
   const store = useStore();
   const pageId = extractPageSlugId(pageSlug);
   const userPageEditMode =
@@ -180,6 +184,25 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
       resetEditorBootstrapTrace(page.id);
     };
   }, [isFolder, page?.id]);
+
+  useEffect(() => {
+    if (!isFolder) {
+      return;
+    }
+
+    const workspaceCollaborationEnabled =
+      currentUser?.workspace?.settings?.collaboration?.enabled !== false;
+    const collaborationOff =
+      !isCollaborationEnabled() || !workspaceCollaborationEnabled;
+
+    if (collaborationOff) {
+      setCollaborationStatus("disabled");
+    }
+  }, [
+    currentUser?.workspace?.settings?.collaboration?.enabled,
+    isFolder,
+    setCollaborationStatus,
+  ]);
 
   useEffect(() => {
     if (page && !isFolder && useReadExperience && canUseStaticHtml) {

@@ -55,6 +55,7 @@ export function FullEditor({
     >
       <div id="page-content-rail-anchor" className={classes.titleSection}>
         <MemoizedTitleEditor
+          key={pageId}
           pageId={pageId}
           slugId={slugId}
           title={title}
