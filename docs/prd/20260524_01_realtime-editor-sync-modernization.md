@@ -269,4 +269,5 @@ React Query 适合服务端实体缓存，不适合作为富文本实时编辑�
 - 已收窄 local fallback 触发条件：只有实例/workspace 明确关闭协作时进入本地 JSON 保存；协作连接慢或短暂断开时不再自动切换到另一套 editor。
 - 已增加同一 Y.Doc 协作 editor 渲染条件：本地 IndexedDB 已有页面 Yjs fragment 或远端已同步时，即可进入同一个 collaboration editor；远端断开后保持该 editor，不回退到 preview/local 双轨。
 - 本地没有 Yjs 缓存且远端未同步时仍保持 preview，避免用户在空 Y.Doc 上编辑后与远端正文错误合并。
-- 后续继续推进 Hocuspocus v4 升级评估和托管/Local-first 方案 PoC。
+- Hocuspocus 协作栈已在独立分支切到 `@hocuspocus/provider/server/transformer@4.0.0`，并适配了 v4 的 `Request` / `ClientConnection` / `lastContext` 入口。
+- 后续继续推进托管/Local-first 方案 PoC，暂不把外部协作平台直接接入生产主链路。

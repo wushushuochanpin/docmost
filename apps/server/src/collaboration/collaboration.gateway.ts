@@ -93,6 +93,30 @@ export class CollaborationGateway {
     };
   }
 
+  private createRequest(request: IncomingMessage) {
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(request.headers)) {
+      if (Array.isArray(value)) {
+        if (value.length > 0 && value[0] !== undefined) {
+          headers.set(key, value[0]);
+        }
+        continue;
+      }
+
+      if (value !== undefined) {
+        headers.set(key, value);
+      }
+    }
+
+    const host = headers.get('host') || '127.0.0.1';
+    const requestUrl = new URL(request.url ?? '/', `http://${host}`);
+
+    return new Request(requestUrl, {
+      method: request.method ?? 'GET',
+      headers,
+    });
+  }
+
   handleConnection(client: WebSocket, request: IncomingMessage): any {
     if (this.redisSync) {
       const serializedHTTPRequest = this.serializeRequest(request);
@@ -125,7 +149,22 @@ export class CollaborationGateway {
       });
     } else {
       // Fallback to direct Hocuspocus connection
-      this.hocuspocus.handleConnection(client, request);
+      const clientConnection = this.hocuspocus.handleConnection(
+        client as any,
+        this.createRequest(request),
+        {},
+      );
+
+      client.on('message', (data: Buffer | ArrayBuffer) => {
+        clientConnection.handleMessage(new Uint8Array(data as ArrayBufferLike));
+      });
+
+      client.on('close', (code: number, reason: Buffer) => {
+        clientConnection.handleClose({
+          code,
+          reason: reason ? reason.toString('utf8') : '',
+        });
+      });
     }
   }
 

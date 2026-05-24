@@ -101,10 +101,10 @@ export class PersistenceExtension implements Extension {
   }
 
   async onStoreDocument(data: onStoreDocumentPayload) {
-    const { documentName, document, context } = data;
+    const { documentName, document, lastContext } = data;
 
     const pageId = getPageId(documentName);
-    const workspaceId = context?.user?.workspaceId as string | undefined;
+    const workspaceId = lastContext?.user?.workspaceId as string | undefined;
 
     const tiptapJson = TiptapTransformer.fromYdoc(document, 'default');
     const ydocState = Buffer.from(Y.encodeStateAsUpdate(document));
@@ -159,7 +159,7 @@ export class PersistenceExtension implements Extension {
             content: tiptapJson,
             textContent: textContent,
             ydoc: ydocState,
-            lastUpdatedById: context.user.id,
+            lastUpdatedById: lastContext?.user?.id ?? null,
             contributorIds: contributorIds,
           },
           pageId,

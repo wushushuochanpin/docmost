@@ -102,6 +102,11 @@ export type CustomEvents = Record<
   (documentName: string, payload: unknown) => Promise<unknown>
 >;
 
+export type ClientConnectionLike = {
+  handleMessage(message: Uint8Array): void;
+  handleClose(event?: { code?: number; reason?: string }): void;
+};
+
 export interface Configuration<TCE> {
   redis: RedisClient;
   pack: Pack;

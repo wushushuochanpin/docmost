@@ -2,7 +2,6 @@
 import {
   Extension,
   Hocuspocus,
-  IncomingMessage,
   afterUnloadDocumentPayload,
   onConfigurePayload,
   onLoadDocumentPayload,
@@ -11,6 +10,7 @@ import RedisClient from 'ioredis';
 import { CollabProxySocket } from './collab-proxy-socket';
 import {
   BaseWebSocket,
+  ClientConnectionLike,
   Configuration,
   CustomEvents,
   Pack,
@@ -74,9 +74,11 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
   private readonly pack: Pack;
   private readonly unpack: Unpack;
   private originSockets: Record<SocketId, BaseWebSocket> = {};
+  private originConnections: Record<SocketId, ClientConnectionLike> = {};
   private locks: Record<DocumentName, NodeJS.Timeout> = {};
   private lockPromises: Record<DocumentName, Promise<ServerId | null>> = {};
   private proxySockets: Record<SocketId, CollabProxySocket> = {};
+  private proxyConnections: Record<SocketId, ClientConnectionLike> = {};
   private readonly prefix: string;
   private readonly lockPrefix: string;
   private readonly msgChannel: string;
@@ -121,6 +123,43 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
     return `${this.lockPrefix}:${documentName}`;
   }
 
+  private createRequest(serializedHTTPRequest: SerializedHTTPRequest) {
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(serializedHTTPRequest.headers)) {
+      if (Array.isArray(value)) {
+        if (value.length > 0 && value[0] !== undefined) {
+          headers.set(key, value[0]);
+        }
+        continue;
+      }
+      if (value !== undefined) {
+        headers.set(key, value);
+      }
+    }
+
+    const host = headers.get('host') || '127.0.0.1';
+    const requestUrl = new URL(serializedHTTPRequest.url, `http://${host}`);
+
+    return new Request(requestUrl, {
+      method: serializedHTTPRequest.method,
+      headers,
+    });
+  }
+
+  private createClientConnection(
+    ws: BaseWebSocket,
+    serializedHTTPRequest: SerializedHTTPRequest,
+    context = {},
+  ) {
+    const connection = this.instance.handleConnection(
+      ws as any,
+      this.createRequest(serializedHTTPRequest),
+      context,
+    );
+
+    return connection as ClientConnectionLike;
+  }
+
   private closeProxy(socketId: string) {
     const proxySocket = this.proxySockets[socketId];
     if (proxySocket) {
@@ -153,10 +192,32 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
         socketId,
       );
       this.proxySockets[socketId] = socket;
-      this.instance.handleConnection(
+      const connection = this.createClientConnection(
         socket as any,
-        serializedHTTPRequest as any,
+        serializedHTTPRequest,
         {},
+      );
+      this.proxyConnections[socketId] = connection;
+      socket.on('message', (payload: Uint8Array) => {
+        connection.handleMessage(payload);
+      });
+      socket.on(
+        'close',
+        (code?: number, reason?: string | Buffer | ArrayBuffer) => {
+          const closeReason =
+            typeof reason === 'string'
+              ? reason
+              : reason instanceof ArrayBuffer
+                ? Buffer.from(reason).toString('utf8')
+                : reason
+                  ? Buffer.from(reason).toString('utf8')
+                  : '';
+          connection.handleClose({
+            code,
+            reason: closeReason,
+          });
+          delete this.proxyConnections[socketId];
+        },
       );
     }
     socket.emit('message', message);
@@ -337,9 +398,9 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
   ) {
     const socketId = serializedHTTPRequest.headers['sec-websocket-key']!;
     this.originSockets[socketId] = ws;
-    this.instance.handleConnection(
-      ws as any,
-      serializedHTTPRequest as any,
+    this.originConnections[socketId] = this.createClientConnection(
+      ws,
+      serializedHTTPRequest,
       context,
     );
   }
@@ -350,12 +411,13 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
     detachableMsg: ArrayBuffer,
   ) {
     const message = new Uint8Array(detachableMsg.slice());
-    const tmpMsg = new IncomingMessage(detachableMsg);
-    const documentName = readVarString(tmpMsg.decoder);
+    const decoder = { arr: message, pos: 0 };
+    const documentName = readVarString(decoder);
     const isDocLoadedOnInstance = this.instance.documents.has(documentName);
 
     if (isDocLoadedOnInstance) {
-      ws.emit('message', message);
+      const socketId = serializedHTTPRequest.headers['sec-websocket-key']!;
+      this.originConnections[socketId]?.handleMessage(message);
       return;
     }
 
@@ -379,10 +441,15 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
   onSocketClose(socketId: string, code?: number, reason?: ArrayBuffer) {
     const socket = this.originSockets[socketId];
     if (!socket) return;
-    // at this point the socket is considered GC'd and we cannot call close
-    // The origin socket did not set up any connections for the proxy, so none of the hooks will work if we just emit
+    const closeReason =
+      reason !== undefined ? Buffer.from(reason).toString('utf8') : '';
+    this.originConnections[socketId]?.handleClose({
+      code,
+      reason: closeReason,
+    });
     socket?.emit('close', code, reason);
     delete this.originSockets[socketId];
+    delete this.originConnections[socketId];
     const msg: RSAMessageCloseProxy = { type: 'closeProxy', socketId };
     this.pub.publish(this.msgChannel, this.pack(msg)).catch(() => {});
   }
