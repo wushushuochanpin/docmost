@@ -336,6 +336,109 @@ function EditorRuntimeView({
   );
 }
 
+function CollaborativePageEditor({
+  pageId,
+  content,
+  editable,
+  effectiveEditable,
+  currentUserId,
+  currentUserName,
+  remoteProvider,
+  collabEditSession,
+  handleScrollTo,
+  editorRef,
+  showCommentPopup,
+  onEditorChange,
+}: {
+  pageId: string;
+  content: any;
+  editable: boolean;
+  effectiveEditable: boolean;
+  currentUserId?: string;
+  currentUserName?: string;
+  remoteProvider?: HocuspocusProvider;
+  collabEditSession?: EditSession;
+  handleScrollTo: (editor: Editor) => void;
+  editorRef: React.MutableRefObject<Editor | null>;
+  showCommentPopup: boolean;
+  onEditorChange: (editor: Editor | null) => void;
+}) {
+  const extensions = useMemo(() => {
+    if (!remoteProvider || !currentUserName) {
+      return mainExtensions;
+    }
+
+    return [
+      ...mainExtensions,
+      ...collabExtensions(remoteProvider, {
+        name: currentUserName,
+      }),
+    ];
+  }, [currentUserName, remoteProvider]);
+
+  const editor = useEditor(
+    {
+      extensions,
+      editable: effectiveEditable,
+      immediatelyRender: true,
+      shouldRerenderOnTransaction: false,
+      editorProps: createEditorProps(editorRef, pageId, currentUserId),
+      onCreate({ editor }) {
+        editorRef.current = editor;
+        onEditorChange(editor);
+        (
+          editor.storage as { pageId?: string; editSession?: EditSession }
+        ).pageId = pageId;
+        (editor.storage as { editSession?: EditSession }).editSession =
+          collabEditSession;
+        handleScrollTo(editor);
+      },
+    },
+    [pageId, extensions, currentUserId],
+  );
+
+  useEffect(() => {
+    onEditorChange(editor ?? null);
+
+    return () => {
+      onEditorChange(null);
+    };
+  }, [editor, onEditorChange]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    (editor.storage as { editSession?: EditSession }).editSession =
+      collabEditSession;
+  }, [collabEditSession, editor]);
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    if (editable && effectiveEditable) {
+      editor.setEditable(true);
+      return;
+    }
+
+    editor.setEditable(false);
+  }, [editor, editable, effectiveEditable]);
+
+  if (!editor) {
+    return <StaticPageEditorPreview content={content} pageId={pageId} />;
+  }
+
+  return (
+    <EditorRuntimeView
+      editor={editor}
+      editable={effectiveEditable}
+      pageId={pageId}
+      showCommentPopup={showCommentPopup}
+    />
+  );
+}
+
 function StaticPageEditorPreview({
   content,
   pageId,
@@ -725,6 +828,7 @@ export default function PageEditor({
   const lastSavedLocalContentRef = useRef(
     serializeEditorContent(normalizedContent),
   );
+  const [editor, setEditor] = useState<Editor | null>(null);
   const takeoverAckSentRef = useRef(false);
   const [dismissedOverlayKey, setDismissedOverlayKey] = useState<string | null>(
     null,
@@ -996,46 +1100,6 @@ export default function PageEditor({
   const currentUserId = currentUser?.user.id;
   const currentUserName = currentUser?.user.name;
 
-  const extensions = useMemo(() => {
-    if (
-      !providersReady ||
-      !providersRef.current ||
-      !currentUserId ||
-      !currentUserName
-    ) {
-      return mainExtensions;
-    }
-
-    const remoteProvider = providersRef.current.remote;
-
-    return [
-      ...mainExtensions,
-      ...collabExtensions(remoteProvider, {
-        name: currentUserName,
-      }),
-    ];
-  }, [currentUserId, currentUserName, providersReady]);
-
-  const editor = useEditor(
-    {
-      extensions,
-      editable: effectiveEditable,
-      immediatelyRender: true,
-      shouldRerenderOnTransaction: false,
-      editorProps: createEditorProps(editorRef, pageId, currentUserId),
-      onCreate({ editor }) {
-        editorRef.current = editor;
-        (
-          editor.storage as { pageId?: string; editSession?: EditSession }
-        ).pageId = pageId;
-        (editor.storage as { editSession?: EditSession }).editSession =
-          collabEditSession;
-        handleScrollTo(editor);
-      },
-    },
-    [pageId, extensions, currentUserId],
-  );
-
   const handleActiveCommentEvent = (event) => {
     const { commentId, resolved } = event.detail;
 
@@ -1052,12 +1116,6 @@ export default function PageEditor({
       commentElement?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 400);
   };
-
-  useEffect(() => {
-    if (!editor) return;
-    (editor.storage as { editSession?: EditSession }).editSession =
-      collabEditSession;
-  }, [collabEditSession, editor]);
 
   useEffect(() => {
     document.addEventListener("ACTIVE_COMMENT_EVENT", handleActiveCommentEvent);
@@ -1078,13 +1136,11 @@ export default function PageEditor({
   const isSynced = isLocalSynced && isRemoteSynced;
   const collabReady =
     collaborationEnabled &&
-    Boolean(editor) &&
     yjsConnectionStatus === WebSocketStatus.Connected &&
     isSynced &&
     pageLeaseWritable;
   const canRenderCollaborativeEditor =
     collaborationEnabled &&
-    Boolean(editor) &&
     providersReady &&
     isLocalSynced &&
     pageLeaseWritable &&
@@ -1115,19 +1171,6 @@ export default function PageEditor({
     setYjsConnectionStatus,
     yjsConnectionStatus,
   ]);
-
-  useEffect(() => {
-    if (!editor) {
-      return;
-    }
-
-    if (userPageEditMode === PageEditMode.Edit && effectiveEditable) {
-      editor.setEditable(true);
-      return;
-    }
-
-    editor.setEditable(false);
-  }, [editor, effectiveEditable, userPageEditMode]);
 
   useEffect(() => {
     if (!collabReady) {
@@ -1307,7 +1350,7 @@ export default function PageEditor({
     );
   }
 
-  if (runtimeMode === "preview" || !editor) {
+  if (runtimeMode === "preview") {
     return (
       <>
         {editorSessionOverlay}
@@ -1319,11 +1362,19 @@ export default function PageEditor({
   return (
     <>
       {editorSessionOverlay}
-      <EditorRuntimeView
-        editor={editor}
-        editable={effectiveEditable}
+      <CollaborativePageEditor
         pageId={pageId}
+        content={normalizedContent}
+        editable={editable}
+        effectiveEditable={effectiveEditable}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        remoteProvider={providersRef.current?.remote}
+        collabEditSession={collabEditSession}
+        handleScrollTo={handleScrollTo}
+        editorRef={editorRef}
         showCommentPopup={showCommentPopup}
+        onEditorChange={setEditor}
       />
     </>
   );

@@ -259,15 +259,19 @@ React Query 适合服务端实体缓存，不适合作为富文本实时编辑�
 
 ## 14. 当前开工项
 
-当前已施工 Phase 0 / P0-1、Phase 1 / P0-2 和 Phase 2 / P0-3 的第一步：
+当前已完成 Phase 0 / P0-1、Phase 1 / P0-2，并把 Phase 2 的“协作 editor 不再先建后重建”这一步落地；Hocuspocus 协作栈已经独立升级到 v4.0.0，并完成了适配层。
 
-- `LocalFallbackPageEditor` 的 `useEditor` deps 已收敛为 `[pageId, currentUserId]`。
-- 协作 `PageEditor` 的 `useEditor` deps 已收敛为 `[pageId, extensions, currentUserId]`。
+- 协作 editor 现在改为在 provider 真正 ready 后再挂载，避免先创建主编辑器再因为协作扩展就绪而重建。
 - 协作扩展依赖已从整个 `currentUser.user` 对象收敛到 `currentUserId/currentUserName`，避免用户缓存刷新导致 extensions 变更并重建 editor。
 - 已移除编辑期 `updateCachedPageContent` 高频 patch，正文输入不再每个 transaction 写入 React Query 的 `page.content`。
 - 本地 fallback 保存成功后仍通过 `updatePageData(page)` 同步服务端保存快照，避免只读切换或页面重新进入时读到旧内容。
-- 已收窄 local fallback 触发条件：只有实例/workspace 明确关闭协作时进入本地 JSON 保存；协作连接慢或短暂断开时不再自动切换到另一套 editor。
-- 已增加同一 Y.Doc 协作 editor 渲染条件：本地 IndexedDB 已有页面 Yjs fragment 或远端已同步时，即可进入同一个 collaboration editor；远端断开后保持该 editor，不回退到 preview/local 双轨。
+- 只有实例/workspace 明确关闭协作时才进入本地 JSON 保存；协作连接慢或短暂断开时不再自动切换到另一套 editor。
 - 本地没有 Yjs 缓存且远端未同步时仍保持 preview，避免用户在空 Y.Doc 上编辑后与远端正文错误合并。
 - Hocuspocus 协作栈已在独立分支切到 `@hocuspocus/provider/server/transformer@4.0.0`，并适配了 v4 的 `Request` / `ClientConnection` / `lastContext` 入口。
-- 后续继续推进托管/Local-first 方案 PoC，暂不把外部协作平台直接接入生产主链路。
+- 外部托管/local-first 方案最终结论：只保留为可验证 PoC，不替换正文协作主链路；正文继续以 Yjs/Hocuspocus 作为主协作层。
+
+未收尾的部分主要是：
+
+- 本地 fallback 仍是独立保存模式，尚未彻底改成同一个 editor 的 persistence mode。
+- ACC-003 到 ACC-008 还需要一轮完整的多人编辑、断网重连、互踢、保存失败和页面切换回归。
+- 外部托管/local-first 仍停留在 PRD + PoC 边界，没有接入生产主链路。

@@ -3,6 +3,9 @@
   "homepage": "https://docmost.com",
   "version": "0.80.2",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "nx run-many -t build",
     "start": "pnpm --filter ./apps/server run start:prod",
