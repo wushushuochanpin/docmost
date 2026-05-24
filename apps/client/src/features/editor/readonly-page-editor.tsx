@@ -18,17 +18,26 @@ import { editorFontSizePreferenceAtom } from "@/features/editor/atoms/editor-vie
 import classes from "@/features/editor/styles/editor.module.css";
 import { Container } from "@mantine/core";
 import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
+import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 
 interface PageEditorProps {
   title: string;
   content: any;
   pageId?: string;
+  /**
+   * When rendering inside a public share, pass the share's id (or key). Lookups
+   * for transclusion content then resolve against the share graph instead of
+   * the viewer's personal permissions, so a share never leaks source content
+   * that isn't itself shared.
+   */
+  shareId?: string;
 }
 
 export default function ReadonlyPageEditor({
   title,
   content,
   pageId,
+  shareId,
 }: PageEditorProps) {
   const store = useStore();
   const isComponentMounted = useRef(false);
@@ -89,48 +98,47 @@ export default function ReadonlyPageEditor({
   ];
 
   return (
-    <Container
-      fluid={fullPageWidth}
-      size={!fullPageWidth && 900}
-      p={0}
-      className={classes.editor}
-      style={{ "--editor-font-scale": editorFontScale } as React.CSSProperties}
-    >
-      <div
-        className={classes.docLayout}
+    <TransclusionLookupProvider shareId={shareId}>
+      <Container
+        fluid={fullPageWidth}
+        size={!fullPageWidth && 900}
+        p={0}
+        className={classes.editor}
+        style={{ "--editor-font-scale": editorFontScale } as React.CSSProperties}
       >
-      <div className={classes.readonlyTitleSection}>
-        <div className={classes.surfaceTitle}>
-          <EditorProvider
-            editable={false}
-            immediatelyRender={true}
-            extensions={titleExtensions}
-            content={title}
-          ></EditorProvider>
-        </div>
-      </div>
+        <div className={classes.docLayout}>
+          <div className={classes.readonlyTitleSection}>
+            <div className={classes.surfaceTitle}>
+              <EditorProvider
+                editable={false}
+                immediatelyRender={true}
+                extensions={titleExtensions}
+                content={title}
+              ></EditorProvider>
+            </div>
+          </div>
 
-      {extensions ? (
-        <EditorProvider
-          editable={false}
-          immediatelyRender={true}
-          extensions={extensions}
-          content={normalizedContent}
-          onCreate={({ editor }) => {
-            if (editor) {
-              if (pageId) {
-                // @ts-ignore
-                editor.storage.pageId = pageId;
-              }
-              // @ts-ignore
-              store.set(readOnlyEditorAtom as any, editor);
+          {extensions ? (
+            <EditorProvider
+              editable={false}
+              immediatelyRender={true}
+              extensions={extensions}
+              content={normalizedContent}
+              onCreate={({ editor }) => {
+                if (editor) {
+                  if (pageId) {
+                    // @ts-ignore
+                    editor.storage.pageId = pageId;
+                  }
+                  // @ts-ignore
+                  store.set(readOnlyEditorAtom as any, editor);
 
-              handleScrollTo(editor);
-              editorCreated.current = true;
-            }
-          }}
-        ></EditorProvider>
-      ) : (
+                  handleScrollTo(editor);
+                  editorCreated.current = true;
+                }
+              }}
+            ></EditorProvider>
+          ) : (
         <div style={{ paddingTop: 12 }}>
           <div
             style={{
@@ -169,8 +177,9 @@ export default function ReadonlyPageEditor({
           />
         </div>
       )}
-      <div style={{ paddingBottom: "20vh" }}></div>
-    </div>
-    </Container>
+          <div style={{ paddingBottom: "20vh" }}></div>
+        </div>
+      </Container>
+    </TransclusionLookupProvider>
   );
 }

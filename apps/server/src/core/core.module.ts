@@ -20,6 +20,7 @@ import { DomainMiddleware } from '../common/middlewares/domain.middleware';
 import { AuditContextMiddleware } from '../common/middlewares/audit-context.middleware';
 import { WorkspaceChannelMiddleware } from '../common/middlewares/workspace-channel.middleware';
 import { ShareModule } from './share/share.module';
+import { LabelModule } from './label/label.module';
 import { NotificationModule } from './notification/notification.module';
 import { WatcherModule } from './watcher/watcher.module';
 import { FavoriteModule } from './favorite/favorite.module';
@@ -47,6 +48,7 @@ import { EditorSessionModule } from './editor-session/editor-session.module';
     CaslModule,
     PageAccessModule,
     ShareModule,
+    LabelModule,
     NotificationModule,
     WatcherModule,
     SessionModule,

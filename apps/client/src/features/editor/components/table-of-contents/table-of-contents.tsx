@@ -3,7 +3,7 @@ import { TextSelection } from "@tiptap/pm/state";
 import React, { FC, useEffect, useState } from "react";
 import classes from "./table-of-contents.module.css";
 import clsx from "clsx";
-import { Box, Text } from "@mantine/core";
+import { Box, Text, Title } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 
 type TableOfContentsProps = {
@@ -80,7 +80,7 @@ const recalculateLinks = (nodePos?: NodePos[] | null) => {
     (acc, item) => {
       const label = item.node.textContent;
       const level = Number(item.node.attrs.level);
-      if (label.length && level <= 3) {
+      if (label.length && level <= 4) {
         acc.push({
           label,
           level,
@@ -207,9 +207,9 @@ export const TableOfContents: FC<TableOfContentsProps> = (props) => {
   return (
     <>
       {props.isShare && (
-        <Text mb="md" fw={500}>
+        <Title order={2} size="h6" mb="md" fw={500}>
           {t("Table of contents")}
-        </Text>
+        </Title>
       )}
       <div className={props.isShare ? classes.leftBorder : ""}>
         {links.map((item, idx) => (

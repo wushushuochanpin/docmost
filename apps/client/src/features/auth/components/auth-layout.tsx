@@ -16,7 +16,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           className={classes.logoImage}
         />
       </Group>
-      {children}
+      <main>{children}</main>
     </>
   );
 }

@@ -61,6 +61,7 @@ import { BatchMovePageDto } from '../dto/batch-move-page.dto';
 import { sql } from 'kysely';
 import { SpaceSidebarCategoryRepo } from '@docmost/db/repos/space/space-sidebar-category.repo';
 import { EditorSessionService } from '../../editor-session/editor-session.service';
+import { TransclusionService } from '../transclusion/transclusion.service';
 
 type SidebarCountFields = {
   directChildCount: number;
@@ -89,6 +90,7 @@ export class PageService {
     private collaborationGateway: CollaborationGateway,
     private readonly watcherService: WatcherService,
     private readonly editorSessionService: EditorSessionService,
+    private readonly transclusionService: TransclusionService,
   ) {}
 
   async findById(
@@ -974,7 +976,7 @@ export class PageService {
         );
 
         await this.aiQueue.add(QueueJob.PAGE_MOVED_TO_SPACE, {
-          pageId: pageIdsToMove,
+          pageIds: pageIdsToMove,
           workspaceId: rootPage.workspaceId,
         });
       }
@@ -1094,6 +1096,17 @@ export class PageService {
             }
           }
 
+          // Remap transclusion-reference source pages to their copies when
+          // the source page is also being duplicated in the same operation.
+          if (node.type.name === 'transclusionReference') {
+            const sourcePageId = node.attrs.sourcePageId;
+            if (sourcePageId && pageMap.has(sourcePageId)) {
+              const mappedPage = pageMap.get(sourcePageId);
+              //@ts-ignore
+              node.attrs.sourcePageId = mappedPage.newPageId;
+            }
+          }
+
           // Update internal page links in link marks
           for (const mark of node.marks) {
             if (
@@ -1199,6 +1212,39 @@ export class PageService {
       if (!this.isMissingTableError(err)) {
         throw err;
       }
+    }
+
+    // Extract transclusions from every duplicated page and persist them in
+    // one statement. Duplication bypasses Yjs onStoreDocument; brand-new
+    // pages never have prior rows so we can skip the diff and just bulk-insert.
+    try {
+      await this.transclusionService.insertTransclusionsForPages(
+        insertablePages.map((p) => ({
+          id: p.id,
+          workspaceId: p.workspaceId,
+          content: p.content,
+        })),
+      );
+    } catch (err) {
+      this.logger.error(
+        'Failed to insert transclusions for duplicated pages',
+        err,
+      );
+    }
+
+    try {
+      await this.transclusionService.insertReferencesForPages(
+        insertablePages.map((p) => ({
+          id: p.id,
+          workspaceId: p.workspaceId,
+          content: p.content,
+        })),
+      );
+    } catch (err) {
+      this.logger.error(
+        'Failed to insert transclusion references for duplicated pages',
+        err,
+      );
     }
 
     const insertedPageIds = insertablePages.map((page) => page.id);
@@ -2141,7 +2187,18 @@ export class PageService {
           ),
       )
       .selectFrom('page_ancestors')
-      .selectAll()
+      .selectAll('page_ancestors')
+      .select((eb) =>
+        eb
+          .exists(
+            eb
+              .selectFrom('pages as child')
+              .select(sql`1`.as('one'))
+              .whereRef('child.parentPageId', '=', 'page_ancestors.id')
+              .where('child.deletedAt', 'is', null),
+          )
+          .as('hasChildren'),
+      )
       .execute();
 
     return ancestors.reverse();

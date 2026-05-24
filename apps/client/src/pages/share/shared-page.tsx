@@ -664,7 +664,6 @@ export default function SharedPage() {
           </Suspense>
         )}
       </div>
-
     </div>
   );
 }

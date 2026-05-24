@@ -13,6 +13,7 @@ import { getShares } from "@/features/share/services/share-service.ts";
 import { getApiKeys } from "@/features/compliance-admin/api-keys";
 import { getAuditLogs } from "@/features/compliance-admin/audit";
 import { getVerificationList } from "@/ee/page-verification/services/page-verification-service";
+import { getScimTokens } from "@/ee/scim/services/scim-token-service";
 
 export const prefetchWorkspaceMembers = () => {
   const params: QueryParams = { limit: 100, query: "" };
@@ -96,5 +97,12 @@ export const prefetchVerifiedPages = () => {
   queryClient.prefetchQuery({
     queryKey: ["verification-list", params],
     queryFn: () => getVerificationList(params),
+  });
+};
+
+export const prefetchScimTokens = () => {
+  queryClient.prefetchQuery({
+    queryKey: ["scim-token-list", { cursor: undefined }],
+    queryFn: () => getScimTokens({}),
   });
 };

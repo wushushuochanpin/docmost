@@ -41,6 +41,10 @@ export class UpdateWorkspaceDto extends PartialType(CreateWorkspaceDto) {
 
   @IsOptional()
   @IsBoolean()
+  isScimEnabled: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   aiChat: boolean;
 
   @IsOptional()

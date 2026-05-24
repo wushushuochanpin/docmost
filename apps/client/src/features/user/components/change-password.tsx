@@ -96,6 +96,11 @@ function ChangePasswordForm({ onClose }: ChangePasswordFormProps) {
         variant="default"
         mb="md"
         data-autofocus
+        visibilityToggleButtonProps={{
+          "aria-label": t("Toggle password visibility"),
+          "aria-hidden": false,
+          tabIndex: 0,
+        }}
         {...form.getInputProps("oldPassword")}
       />
 
@@ -104,6 +109,11 @@ function ChangePasswordForm({ onClose }: ChangePasswordFormProps) {
         placeholder={t("Enter your new password")}
         variant="default"
         mb="md"
+        visibilityToggleButtonProps={{
+          "aria-label": t("Toggle password visibility"),
+          "aria-hidden": false,
+          tabIndex: 0,
+        }}
         {...form.getInputProps("newPassword")}
       />
 

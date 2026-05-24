@@ -53,7 +53,7 @@ export default function PageHeader({
   };
 
   return (
-    <div className={classes.header}>
+    <div className={classes.header} data-page-header="true">
       <div className={classes.row}>
         <div className={classes.leftRail}>
           {showEditorToolbar && (

@@ -7,6 +7,7 @@ import { PageEditMode } from "@/features/user/types/user.types.ts";
 import { ResponsiveSettingsRow, ResponsiveSettingsContent, ResponsiveSettingsControl } from "@/components/ui/responsive-settings-row";
 import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
 import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
+import { currentPageEditModeAtom } from "@/features/editor/atoms/editor-atoms.ts";
 
 export default function PageStatePref() {
   const { t } = useTranslation();
@@ -132,6 +133,27 @@ export function PageStateSegmentedControl({
       value={value}
       disabled={isLoading}
       onChange={handleChange}
+      data={[
+        { label: t("Edit"), value: PageEditMode.Edit },
+        { label: t("Read"), value: PageEditMode.Read },
+      ]}
+    />
+  );
+}
+
+// Header variant: updates the current page's mode locally without persisting
+// the preference to the server.
+export function PageEditModeToggle({ size }: { size?: MantineSize }) {
+  const { t } = useTranslation();
+  const [currentPageEditMode, setCurrentPageEditMode] = useAtom(
+    currentPageEditModeAtom,
+  );
+
+  return (
+    <SegmentedControl
+      size={size}
+      value={currentPageEditMode}
+      onChange={(v) => setCurrentPageEditMode(v as PageEditMode)}
       data={[
         { label: t("Edit"), value: PageEditMode.Edit },
         { label: t("Read"), value: PageEditMode.Read },

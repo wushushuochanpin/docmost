@@ -3,3 +3,4 @@ export * from './nanoid.utils';
 export * from './file.helper';
 export * from './constants';
 export * from './image-dimensions';
+export * from './security-headers';

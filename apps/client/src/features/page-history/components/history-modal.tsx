@@ -26,6 +26,7 @@ export default function HistoryModal({ pageId, pageTitle }: Props) {
         opened={isModalOpen}
         onClose={() => setModalOpen(false)}
         fullScreen
+        aria-label={t("Page history")}
       >
         <Modal.Overlay blur={1} />
         <Modal.Content style={{ overflow: "hidden" }}>
@@ -35,7 +36,7 @@ export default function HistoryModal({ pageId, pageTitle }: Props) {
                 {t("Page history")}
               </Text>
             </Modal.Title>
-            <Modal.CloseButton />
+            <Modal.CloseButton aria-label={t("Close")} />
           </Modal.Header>
           <Modal.Body
             p={0}
@@ -53,6 +54,7 @@ export default function HistoryModal({ pageId, pageTitle }: Props) {
       size={1400}
       opened={isModalOpen}
       onClose={() => setModalOpen(false)}
+      aria-label={t("Page history")}
     >
       <Modal.Overlay blur={1} />
       <Modal.Content style={{ overflow: "hidden" }}>
@@ -62,7 +64,7 @@ export default function HistoryModal({ pageId, pageTitle }: Props) {
               {t("Page history")}
             </Text>
           </Modal.Title>
-          <Modal.CloseButton />
+          <Modal.CloseButton aria-label={t("Close")} />
         </Modal.Header>
         <Modal.Body>
           <HistoryModalBody pageId={pageId} />

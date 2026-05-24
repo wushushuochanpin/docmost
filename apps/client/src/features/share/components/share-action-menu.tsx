@@ -78,7 +78,7 @@ export default function ShareActionMenu({ share }: Props) {
         arrowPosition="center"
       >
         <Menu.Target>
-          <ActionIcon variant="subtle" c="gray">
+          <ActionIcon variant="subtle" c="gray" aria-label={t("More options")}>
             <IconDots size={18} stroke={1.75} />
           </ActionIcon>
         </Menu.Target>

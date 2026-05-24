@@ -1,21 +1,17 @@
-import { useMemo } from "react";
-import { useAtomValue } from "jotai";
-import {
-  CreateHandler,
-  DeleteHandler,
-  MoveHandler,
-  NodeApi,
-  RenameHandler,
-  SimpleTree,
-} from "react-arborist";
-import { useAtom } from "jotai";
-import { treeDataAtom } from "@/features/page/tree/atoms/tree-data-atom.ts";
-import {
-  IMovePage,
-  IPage,
-  SidebarViewMode,
-} from "@/features/page/types/page.types.ts";
+import { useCallback, useRef } from "react";
+import { useAtom, useAtomValue, useStore } from "jotai";
+import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
+import { isAxiosError } from "axios";
+import { getDefaultStore } from "jotai";
+
+import { treeDataAtom } from "@/features/page/tree/atoms/tree-data-atom.ts";
+import { treeModel } from "@/features/page/tree/model/tree-model";
+import type { DropOp } from "@/features/page/tree/model/tree-model.types";
+import { dropOpToMovePayload } from "./drop-op-to-move-payload";
+import { SpaceTreeNode } from "@/features/page/tree/types.ts";
+import { IPage, SidebarViewMode } from "@/features/page/types/page.types.ts";
 import {
   invalidateRootSidebarQueries,
   useCreatePageMutation,
@@ -25,13 +21,9 @@ import {
   updateCacheOnMovePage,
   updatePageData,
 } from "@/features/page/queries/page-query.ts";
-import { generateJitteredKeyBetween } from "fractional-indexing-jittered";
-import { SpaceTreeNode } from "@/features/page/tree/types.ts";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import { getSpaceUrl } from "@/lib/config.ts";
 import { useQueryEmit } from "@/features/websocket/use-query-emit.ts";
-import { notifications } from "@mantine/notifications";
-import { useRef } from "react";
 import {
   assignSidebarCategory,
   pinPage,
@@ -41,300 +33,111 @@ import {
   pageEditorSessionStatusAtom,
 } from "@/features/editor/atoms/editor-atoms.ts";
 import { currentRoutePageAtom } from "@/features/page/atoms/current-route-page-atom.ts";
-import { useTranslation } from "react-i18next";
-import { isAxiosError } from "axios";
 import { isEditorSessionEnabled } from "@/lib/config";
 import localEmitter from "@/lib/local-emitter.ts";
-import { getDefaultStore } from "jotai";
 
 type TreeMutationOptions = {
   rootViewMode?: SidebarViewMode;
   rootCategoryId?: string | null;
 };
 
-export function useTreeMutation<T>(
+export type UseTreeMutation = {
+  handleMove: (sourceId: string, op: DropOp) => Promise<void>;
+  handleCreate: (parentId: string | null) => Promise<void>;
+  handleRename: (id: string, name: string) => void;
+  handleDelete: (id: string) => Promise<void>;
+};
+
+export function useTreeMutation(
   spaceId: string,
   options?: TreeMutationOptions,
-) {
-  const [data, setData] = useAtom(treeDataAtom);
-  const tree = useMemo(() => new SimpleTree<SpaceTreeNode>(data), [data]);
+): UseTreeMutation {
+  const { t } = useTranslation();
+  const [, setData] = useAtom(treeDataAtom);
+  // `store` reads the *current* treeDataAtom imperatively in handlers — avoids
+  // stale-closure issues when the caller updates the tree (e.g. lazy-load
+  // children) and then immediately invokes a handler.
+  const store = useStore();
   const createPageMutation = useCreatePageMutation();
   const updatePageMutation = useUpdatePageMutation();
   const removePageMutation = useRemovePageMutation();
   const movePageMutation = useMovePageMutation();
   const navigate = useNavigate();
-  const { spaceSlug } = useParams();
-  const { pageSlug } = useParams();
+  const { spaceSlug, pageSlug } = useParams();
   const emit = useQueryEmit();
   const pendingFolderNavigationRef = useRef<Record<string, string>>({});
-  const { t } = useTranslation();
   const editSession = useAtomValue(pageEditorEditSessionAtom);
   const editorSessionStatus = useAtomValue(pageEditorSessionStatusAtom);
   const currentRoutePage = useAtomValue(currentRoutePageAtom);
 
-  const onCreate: CreateHandler<T> = async ({ parentId, index, type }) => {
-    const parentNode = parentId ? tree.find(parentId) : null;
-    const parentNodeType =
-      parentNode?.data?.nodeType === "folder" ? "folder" : "file";
+  const handleMove = useCallback(
+    async (sourceId: string, op: DropOp) => {
+      const before = store.get(treeDataAtom);
+      const { tree: after, result } = treeModel.move(before, sourceId, op);
+      if (after === before) return;
 
-    const nodeType: "file" | "folder" =
-      parentId === null ? "folder" : type === "internal" ? "folder" : "file";
+      const payload = dropOpToMovePayload(before, sourceId, op);
+      const source = treeModel.find(before, sourceId) as SpaceTreeNode | null;
+      if (!source) return;
+      const oldParentId = source.parentPageId ?? null;
 
-    if (parentId && !parentNode) {
-      notifications.show({
-        color: "red",
-        message: "Parent node not found",
-      });
-      throw new Error("Parent node not found");
-    }
+      // optimistic apply with the new position from the payload
+      let optimistic = treeModel.update(after, sourceId, {
+        position: payload.position,
+        parentPageId: payload.parentPageId,
+      } as Partial<SpaceTreeNode>);
 
-    if (parentId === null && nodeType !== "folder") {
-      notifications.show({
-        color: "red",
-        message: "Root can only contain folders",
-      });
-      throw new Error("Root can only contain folders");
-    }
-
-    if (parentId !== null && parentNodeType === "file" && nodeType === "folder") {
-      notifications.show({
-        color: "red",
-        message: "Folders cannot be created under files",
-      });
-      throw new Error("Folders cannot be created under files");
-    }
-
-    const payload: {
-      spaceId: string;
-      parentPageId?: string;
-      nodeType: "file" | "folder";
-    } = {
-      spaceId: spaceId,
-      nodeType,
-    };
-    if (parentId) {
-      payload.parentPageId = parentId;
-    }
-
-    let createdPage: IPage;
-    try {
-      createdPage = await createPageMutation.mutateAsync(payload);
-
-      if (parentId === null && options?.rootViewMode === "pinned") {
-        const pinResult = await pinPage(createdPage.id);
-        createdPage = {
-          ...createdPage,
-          isPinned: pinResult.isPinned,
-          pinnedAt: pinResult.pinnedAt,
-        };
+      // If the old parent has no children left, mark hasChildren: false so the
+      // chevron disappears.
+      if (oldParentId) {
+        const oldParent = treeModel.find(optimistic, oldParentId);
+        if (!oldParent?.children?.length) {
+          optimistic = treeModel.update(optimistic, oldParentId, {
+            hasChildren: false,
+          } as Partial<SpaceTreeNode>);
+        }
       }
 
-      if (
-        parentId === null &&
-        options?.rootViewMode === "category" &&
-        options.rootCategoryId
-      ) {
-        const categoryResult = await assignSidebarCategory({
-          pageId: createdPage.id,
-          categoryId: options.rootCategoryId,
+      // For make-child onto a previously-childless target: flip hasChildren on.
+      if (op.kind === "make-child") {
+        optimistic = treeModel.update(optimistic, op.targetId, {
+          hasChildren: true,
+        } as Partial<SpaceTreeNode>);
+      }
+
+      setData(optimistic);
+
+      try {
+        await movePageMutation.mutateAsync(payload);
+      } catch {
+        setData(before);
+        notifications.show({
+          message: t("Failed to move page"),
+          color: "red",
         });
-        createdPage = {
-          ...createdPage,
-          sidebarCategoryId: categoryResult.sidebarCategoryId,
-        };
+        return;
       }
-    } catch (err) {
-      throw new Error("Failed to create page");
-    }
 
-    const data = {
-      id: createdPage.id,
-      slugId: createdPage.slugId,
-      name: createdPage.title ?? "",
-      position: createdPage.position,
-      spaceId: createdPage.spaceId,
-      parentPageId: createdPage.parentPageId,
-      icon: createdPage.icon,
-      hasChildren: createdPage.hasChildren,
-      nodeType: createdPage.nodeType ?? nodeType,
-      isPinned: createdPage.isPinned ?? false,
-      pinnedAt: createdPage.pinnedAt ?? null,
-      sidebarCategoryId: createdPage.sidebarCategoryId ?? null,
-      directChildCount:
-        createdPage.directChildCount ?? createdPage.directChildFolderCount ?? 0,
-      directChildFolderCount: createdPage.directChildFolderCount ?? 0,
-      descendantFolderCount: createdPage.descendantFolderCount ?? 0,
-      descendantFileCount: createdPage.descendantFileCount ?? 0,
-      descendantTotalCount: createdPage.descendantTotalCount ?? 0,
-      children: [],
-    } as any;
-
-    let lastIndex: number;
-    if (parentId === null) {
-      lastIndex = tree.data.length;
-    } else {
-      lastIndex = tree.find(parentId).children.length;
-    }
-    // to place the newly created node at the bottom
-    index = lastIndex;
-
-    tree.create({ parentId, index, data });
-    setData(tree.data);
-
-    setTimeout(() => {
-      emit({
-        operation: "addTreeNode",
-        spaceId: spaceId,
-        payload: {
-          parentId,
-          index,
-          data,
-        },
-      });
-    }, 50);
-
-    if (nodeType === "file") {
-      const pageUrl = buildPageUrl(
-        spaceSlug,
-        createdPage.slugId,
-        createdPage.title
-      );
-      navigate(pageUrl);
-    } else {
-      // Keep inline rename available for newly created folders.
-      pendingFolderNavigationRef.current[createdPage.id] = createdPage.slugId;
-    }
-
-    return data;
-  };
-
-  const onMove: MoveHandler<T> = async (args: {
-    dragIds: string[];
-    dragNodes: NodeApi<T>[];
-    parentId: string | null;
-    parentNode: NodeApi<T> | null;
-    index: number;
-  }) => {
-    if (args.dragIds.length > 1) {
-      notifications.show({
-        color: "yellow",
-        message:
-          "Dragging multiple pages is not supported yet. Use batch move in folder menu.",
-      });
-      return;
-    }
-
-    const draggedNodeId = args.dragIds[0];
-
-    tree.move({
-      id: draggedNodeId,
-      parentId: args.parentId,
-      index: args.index,
-    });
-
-    const newDragIndex = tree.find(draggedNodeId)?.childIndex;
-
-    const currentTreeData = args.parentId
-      ? tree.find(args.parentId).children
-      : tree.data;
-
-    // if there is a parentId, tree.find(args.parentId).children returns a SimpleNode array
-    // we have to access the node differently via currentTreeData[args.index]?.data?.position
-    // this makes it possible to correctly sort children of a parent node that is not the root
-
-    const afterPosition =
-      // @ts-ignore
-      currentTreeData[newDragIndex - 1]?.position ||
-      // @ts-ignore
-      currentTreeData[args.index - 1]?.data?.position ||
-      null;
-
-    const beforePosition =
-      // @ts-ignore
-      currentTreeData[newDragIndex + 1]?.position ||
-      // @ts-ignore
-      currentTreeData[args.index + 1]?.data?.position ||
-      null;
-
-    let newPosition: string;
-
-    if (afterPosition && beforePosition && afterPosition === beforePosition) {
-      // if after is equal to before, put it next to the after node
-      newPosition = generateJitteredKeyBetween(afterPosition, null);
-    } else {
-      // if both are null then, it is the first index
-      newPosition = generateJitteredKeyBetween(afterPosition, beforePosition);
-    }
-
-    // update the node position in tree
-    tree.update({
-      id: draggedNodeId,
-      changes: { position: newPosition } as any,
-    });
-
-    const previousParent = args.dragNodes[0].parent;
-    if (
-      previousParent.id !== args.parentId &&
-      previousParent.id !== "__REACT_ARBORIST_INTERNAL_ROOT__"
-    ) {
-      // if the page was moved to another parent,
-      // check if the previous still has children
-      // if no children left, change 'hasChildren' to false, to make the page toggle arrows work properly
-      const childrenCount = previousParent.children.filter(
-        (child) => child.id !== draggedNodeId
-      ).length;
-      if (childrenCount === 0) {
-        tree.update({
-          id: previousParent.id,
-          changes: { ...previousParent.data, hasChildren: false } as any,
-        });
-      }
-    }
-
-    setData(tree.data);
-
-    const payload: IMovePage = {
-      pageId: draggedNodeId,
-      position: newPosition,
-      parentPageId: args.parentId,
-    };
-
-    const draggedNode = args.dragNodes[0];
-    const nodeData = draggedNode.data as SpaceTreeNode;
-    const oldParentId = nodeData.parentPageId ?? null;
-    const pageData = {
-      id: nodeData.id,
-      slugId: nodeData.slugId,
-      title: nodeData.name,
-      icon: nodeData.icon,
-      position: newPosition,
-      spaceId: nodeData.spaceId,
-      parentPageId: args.parentId,
-      hasChildren: nodeData.hasChildren,
-      nodeType: nodeData.nodeType,
-      isPinned: nodeData.isPinned,
-      pinnedAt: nodeData.pinnedAt,
-      sidebarCategoryId: args.parentId ? null : nodeData.sidebarCategoryId ?? null,
-      directChildCount:
-        nodeData.directChildCount ?? nodeData.directChildFolderCount ?? 0,
-      directChildFolderCount: nodeData.directChildFolderCount ?? 0,
-      descendantFolderCount: nodeData.descendantFolderCount ?? 0,
-      descendantFileCount: nodeData.descendantFileCount ?? 0,
-      descendantTotalCount: nodeData.descendantTotalCount ?? 0,
-    };
-
-    try {
-      await movePageMutation.mutateAsync(payload);
+      const pageData: Partial<IPage> = {
+        id: source.id,
+        slugId: source.slugId,
+        title: source.name,
+        icon: source.icon,
+        position: payload.position,
+        spaceId: source.spaceId,
+        parentPageId: payload.parentPageId,
+        hasChildren: source.hasChildren,
+      };
 
       updateCacheOnMovePage(
         spaceId,
-        draggedNodeId,
+        sourceId,
         oldParentId,
-        args.parentId,
+        payload.parentPageId,
         pageData,
       );
 
-      if (oldParentId === null || args.parentId === null) {
+      if (oldParentId === null || payload.parentPageId === null) {
         invalidateRootSidebarQueries(spaceId);
       }
 
@@ -343,145 +146,255 @@ export function useTreeMutation<T>(
           operation: "moveTreeNode",
           spaceId: spaceId,
           payload: {
-            id: draggedNodeId,
-            parentId: args.parentId,
+            id: sourceId,
+            parentId: payload.parentPageId,
             oldParentId,
-            index: args.index,
-            position: newPosition,
+            index: result.index,
+            position: payload.position,
             pageData,
           },
         });
       }, 50);
-    } catch (error) {
-      console.error("Error moving page:", error);
-    }
-  };
+    },
+    [setData, store, movePageMutation, spaceId, emit, t],
+  );
 
-  const onRename: RenameHandler<T> = ({ name, id }) => {
-    const isCurrentRoutePage = currentRoutePage?.id === id;
-    const hasActiveEditorSession =
-      Boolean(editSession) &&
-      (!isEditorSessionEnabled() || editorSessionStatus === "active");
-    const sessionForRename =
-      isCurrentRoutePage && hasActiveEditorSession ? editSession : undefined;
+  const handleCreate = useCallback(
+    async (parentId: string | null) => {
+      const payload: { spaceId: string; parentPageId?: string } = { spaceId };
+      if (parentId) payload.parentPageId = parentId;
 
-    if (isEditorSessionEnabled() && !sessionForRename) {
-      notifications.show({
-        color: "yellow",
-        message: isCurrentRoutePage
-          ? t(
-              "Wait for this page to finish loading editing before renaming it in the sidebar.",
-            )
-          : t(
-              "Open this page and wait for editing to start before renaming it in the sidebar.",
-            ),
-      });
-      return;
-    }
+      let createdPage: IPage;
+      try {
+        createdPage = await createPageMutation.mutateAsync(payload);
 
-    tree.update({ id, changes: { name } as any });
-    setData(tree.data);
-
-    updatePageMutation
-      .mutateAsync({
-        pageId: id,
-        title: name,
-        editSession: sessionForRename,
-        writeIntent: "normal",
-      })
-      .then((page) => {
-        updatePageData(page);
-
-        const updateEvent = {
-          operation: "updateOne" as const,
-          spaceId: page.spaceId,
-          entity: ["pages"] as ["pages"],
-          id: page.id,
-          payload: {
-            title: page.title,
-            slugId: page.slugId,
-            parentPageId: page.parentPageId,
-            icon: page.icon,
-          },
-        };
-        localEmitter.emit("message", updateEvent);
-        emit(updateEvent);
-
-        if (isCurrentRoutePage) {
-          getDefaultStore().set(currentRoutePageAtom as any, page);
-          if (spaceSlug) {
-            navigate(buildPageUrl(spaceSlug, page.slugId, page.title), {
-              replace: true,
-            });
-          }
+        // Auto-pin if creating at root in pinned view mode
+        if (parentId === null && options?.rootViewMode === "pinned") {
+          const pinResult = await pinPage(createdPage.id);
+          createdPage = {
+            ...createdPage,
+            isPinned: pinResult.isPinned,
+            pinnedAt: pinResult.pinnedAt,
+          };
         }
 
-        const createdFolderSlugId = pendingFolderNavigationRef.current[id];
-        if (!createdFolderSlugId) {
-          return;
+        // Auto-assign category if creating at root in category view mode
+        if (
+          parentId === null &&
+          options?.rootViewMode === "category" &&
+          options.rootCategoryId
+        ) {
+          const categoryResult = await assignSidebarCategory({
+            pageId: createdPage.id,
+            categoryId: options.rootCategoryId,
+          });
+          createdPage = {
+            ...createdPage,
+            sidebarCategoryId: categoryResult.sidebarCategoryId,
+          };
         }
-        delete pendingFolderNavigationRef.current[id];
-        navigate(buildPageUrl(spaceSlug, createdFolderSlugId, name));
-      })
-      .catch((error) => {
-        const message = isAxiosError(error)
-          ? error.response?.data?.message
-          : undefined;
-        notifications.show({
-          color: "red",
-          message:
-            message ||
-            t("Failed to save page title. Please try again in a moment."),
-        });
-        console.error("Error updating page title:", error);
-      });
-  };
+      } catch {
+        throw new Error("Failed to create page");
+      }
 
-  const isPageInNode = (
-    node: { data: SpaceTreeNode; children?: any[] },
-    pageSlug: string
-  ): boolean => {
-    if (node.data.slugId === pageSlug) {
-      return true;
-    }
-    for (const item of node.children) {
-      if (item.data.slugId === pageSlug) {
-        return true;
+      const newNode: SpaceTreeNode = {
+        id: createdPage.id,
+        slugId: createdPage.slugId,
+        name: "",
+        position: createdPage.position,
+        spaceId: createdPage.spaceId,
+        parentPageId: createdPage.parentPageId,
+        hasChildren: false,
+        isPinned: createdPage.isPinned ?? false,
+        pinnedAt: createdPage.pinnedAt ?? null,
+        sidebarCategoryId: createdPage.sidebarCategoryId ?? null,
+        children: [],
+      };
+
+      // Read latest tree at call time to avoid stale closure.
+      const current = store.get(treeDataAtom);
+      let lastIndex: number;
+      if (parentId === null) {
+        lastIndex = current.length;
       } else {
-        return isPageInNode(item, pageSlug);
-      }
-    }
-    return false;
-  };
-
-  const onDelete: DeleteHandler<T> = async (args: { ids: string[] }) => {
-    try {
-      await removePageMutation.mutateAsync(args.ids[0]);
-
-      const node = tree.find(args.ids[0]);
-      if (!node) {
-        return;
+        const parent = treeModel.find(current, parentId);
+        lastIndex = parent?.children?.length ?? 0;
       }
 
-      tree.drop({ id: args.ids[0] });
-      setData(tree.data);
-
-      if (pageSlug && isPageInNode(node, pageSlug.split("-")[1])) {
-        navigate(getSpaceUrl(spaceSlug));
-      }
+      setData((prev) => treeModel.insert(prev, parentId, newNode, lastIndex));
 
       setTimeout(() => {
         emit({
-          operation: "deleteTreeNode",
-          spaceId: spaceId,
-          payload: { node: node.data },
+          operation: "addTreeNode",
+          spaceId,
+          payload: {
+            parentId,
+            index: lastIndex,
+            data: newNode,
+          },
         });
       }, 50);
-    } catch (error) {
-      console.error("Failed to delete page:", error);
-    }
-  };
 
-  const controllers = { onMove, onRename, onCreate, onDelete };
-  return { data, setData, controllers } as const;
+      const pageUrl = buildPageUrl(
+        spaceSlug,
+        createdPage.slugId,
+        createdPage.title,
+      );
+      navigate(pageUrl);
+      if (!parentId) {
+        // Track root-level pages so onRename can update URL after user sets a name.
+        pendingFolderNavigationRef.current[createdPage.id] = createdPage.slugId;
+      }
+    },
+    [spaceId, options, createPageMutation, setData, store, emit, navigate, spaceSlug],
+  );
+
+  const handleRename = useCallback(
+    (id: string, name: string) => {
+      const isCurrentRoutePage = currentRoutePage?.id === id;
+      const hasActiveEditorSession =
+        Boolean(editSession) &&
+        (!isEditorSessionEnabled() || editorSessionStatus === "active");
+      const sessionForRename =
+        isCurrentRoutePage && hasActiveEditorSession ? editSession : undefined;
+
+      if (isEditorSessionEnabled() && !sessionForRename) {
+        notifications.show({
+          color: "yellow",
+          message: isCurrentRoutePage
+            ? t(
+                "Wait for this page to finish loading editing before renaming it in the sidebar.",
+              )
+            : t(
+                "Open this page and wait for editing to start before renaming it in the sidebar.",
+              ),
+        });
+        return;
+      }
+
+      setData((prev) =>
+        treeModel.update(prev, id, { name } as Partial<SpaceTreeNode>),
+      );
+
+      updatePageMutation
+        .mutateAsync({
+          pageId: id,
+          title: name,
+          editSession: sessionForRename,
+          writeIntent: "normal",
+        })
+        .then((page) => {
+          updatePageData(page);
+
+          const updateEvent = {
+            operation: "updateOne" as const,
+            spaceId: page.spaceId,
+            entity: ["pages"] as ["pages"],
+            id: page.id,
+            payload: {
+              title: page.title,
+              slugId: page.slugId,
+              parentPageId: page.parentPageId,
+              icon: page.icon,
+            },
+          };
+          localEmitter.emit("message", updateEvent);
+          emit(updateEvent);
+
+          if (isCurrentRoutePage) {
+            getDefaultStore().set(currentRoutePageAtom as any, page);
+            if (spaceSlug) {
+              navigate(buildPageUrl(spaceSlug, page.slugId, page.title), {
+                replace: true,
+              });
+            }
+          }
+
+          const createdFolderSlugId = pendingFolderNavigationRef.current[id];
+          if (!createdFolderSlugId) return;
+          delete pendingFolderNavigationRef.current[id];
+          navigate(buildPageUrl(spaceSlug, createdFolderSlugId, name));
+        })
+        .catch((error) => {
+          const message = isAxiosError(error)
+            ? error.response?.data?.message
+            : undefined;
+          notifications.show({
+            color: "red",
+            message:
+              message ||
+              t("Failed to save page title. Please try again in a moment."),
+          });
+          console.error("Error updating page title:", error);
+        });
+    },
+    [
+      currentRoutePage,
+      editSession,
+      editorSessionStatus,
+      updatePageMutation,
+      setData,
+      emit,
+      navigate,
+      spaceSlug,
+      t,
+    ],
+  );
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const node = treeModel.find(
+        store.get(treeDataAtom),
+        id,
+      ) as SpaceTreeNode | null;
+      const parentPageId = node?.parentPageId ?? null;
+      try {
+        await removePageMutation.mutateAsync(id);
+        setData((prev) => {
+          let next = treeModel.remove(prev, id);
+          if (parentPageId) {
+            const parent = treeModel.find(next, parentPageId);
+            if (!parent?.children?.length) {
+              next = treeModel.update(next, parentPageId, {
+                hasChildren: false,
+              } as Partial<SpaceTreeNode>);
+            }
+          }
+          return next;
+        });
+
+        if (
+          node &&
+          pageSlug &&
+          (node.slugId === pageSlug.split("-")[1] ||
+            isPageInNode(node, pageSlug.split("-")[1]))
+        ) {
+          navigate(getSpaceUrl(spaceSlug));
+        }
+
+        setTimeout(() => {
+          if (!node) return;
+          emit({
+            operation: "deleteTreeNode",
+            spaceId,
+            payload: { node },
+          });
+        }, 50);
+      } catch (error) {
+        console.error("Failed to delete page:", error);
+      }
+    },
+    [removePageMutation, setData, store, pageSlug, navigate, spaceSlug, emit, spaceId],
+  );
+
+  return { handleMove, handleCreate, handleRename, handleDelete };
+}
+
+function isPageInNode(node: SpaceTreeNode, pageSlug: string): boolean {
+  if (node.slugId === pageSlug) return true;
+  if (!node.children) return false;
+  for (const child of node.children) {
+    if (isPageInNode(child, pageSlug)) return true;
+  }
+  return false;
 }

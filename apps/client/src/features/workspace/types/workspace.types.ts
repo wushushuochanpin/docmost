@@ -40,6 +40,7 @@ export interface IWorkspace {
   restrictApiToAdmins?: boolean;
   capabilities?: IWorkspaceCapabilities;
   allowMemberTemplates?: boolean;
+  isScimEnabled?: boolean;
 }
 
 export interface IWorkspaceSettings {

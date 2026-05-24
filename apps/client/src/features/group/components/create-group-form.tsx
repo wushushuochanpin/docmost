@@ -58,6 +58,7 @@ export function CreateGroupForm() {
               label={t("Group name")}
               placeholder={t("e.g Developers")}
               variant="default"
+              data-autofocus
               {...form.getInputProps("name")}
             />
 

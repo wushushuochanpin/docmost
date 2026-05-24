@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PageService } from './services/page.service';
+import { BacklinkService } from './services/backlink.service';
 import { PageAccessService } from './page-access/page-access.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
@@ -47,6 +48,9 @@ import {
   StartFolderMigrationDto,
 } from './dto/folder-migration.dto';
 import { UserRole } from '../../common/helpers/types/permission';
+import { BacklinksListDto } from './dto/backlink.dto';
+import { LabelService } from '../label/label.service';
+import { AddLabelsDto, RemoveLabelDto } from '../label/dto/label.dto';
 import {
   jsonToHtml,
   jsonToMarkdown,
@@ -71,6 +75,8 @@ export class PageController {
     private readonly spaceAbility: SpaceAbilityFactory,
     private readonly pageAccessService: PageAccessService,
     private readonly shareStaticRendererService: ShareStaticRendererService,
+    private readonly backlinkService: BacklinkService,
+    private readonly labelService: LabelService,
     @Inject(AUDIT_SERVICE) private readonly auditService: IAuditService,
   ) {}
 
@@ -186,6 +192,100 @@ export class PageController {
     }
 
     return segment;
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('labels')
+  async getPageLabels(
+    @Body() dto: PageIdDto,
+    @Body() pagination: PaginationOptions,
+    @AuthUser() user: User,
+  ) {
+    const page = await this.pageRepo.findById(dto.pageId);
+    if (!page) {
+      throw new NotFoundException('Page not found');
+    }
+
+    await this.pageAccessService.validateCanView(page, user);
+
+    return this.labelService.getPageLabels(page.id, pagination);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('labels/add')
+  async addPageLabels(
+    @Body() dto: AddLabelsDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const page = await this.pageRepo.findById(dto.pageId);
+    if (!page || page.deletedAt) {
+      throw new NotFoundException('Page not found');
+    }
+
+    await this.pageAccessService.validateCanEdit(page, user);
+
+    return this.labelService.addLabelsToPage(
+      page.id,
+      dto.names,
+      workspace.id,
+    );
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('labels/remove')
+  async removePageLabel(
+    @Body() dto: RemoveLabelDto,
+    @AuthUser() user: User,
+  ) {
+    const page = await this.pageRepo.findById(dto.pageId);
+    if (!page || page.deletedAt) {
+      throw new NotFoundException('Page not found');
+    }
+
+    await this.pageAccessService.validateCanEdit(page, user);
+
+    await this.labelService.removeLabelFromPage(
+      page.id,
+      dto.labelId,
+      page.workspaceId,
+    );
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('backlinks-count')
+  async getBacklinksCount(
+    @Body() dto: PageIdDto,
+    @AuthUser() user: User,
+  ): Promise<{ incoming: number; outgoing: number }> {
+    const page = await this.pageRepo.findById(dto.pageId);
+    if (!page) {
+      throw new NotFoundException('Page not found');
+    }
+    await this.pageAccessService.validateCanView(page, user);
+
+    return this.backlinkService.countByPageId(page.id, user.id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('backlinks')
+  async getBacklinks(
+    @Body() dto: BacklinksListDto,
+    @Body() pagination: PaginationOptions,
+    @AuthUser() user: User,
+  ) {
+    const page = await this.pageRepo.findById(dto.pageId);
+    if (!page) {
+      throw new NotFoundException('Page not found');
+    }
+    await this.pageAccessService.validateCanView(page, user);
+
+    return this.backlinkService.findByPageId(
+      page.id,
+      dto.direction,
+      user.id,
+      pagination,
+    );
   }
 
   @HttpCode(HttpStatus.OK)

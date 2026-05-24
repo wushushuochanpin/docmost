@@ -122,6 +122,7 @@ const MfaSetupRequiredPage = lazyWithRetry(() =>
     default: module.MfaSetupRequiredPage,
   })),
 );
+const LabelPage = lazyWithRetry(() => import("@/pages/label/label-page"));
 
 export default function App() {
   const shareLegacyRouteMode = getShareLegacyRouteMode();
@@ -226,6 +227,7 @@ export default function App() {
             <Route path={"/ai/chat/:chatId"} element={<AiChat />} />
             <Route path={"/spaces"} element={<SpacesPage />} />
             <Route path={"/favorites"} element={<FavoritesPage />} />
+            <Route path={"/labels/:labelName"} element={<LabelPage />} />
             <Route path={"/templates"} element={<TemplateList />} />
             <Route
               path={"/templates/:templateId"}

@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 export default function ImageView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { editor, node, selected } = props;
-  const { src, width, align, title, aspectRatio, placeholder, attachmentId } =
+  const { src, width, align, title, alt, aspectRatio, placeholder, attachmentId } =
     node.attrs;
   const alignClass = useMemo(() => {
     if (align === "left") return "alignLeft";
@@ -85,7 +85,7 @@ export default function ImageView(props: NodeViewProps) {
             radius="md"
             fit="contain"
             src={currentImageSrc}
-            alt={title}
+            alt={alt ?? title}
             onError={handleImageError}
           />
         )}

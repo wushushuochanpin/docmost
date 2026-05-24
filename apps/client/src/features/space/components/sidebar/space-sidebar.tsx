@@ -5,13 +5,16 @@ import {
   IconFileExport,
   IconFolder,
   IconSettings,
+  IconStar,
+  IconStarFilled,
+  IconTemplate,
   IconTrash,
 } from "@tabler/icons-react";
 import classes from "./space-sidebar.module.css";
 import React from "react";
 import { useAtom } from "jotai";
-import { treeApiAtom } from "@/features/page/tree/atoms/tree-api-atom.ts";
-import { Link, useParams } from "react-router-dom";
+import { useTreeMutation } from "@/features/page/tree/hooks/use-tree-mutation.ts";
+import { Link, useLocation, useParams } from "react-router-dom";
 import clsx from "clsx";
 import { useDisclosure } from "@mantine/hooks";
 import SpaceSettingsModal from "@/features/space/components/settings-modal.tsx";
@@ -26,10 +29,23 @@ import PageImportModal from "@/features/page/components/page-import-modal.tsx";
 import { useTranslation } from "react-i18next";
 import { SwitchSpace } from "./switch-space";
 import ExportModal from "@/components/common/export-modal";
+import {
+  useFavoriteIds,
+  useAddFavoriteMutation,
+  useRemoveFavoriteMutation,
+} from "@/features/favorite/queries/favorite-query";
+import { mobileSidebarAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
+import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-toggle-sidebar.ts";
+import { searchSpotlight } from "@/features/search/constants";
+import TemplatePickerModal from "@/ee/template/components/template-picker-modal";
+import { useHasFeature } from "@/ee/hooks/use-feature";
+import { useUpgradeLabel } from "@/ee/hooks/use-upgrade-label";
+import { Feature } from "@/ee/features";
+import { ErrorBoundary } from "react-error-boundary";
 
 export function SpaceSidebar() {
   const { t } = useTranslation();
-  const [tree] = useAtom(treeApiAtom);
+  const location = useLocation();
   const [opened, { open: openSettings, close: closeSettings }] =
     useDisclosure(false);
 
@@ -38,13 +54,14 @@ export function SpaceSidebar() {
 
   const spaceRules = space?.membership?.permissions;
   const spaceAbility = useSpaceAbility(spaceRules);
+  const { handleCreate } = useTreeMutation(space?.id ?? "");
 
   if (!space) {
     return <></>;
   }
 
   function handleCreateFolder() {
-    tree?.create({ parentId: null, type: "internal", index: 0 });
+    handleCreate(null);
   }
 
   return (
@@ -76,7 +93,14 @@ export function SpaceSidebar() {
               SpaceCaslSubject.Page,
             ) && (
               <Group gap="xs">
-                <SpaceMenu spaceId={space.id} onSpaceSettings={openSettings} />
+                <SpaceMenu
+                  spaceId={space.id}
+                  canManagePages={spaceAbility.can(
+                    SpaceCaslAction.Manage,
+                    SpaceCaslSubject.Page,
+                  )}
+                  onSpaceSettings={openSettings}
+                />
 
                 <Tooltip label={t("Create folder")} withArrow position="right">
                   <ActionIcon
@@ -119,15 +143,36 @@ export function SpaceSidebar() {
 
 interface SpaceMenuProps {
   spaceId: string;
+  canManagePages: boolean;
   onSpaceSettings: () => void;
 }
-function SpaceMenu({ spaceId, onSpaceSettings }: SpaceMenuProps) {
+function SpaceMenu({ spaceId, canManagePages, onSpaceSettings }: SpaceMenuProps) {
   const { t } = useTranslation();
   const { spaceSlug } = useParams();
   const [importOpened, { open: openImportModal, close: closeImportModal }] =
     useDisclosure(false);
   const [exportOpened, { open: openExportModal, close: closeExportModal }] =
     useDisclosure(false);
+  const [
+    templatePickerOpened,
+    { open: openTemplatePicker, close: closeTemplatePicker },
+  ] = useDisclosure(false);
+  const hasTemplates = useHasFeature(Feature.TEMPLATES);
+  const upgradeLabel = useUpgradeLabel();
+
+  const favoriteIds = useFavoriteIds("space");
+  const addFavoriteMutation = useAddFavoriteMutation();
+  const removeFavoriteMutation = useRemoveFavoriteMutation();
+  const isFavorited = favoriteIds.has(spaceId);
+
+  const handleToggleFavorite = () => {
+    const params = { type: "space" as const, spaceId };
+    if (isFavorited) {
+      removeFavoriteMutation.mutate(params);
+    } else {
+      addFavoriteMutation.mutate(params);
+    }
+  };
 
   return (
     <>
@@ -150,50 +195,107 @@ function SpaceMenu({ spaceId, onSpaceSettings }: SpaceMenuProps) {
 
         <Menu.Dropdown>
           <Menu.Item
-            onClick={openImportModal}
-            leftSection={<IconArrowDown size={16} />}
+            onClick={handleToggleFavorite}
+            leftSection={
+              isFavorited ? (
+                <IconStarFilled
+                  size={16}
+                  color="var(--mantine-color-yellow-filled)"
+                />
+              ) : (
+                <IconStar size={16} />
+              )
+            }
           >
-            {t("Import pages")}
+            {isFavorited ? t("Remove from favorites") : t("Add to favorites")}
           </Menu.Item>
 
-          <Menu.Item
-            onClick={openExportModal}
-            leftSection={<IconFileExport size={16} />}
-          >
-            {t("Export space")}
-          </Menu.Item>
+          {canManagePages && (
+            <>
+              <Menu.Divider />
+              <Tooltip
+                label={upgradeLabel}
+                disabled={hasTemplates}
+                position="right"
+                withArrow
+              >
+                <Menu.Item
+                  onClick={hasTemplates ? openTemplatePicker : undefined}
+                  leftSection={<IconTemplate size={16} />}
+                  data-disabled={!hasTemplates || undefined}
+                  aria-disabled={!hasTemplates || undefined}
+                >
+                  {t("Templates")}
+                </Menu.Item>
+              </Tooltip>
+            </>
+          )}
 
-          <Menu.Divider />
+          {canManagePages && (
+            <>
+              <Menu.Divider />
 
-          <Menu.Item
-            onClick={onSpaceSettings}
-            leftSection={<IconSettings size={16} />}
-          >
-            {t("Space settings")}
-          </Menu.Item>
+              <Menu.Item
+                onClick={openImportModal}
+                leftSection={<IconArrowDown size={16} />}
+              >
+                {t("Import pages")}
+              </Menu.Item>
 
-          <Menu.Item
-            component={Link}
-            to={`/s/${spaceSlug}/trash`}
-            leftSection={<IconTrash size={16} />}
-          >
-            {t("Trash")}
-          </Menu.Item>
+              <Menu.Item
+                onClick={openExportModal}
+                leftSection={<IconFileExport size={16} />}
+              >
+                {t("Export space")}
+              </Menu.Item>
+
+              <Menu.Divider />
+
+              <Menu.Item
+                onClick={onSpaceSettings}
+                leftSection={<IconSettings size={16} />}
+              >
+                {t("Space settings")}
+              </Menu.Item>
+
+              <Menu.Item
+                component={Link}
+                to={`/s/${spaceSlug}/trash`}
+                leftSection={<IconTrash size={16} />}
+              >
+                {t("Trash")}
+              </Menu.Item>
+            </>
+          )}
         </Menu.Dropdown>
       </Menu>
 
-      <PageImportModal
-        spaceId={spaceId}
-        open={importOpened}
-        onClose={closeImportModal}
-      />
+      {canManagePages && (
+        <>
+          <PageImportModal
+            spaceId={spaceId}
+            open={importOpened}
+            onClose={closeImportModal}
+          />
 
-      <ExportModal
-        type="space"
-        id={spaceId}
-        open={exportOpened}
-        onClose={closeExportModal}
-      />
+          <ExportModal
+            type="space"
+            id={spaceId}
+            open={exportOpened}
+            onClose={closeExportModal}
+          />
+        </>
+      )}
+
+      {hasTemplates && templatePickerOpened && (
+        <ErrorBoundary fallbackRender={() => null}>
+          <TemplatePickerModal
+            opened={templatePickerOpened}
+            onClose={closeTemplatePicker}
+            initialSpaceId={spaceId}
+          />
+        </ErrorBoundary>
+      )}
     </>
   );
 }

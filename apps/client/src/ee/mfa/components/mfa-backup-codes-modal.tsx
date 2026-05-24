@@ -131,6 +131,11 @@ export function MfaBackupCodesModal({
                   label={t("Confirm password")}
                   placeholder={t("Enter your password")}
                   variant="default"
+                  visibilityToggleButtonProps={{
+                    "aria-label": t("Toggle password visibility"),
+                    "aria-hidden": false,
+                    tabIndex: 0,
+                  }}
                   {...form.getInputProps("confirmPassword")}
                   autoFocus
                   data-autofocus

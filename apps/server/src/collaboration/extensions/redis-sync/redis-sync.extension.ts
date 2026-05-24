@@ -434,8 +434,11 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
       this.pub.publish(`${this.msgChannel}:${proxyTo}`, msg);
       return;
     }
-    // This server owns the document, but hocuspocus hasn't loaded it yet
-    ws.emit('message', message);
+    // This server owns the document, but Hocuspocus v4 does not subscribe to
+    // wrapper socket events. Feed the first message into the retained
+    // ClientConnection so auth and document loading can start.
+    const socketId = serializedHTTPRequest.headers['sec-websocket-key']!;
+    this.originConnections[socketId]?.handleMessage(message);
   }
 
   onSocketClose(socketId: string, code?: number, reason?: ArrayBuffer) {

@@ -7,12 +7,14 @@ import classes from "./search-input.module.css";
 
 export interface SearchInputProps {
   placeholder?: string;
+  ariaLabel?: string;
   debounceDelay?: number;
   onSearch: (value: string) => void;
 }
 
 export function SearchInput({
   placeholder,
+  ariaLabel,
   debounceDelay = 500,
   onSearch,
 }: SearchInputProps) {
@@ -29,6 +31,7 @@ export function SearchInput({
       <TextInput
         size="sm"
         placeholder={placeholder || t("Search...")}
+        aria-label={ariaLabel || placeholder || t("Search")}
         leftSection={<IconSearch size={15} stroke={1.75} />}
         radius="md"
         className={classes.input}

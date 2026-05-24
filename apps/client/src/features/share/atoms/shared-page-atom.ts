@@ -1,5 +1,6 @@
 import type { SetStateAction } from "react";
 import { atom } from "jotai";
+import { atomWithStorage } from "jotai/utils";
 import { ISharedPageTree } from "@/features/share/types/share.types";
 import { SharedPageTreeNode } from "@/features/share/utils";
 import { ISharedPageRenderedTocItem } from "@/features/share/types/share.types";
@@ -71,3 +72,8 @@ export const sharedPageTreeRequestStateAtom = atom<SharedPageTreeRequestState>({
 
 /** When true, ShareShell hides header and shows only full-viewport centered content (e.g. password form). */
 export const sharedFullScreenAtom = atom(false);
+
+export const sharedPageFullWidthAtom = atomWithStorage<boolean>(
+  "sharedPageFullWidth",
+  false,
+);

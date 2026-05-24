@@ -6,9 +6,10 @@ import { ShareSeoController } from './share-seo.controller';
 import { ShareStaticRendererService } from './share-static-renderer.service';
 import { SharePreviewMetaService } from './share-preview-meta.service';
 import { ShareWechatService } from './share-wechat.service';
+import { TransclusionModule } from '../page/transclusion/transclusion.module';
 
 @Module({
-  imports: [TokenModule],
+  imports: [TokenModule, TransclusionModule],
   controllers: [ShareController, ShareSeoController],
   providers: [
     ShareService,

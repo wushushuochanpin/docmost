@@ -91,3 +91,16 @@
         line-height: 1.25;
     }
 }
+
+.byline {
+    padding-left: 3rem;
+
+    @media (max-width: $mantine-breakpoint-sm) {
+        padding-left: 1rem;
+    }
+
+    @media print {
+        padding-left: 0;
+    }
+}
+

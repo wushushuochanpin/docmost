@@ -10,6 +10,7 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import { useAtomValue, useStore } from "jotai";
 import {
   pageEditorEditSessionAtom,
+  currentPageEditModeAtom,
   pageEditorAtom,
   pageEditorSessionStatusAtom,
   titleEditorAtom,
@@ -27,7 +28,6 @@ import { useTranslation } from "react-i18next";
 import EmojiCommand from "@/features/editor/extensions/emoji-command.ts";
 import { UpdateEvent } from "@/features/websocket/types";
 import localEmitter from "@/lib/local-emitter.ts";
-import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { PageEditMode } from "@/features/user/types/user.types.ts";
 import { searchSpotlight } from "@/features/search/constants.ts";
 import { pageEditModePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
@@ -35,6 +35,7 @@ import classes from "@/features/editor/styles/editor.module.css";
 import { isEditorSessionEnabled } from "@/lib/config";
 import { useEditorSessionLease } from "@/features/editor-session/use-editor-session-lease";
 import type { EditSession } from "@/features/editor-session/types";
+import { platformModifierKey } from "@/lib";
 
 function isEditorSessionConflict(error: unknown) {
   return (
@@ -281,10 +282,23 @@ export function TitleEditor({
     immediatelyRender: true,
     shouldRerenderOnTransaction: false,
     editorProps: {
+      attributes: {
+        "aria-label": t("Page title"),
+      },
       handleDOMEvents: {
         blur: () => {
           saveTitleRef.current();
           return false;
+        },
+        keydown: (_view, event) => {
+          if (platformModifierKey(event) && event.code === "KeyS") {
+            event.preventDefault();
+            return true;
+          }
+          if (platformModifierKey(event) && event.code === "KeyK") {
+            searchSpotlight.open();
+            return true;
+          }
         },
       },
     },

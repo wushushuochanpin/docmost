@@ -1,4 +1,4 @@
-import { ActionIcon, Group, Loader, Menu, Text, Tooltip } from "@mantine/core";
+import { ActionIcon, Group, Loader, Menu, Text, ThemeIcon, Tooltip } from "@mantine/core";
 import {
   IconArrowRight,
   IconArrowsHorizontal,
@@ -16,8 +16,9 @@ import {
   IconWifiOff,
   IconWorld,
 } from "@tabler/icons-react";
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import useToggleAside from "@/hooks/use-toggle-aside.tsx";
+import { useAsideTriggerProps } from "@/hooks/use-toggle-aside.tsx";
 import { useAtom, useAtomValue } from "jotai";
 import { historyAtoms } from "@/features/page-history/atoms/history-atoms.ts";
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
@@ -28,6 +29,8 @@ import { notifications } from "@mantine/notifications";
 import { getAppUrl, isCollaborationEnabled } from "@/lib/config.ts";
 import APP_ROUTE from "@/lib/app-route.ts";
 import { treeApiAtom } from "@/features/page/tree/atoms/tree-api-atom.ts";
+import { extractPageSlugId } from "@/lib";
+import { useTreeMutation } from "@/features/page/tree/hooks/use-tree-mutation.ts";
 import { useDeletePageModal } from "@/features/page/hooks/use-delete-page-modal.tsx";
 import { PageWidthToggle } from "@/features/user/components/page-width-pref.tsx";
 import { Trans, useTranslation } from "react-i18next";
@@ -39,6 +42,7 @@ import {
 import { formattedDate } from "@/lib/time.ts";
 import { PageStateSegmentedControl } from "@/features/user/components/page-state-pref.tsx";
 import { EditorFontSizeSegmentedControl } from "@/features/editor/components/editor-font-size-control.tsx";
+import { PageEditModeToggle } from "@/features/user/components/page-state-pref.tsx";
 import { useTimeAgo } from "@/hooks/use-time-ago.tsx";
 import { IPage } from "@/features/page/types/page.types.ts";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
@@ -69,6 +73,9 @@ export default function PageHeaderMenu({
   pageId,
   page,
 }: PageHeaderMenuProps) {
+  const { t } = useTranslation();
+  const isDeleted = !!page?.deletedAt;
+
   useHotkeys(
     [
       [
@@ -89,6 +96,10 @@ export default function PageHeaderMenu({
     ],
     [],
   );
+
+  if (isDeleted) {
+    return null;
+  }
 
   return (
     <Group wrap="nowrap" gap={14}>
@@ -121,9 +132,9 @@ function getWordCountFromText(text?: string | null) {
     return 0;
   }
 
-  const cjkMatches = normalized.match(/[\u3400-\u9fff\uf900-\ufaff]/g) ?? [];
+  const cjkMatches = normalized.match(/[㐀-鿿豈-﫿]/g) ?? [];
   const remainingText = normalized.replace(
-    /[\u3400-\u9fff\uf900-\ufaff]/g,
+    /[㐀-鿿豈-﫿]/g,
     " ",
   );
   const wordMatches = remainingText.match(/[^\s]+/g) ?? [];
@@ -143,7 +154,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
   const { spaceSlug } = useParams();
   const currentPage = page;
   const { openDeleteModal } = useDeletePageModal();
-  const [tree] = useAtom(treeApiAtom);
+  const { handleDelete } = useTreeMutation(page?.spaceId ?? "");
   const [exportOpened, { open: openExportModal, close: closeExportModal }] =
     useDisclosure(false);
   const [
@@ -205,7 +216,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
   };
 
   const handleDeletePage = () => {
-    openDeleteModal({ onConfirm: () => tree?.delete(currentPage.id) });
+    openDeleteModal({ onConfirm: () => handleDelete(page.id) });
   };
 
   const wordCount =
@@ -239,8 +250,12 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
         }}
       >
         <Menu.Target>
-          <ActionIcon variant="subtle">
-            <IconDots size={18} stroke={1.75} />
+          <ActionIcon
+            variant="subtle"
+            color="dark"
+            aria-label={t("Page actions")}
+          >
+            <IconDots size={20} />
           </ActionIcon>
         </Menu.Target>
 

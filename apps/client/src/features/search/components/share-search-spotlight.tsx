@@ -100,6 +100,7 @@ export function ShareSearchSpotlight({
       >
         <Spotlight.Search
           placeholder={t("Search...")}
+          aria-label={t("Search")}
           leftSection={<IconSearch size={20} stroke={1.5} />}
         />
         <Spotlight.ActionsList>

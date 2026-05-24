@@ -13,6 +13,8 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyCompress from '@fastify/compress';
 import fastifyIp from 'fastify-ip';
 import { InternalLogFilter } from './common/logger/internal-log-filter';
+import { EnvironmentService } from './integrations/environment/environment.service';
+import { resolveFrameHeader } from './common/helpers';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -58,6 +60,52 @@ async function bootstrap() {
     encodings: ['br', 'gzip'],
     threshold: 1024,
   });
+
+  const environmentService = app.get(EnvironmentService);
+  const frameHeader = resolveFrameHeader(
+    environmentService.isIframeEmbedAllowed(),
+    environmentService.getIframeAllowedOrigins(),
+  );
+  if (frameHeader) {
+    // Skipped routes:
+    //   /api/files/ - attachment controller sets its own CSP we'd overwrite
+    //   /share/     0 public share pages are safe to embed
+    const frameHeaderSkippedPrefixes = ['/api/files/', '/share/'];
+    app
+      .getHttpAdapter()
+      .getInstance()
+      .addHook('onSend', (req, reply, payload, done) => {
+        if (frameHeaderSkippedPrefixes.some((p) => req.url.startsWith(p))) {
+          return done(null, payload);
+        }
+        reply.header(frameHeader.name, frameHeader.value);
+        done(null, payload);
+      });
+  }
+
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addHook('onRequest', (request, _reply, done) => {
+      (request.raw as any).ip = request.ip;
+      done();
+    });
+
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addContentTypeParser(
+      'application/scim+json',
+      { parseAs: 'string' },
+      (_, body, done) => {
+        try {
+          const json = JSON.parse(body.toString());
+          done(null, json);
+        } catch (err: any) {
+          done(err);
+        }
+      },
+    );
 
   app
     .getHttpAdapter()

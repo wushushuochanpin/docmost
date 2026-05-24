@@ -42,6 +42,7 @@ export default function ChangeEmail() {
         title={t("Change email")}
         centered
         overlayProps={{ blur: 1 }}
+        closeButtonProps={{ "aria-label": t("Close") }}
       >
         <Text mb="md">
           {t(
@@ -86,6 +87,11 @@ function ChangeEmailForm() {
         placeholder={t("Enter your password")}
         variant="default"
         mb="md"
+        visibilityToggleButtonProps={{
+          "aria-label": t("Toggle password visibility"),
+          "aria-hidden": false,
+          tabIndex: 0,
+        }}
         {...form.getInputProps("password")}
       />
 
