@@ -62,10 +62,6 @@ import { useCollabToken } from "@/features/auth/queries/auth-query.tsx";
 import SearchAndReplaceDialog from "@/features/editor/components/search-and-replace/search-and-replace-dialog.tsx";
 import { useDebouncedCallback, useDocumentVisibility } from "@mantine/hooks";
 import { useIdle } from "@/hooks/use-idle.ts";
-import { queryClient } from "@/query-client.ts";
-import { IPage } from "@/features/page/types/page.types.ts";
-import { useParams } from "react-router-dom";
-import { extractPageSlugId } from "@/lib";
 import { FIVE_MINUTES } from "@/lib/constants.ts";
 import { PageEditMode } from "@/features/user/types/user.types.ts";
 import { jwtDecode } from "jwt-decode";
@@ -219,23 +215,6 @@ function EditorSessionOverlay({
       </div>
     </Portal>
   );
-}
-
-function updateCachedPageContent(
-  pageId: string,
-  slugId: string | undefined,
-  newContent: any,
-) {
-  const updater = (page: IPage | undefined) => {
-    if (!page) return page;
-    return { ...page, content: newContent };
-  };
-
-  queryClient.setQueriesData({ queryKey: ["pages", pageId] }, updater);
-
-  if (slugId && slugId !== pageId) {
-    queryClient.setQueriesData({ queryKey: ["pages", slugId] }, updater);
-  }
 }
 
 function createEditorProps(
@@ -405,7 +384,6 @@ function StaticPageEditorPreview({
 
 function LocalFallbackPageEditor({
   pageId,
-  slugId,
   editable,
   content,
   currentUserId,
@@ -419,7 +397,6 @@ function LocalFallbackPageEditor({
   onTakeoverAck,
 }: {
   pageId: string;
-  slugId?: string;
   editable: boolean;
   content: any;
   currentUserId?: string;
@@ -555,12 +532,11 @@ function LocalFallbackPageEditor({
         if (editor.isEmpty) return;
 
         const editorJson = editor.getJSON();
-        updateCachedPageContent(pageId, slugId, editorJson);
         onUnsavedChangesChange(true);
         debouncedPersistLocalContent(editorJson);
       },
     },
-    [pageId, editable, normalizedContent, currentUserId],
+    [pageId, currentUserId],
   );
 
   useEffect(() => {
@@ -667,6 +643,8 @@ export default function PageEditor({
   const [showCommentPopup, setShowCommentPopup] = useAtom(showCommentPopupAtom);
   const [isLocalSynced, setIsLocalSynced] = useState(false);
   const [isRemoteSynced, setIsRemoteSynced] = useState(false);
+  const [hasLocalDocumentContent, setHasLocalDocumentContent] =
+    useState(false);
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("preview");
   const [localHasUnsavedChanges, setLocalHasUnsavedChanges] = useState(false);
   const [isLocalSavePending, setIsLocalSavePending] = useState(false);
@@ -699,8 +677,6 @@ export default function PageEditor({
   const collaborationEnabled = !collaborationDisabledReason;
   const { isIdle, resetIdle } = useIdle(FIVE_MINUTES, { initialState: false });
   const documentState = useDocumentVisibility();
-  const { pageSlug } = useParams();
-  const slugId = extractPageSlugId(pageSlug);
   const userPageEditMode =
     localPageEditMode ??
     normalizePageEditMode(
@@ -871,10 +847,16 @@ export default function PageEditor({
   useEffect(() => {
     if (!canStartCollabProvider) {
       setProvidersReady(false);
+      setIsLocalSynced(false);
+      setIsRemoteSynced(false);
+      setHasLocalDocumentContent(false);
       return;
     }
 
     if (!providersRef.current) {
+      setIsLocalSynced(false);
+      setIsRemoteSynced(false);
+      setHasLocalDocumentContent(false);
       const documentName = `page.${pageId}`;
       const ydoc = new Y.Doc();
       const local = new IndexeddbPersistence(documentName, ydoc);
@@ -882,6 +864,8 @@ export default function PageEditor({
         url: collaborationURLWithSession,
       });
       const onLocalSyncedHandler = () => {
+        const fragment = ydoc.getXmlFragment("default");
+        setHasLocalDocumentContent(fragment.length > 0);
         setIsLocalSynced(true);
       };
       const onStatusHandler = (event: onStatusParameters) => {
@@ -1009,8 +993,16 @@ export default function PageEditor({
     };
   }, [providersReady, pageId]);
 
+  const currentUserId = currentUser?.user.id;
+  const currentUserName = currentUser?.user.name;
+
   const extensions = useMemo(() => {
-    if (!providersReady || !providersRef.current || !currentUser?.user) {
+    if (
+      !providersReady ||
+      !providersRef.current ||
+      !currentUserId ||
+      !currentUserName
+    ) {
       return mainExtensions;
     }
 
@@ -1018,9 +1010,11 @@ export default function PageEditor({
 
     return [
       ...mainExtensions,
-      ...collabExtensions(remoteProvider, currentUser?.user),
+      ...collabExtensions(remoteProvider, {
+        name: currentUserName,
+      }),
     ];
-  }, [currentUser?.user, providersReady]);
+  }, [currentUserId, currentUserName, providersReady]);
 
   const editor = useEditor(
     {
@@ -1028,7 +1022,7 @@ export default function PageEditor({
       editable: effectiveEditable,
       immediatelyRender: true,
       shouldRerenderOnTransaction: false,
-      editorProps: createEditorProps(editorRef, pageId, currentUser?.user.id),
+      editorProps: createEditorProps(editorRef, pageId, currentUserId),
       onCreate({ editor }) {
         editorRef.current = editor;
         (
@@ -1038,13 +1032,8 @@ export default function PageEditor({
           collabEditSession;
         handleScrollTo(editor);
       },
-      onUpdate({ editor }) {
-        if (editor.isEmpty) return;
-
-        updateCachedPageContent(pageId, slugId, editor.getJSON());
-      },
     },
-    [pageId, effectiveEditable, extensions, currentUser?.user.id],
+    [pageId, extensions, currentUserId],
   );
 
   const handleActiveCommentEvent = (event) => {
@@ -1093,9 +1082,17 @@ export default function PageEditor({
     yjsConnectionStatus === WebSocketStatus.Connected &&
     isSynced &&
     pageLeaseWritable;
+  const canRenderCollaborativeEditor =
+    collaborationEnabled &&
+    Boolean(editor) &&
+    providersReady &&
+    isLocalSynced &&
+    pageLeaseWritable &&
+    (isRemoteSynced || hasLocalDocumentContent);
   const canUseLocalFallback =
     editable &&
     userPageEditMode === PageEditMode.Edit &&
+    Boolean(collaborationDisabledReason) &&
     (!shouldAcquirePageLease ||
       pageLease.status === "active" ||
       (runtimeMode === "local" && pageLease.status === "takeover_requested"));
@@ -1145,12 +1142,22 @@ export default function PageEditor({
   }, [collabReady, pageId, runtimeMode]);
 
   useEffect(() => {
+    if (!canRenderCollaborativeEditor) {
+      return;
+    }
+
+    if (runtimeMode === "preview") {
+      setRuntimeMode("collab");
+    }
+  }, [canRenderCollaborativeEditor, runtimeMode]);
+
+  useEffect(() => {
     if (collabReady) {
       return;
     }
 
     if (!canUseLocalFallback) {
-      if (runtimeMode !== "preview") {
+      if (runtimeMode !== "preview" && runtimeMode !== "collab") {
         setRuntimeMode("preview");
       }
       return;
@@ -1282,10 +1289,9 @@ export default function PageEditor({
         {editorSessionOverlay}
         <LocalFallbackPageEditor
           pageId={pageId}
-          slugId={slugId}
           editable={effectiveEditable}
           content={normalizedContent}
-          currentUserId={currentUser?.user.id}
+          currentUserId={currentUserId}
           userPageEditMode={userPageEditMode}
           showCommentPopup={showCommentPopup}
           onUnsavedChangesChange={setLocalHasUnsavedChanges}

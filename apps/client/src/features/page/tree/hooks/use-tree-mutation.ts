@@ -408,7 +408,7 @@ export function useTreeMutation<T>(
         emit(updateEvent);
 
         if (isCurrentRoutePage) {
-          getDefaultStore().set(currentRoutePageAtom, page);
+          getDefaultStore().set(currentRoutePageAtom as any, page);
           if (spaceSlug) {
             navigate(buildPageUrl(spaceSlug, page.slugId, page.title), {
               replace: true,

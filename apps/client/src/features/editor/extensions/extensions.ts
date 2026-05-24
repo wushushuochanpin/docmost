@@ -320,7 +320,10 @@ export const mainExtensions = [
 
 export const templateExtensions = mainExtensions;
 
-type CollabExtensions = (provider: HocuspocusProvider, user: IUser) => any[];
+type CollabExtensions = (
+  provider: HocuspocusProvider,
+  user: Pick<IUser, "name">,
+) => any[];
 
 export const collabExtensions: CollabExtensions = (provider, user) => [
   Collaboration.configure({
