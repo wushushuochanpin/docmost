@@ -114,22 +114,25 @@ export function FullEditor({
       )}
       <MemoizedDeletedPageBanner slugId={slugId} />
       <div id="page-content-rail-anchor" className={classes.titleSection}>
-        <MemoizedTitleEditor
-          key={pageId}
-          pageId={pageId}
-          slugId={slugId}
-          title={title}
-          updatedAt={updatedAt}
-          spaceSlug={spaceSlug}
-          editable={editable}
-          className={classes.surfaceTitle}
-        />
+        <div className={classes.titleSectionHeader}>
+          <MemoizedTitleEditor
+            key={pageId}
+            pageId={pageId}
+            slugId={slugId}
+            title={title}
+            updatedAt={updatedAt}
+            spaceSlug={spaceSlug}
+            editable={editable}
+            className={classes.surfaceTitle}
+            deferOwnLease
+          />
+          <PageByline
+            creator={creator}
+            contributors={contributors}
+            readOnly={!editable}
+          />
+        </div>
       </div>
-      <PageByline
-        creator={creator}
-        contributors={contributors}
-        readOnly={!editable}
-      />
       <MemoizedPageEditor
         pageId={pageId}
         editable={editable}
@@ -155,16 +158,16 @@ function PageByline({ creator, contributors, readOnly }: PageBylineProps) {
 
   return (
     <Group
-      gap="sm"
-      mb="md"
+      gap={6}
       className={clsx("print-hide", classes.byline)}
-      style={{ marginTop: "-0.5em" }}
+      wrap="nowrap"
     >
       {creator && (
         <Popover position="bottom-start" shadow="md" width={280} withArrow>
           <Popover.Target>
             <UnstyledButton
               aria-label={t("Created by {{name}}", { name: creator.name })}
+              className={classes.bylineAuthorButton}
             >
               <Group gap={6}>
                 <CustomAvatar

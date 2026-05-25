@@ -15,7 +15,7 @@ import { useTreeMutation } from "@/features/page/tree/hooks/use-tree-mutation.ts
 import {
   buildTree,
   buildTreeWithChildren,
-  mergeRootTrees,
+  reconcileRootTrees,
 } from "@/features/page/tree/utils/utils.ts";
 import { SpaceTreeNode } from "@/features/page/tree/types.ts";
 import { treeModel } from "@/features/page/tree/model/tree-model";
@@ -73,7 +73,7 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
       const currentSpace = prev.filter((n) => n?.spaceId === spaceId);
       const refreshed =
         currentSpace.length > 0
-          ? mergeRootTrees(currentSpace, treeData)
+          ? reconcileRootTrees(currentSpace, treeData)
           : treeData;
       return [...otherSpaces, ...refreshed];
     });

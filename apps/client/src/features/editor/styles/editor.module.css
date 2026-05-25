@@ -36,6 +36,18 @@
     background: transparent;
 }
 
+.titleSectionHeader {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    min-width: 0;
+
+    @media (max-width: $mantine-breakpoint-sm) {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
 .readonlyTitleSection {
     padding-left: var(--doc-content-gutter-x, 3rem);
     padding-right: var(--doc-content-gutter-x, 3rem);
@@ -77,6 +89,7 @@
 
 .surfaceTitle {
     min-width: 0;
+    flex: 1 1 auto;
 
     :global(.ProseMirror) {
         padding: 0;
@@ -93,14 +106,30 @@
 }
 
 .byline {
-    padding-left: 3rem;
+    flex: 0 0 auto;
+    align-self: flex-start;
+    min-height: 32px;
+    margin-top: 4px;
 
     @media (max-width: $mantine-breakpoint-sm) {
-        padding-left: 1rem;
+        margin-top: 0;
     }
 
     @media print {
-        padding-left: 0;
+        display: none;
     }
 }
 
+.bylineAuthorButton {
+    display: block;
+    max-width: 260px;
+    padding: 3px 8px 3px 4px;
+    border: 1px solid var(--ui-border-default);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--ui-bg-subtle) 78%, transparent);
+    color: var(--ui-text-secondary);
+
+    &:hover {
+        background: var(--ui-bg-hover);
+    }
+}

@@ -13,7 +13,7 @@ ENV NX_SOCKET_DIR=/tmp/nx-tmp
 COPY . .
 
 RUN pnpm install --frozen-lockfile
-RUN pnpm build
+RUN pnpm clean && pnpm build
 
 FROM base AS installer
 

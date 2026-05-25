@@ -53,6 +53,7 @@ import { TableHandlesLayer } from "@/features/editor/components/table/handle/tab
 import ImageMenu from "@/features/editor/components/image/image-menu.tsx";
 import CalloutMenu from "@/features/editor/components/callout/callout-menu.tsx";
 import VideoMenu from "@/features/editor/components/video/video-menu.tsx";
+import AudioMenu from "@/features/editor/components/audio/audio-menu.tsx";
 import SubpagesMenu from "@/features/editor/components/subpages/subpages-menu.tsx";
 import {
   handleFileDrop,
@@ -84,6 +85,7 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { isAxiosError } from "axios";
 import { updatePage } from "@/features/page/services/page-service";
 import { updatePageData } from "@/features/page/queries/page-query";
 import { markEditorBootstrapStage } from "@/features/editor/lib/editor-bootstrap-metrics";
@@ -106,6 +108,28 @@ type SerializedContent = {
   content: any;
   serialized: string;
 };
+
+function isEditorSessionConflict(error: unknown) {
+  return (
+    isAxiosError(error) &&
+    error.response?.status === 409 &&
+    error.response?.data?.code === "EDITOR_SESSION_CONFLICT"
+  );
+}
+
+function isSameEditSession(
+  left?: EditSession | null,
+  right?: EditSession | null,
+) {
+  return Boolean(
+    left &&
+      right &&
+      left.sessionId === right.sessionId &&
+      left.clientId === right.clientId &&
+      left.leaseId === right.leaseId &&
+      left.token === right.token,
+  );
+}
 
 interface PageEditorProps {
   pageId: string;
@@ -322,6 +346,7 @@ function EditorRuntimeView({
           <TableCellMenu editor={editor} appendTo={menuContainerRef} />
           <ImageMenu editor={editor} />
           <VideoMenu editor={editor} />
+          <AudioMenu editor={editor} />
           <CalloutMenu editor={editor} />
           <SubpagesMenu editor={editor} />
           <ExcalidrawMenu editor={editor} />
@@ -431,7 +456,13 @@ function CollaborativePageEditor({
   }, [editor, editable, effectiveEditable]);
 
   if (!editor) {
-    return <StaticPageEditorPreview content={content} pageId={pageId} />;
+    return (
+      <StaticPageEditorPreview
+        content={content}
+        pageId={pageId}
+        clearEditorAtom={false}
+      />
+    );
   }
 
   return (
@@ -447,9 +478,15 @@ function CollaborativePageEditor({
 function StaticPageEditorPreview({
   content,
   pageId,
+  clearEditorAtom = true,
 }: {
   content: any;
   pageId: string;
+  // When used as a temporary fallback inside LocalFallbackPageEditor or
+  // CollaborativePageEditor (while the real editor initializes), pass false so
+  // the mount effect does not clobber the pageEditorAtom that the parent's
+  // onCreate may have already set.
+  clearEditorAtom?: boolean;
 }) {
   const store = useStore();
   const isComponentMounted = useRef(false);
@@ -465,12 +502,14 @@ function StaticPageEditorPreview({
 
   useEffect(() => {
     isComponentMounted.current = true;
-    store.set(pageEditorAtom as any, null);
+    if (clearEditorAtom) {
+      store.set(pageEditorAtom as any, null);
+    }
 
     return () => {
       store.set(readOnlyEditorAtom as any, null);
     };
-  }, [store]);
+  }, [store, clearEditorAtom]);
 
   return (
     <EditorProvider
@@ -523,6 +562,9 @@ function LocalFallbackPageEditor({
   const saveFailureNotifiedRef = useRef(false);
   const queuedSaveRef = useRef<SerializedContent | null>(null);
   const saveInFlightRef = useRef(false);
+  const conflictEditSessionRef = useRef<EditSession | null | undefined>(
+    undefined,
+  );
   const lastSavedContentRef = useRef(serializeEditorContent(content));
   const editorReadyRef = useRef(false);
   const handoffStartedRef = useRef(false);
@@ -547,6 +589,8 @@ function LocalFallbackPageEditor({
       saveInFlightRef.current = true;
       onSavePendingChange(true);
 
+      let shouldRetryImmediately = true;
+
       try {
         const page = await updatePage({
           pageId,
@@ -562,7 +606,8 @@ function LocalFallbackPageEditor({
         onLastSavedContentChange(nextSave.serialized);
         onUnsavedChangesChange(false);
         saveFailureNotifiedRef.current = false;
-      } catch {
+        conflictEditSessionRef.current = undefined;
+      } catch (error) {
         if (writeIntent === "handoff_flush") {
           await saveEditorRecoveryDraft({
             resourceType: "page",
@@ -570,6 +615,10 @@ function LocalFallbackPageEditor({
             content: nextSave.content,
             reason: "handoff_flush_failed",
           });
+        } else if (isEditorSessionConflict(error)) {
+          queuedSaveRef.current = nextSave;
+          conflictEditSessionRef.current = editSession ?? null;
+          shouldRetryImmediately = false;
         } else {
           queuedSaveRef.current = nextSave;
         }
@@ -583,10 +632,14 @@ function LocalFallbackPageEditor({
       } finally {
         saveInFlightRef.current = false;
 
-        if (queuedSaveRef.current && writeIntent !== "handoff_flush") {
+        if (
+          queuedSaveRef.current &&
+          writeIntent !== "handoff_flush" &&
+          shouldRetryImmediately
+        ) {
           void persistLocalContent();
         } else {
-          onSavePendingChange(false);
+          onSavePendingChange(Boolean(queuedSaveRef.current));
         }
       }
     },
@@ -598,6 +651,27 @@ function LocalFallbackPageEditor({
       onUnsavedChangesChange,
     ],
   );
+
+  useEffect(() => {
+    if (!queuedSaveRef.current || saveInFlightRef.current) {
+      return;
+    }
+
+    const conflictEditSession = conflictEditSessionRef.current;
+    if (conflictEditSession === null && !editSession) {
+      return;
+    }
+
+    if (
+      conflictEditSession &&
+      isSameEditSession(conflictEditSession, editSession)
+    ) {
+      return;
+    }
+
+    conflictEditSessionRef.current = undefined;
+    void persistLocalContent();
+  }, [editSession, persistLocalContent]);
 
   const debouncedPersistLocalContent = useDebouncedCallback(
     (editorJson: any) => {
@@ -720,7 +794,11 @@ function LocalFallbackPageEditor({
 
   if (!editor) {
     return (
-      <StaticPageEditorPreview content={normalizedContent} pageId={pageId} />
+      <StaticPageEditorPreview
+        content={normalizedContent}
+        pageId={pageId}
+        clearEditorAtom={false}
+      />
     );
   }
 
@@ -752,8 +830,7 @@ export default function PageEditor({
   const [showCommentPopup, setShowCommentPopup] = useAtom(showCommentPopupAtom);
   const [isLocalSynced, setIsLocalSynced] = useState(false);
   const [isRemoteSynced, setIsRemoteSynced] = useState(false);
-  const [hasLocalDocumentContent, setHasLocalDocumentContent] =
-    useState(false);
+  const [hasLocalDocumentContent, setHasLocalDocumentContent] = useState(false);
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("preview");
   const [localHasUnsavedChanges, setLocalHasUnsavedChanges] = useState(false);
   const [isLocalSavePending, setIsLocalSavePending] = useState(false);
@@ -1234,22 +1311,12 @@ export default function PageEditor({
       return;
     }
 
-    const collabSerialized = editor
-      ? serializeEditorContent(editor.getJSON())
-      : "";
-    if (
-      !lastSavedLocalContentRef.current ||
-      collabSerialized === lastSavedLocalContentRef.current
-    ) {
-      setRuntimeMode("collab");
-    }
-  }, [
-    collabReady,
-    editor,
-    isLocalSavePending,
-    localHasUnsavedChanges,
-    runtimeMode,
-  ]);
+    // `editor` here is the PageEditor-level state set only by CollaborativePageEditor,
+    // so it is always null while in local mode. Use lastSavedLocalContentRef instead:
+    // if there are no unsaved/pending changes (already guarded above), switching to
+    // collab is safe regardless of the content comparison.
+    setRuntimeMode("collab");
+  }, [collabReady, isLocalSavePending, localHasUnsavedChanges, runtimeMode]);
 
   useEffect(() => {
     setRuntimeModeAtom(runtimeMode);

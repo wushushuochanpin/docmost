@@ -95,27 +95,10 @@ export function PageVerificationBadge({
   const { data: verificationInfo, isLoading } = usePageVerificationInfoQuery(
     hasVerificationFeature ? pageId : undefined,
   );
-  const upgradeLabel = useUpgradeLabel();
 
   if (!pageId) return null;
   if (!hasVerificationFeature) {
-    if (readOnly) return null;
-    const lockedLabel = `${t("Add verification")} — ${upgradeLabel}`;
-    // Use ActionIcon (a real <button>) instead of a ThemeIcon so the tooltip
-    // is reachable on keyboard focus, and screen readers announce the upgrade
-    // hint via the accessible name. Click is a no-op since the feature is
-    // gated; the tooltip explains why.
-    return (
-      <Tooltip label={lockedLabel} withArrow openDelay={250}>
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          aria-label={lockedLabel}
-        >
-          <IconShieldCheck size={20} stroke={1.5} />
-        </ActionIcon>
-      </Tooltip>
-    );
+    return null;
   }
   if (isLoading) return null;
 

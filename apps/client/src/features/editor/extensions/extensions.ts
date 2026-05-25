@@ -36,6 +36,7 @@ import {
   LinkExtension,
   Selection,
   Attachment,
+  TiptapAudio,
   CustomCodeBlock,
   Drawio,
   Excalidraw,
@@ -81,6 +82,7 @@ import CalloutView from "@/features/editor/components/callout/callout-view.tsx";
 import StatusView from "@/features/editor/components/status/status-view.tsx";
 import VideoView from "@/features/editor/components/video/video-view.tsx";
 import AttachmentView from "@/features/editor/components/attachment/attachment-view.tsx";
+import AudioView from "@/features/editor/components/audio/audio-view.tsx";
 import CodeBlockView from "@/features/editor/components/code-block/code-block-view.tsx";
 import DrawioView from "../components/drawio/drawio-view";
 import ExcalidrawView from "@/features/editor/components/excalidraw/excalidraw-view-lazy.tsx";
@@ -284,6 +286,9 @@ export const mainExtensions = [
   Attachment.configure({
     view: AttachmentView,
   }),
+  TiptapAudio.configure({
+    view: AudioView,
+  }),
   Drawio.configure({
     view: DrawioView,
     resize: {
@@ -362,7 +367,7 @@ const TEMPLATE_EXCLUDED_SLASH_ITEMS = new Set([
   "Draw.io (diagrams.net)",
   "Excalidraw (Whiteboard)",
   "Audio",
-  "Synced block"
+  "Synced block",
 ]);
 
 const TemplateSlashCommand = Command.configure({

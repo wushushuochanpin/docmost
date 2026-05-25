@@ -1,6 +1,6 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ActionIcon, Anchor, Text } from "@mantine/core";
-import { IconFileDescription } from "@tabler/icons-react";
+import { IconFileDescription, IconFolder } from "@tabler/icons-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   buildPageUrl,
@@ -11,7 +11,7 @@ import classes from "./mention.module.css";
 
 export default function ReadonlyMentionView(props: NodeViewProps) {
   const { node, editor } = props;
-  const { label, entityType, slugId, anchorId } = node.attrs;
+  const { label, entityType, slugId, nodeType, anchorId } = node.attrs;
   const { spaceSlug, pageSlug, shareId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -71,7 +71,11 @@ export default function ReadonlyMentionView(props: NodeViewProps) {
             size={18}
             style={{ verticalAlign: "text-bottom" }}
           >
-            <IconFileDescription size={18} />
+            {nodeType === "folder" ? (
+              <IconFolder size={18} />
+            ) : (
+              <IconFileDescription size={18} />
+            )}
           </ActionIcon>
 
           <span className={classes.pageMentionText}>{label}</span>

@@ -29,8 +29,8 @@ import {
   duplicatePage,
   pinPage,
   unpinPage,
-  invalidateRootSidebarQueries,
 } from "@/features/page/services/page-service.ts";
+import { invalidateRootSidebarQueries } from "@/features/page/queries/page-query.ts";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { getAppUrl } from "@/lib/config.ts";
 import { useQueryEmit } from "@/features/websocket/use-query-emit.ts";
@@ -39,7 +39,7 @@ import {
   useAddFavoriteMutation,
   useRemoveFavoriteMutation,
 } from "@/features/favorite/queries/favorite-query";
-import { useGetSpaceSidebarCategoriesQuery } from "@/features/space/queries/space-query.ts";
+import { useSidebarCategoriesQuery } from "@/features/space/queries/space-query.ts";
 import { SidebarCategoryManageModal } from "./sidebar-category-manage-modal.tsx";
 
 import { treeDataAtom } from "@/features/page/tree/atoms/tree-data-atom.ts";
@@ -78,7 +78,7 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
   const addFavorite = useAddFavoriteMutation();
   const removeFavorite = useRemoveFavoriteMutation();
   const isFavorited = favoriteIds.has(node.id);
-  const { data: categoriesData } = useGetSpaceSidebarCategoriesQuery(node.spaceId);
+  const { data: categoriesData } = useSidebarCategoriesQuery(node.spaceId);
   const sidebarCategories = categoriesData ?? [];
 
   const handleTogglePin = async () => {
@@ -364,6 +364,7 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
         spaceId={node.spaceId}
         opened={categoryModalOpened}
         onClose={closeCategoryModal}
+        categories={sidebarCategories}
       />
     </>
   );

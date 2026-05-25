@@ -314,6 +314,8 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
             updatedAt={page.updatedAt}
             spaceSlug={page?.space?.slug}
             editable={canEdit}
+            creator={page.creator}
+            contributors={page.contributors}
           />
         )}
         <MemoizedHistoryModal pageId={page.id} />

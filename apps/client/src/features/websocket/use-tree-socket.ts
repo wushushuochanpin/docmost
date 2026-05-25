@@ -22,26 +22,20 @@ function applyPageUpdateToTree(
     return current;
   }
 
-  const treeApi = new SimpleTree<SpaceTreeNode>(current);
-  if (!treeApi.find(event.id)) {
+  if (!treeModel.find(current, event.id)) {
     return current;
   }
 
+  let result = current;
   if (event.payload?.title !== undefined) {
-    treeApi.update({
-      id: event.id,
-      changes: { name: event.payload.title ?? "" },
-    });
+    result = treeModel.update(result, event.id, { name: event.payload.title ?? "" });
   }
 
   if (event.payload?.icon !== undefined) {
-    treeApi.update({
-      id: event.id,
-      changes: { icon: event.payload.icon },
-    });
+    result = treeModel.update(result, event.id, { icon: event.payload.icon });
   }
 
-  return treeApi.data;
+  return result;
 }
 
 export const useTreeSocket = () => {
@@ -73,52 +67,33 @@ export const useTreeSocket = () => {
           break;
         case "addTreeNode":
           setTreeData((current) => {
-            const treeApi = new SimpleTree<SpaceTreeNode>(current);
-            if (treeApi.find(event.payload.data.id)) {
+            if (treeModel.find(current, event.payload.data.id)) {
               return current;
             }
-
-            treeApi.create({
-              parentId: event.payload.parentId,
-              index: event.payload.index,
-              data: event.payload.data,
-            });
-            return treeApi.data;
+            return treeModel.insert(current, event.payload.parentId, event.payload.data, event.payload.index);
           });
           break;
         case "moveTreeNode":
           setTreeData((current) => {
-            const treeApi = new SimpleTree<SpaceTreeNode>(current);
-            if (!treeApi.find(event.payload.id)) {
+            if (!treeModel.find(current, event.payload.id)) {
               return current;
             }
-
-            treeApi.move({
-              id: event.payload.id,
+            const moved = treeModel.place(current, event.payload.id, {
               parentId: event.payload.parentId,
               index: event.payload.index,
             });
-            treeApi.update({
-              id: event.payload.id,
-              changes: {
-                position: event.payload.position,
-              },
-            });
-            return treeApi.data;
+            return treeModel.update(moved, event.payload.id, { position: event.payload.position });
           });
           break;
         case "deleteTreeNode":
           setTreeData((current) => {
-            const treeApi = new SimpleTree<SpaceTreeNode>(current);
-            if (!treeApi.find(event.payload.node.id)) {
+            if (!treeModel.find(current, event.payload.node.id)) {
               return current;
             }
-
-            treeApi.drop({ id: event.payload.node.id });
             queryClient.invalidateQueries({
               queryKey: ["pages", event.payload.node.slugId].filter(Boolean),
             });
-            return treeApi.data;
+            return treeModel.remove(current, event.payload.node.id);
           });
           break;
       }

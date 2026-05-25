@@ -36,6 +36,7 @@ import { isEditorSessionEnabled } from "@/lib/config";
 import { useEditorSessionLease } from "@/features/editor-session/use-editor-session-lease";
 import type { EditSession } from "@/features/editor-session/types";
 import { platformModifierKey } from "@/lib";
+import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
 
 function isEditorSessionConflict(error: unknown) {
   return (
@@ -74,6 +75,7 @@ export interface TitleEditorProps {
   spaceSlug: string;
   editable: boolean;
   className?: string;
+  deferOwnLease?: boolean;
 }
 
 export function TitleEditor({
@@ -84,6 +86,7 @@ export function TitleEditor({
   spaceSlug,
   editable,
   className,
+  deferOwnLease = false,
 }: TitleEditorProps) {
   const { t } = useTranslation();
   const { mutateAsync: updateTitlePageMutationAsync } =
@@ -105,6 +108,7 @@ export function TitleEditor({
     editorSessionFeatureEnabled &&
     editable &&
     userPageEditMode === PageEditMode.Edit &&
+    !deferOwnLease &&
     !hasActivePageEditor;
   const titleLease = useEditorSessionLease({
     enabled: shouldAcquireTitleLease,

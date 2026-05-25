@@ -7,12 +7,13 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconFileDescription,
+  IconFolder,
   IconPlus,
   IconPointFilled,
 } from "@tabler/icons-react";
 
 import EmojiPicker from "@/components/ui/emoji-picker.tsx";
-import { queryClient } from "@/main.tsx";
+import { queryClient } from "@/query-client.ts";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import { getPageById } from "@/features/page/services/page-service.ts";
 import {
@@ -161,7 +162,13 @@ export function SpaceTreeRow({
         <EmojiPicker
           onEmojiSelect={handleEmojiSelect}
           icon={
-            node.icon ? node.icon : <IconFileDescription size="18" />
+            node.icon ? (
+              node.icon
+            ) : node.nodeType === "folder" ? (
+              <IconFolder size="18" />
+            ) : (
+              <IconFileDescription size="18" />
+            )
           }
           readOnly={!canEdit}
           removeEmojiAction={handleRemoveEmoji}

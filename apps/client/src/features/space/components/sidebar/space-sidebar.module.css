@@ -21,8 +21,10 @@
 }
 
 .sectionPages {
+    flex: 1;
+    min-height: 0;
     margin-bottom: 0;
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: hidden;
 
     .pages {

@@ -86,8 +86,9 @@ export function PageStateSegmentedControl({
               ...(prevUser?.settings?.preferences ?? {}),
               pageEditMode: normalizedValue,
               fullPageWidth:
-                prevUser?.settings?.preferences?.fullPageWidth ??
-                false,
+                prevUser?.settings?.preferences?.fullPageWidth ?? false,
+              editorToolbar:
+                prevUser?.settings?.preferences?.editorToolbar ?? true,
             },
           },
         });

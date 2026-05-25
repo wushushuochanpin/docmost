@@ -16,6 +16,7 @@ import { ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 
 const RARE_EXTENSION_FEATURES = [
   "attachment",
+  "audio",
   "callout",
   "codeBlock",
   "comment",
@@ -107,9 +108,8 @@ const readonlyMentionSuggestion = {
 };
 
 async function loadCommentExtension() {
-  const { Comment } = await import(
-    "@docmost/editor-ext/src/lib/comment/comment.ts"
-  );
+  const { Comment } =
+    await import("@docmost/editor-ext/src/lib/comment/comment.ts");
 
   return [
     Comment.configure({
@@ -168,14 +168,11 @@ async function loadMathExtensions(features: Set<string>) {
   const extensions: any[] = [];
 
   if (features.has("mathInline")) {
-    const { MathInline } = await import(
-      "@docmost/editor-ext/src/lib/math/math-inline.ts"
-    );
+    const { MathInline } =
+      await import("@docmost/editor-ext/src/lib/math/math-inline.ts");
     const LazyReadonlyMathInlineView = createLazyNodeView(
       () =>
-        import(
-          "@/features/editor/components/math/readonly-math-inline-view.tsx"
-        ),
+        import("@/features/editor/components/math/readonly-math-inline-view.tsx"),
     );
 
     extensions.push(
@@ -186,14 +183,11 @@ async function loadMathExtensions(features: Set<string>) {
   }
 
   if (features.has("mathBlock")) {
-    const { MathBlock } = await import(
-      "@docmost/editor-ext/src/lib/math/math-block.ts"
-    );
+    const { MathBlock } =
+      await import("@docmost/editor-ext/src/lib/math/math-block.ts");
     const LazyReadonlyMathBlockView = createLazyNodeView(
       () =>
-        import(
-          "@/features/editor/components/math/readonly-math-block-view.tsx"
-        ),
+        import("@/features/editor/components/math/readonly-math-block-view.tsx"),
     );
 
     extensions.push(
@@ -230,9 +224,8 @@ async function loadYoutubeExtension() {
 }
 
 async function loadImageExtension() {
-  const { TiptapImage } = await import(
-    "@docmost/editor-ext/src/lib/image/image.ts"
-  );
+  const { TiptapImage } =
+    await import("@docmost/editor-ext/src/lib/image/image.ts");
   const LazyImageView = createLazyNodeView(
     () => import("@/features/editor/components/image/image-view.tsx"),
   );
@@ -246,9 +239,8 @@ async function loadImageExtension() {
 }
 
 async function loadVideoExtension() {
-  const { TiptapVideo } = await import(
-    "@docmost/editor-ext/src/lib/video/video.ts"
-  );
+  const { TiptapVideo } =
+    await import("@docmost/editor-ext/src/lib/video/video.ts");
   const LazyVideoView = createLazyNodeView(
     () => import("@/features/editor/components/video/video-view.tsx"),
   );
@@ -260,10 +252,23 @@ async function loadVideoExtension() {
   ];
 }
 
-async function loadCalloutExtension() {
-  const { Callout } = await import(
-    "@docmost/editor-ext/src/lib/callout/callout.ts"
+async function loadAudioExtension() {
+  const { TiptapAudio } =
+    await import("@docmost/editor-ext/src/lib/audio/audio.ts");
+  const LazyAudioView = createLazyNodeView(
+    () => import("@/features/editor/components/audio/audio-view.tsx"),
   );
+
+  return [
+    TiptapAudio.configure({
+      view: LazyAudioView,
+    }),
+  ];
+}
+
+async function loadCalloutExtension() {
+  const { Callout } =
+    await import("@docmost/editor-ext/src/lib/callout/callout.ts");
   const LazyCalloutView = createLazyNodeView(
     () => import("@/features/editor/components/callout/callout-view.tsx"),
   );
@@ -298,9 +303,8 @@ async function loadCodeBlockExtension() {
 }
 
 async function loadAttachmentExtension() {
-  const { Attachment } = await import(
-    "@docmost/editor-ext/src/lib/attachment/attachment.ts"
-  );
+  const { Attachment } =
+    await import("@docmost/editor-ext/src/lib/attachment/attachment.ts");
   const LazyAttachmentView = createLazyNodeView(
     () => import("@/features/editor/components/attachment/attachment-view.tsx"),
   );
@@ -315,7 +319,8 @@ async function loadAttachmentExtension() {
 async function loadDrawioExtension() {
   const { Drawio } = await import("@docmost/editor-ext/src/lib/drawio.ts");
   const LazyReadonlyDrawioView = createLazyNodeView(
-    () => import("@/features/editor/components/drawio/readonly-drawio-view.tsx"),
+    () =>
+      import("@/features/editor/components/drawio/readonly-drawio-view.tsx"),
   );
 
   return [
@@ -326,14 +331,11 @@ async function loadDrawioExtension() {
 }
 
 async function loadExcalidrawExtension() {
-  const { Excalidraw } = await import(
-    "@docmost/editor-ext/src/lib/excalidraw.ts"
-  );
+  const { Excalidraw } =
+    await import("@docmost/editor-ext/src/lib/excalidraw.ts");
   const LazyReadonlyExcalidrawView = createLazyNodeView(
     () =>
-      import(
-        "@/features/editor/components/excalidraw/readonly-excalidraw-view.tsx"
-      ),
+      import("@/features/editor/components/excalidraw/readonly-excalidraw-view.tsx"),
   );
 
   return [
@@ -357,9 +359,8 @@ async function loadEmbedExtension() {
 }
 
 async function loadSubpagesExtension() {
-  const { Subpages } = await import(
-    "@docmost/editor-ext/src/lib/subpages/subpages.ts"
-  );
+  const { Subpages } =
+    await import("@docmost/editor-ext/src/lib/subpages/subpages.ts");
   const LazySubpagesView = createLazyNodeView(
     () => import("@/features/editor/components/subpages/subpages-view.tsx"),
   );
@@ -462,6 +463,10 @@ export async function getReadonlyExtensions(content: any) {
 
   if (features.has("video") || hasTableFeature) {
     groups.push(loadVideoExtension());
+  }
+
+  if (features.has("audio") || hasTableFeature) {
+    groups.push(loadAudioExtension());
   }
 
   if (features.has("callout") || hasTableFeature) {

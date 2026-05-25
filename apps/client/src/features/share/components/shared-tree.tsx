@@ -124,25 +124,12 @@ function SharedTreeRow({
   const { shareId } = useParams();
   const { t } = useTranslation();
   const [, setMobileSidebarState] = useAtom(mobileSidebarAtom);
-  const navigate = useNavigate();
-  const location = useLocation();
 
   const pageUrl = buildSharedPageUrl({
     shareId: shareId,
     pageSlugId: node.slugId,
     pageTitle: node.name,
   });
-
-  const onNavigate = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    tree.select(node.id);
-    setMobileSidebarState(false);
-
-    if (location.pathname !== pageUrl) {
-      navigate(pageUrl);
-    }
-  };
 
   return (
     <Box

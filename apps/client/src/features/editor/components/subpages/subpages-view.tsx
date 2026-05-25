@@ -1,6 +1,6 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Stack, Text, Anchor, ActionIcon } from "@mantine/core";
-import { IconFileDescription } from "@tabler/icons-react";
+import { IconFileDescription, IconFolder } from "@tabler/icons-react";
 import { useGetSidebarPagesQuery } from "@/features/page/queries/page-query";
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -36,6 +36,7 @@ export default function SubpagesView(props: NodeViewProps) {
         slugId: node.slugId,
         title: node.name,
         icon: node.icon,
+        nodeType: node.nodeType,
         position: node.position,
       }));
     }
@@ -104,7 +105,11 @@ export default function SubpagesView(props: NodeViewProps) {
                   size={18}
                   style={{ verticalAlign: "text-bottom" }}
                 >
-                  <IconFileDescription size={18} />
+                  {page.nodeType === "folder" ? (
+                    <IconFolder size={18} />
+                  ) : (
+                    <IconFileDescription size={18} />
+                  )}
                 </ActionIcon>
               )}
 

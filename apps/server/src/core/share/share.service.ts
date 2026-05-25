@@ -56,6 +56,7 @@ import { PageNodeMetaRepo } from '@docmost/db/repos/page/page-node-meta.repo';
 import { canUseStaticShareRender } from './share-rendered.util';
 import { TransclusionService } from '../page/transclusion/transclusion.service';
 import { TransclusionLookup } from '../page/transclusion/transclusion.types';
+import { PagePermissionRepo } from '@docmost/db/repos/page/page-permission.repo';
 
 const PROTECTED_SHARE_PASSWORD_LENGTH = 8;
 const PROTECTED_SHARE_PASSWORD_CHARSET =
@@ -88,6 +89,7 @@ export class ShareService {
     private readonly shareStaticRendererService: ShareStaticRendererService,
     private readonly pageNodeMetaRepo: PageNodeMetaRepo,
     private readonly transclusionService: TransclusionService,
+    private readonly pagePermissionRepo: PagePermissionRepo,
   ) {}
 
   async getShareTree(shareId: string, workspaceId: string) {

@@ -28,7 +28,6 @@ import { buildPageUrl } from "@/features/page/page.utils.ts";
 import { notifications } from "@mantine/notifications";
 import { getAppUrl, isCollaborationEnabled } from "@/lib/config.ts";
 import APP_ROUTE from "@/lib/app-route.ts";
-import { treeApiAtom } from "@/features/page/tree/atoms/tree-api-atom.ts";
 import { extractPageSlugId } from "@/lib";
 import { useTreeMutation } from "@/features/page/tree/hooks/use-tree-mutation.ts";
 import { useDeletePageModal } from "@/features/page/hooks/use-delete-page-modal.tsx";

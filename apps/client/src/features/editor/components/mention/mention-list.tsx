@@ -21,7 +21,7 @@ import {
 import clsx from "clsx";
 import classes from "./mention.module.css";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
-import { IconFileDescription, IconPlus } from "@tabler/icons-react";
+import { IconFileDescription, IconFolder, IconPlus } from "@tabler/icons-react";
 import { useSpaceQuery } from "@/features/space/queries/space-query.ts";
 import { useParams } from "react-router-dom";
 import { v7 as uuid7 } from "uuid";
@@ -104,6 +104,7 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
             entityId: page.id,
             slugId: page.slugId,
             icon: page.icon,
+            nodeType: page.nodeType,
           })),
         );
       }
@@ -138,6 +139,7 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
             entityType: "page",
             entityId: item.entityId,
             slugId: item.slugId,
+            nodeType: item.nodeType,
             creatorId: currentUser?.user.id,
           });
         }
@@ -270,7 +272,6 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
         position: createdPage.position,
         spaceId: createdPage.spaceId,
         parentPageId: createdPage.parentPageId,
-<<<<<<< HEAD
         icon: createdPage.icon,
         hasChildren: createdPage.hasChildren,
         nodeType: createdPage.nodeType ?? payload.nodeType,
@@ -290,6 +291,7 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
         entityType: "page",
         entityId: createdPage.id,
         slugId: createdPage.slugId,
+        nodeType: createdPage.nodeType ?? payload.nodeType,
         creatorId: currentUser?.user.id,
       });
 
@@ -427,7 +429,11 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
                     color="gray"
                     size="sm"
                   >
-                    {item.icon || (
+                    {item.icon ? (
+                      item.icon
+                    ) : item.nodeType === "folder" ? (
+                      <IconFolder size={18} stroke={1.5} />
+                    ) : (
                       <IconFileDescription size={18} stroke={1.5} />
                     )}
                   </ActionIcon>

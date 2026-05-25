@@ -1,6 +1,6 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ActionIcon, Anchor, Text } from "@mantine/core";
-import { IconFileDescription } from "@tabler/icons-react";
+import { IconFileDescription, IconFolder } from "@tabler/icons-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { usePageQuery } from "@/features/page/queries/page-query.ts";
 import { useSharePageQuery } from "@/features/share/queries/share-query.ts";
@@ -13,7 +13,8 @@ import classes from "./mention.module.css";
 
 export default function MentionView(props: NodeViewProps) {
   const { node } = props;
-  const { label, entityType, entityId, slugId, anchorId } = node.attrs;
+  const { label, entityType, entityId, slugId, nodeType, anchorId } =
+    node.attrs;
   const isPageMention = entityType === "page";
   const { spaceSlug, pageSlug } = useParams();
   const { shareId } = useParams();
@@ -79,7 +80,12 @@ export default function MentionView(props: NodeViewProps) {
             size={18}
             style={{ verticalAlign: "text-bottom" }}
           >
-            <IconFileDescription size={18} />
+            {sharedPage?.page?.nodeType === "folder" ||
+            nodeType === "folder" ? (
+              <IconFolder size={18} />
+            ) : (
+              <IconFileDescription size={18} />
+            )}
           </ActionIcon>
           <span className={classes.pageMentionText}>
             {sharePageTitle}
@@ -103,7 +109,11 @@ export default function MentionView(props: NodeViewProps) {
             size={18}
             style={{ verticalAlign: "text-bottom" }}
           >
-            <IconFileDescription size={18} />
+            {nodeType === "folder" ? (
+              <IconFolder size={18} />
+            ) : (
+              <IconFileDescription size={18} />
+            )}
           </ActionIcon>
           <span className={classes.pageMentionText}>
             {label}
@@ -130,7 +140,11 @@ export default function MentionView(props: NodeViewProps) {
               size={18}
               style={{ verticalAlign: "text-bottom" }}
             >
-              <IconFileDescription size={18} />
+              {page?.nodeType === "folder" || nodeType === "folder" ? (
+                <IconFolder size={18} />
+              ) : (
+                <IconFileDescription size={18} />
+              )}
             </ActionIcon>
           )}
 

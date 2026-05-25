@@ -30,6 +30,11 @@ export interface MentionNodeAttrs {
   slugId?: string | null;
 
   /**
+   * page node type
+   */
+  nodeType?: "file" | "folder" | null;
+
+  /**
    * the id of the user who initiated the mention
    */
   creatorId?: string;
@@ -235,6 +240,20 @@ export const Mention = Node.create<MentionOptions>({
 
           return {
             "data-slug-id": attributes.slugId,
+          };
+        },
+      },
+
+      nodeType: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-node-type"),
+        renderHTML: (attributes) => {
+          if (!attributes.nodeType) {
+            return {};
+          }
+
+          return {
+            "data-node-type": attributes.nodeType,
           };
         },
       },
