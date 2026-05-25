@@ -1,10 +1,11 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AppException } from '../../../common/errors/app-exception';
+import { ErrorCode } from '../../../common/errors/error-codes';
 import { CreateSpaceDto } from '../dto/create-space.dto';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { SpaceRepo } from '@docmost/db/repos/space/space.repo';
@@ -106,9 +107,7 @@ export class SpaceService {
       trx,
     );
     if (slugExists) {
-      throw new BadRequestException(
-        'Space slug exists. Please use a unique space slug',
-      );
+      throw new AppException(ErrorCode.SPACE_SLUG_EXISTS, 'Space slug exists. Please use a unique space slug', 400);
     }
 
     return await this.spaceRepo.insertSpace(
@@ -134,9 +133,7 @@ export class SpaceService {
       );
 
       if (slugExists) {
-        throw new BadRequestException(
-          'Space slug exists. Please use a unique space slug',
-        );
+        throw new AppException(ErrorCode.SPACE_SLUG_EXISTS, 'Space slug exists. Please use a unique space slug', 400);
       }
     }
 
@@ -334,7 +331,7 @@ export class SpaceService {
       workspaceId,
     );
     if (count >= SpaceService.MAX_SIDEBAR_CATEGORIES) {
-      throw new BadRequestException('SIDEBAR_CATEGORY_LIMIT_EXCEEDED');
+      throw new AppException(ErrorCode.SIDEBAR_CATEGORY_LIMIT_EXCEEDED, 'Sidebar category limit exceeded', 400);
     }
 
     const normalizedName = payload.name.trim();
@@ -344,7 +341,7 @@ export class SpaceService {
       workspaceId,
     );
     if (exists) {
-      throw new BadRequestException('SIDEBAR_CATEGORY_NAME_DUPLICATED');
+      throw new AppException(ErrorCode.SIDEBAR_CATEGORY_NAME_DUPLICATED, 'Sidebar category name already exists', 400);
     }
 
     const existing = await this.spaceSidebarCategoryRepo.listBySpace(
@@ -377,7 +374,7 @@ export class SpaceService {
       categoryId,
     );
     if (exists) {
-      throw new BadRequestException('SIDEBAR_CATEGORY_NAME_DUPLICATED');
+      throw new AppException(ErrorCode.SIDEBAR_CATEGORY_NAME_DUPLICATED, 'Sidebar category name already exists', 400);
     }
 
     const updated = await this.spaceSidebarCategoryRepo.updateCategory(
@@ -444,11 +441,11 @@ export class SpaceService {
     );
 
     if (!categories.length) {
-      throw new BadRequestException('SIDEBAR_CATEGORIES_NOT_FOUND');
+      throw new AppException(ErrorCode.SIDEBAR_CATEGORIES_NOT_FOUND, 'Sidebar categories not found', 400);
     }
 
     if (orderedCategoryIds.length !== categories.length) {
-      throw new BadRequestException('SIDEBAR_CATEGORY_REORDER_INVALID');
+      throw new AppException(ErrorCode.SIDEBAR_CATEGORY_REORDER_INVALID, 'Invalid sidebar category reorder', 400);
     }
 
     const categoryIdSet = new Set(categories.map((item) => item.id));
@@ -457,7 +454,7 @@ export class SpaceService {
       orderedIdSet.size !== categories.length ||
       orderedCategoryIds.some((id) => !categoryIdSet.has(id))
     ) {
-      throw new BadRequestException('SIDEBAR_CATEGORY_REORDER_INVALID');
+      throw new AppException(ErrorCode.SIDEBAR_CATEGORY_REORDER_INVALID, 'Invalid sidebar category reorder', 400);
     }
 
     await executeTx(this.db, async (trx) => {

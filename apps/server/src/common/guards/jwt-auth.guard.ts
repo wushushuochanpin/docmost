@@ -52,7 +52,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
           ? JSON.parse(req.cookies.joinedWorkspaces)
           : [];
       } catch (err) {
-        /* empty */
+        // Cookie parse failed — safe to ignore, will default to empty array
       }
 
       if (!workspaceIds.includes(workspaceId)) {

@@ -11,14 +11,19 @@ import { SearchService } from '../search/search.service';
 import { PageService } from '../page/services/page.service';
 import { PageAccessService } from '../page/page-access/page-access.service';
 import { StorageService } from '../../integrations/storage/storage.service';
+import { PagePermissionRepo } from '@docmost/db/repos/page/page-permission.repo';
+import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
 import {
   FetchMode,
   ImageReturnMode,
   McpAttachmentResult,
   McpFetchInput,
+  McpGetPageInput,
+  McpListPagesInput,
   McpSearchInput,
   McpToolContext,
 } from './mcp.types';
+import { validate as isValidUUID } from 'uuid';
 import { getPageTitle } from '../../common/helpers';
 import { getProsemirrorContent } from '../../common/helpers/prosemirror/utils';
 import {
@@ -29,6 +34,19 @@ import {
 type PageScopeRow = {
   id: string;
   parentPageId: string | null;
+  depth: number;
+};
+
+type PageListRow = {
+  id: string;
+  slugId: string;
+  title: string | null;
+  icon: string | null;
+  parentPageId: string | null;
+  spaceId: string;
+  spaceSlug: string | null;
+  updatedAt: Date | null;
+  nodeType: string | null;
   depth: number;
 };
 
@@ -54,6 +72,8 @@ export class KnowledgeRetrievalService {
     private readonly pageService: PageService,
     private readonly pageAccessService: PageAccessService,
     private readonly storageService: StorageService,
+    private readonly pagePermissionRepo: PagePermissionRepo,
+    private readonly spaceMemberRepo: SpaceMemberRepo,
   ) {}
 
   async search(input: McpSearchInput, context: McpToolContext) {
@@ -163,6 +183,214 @@ export class KnowledgeRetrievalService {
         attachments,
       },
     };
+  }
+
+  async getPage(input: McpGetPageInput, context: McpToolContext) {
+    const rawId = this.resolvePageIdFromGetPageInput(input);
+    if (!rawId) {
+      throw new NotFoundException('MCP_DOCUMENT_NOT_FOUND');
+    }
+
+    return this.fetch(
+      {
+        id: rawId,
+        format: input.format,
+        mode: input.mode,
+        max_tokens: input.max_tokens,
+        include_images: input.include_images,
+        include_children: input.include_children,
+        max_depth: input.max_depth,
+      },
+      context,
+    );
+  }
+
+  async listPages(input: McpListPagesInput, context: McpToolContext) {
+    const maxResults = this.clampNumber(input.max_results, 50, 1, 100);
+    const maxDepth = this.clampNumber(input.max_depth, 2, 0, 5);
+
+    let rows: PageListRow[] = [];
+
+    if (input.parent_page_id) {
+      const parentId = this.parseMcpPageId(input.parent_page_id);
+      const parentPage = await this.getReadablePage(parentId, context);
+      rows = await this.getPageListRowsFromParent(
+        parentPage.id,
+        context,
+        maxDepth,
+      );
+    } else if (input.space_id) {
+      const spaceId = await this.resolveSpaceId(input.space_id, context);
+      rows = await this.getPageListRowsFromSpace(spaceId, context, maxDepth);
+    } else {
+      return { items: [] };
+    }
+
+    if (rows.length === 0) {
+      return { items: [] };
+    }
+
+    const spaceId = rows[0]?.spaceId;
+    const allIds = rows.map((r) => r.id);
+    const accessibleIds = await this.pagePermissionRepo.filterAccessiblePageIds(
+      {
+        pageIds: allIds,
+        userId: context.user.id,
+        spaceId,
+      },
+    );
+    const accessibleSet = new Set(accessibleIds);
+
+    const items = rows
+      .filter((r) => accessibleSet.has(r.id))
+      .slice(0, maxResults)
+      .map((r) => ({
+        id: this.toMcpPageId(r.id),
+        title: getPageTitle(r.title),
+        slug_id: r.slugId,
+        page_id: r.id,
+        parent_page_id: r.parentPageId ? this.toMcpPageId(r.parentPageId) : null,
+        space_id: r.spaceId,
+        node_type: r.nodeType ?? 'file',
+        depth: r.depth,
+        updated_at: r.updatedAt?.toISOString?.() ?? r.updatedAt ?? null,
+        url: this.buildPageUrl(context.baseUrl, r.spaceSlug ?? undefined, r.slugId),
+      }));
+
+    return { items };
+  }
+
+  private resolvePageIdFromGetPageInput(input: McpGetPageInput): string | null {
+    if (input.slug_id) {
+      return this.extractStableSlugId(input.slug_id);
+    }
+    if (input.url) {
+      return this.parseSlugIdFromUrl(input.url);
+    }
+    return null;
+  }
+
+  /**
+   * Extracts the stable slugId (e.g. "ppWKvRMSRW") from composite inputs:
+   *   "untitled-ppWKvRMSRW"       → "ppWKvRMSRW"
+   *   "三观一致测试-ppWKvRMSRW"    → "ppWKvRMSRW"
+   *   "ppWKvRMSRW"                → "ppWKvRMSRW"
+   *   "page:untitled-ppWKvRMSRW"  → "ppWKvRMSRW"
+   *   UUID string                 → unchanged (passed through to findById)
+   */
+  private extractStableSlugId(input: string): string {
+    if (!input) return input;
+    const raw = input.startsWith('page:') ? input.slice(5) : input;
+    if (isValidUUID(raw)) return raw;
+    const parts = raw.split('-');
+    return parts.length > 1 ? parts[parts.length - 1] : raw;
+  }
+
+  private parseSlugIdFromUrl(url: string): string | null {
+    let segment: string | null = null;
+    try {
+      const pathname = new URL(url).pathname;
+      const match = pathname.match(/\/p\/([^/?#]+)/);
+      segment = match ? match[1] : null;
+    } catch {
+      const match = url.match(/\/p\/([^/?#\s]+)/);
+      segment = match ? match[1] : null;
+    }
+    return segment ? this.extractStableSlugId(segment) : null;
+  }
+
+  private async resolveSpaceId(
+    spaceId: string,
+    context: McpToolContext,
+  ): Promise<string> {
+    if (isValidUUID(spaceId)) {
+      return spaceId;
+    }
+    const space = await this.db
+      .selectFrom('spaces')
+      .select('id')
+      .where(sql`LOWER(slug)`, '=', sql`LOWER(${spaceId})`)
+      .where('workspaceId', '=', context.workspace.id)
+      .executeTakeFirst();
+    if (!space) {
+      throw new NotFoundException('MCP_SPACE_NOT_FOUND');
+    }
+    return space.id;
+  }
+
+  private async getPageListRowsFromParent(
+    rootPageId: string,
+    context: McpToolContext,
+    maxDepth: number,
+  ): Promise<PageListRow[]> {
+    return this.queryPageListRows(
+      { rootPageId },
+      context.workspace.id,
+      maxDepth,
+    );
+  }
+
+  private async getPageListRowsFromSpace(
+    spaceId: string,
+    context: McpToolContext,
+    maxDepth: number,
+  ): Promise<PageListRow[]> {
+    return this.queryPageListRows(
+      { spaceId },
+      context.workspace.id,
+      maxDepth,
+    );
+  }
+
+  private async queryPageListRows(
+    scope: { rootPageId?: string; spaceId?: string },
+    workspaceId: string,
+    maxDepth: number,
+  ): Promise<PageListRow[]> {
+    const anchorCondition = scope.rootPageId
+      ? sql`p.id = ${scope.rootPageId} AND p.workspace_id = ${workspaceId} AND p.deleted_at IS NULL`
+      : sql`p.space_id = ${scope.spaceId} AND p.workspace_id = ${workspaceId} AND p.parent_page_id IS NULL AND p.deleted_at IS NULL`;
+
+    const result = await sql<PageListRow>`
+      WITH RECURSIVE page_hierarchy AS (
+        SELECT
+          p.id,
+          p.slug_id AS "slugId",
+          p.title,
+          p.icon,
+          p.parent_page_id AS "parentPageId",
+          p.space_id AS "spaceId",
+          p.updated_at AS "updatedAt",
+          COALESCE(pnm.node_type, 'file') AS "nodeType",
+          0::int AS depth
+        FROM pages p
+        LEFT JOIN page_node_meta pnm ON pnm.page_id = p.id
+        WHERE ${anchorCondition}
+        UNION ALL
+        SELECT
+          c.id,
+          c.slug_id AS "slugId",
+          c.title,
+          c.icon,
+          c.parent_page_id AS "parentPageId",
+          c.space_id AS "spaceId",
+          c.updated_at AS "updatedAt",
+          COALESCE(pnm2.node_type, 'file') AS "nodeType",
+          ph.depth + 1 AS depth
+        FROM pages c
+        LEFT JOIN page_node_meta pnm2 ON pnm2.page_id = c.id
+        INNER JOIN page_hierarchy ph ON c.parent_page_id = ph.id
+        WHERE c.workspace_id = ${workspaceId}
+          AND c.deleted_at IS NULL
+          AND ph.depth < ${maxDepth}
+      )
+      SELECT ph.*, s.slug AS "spaceSlug"
+      FROM page_hierarchy ph
+      LEFT JOIN spaces s ON s.id = ph."spaceId"
+      ORDER BY ph.depth ASC, ph."slugId" ASC
+    `.execute(this.db);
+
+    return result.rows;
   }
 
   private async getScopedPageIds(
@@ -394,10 +622,7 @@ export class KnowledgeRetrievalService {
   }
 
   private parseMcpPageId(id: string) {
-    if (id.startsWith('page:')) {
-      return id.slice('page:'.length);
-    }
-    return id;
+    return this.extractStableSlugId(id);
   }
 
   private toMcpPageId(pageId: string) {

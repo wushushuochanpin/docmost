@@ -3,7 +3,7 @@
 **成文日期**：2026-05-24 UTC+8  
 **最后修订**：2026-05-24 UTC+8
 
-本文档用于指导 Docmost/SuperChat 页面编辑器实时保存、实时协作、本地离线与持久化链路的收敛改造。当前系统已经具备 Tiptap/ProseMirror、Yjs、Hocuspocus、y-indexeddb、React Query 页面缓存、本地 fallback 保存和编辑会话互踢能力；本 PRD 不以“推倒重写”为目标，而是把多状态源收敛为更稳定、更轻量、更容易排查的同步模型。
+本文档用于指导 Docmost/Xenzify 页面编辑器实时保存、实时协作、本地离线与持久化链路的收敛改造。当前系统已经具备 Tiptap/ProseMirror、Yjs、Hocuspocus、y-indexeddb、React Query 页面缓存、本地 fallback 保存和编辑会话互踢能力；本 PRD 不以“推倒重写”为目标，而是把多状态源收敛为更稳定、更轻量、更容易排查的同步模型。
 
 ---
 

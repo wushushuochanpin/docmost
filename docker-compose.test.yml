@@ -13,7 +13,7 @@ services:
       dockerfile: Dockerfile
     image: docmost-test:local
     environment:
-      APP_URL: "${TEST_APP_URL:-https://book-test.superchat.help}"
+      APP_URL: "${TEST_APP_URL:-https://book-test.Xenzify.help}"
       APP_SOURCE_URL: "${APP_SOURCE_URL:-https://github.com/wushushuochanpin/docmost}"
       APP_SECRET: "${APP_SECRET:-REPLACE_WITH_LONG_SECRET}"
       DATABASE_URL: "postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost?schema=public"

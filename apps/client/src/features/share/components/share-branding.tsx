@@ -9,7 +9,7 @@ export default function ShareBranding() {
         rel="noreferrer"
         href="https://docmost.com?ref=public-share"
       >
-        Powered by SuperChat
+        Powered by Xenzify
       </a>
     </div>
   );

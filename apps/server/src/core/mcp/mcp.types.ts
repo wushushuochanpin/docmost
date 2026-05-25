@@ -31,6 +31,24 @@ export type McpFetchInput = {
   max_depth?: number;
 };
 
+export type McpGetPageInput = {
+  url?: string;
+  slug_id?: string;
+  format?: 'markdown' | 'html';
+  mode?: FetchMode;
+  max_tokens?: number;
+  include_images?: ImageReturnMode;
+  include_children?: boolean;
+  max_depth?: number;
+};
+
+export type McpListPagesInput = {
+  space_id?: string;
+  parent_page_id?: string;
+  max_depth?: number;
+  max_results?: number;
+};
+
 export type McpAttachmentResult = {
   id: string;
   name: string;

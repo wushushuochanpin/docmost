@@ -10,7 +10,7 @@ declare global {
 }
 
 export function getAppName(): string {
-  return "SuperChat";
+  return "Xenzify";
 }
 
 export function getAppUrl(): string {

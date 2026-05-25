@@ -1,10 +1,9 @@
 import {
-  BadRequestException,
   Inject,
   Injectable,
-  NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
+import { AppException } from '../../../common/errors/app-exception';
+import { ErrorCode } from '../../../common/errors/error-codes';
 import { LoginDto } from '../dto/login.dto';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { TokenService } from './token.service';
@@ -65,7 +64,7 @@ export class AuthService {
 
     const errorMessage = 'Email or password does not match';
     if (!user || isUserDisabled(user)) {
-      throw new UnauthorizedException(errorMessage);
+      throw new AppException(ErrorCode.AUTH_INVALID_CREDENTIALS, 'Email or password does not match', 401);
     }
 
     const isPasswordMatch = await comparePasswordHash(
@@ -74,7 +73,7 @@ export class AuthService {
     );
 
     if (!isPasswordMatch) {
-      throw new UnauthorizedException(errorMessage);
+      throw new AppException(ErrorCode.AUTH_INVALID_CREDENTIALS, 'Email or password does not match', 401);
     }
 
     throwIfEmailNotVerified({
@@ -122,7 +121,7 @@ export class AuthService {
     });
 
     if (!user || isUserDisabled(user)) {
-      throw new NotFoundException('User not found');
+      throw new AppException(ErrorCode.USER_NOT_FOUND, 'User not found', 404);
     }
 
     const comparePasswords = await comparePasswordHash(
@@ -131,7 +130,7 @@ export class AuthService {
     );
 
     if (!comparePasswords) {
-      throw new BadRequestException('Current password is incorrect');
+      throw new AppException(ErrorCode.AUTH_PASSWORD_MISMATCH, 'Current password is incorrect', 400);
     }
 
     const newPasswordHash = await hashPassword(dto.newPassword);
@@ -230,14 +229,14 @@ export class AuthService {
       userToken.type !== UserTokenType.FORGOT_PASSWORD ||
       userToken.expiresAt < new Date()
     ) {
-      throw new BadRequestException('Invalid or expired token');
+      throw new AppException(ErrorCode.AUTH_TOKEN_INVALID, 'Invalid or expired token', 400);
     }
 
     const user = await this.userRepo.findById(userToken.userId, workspace.id, {
       includeUserMfa: true,
     });
     if (!user || isUserDisabled(user)) {
-      throw new NotFoundException('User not found');
+      throw new AppException(ErrorCode.USER_NOT_FOUND, 'User not found', 404);
     }
 
     const newPasswordHash = await hashPassword(passwordResetDto.newPassword);
@@ -312,7 +311,7 @@ export class AuthService {
       userToken.type !== userTokenDto.type ||
       userToken.expiresAt < new Date()
     ) {
-      throw new BadRequestException('Invalid or expired token');
+      throw new AppException(ErrorCode.AUTH_TOKEN_INVALID, 'Invalid or expired token', 400);
     }
   }
 

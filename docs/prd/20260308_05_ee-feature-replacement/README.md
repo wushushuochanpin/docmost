@@ -22,7 +22,7 @@
 ## 背景
 
 1. 当前自托管实例已升级到 `v0.70.1`，设置页出现 `API keys`、`Security & SSO`、`API management`、`Audit log` 等企业版灰菜单，业务希望获得类似能力。
-2. 当前仓库根许可为 `AGPL-3.0`，而 `apps/client/src/ee/` 明确标注受 `SuperChat Enterprise Edition license` 约束，不能把“直接复制企业版代码”当作默认方案。
+2. 当前仓库根许可为 `AGPL-3.0`，而 `apps/client/src/ee/` 明确标注受 `Xenzify Enterprise Edition license` 约束，不能把“直接复制企业版代码”当作默认方案。
 3. 当前路线已确认：接受 AGPL 网络部署义务，在当前主仓内自研灰菜单对应能力，同时严格禁止复用 `ee` 目录代码。
 
 ## 阅读顺序

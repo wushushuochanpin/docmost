@@ -5,7 +5,7 @@ import classes from "./share-page-state.module.css";
 
 export default function ShareNotFound() {
   const { t } = useShareTranslation();
-  useShareDocumentTitle(`${t("404 page not found")} - SuperChat`);
+  useShareDocumentTitle(`${t("404 page not found")} - Xenzify`);
 
   return (
     <div className={classes.centeredViewport}>

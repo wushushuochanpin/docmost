@@ -681,6 +681,10 @@
   "MCP Server URL": "MCP 服务器 URL",
   "Use your API key for authentication. You can manage API keys in your account settings.": "使用您的 API 密钥进行身份验证。您可以在账户设置中管理 API 密钥。",
   "Supported tools": "支持的工具",
+  "Semantic search across workspace pages": "语义搜索工作区页面",
+  "Fetch a page directly by URL or slug ID": "通过 URL 或 slug 直接获取页面内容",
+  "Fetch page content by ID returned from search": "通过搜索返回的 ID 获取页面内容",
+  "Browse pages in a space or under a parent page": "浏览空间或父页面下的页面目录",
   "Your workspace has MCP enabled. Use your API key to connect AI assistants.": "您的工作区已启用 MCP。使用您的 API 密钥连接 AI 助手。",
   "MCP server URL:": "MCP 服务器 URL：",
   "Learn more": "了解更多",
@@ -1283,5 +1287,15 @@
   "Direct children (1 level): {{directChildCount}} · All descendants: {{descendantTotalCount}}": "直接子项（1层）：{{directChildCount}} · 全部后代：{{descendantTotalCount}}",
   "Open this page and wait for editing to start before renaming it in the sidebar.": "请先在主区域打开该页面，并等待编辑会话就绪后再在侧栏重命名。",
   "Wait for this page to finish loading editing before renaming it in the sidebar.": "请等待当前页面完成编辑加载后，再在侧栏重命名。",
-  "Failed to save page title. Please try again in a moment.": "保存页面标题失败，请稍后重试。"
+  "Failed to save page title. Please try again in a moment.": "保存页面标题失败，请稍后重试。",
+  "editorSessionOverlay": {
+    "titlePending": "正在接管编辑权",
+    "titleStopped": "编辑已切换到另一端",
+    "titleDefault": "此页面已在另一端打开",
+    "descPending": "正在等待另一端完成交接，当前页面暂时只读。",
+    "descStopped": "当前标签页已停止编辑。继续在这里编辑会停止另一端编辑，并重新接管。",
+    "descDefault": "当前页面已暂停编辑。继续在这里编辑会停止另一端编辑，并接管最新内容。",
+    "continueHere": "继续在这里编辑",
+    "readonly": "只读查看"
+  }
 }

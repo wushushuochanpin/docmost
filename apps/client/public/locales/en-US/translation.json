@@ -681,6 +681,10 @@
   "MCP Server URL": "MCP Server URL",
   "Use your API key for authentication. You can manage API keys in your account settings.": "Use your API key for authentication. You can manage API keys in your account settings.",
   "Supported tools": "Supported tools",
+  "Semantic search across workspace pages": "Semantic search across workspace pages",
+  "Fetch a page directly by URL or slug ID": "Fetch a page directly by URL or slug ID",
+  "Fetch page content by ID returned from search": "Fetch page content by ID returned from search",
+  "Browse pages in a space or under a parent page": "Browse pages in a space or under a parent page",
   "Your workspace has MCP enabled. Use your API key to connect AI assistants.": "Your workspace has MCP enabled. Use your API key to connect AI assistants.",
   "MCP server URL:": "MCP server URL:",
   "Learn more": "Learn more",
@@ -1283,5 +1287,15 @@
   "Direct children (1 level): {{directChildCount}} · All descendants: {{descendantTotalCount}}": "Direct children (1 level): {{directChildCount}} · All descendants: {{descendantTotalCount}}",
   "Open this page and wait for editing to start before renaming it in the sidebar.": "Open this page and wait for editing to start before renaming it in the sidebar.",
   "Wait for this page to finish loading editing before renaming it in the sidebar.": "Wait for this page to finish loading editing before renaming it in the sidebar.",
-  "Failed to save page title. Please try again in a moment.": "Failed to save page title. Please try again in a moment."
+  "Failed to save page title. Please try again in a moment.": "Failed to save page title. Please try again in a moment.",
+  "editorSessionOverlay": {
+    "titlePending": "Taking over editing",
+    "titleStopped": "Editing switched to another side",
+    "titleDefault": "This page is opened elsewhere",
+    "descPending": "Waiting for the other side to finish handover. This page is currently read-only.",
+    "descStopped": "Editing has stopped on this tab. Continuing here will stop editing on the other side and retake control.",
+    "descDefault": "Editing is paused on this page. Continuing here will stop editing on the other side and take over the latest content.",
+    "continueHere": "Continue editing here",
+    "readonly": "View read-only"
+  }
 }

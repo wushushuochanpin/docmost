@@ -58,7 +58,7 @@ import { TransclusionService } from '../page/transclusion/transclusion.service';
 import { TransclusionLookup } from '../page/transclusion/transclusion.types';
 import { PagePermissionRepo } from '@docmost/db/repos/page/page-permission.repo';
 
-const PROTECTED_SHARE_PASSWORD_LENGTH = 8;
+const PROTECTED_SHARE_PASSWORD_LENGTH = 12;
 const PROTECTED_SHARE_PASSWORD_CHARSET =
   'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 

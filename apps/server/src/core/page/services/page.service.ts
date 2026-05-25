@@ -1383,22 +1383,25 @@ export class PageService {
       }
     }
 
-    await this.pageRepo.updatePage(
-      {
-        position,
-        parentPageId: parentPageId,
-      },
-      dto.pageId,
-      undefined,
-      movedPage.workspaceId,
-    );
-
-    if (parentPageId) {
-      await this.clearSidebarCategoryForPages(
-        [dto.pageId],
+    await executeTx(this.db, async (trx) => {
+      await this.pageRepo.updatePage(
+        {
+          position,
+          parentPageId: parentPageId,
+        },
+        dto.pageId,
+        trx,
         movedPage.workspaceId,
       );
-    }
+
+      if (parentPageId) {
+        await this.clearSidebarCategoryForPages(
+          [dto.pageId],
+          movedPage.workspaceId,
+          trx,
+        );
+      }
+    });
   }
 
   async assignSidebarCategory(

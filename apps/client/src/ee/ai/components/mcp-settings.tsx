@@ -99,16 +99,22 @@ export default function McpSettings() {
             <Text size="sm" fw={500} mt="md" mb={4}>
               {t("Supported tools")}
             </Text>
-            <List size="sm" spacing={2}>
+            <List size="sm" spacing={4}>
               <List.Item>
-                <Text size="sm" c="dimmed" span>
-                  search
-                </Text>
+                <Text size="sm" span fw={500}>search</Text>
+                <Text size="sm" c="dimmed" span> — {t("Semantic search across workspace pages")}</Text>
               </List.Item>
               <List.Item>
-                <Text size="sm" c="dimmed" span>
-                  fetch
-                </Text>
+                <Text size="sm" span fw={500}>get_page</Text>
+                <Text size="sm" c="dimmed" span> — {t("Fetch a page directly by URL or slug ID")}</Text>
+              </List.Item>
+              <List.Item>
+                <Text size="sm" span fw={500}>fetch</Text>
+                <Text size="sm" c="dimmed" span> — {t("Fetch page content by ID returned from search")}</Text>
+              </List.Item>
+              <List.Item>
+                <Text size="sm" span fw={500}>list_pages</Text>
+                <Text size="sm" c="dimmed" span> — {t("Browse pages in a space or under a parent page")}</Text>
               </List.Item>
             </List>
           </div>

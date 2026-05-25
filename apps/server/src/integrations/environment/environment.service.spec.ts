@@ -30,10 +30,10 @@ describe('EnvironmentService', () => {
 
   it('returns normalized configured app url when present', () => {
     const service = buildService({
-      APP_URL: 'https://book.superchat.help/share/demo?x=1',
+      APP_URL: 'https://book.Xenzify.help/share/demo?x=1',
     });
 
-    expect(service.getConfiguredAppUrl()).toBe('https://book.superchat.help');
+    expect(service.getConfiguredAppUrl()).toBe('https://book.Xenzify.help');
   });
 
   it('falls back to localhost app url when app url is not configured', () => {

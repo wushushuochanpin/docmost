@@ -12,7 +12,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       <Group justify="center" gap={8} className={classes.logo}>
         <img
           src="/icons/logo.svg"
-          alt="SuperChat"
+          alt="Xenzify"
           className={classes.logoImage}
         />
       </Group>

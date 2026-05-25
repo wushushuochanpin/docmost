@@ -30,8 +30,7 @@ import {
 export class CollaborationGateway {
   private readonly hocuspocus: Hocuspocus;
   private redisConfig: RedisConfig;
-  // @ts-ignore
-  private readonly redisSync: RedisSyncExtension<CollabEventHandlers> | null =
+  private readonly redisSync: RedisSyncExtension<any> | null =
     null;
   private readonly withRedis: boolean;
 
@@ -57,7 +56,6 @@ export class CollaborationGateway {
     });
 
     if (this.withRedis) {
-      // @ts-ignore
       this.redisSync = new RedisSyncExtension({
         redis: new RedisClient({
           host: this.redisConfig.host,
@@ -71,12 +69,10 @@ export class CollaborationGateway {
         prefix: 'collab',
         pack,
         unpack,
-        // @ts-ignore
-        customEvents: this.collabEventsService.getHandlers(this.hocuspocus),
+        customEvents: this.collabEventsService.getHandlers(this.hocuspocus) as any,
       });
       this.hocuspocus.configuration.extensions.push(this.redisSync);
-      // @ts-ignore
-      this.redisSync.onConfigure({ instance: this.hocuspocus });
+      (this.redisSync as any).onConfigure({ instance: this.hocuspocus });
     }
   }
 
@@ -203,22 +199,61 @@ export class CollaborationGateway {
   }
 
   async destroy(collabWsAdapter: CollabWsAdapter): Promise<void> {
+    // Track the cleanup handler to remove it after use, preventing leaks
+    // if destroy() is called multiple times.
+    const cleanupHandler = {
+      async afterUnloadDocument({ instance }: { instance: Hocuspocus }) {
+        if (instance.getDocumentsCount() === 0) {
+          // Remove this handler to prevent accumulation
+          const extensions = instance.configuration.extensions;
+          const idx = extensions.indexOf(cleanupHandler);
+          if (idx !== -1) {
+            extensions.splice(idx, 1);
+          }
+        }
+      },
+    };
+
     // eslint-disable-next-line no-async-promise-executor
-    await new Promise(async (resolve) => {
+    await new Promise<void>(async (resolve) => {
       try {
         // Wait for all documents to unload
-        this.hocuspocus.configuration.extensions.push({
-          async afterUnloadDocument({ instance }) {
-            if (instance.getDocumentsCount() === 0) resolve('');
-          },
-        });
+        this.hocuspocus.configuration.extensions.push(cleanupHandler);
 
         collabWsAdapter?.close();
 
-        if (this.hocuspocus.getDocumentsCount() === 0) resolve('');
+        if (this.hocuspocus.getDocumentsCount() === 0) {
+          this.hocuspocus.configuration.extensions =
+            this.hocuspocus.configuration.extensions.filter(
+              (e) => e !== cleanupHandler,
+            );
+          resolve();
+        }
+
+        // The cleanupHandler will call resolve indirectly via the
+        // document count check above if documents unload later.
+        // Add a safety timeout to prevent hanging indefinitely.
+        const safetyTimeout = setTimeout(() => {
+          const extensions = this.hocuspocus.configuration.extensions;
+          const idx = extensions.indexOf(cleanupHandler);
+          if (idx !== -1) {
+            extensions.splice(idx, 1);
+          }
+          resolve();
+        }, 30_000);
+
+        // Hook into the resolve path from the cleanup handler
+        const origAfterUnload = cleanupHandler.afterUnloadDocument;
+        cleanupHandler.afterUnloadDocument = async (args) => {
+          await origAfterUnload(args);
+          clearTimeout(safetyTimeout);
+          resolve();
+        };
+
         this.hocuspocus.closeConnections();
       } catch (error) {
         console.error(error);
+        resolve();
       }
     });
 

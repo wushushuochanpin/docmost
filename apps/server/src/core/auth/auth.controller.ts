@@ -1,5 +1,6 @@
 import {
   Body,
+  UnauthorizedException,
   Controller,
   HttpCode,
   HttpStatus,
@@ -10,10 +11,11 @@ import {
   UseGuards,
   Logger,
 } from '@nestjs/common';
-import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle, Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   AI_CHAT_THROTTLER,
   AUTH_THROTTLER,
+  FORGOT_PASSWORD_THROTTLER,
 } from '../../integrations/throttle/throttler-names';
 import { LoginDto } from './dto/login.dto';
 import { AuthService } from './services/auth.service';
@@ -63,16 +65,31 @@ export class AuthController {
 
     let MfaModule: any;
     let isMfaModuleReady = false;
+    let mfaLoadError: Error | null = null;
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       MfaModule = require('./../../ee/mfa/services/mfa.service');
       isMfaModuleReady = true;
     } catch (err) {
-      this.logger.debug(
-        'MFA module requested but EE module not bundled in this build',
+      mfaLoadError = err instanceof Error ? err : new Error(String(err));
+      this.logger.error(
+        `MFA module failed to load: ${mfaLoadError.message}. ` +
+        `MFA enforcement may be bypassed if workspace.enforceMfa is set.`,
       );
       isMfaModuleReady = false;
     }
+
+    // If the workspace enforces MFA but the MFA module is unavailable,
+    // reject the login rather than silently bypassing MFA.
+    if (workspace.enforceMfa && !isMfaModuleReady) {
+      this.logger.error(
+        `Login blocked: workspace ${workspace.id} enforces MFA but MFA module is unavailable`,
+      );
+      throw new UnauthorizedException(
+        'MFA is required but is currently unavailable. Please contact your administrator.',
+      );
+    }
+
     if (isMfaModuleReady) {
       const mfaService = this.moduleRef.get(MfaModule.MfaService, {
         strict: false,
@@ -137,6 +154,7 @@ export class AuthController {
     );
   }
 
+  @Throttle({ default: { ttl: 300_000, limit: 3 } })
   @HttpCode(HttpStatus.OK)
   @Post('forgot-password')
   async forgotPassword(

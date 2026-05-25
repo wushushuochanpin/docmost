@@ -129,11 +129,22 @@ export const treeModel = {
     patch: Omit<Partial<T>, "id" | "children">,
   ): TreeNode<T>[] {
     let touched = false;
+    // Track whether any value actually changed (avoid unnecessary React
+    // re-renders when the patch produces identical values).
+    let changed = false;
     const walk = (nodes: TreeNode<T>[]): TreeNode<T>[] =>
       nodes.map((n) => {
         if (n.id === id) {
           touched = true;
-          return { ...n, ...patch };
+          const merged = { ...n, ...patch };
+          // Shallow-eq check: if every key in patch is already the same
+          // value on n, skip the new object to preserve referential identity.
+          const hasDiff = Object.keys(patch as object).some(
+            (k) => (n as any)[k] !== (patch as any)[k],
+          );
+          if (!hasDiff) return n;
+          changed = true;
+          return merged;
         }
         if (n.children) {
           const next = walk(n.children);
@@ -142,6 +153,8 @@ export const treeModel = {
         return n;
       });
     const out = walk(tree);
+    // If we found the node but nothing changed, return original tree
+    if (touched && !changed) return tree;
     return touched ? out : tree;
   },
 

@@ -164,19 +164,20 @@ function EditorSessionOverlay({
   onContinueHere: () => void;
   onReadonly: () => void;
 }) {
+  const { t } = useTranslation();
   const isPending = status === "pending_takeover";
   const isCurrentTabStopped =
     status === "takeover_requested" || status === "revoked";
   const title = isPending
-    ? "正在接管编辑权"
+    ? t("editorSessionOverlay.titlePending")
     : isCurrentTabStopped
-      ? "编辑已切换到另一端"
-      : "此页面已在另一端打开";
+      ? t("editorSessionOverlay.titleStopped")
+      : t("editorSessionOverlay.titleDefault");
   const description = isPending
-    ? "正在等待另一端完成交接，当前页面暂时只读。"
+    ? t("editorSessionOverlay.descPending")
     : isCurrentTabStopped
-      ? "当前标签页已停止编辑。继续在这里编辑会停止另一端编辑，并重新接管。"
-      : "当前页面已暂停编辑。继续在这里编辑会停止另一端编辑，并接管最新内容。";
+      ? t("editorSessionOverlay.descStopped")
+      : t("editorSessionOverlay.descDefault");
 
   if (!opened) {
     return null;
@@ -218,7 +219,7 @@ function EditorSessionOverlay({
               {title}
             </Text>
             {!isPending && (
-              <CloseButton onClick={onReadonly} aria-label="只读查看" />
+              <CloseButton onClick={onReadonly} aria-label={t("editorSessionOverlay.readonly")} />
             )}
           </Group>
           <Stack gap="md">

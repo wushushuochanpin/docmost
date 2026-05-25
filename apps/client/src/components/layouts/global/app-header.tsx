@@ -98,11 +98,11 @@ export function AppHeader() {
           <Link
             to="/home"
             className={classes.brandLogoLink}
-            aria-label="SuperChat"
+            aria-label="Xenzify"
           >
             <img
               src="/icons/logo.svg"
-              alt="SuperChat"
+              alt="Xenzify"
               className={classes.brandLogo}
             />
           </Link>
