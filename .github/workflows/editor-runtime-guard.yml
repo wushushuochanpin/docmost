@@ -1,0 +1,65 @@
+name: Editor Runtime Guardrails
+
+on:
+  pull_request:
+    paths:
+      - AGENTS.md
+      - apps/client/vite.config.ts
+      - apps/client/src/lib/config.ts
+      - apps/client/src/features/editor/**
+      - apps/client/src/features/page-history/**
+      - docker-compose.test.yml
+      - package.json
+      - pnpm-lock.yaml
+      - packages/editor-ext/**
+      - scripts/security/check-prosemirror-singleton.mjs
+      - scripts/security/check-realtime-deployment-config.mjs
+      - .github/workflows/editor-runtime-guard.yml
+  push:
+    branches:
+      - main
+    paths:
+      - AGENTS.md
+      - apps/client/vite.config.ts
+      - apps/client/src/lib/config.ts
+      - apps/client/src/features/editor/**
+      - apps/client/src/features/page-history/**
+      - docker-compose.test.yml
+      - package.json
+      - pnpm-lock.yaml
+      - packages/editor-ext/**
+      - scripts/security/check-prosemirror-singleton.mjs
+      - scripts/security/check-realtime-deployment-config.mjs
+      - .github/workflows/editor-runtime-guard.yml
+
+jobs:
+  prosemirror-singleton:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check ProseMirror singleton guard
+        run: pnpm run guard:prosemirror-singleton
+
+      - name: Check realtime deployment guard
+        run: pnpm run guard:realtime-deployment
+
+      - name: Build client
+        run: pnpm --filter client build

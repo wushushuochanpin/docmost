@@ -55,18 +55,18 @@ export default function ChangeEmail() {
   );
 }
 
-const formSchema = z.object({
-  email: z.email({ error: "New email is required" }),
-  password: z
-    .string({ error: "your current password is required" })
-    .min(8),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = { password: string; email: string };
 
 function ChangeEmailForm() {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
+
+  const formSchema = z.object({
+    email: z.email({ error: t("New email is required") }),
+    password: z
+      .string({ error: t("Your current password is required") })
+      .min(8),
+  });
 
   const form = useForm<FormValues>({
     validate: zod4Resolver(formSchema),

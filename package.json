@@ -22,7 +22,10 @@
     "dev": "pnpm concurrently -n \"frontend,backend\" -c \"cyan,green\" \"pnpm run client:dev\" \"pnpm run server:dev\"",
     "dev:full": "pnpm concurrently -n \"editor,frontend,backend\" -c \"magenta,cyan,green\" \"pnpm run editor-ext:dev\" \"pnpm run client:dev\" \"pnpm run server:dev\"",
     "clean": "rm -rf apps/*/dist packages/*/dist apps/client/node_modules/.vite",
-    "security:workspace-scope": "node scripts/security/check-workspace-scope.mjs"
+    "security:workspace-scope": "node scripts/security/check-workspace-scope.mjs",
+    "security:migration-order": "node scripts/security/check-migration-order.mjs",
+    "guard:prosemirror-singleton": "node scripts/security/check-prosemirror-singleton.mjs",
+    "guard:realtime-deployment": "node scripts/security/check-realtime-deployment-config.mjs"
   },
   "dependencies": {
     "@braintree/sanitize-url": "^7.1.2",

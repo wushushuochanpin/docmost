@@ -2,7 +2,7 @@
 
 - Frontend: React 18, TypeScript, Vite
 - Backend: NestJS on Node.js 22+
-- Collaboration: Tiptap 4, Yjs 13, Hocuspocus 4
+- Collaboration: Tiptap 3.20.x, Yjs 13, Hocuspocus 4
 - Database: PostgreSQL
 - Package manager: pnpm 10.4.0
 - Runtime: Node.js 22
@@ -17,3 +17,21 @@
 - External hosted or local-first replacements are PoC-only until they prove auth, persistence, rollback, and migration behavior.
 - New runtime dependencies must justify stability, maintenance status, and rollback path before landing.
 - Preserve Node.js 22+ compatibility in Docker, CI, and local development.
+
+## Editor Runtime Guardrails
+
+- Keep ProseMirror as a singleton in the client production bundle. The page editor must not load separate CJS and ESM copies of `prosemirror-view`, `prosemirror-state`, `prosemirror-model`, or related `prosemirror-*` packages.
+- Do not remove the ProseMirror alias and dedupe block from `apps/client/vite.config.ts` unless the editor packaging strategy changes and a real document page is browser-tested afterward.
+- Treat `@docmost/editor-ext` as a high-risk boundary: its CJS dist can import `@tiptap/pm/*`, which can split ProseMirror class identity and crash the editor with `localsInner` errors.
+- When changing Tiptap, ProseMirror, `@docmost/editor-ext`, Vite/Rolldown config, or editor decoration plugins, run `pnpm run guard:prosemirror-singleton` and `pnpm --filter client build`.
+- A valid smoke check for this failure mode must open an existing document page and verify the page does not show "页面加载失败" and `.ProseMirror` exists.
+- Realtime collaboration must default to the current browser origin for `/collab`; use `COLLAB_URL` only for an explicit cross-origin collaboration endpoint. Do not make it depend on `APP_URL` by default.
+- Test deployments must not reuse production Redis for collaboration/session state. If test reuses production DB for data inspection, keep Redis isolated so editor leases, Socket.IO registrations, and Hocuspocus Redis sync state cannot collide across environments.
+- Run `pnpm run guard:realtime-deployment` after changing deployment compose files, runtime config injection, collaboration URL logic, or editor session settings.
+
+## Database Migration Guardrails
+
+- Treat merged migration files in `apps/server/src/database/migrations` as immutable and append-only.
+- New migration filenames must start with a unique sortable `YYYYMMDDTHHMMSS-` key and be later than the latest migration on the base branch.
+- Do not rename, delete, or edit an already-merged migration; create a follow-up migration instead.
+- Run `pnpm run security:migration-order` when adding or touching database migrations.

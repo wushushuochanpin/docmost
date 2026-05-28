@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   ActionIcon,
   Tooltip,
@@ -8,17 +9,18 @@ import { IconMoon, IconSun } from "@tabler/icons-react";
 import classes from "./theme-toggle.module.css";
 
 export function ThemeToggle() {
+  const { t } = useTranslation();
   const { setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme();
 
   return (
-    <Tooltip label="Toggle Color Scheme">
+    <Tooltip label={t("Toggle Color Scheme")}>
       <ActionIcon
         variant="default"
         onClick={() => {
           setColorScheme(computedColorScheme === "light" ? "dark" : "light");
         }}
-        aria-label="Toggle color scheme"
+        aria-label={t("Toggle color scheme")}
       >
         <IconSun className={classes.light} size={18} stroke={1.5} />
         <IconMoon className={classes.dark} size={18} stroke={1.5} />

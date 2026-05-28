@@ -51,8 +51,7 @@ export function getBackendUrl(): string {
 }
 
 export function getCollaborationUrl(): string {
-  const baseUrl =
-    getConfigValue("COLLAB_URL") || getServerAppUrl() || getAppUrl();
+  const baseUrl = getConfigValue("COLLAB_URL") || getAppUrl();
 
   const collabUrl = new URL("/collab", baseUrl);
   collabUrl.protocol = collabUrl.protocol === "https:" ? "wss:" : "ws:";

@@ -1297,5 +1297,8 @@
     "descDefault": "Editing is paused on this page. Continuing here will stop editing on the other side and take over the latest content.",
     "continueHere": "Continue editing here",
     "readonly": "View read-only"
-  }
+  },
+  "Created by {{name}}": "Created by {{name}}",
+  "Owner, no contributors": "Owner, no contributors",
+  "Contributors": "Contributors"
 }

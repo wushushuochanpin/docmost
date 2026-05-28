@@ -455,7 +455,7 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
     delete this.originConnections[socketId];
     const msg: RSAMessageCloseProxy = { type: 'closeProxy', socketId };
     this.pub.publish(this.msgChannel, this.pack(msg)).catch((err) => {
-    this.logger?.debug?.(`Redis publish failed: ${err?.message}`);
+    console.debug(`Redis publish failed: ${err?.message}`);
   });
   }
 

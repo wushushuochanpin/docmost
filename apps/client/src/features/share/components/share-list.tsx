@@ -8,6 +8,7 @@ import { useCursorPaginate } from "@/hooks/use-cursor-paginate";
 import { useGetSharesQuery } from "@/features/share/queries/share-query.ts";
 import { ISharedItem } from "@/features/share/types/share.types.ts";
 import { format } from "date-fns";
+import { formatDateLocale } from "@/lib/time";
 import ShareActionMenu from "@/features/share/components/share-action-menu.tsx";
 import { buildSharedPageUrl } from "@/features/page/page.utils.ts";
 import { getPageIcon } from "@/lib";
@@ -81,7 +82,7 @@ export default function ShareList() {
                 </Table.Td>
                 <Table.Td>
                   <Text fz="sm" style={{ whiteSpace: "nowrap" }}>
-                    {format(new Date(share.createdAt), "MMM dd, yyyy")}
+                    {formatDateLocale(new Date(share.createdAt), "MMM dd, yyyy")}
                   </Text>
                 </Table.Td>
                 <Table.Td>

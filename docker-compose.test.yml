@@ -12,12 +12,14 @@ services:
       context: .
       dockerfile: Dockerfile
     image: docmost-test:local
+    depends_on:
+      - test-redis
     environment:
-      APP_URL: "${TEST_APP_URL:-https://book-test.Xenzify.help}"
+      APP_URL: "${TEST_APP_URL:-https://book-test.superchat.help}"
       APP_SOURCE_URL: "${APP_SOURCE_URL:-https://github.com/wushushuochanpin/docmost}"
       APP_SECRET: "${APP_SECRET:-REPLACE_WITH_LONG_SECRET}"
       DATABASE_URL: "postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost?schema=public"
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis://test-redis:6379"
       COLLAB_ENABLED: "${COLLAB_ENABLED:-true}"
       STORAGE_DRIVER: "${STORAGE_DRIVER:-s3}"
       BACKUP_ENABLED: "${BACKUP_ENABLED:-true}"
@@ -44,6 +46,22 @@ services:
       - prod
     restart: unless-stopped
 
+  test-redis:
+    image: redis:7.2-alpine
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
+    volumes:
+      - redis_test:/data
+    networks:
+      - prod
+    restart: unless-stopped
+
 networks:
   prod:
     external: true
@@ -51,3 +69,4 @@ networks:
 
 volumes:
   docmost_test:
+  redis_test:

@@ -111,16 +111,15 @@ export class TransclusionService {
     trx?: KyselyTransaction,
   ): Promise<{ inserted: number; deleted: number }> {
     const desired = collectReferencesFromPmJson(pmJson);
-    const keyOf = (s: {
-      sourcePageId: string;
-      transclusionId: string;
-    }) => `${s.sourcePageId}::${s.transclusionId}`;
+    const keyOf = (s: { sourcePageId: string; transclusionId: string }) =>
+      `${s.sourcePageId}::${s.transclusionId}`;
     const desiredKeys = new Set(desired.map(keyOf));
 
-    const existing = await this.pageTransclusionReferencesRepo.findByReferencePageId(
-      referencePageId,
-      trx,
-    );
+    const existing =
+      await this.pageTransclusionReferencesRepo.findByReferencePageId(
+        referencePageId,
+        trx,
+      );
     const existingKeys = new Set(existing.map(keyOf));
 
     const toInsert = desired
@@ -351,7 +350,7 @@ export class TransclusionService {
 
     const rows = await Promise.all(
       accessibleIds.map((id) =>
-        this.pageRepo.findById(id, { includeSpace: true }),
+        this.pageRepo.findById(id, { workspaceId, includeSpace: true }),
       ),
     );
     const byId = new Map<string, ReferencingPageInfo>();
@@ -392,12 +391,16 @@ export class TransclusionService {
     transclusionId: string,
     user: User,
   ): Promise<{ content: unknown }> {
-    const referencePage = await this.pageRepo.findById(referencePageId);
+    const referencePage = await this.pageRepo.findById(referencePageId, {
+      workspaceId: user.workspaceId,
+    });
     if (!referencePage || referencePage.deletedAt) {
       throw new NotFoundException('Reference page not found');
     }
 
-    const sourcePage = await this.pageRepo.findById(sourcePageId);
+    const sourcePage = await this.pageRepo.findById(sourcePageId, {
+      workspaceId: user.workspaceId,
+    });
     if (!sourcePage || sourcePage.deletedAt) {
       throw new NotFoundException('Source page not found');
     }
@@ -430,9 +433,7 @@ export class TransclusionService {
       const oldIds = copies.map((c) => c.oldAttachmentId);
       const oldRows = await this.attachmentRepo.findByIds(oldIds);
       const byOldId = new Map(
-        oldRows
-          .filter((a) => a.pageId === sourcePageId)
-          .map((a) => [a.id, a]),
+        oldRows.filter((a) => a.pageId === sourcePageId).map((a) => [a.id, a]),
       );
 
       for (const plan of copies) {

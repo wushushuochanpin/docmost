@@ -55,6 +55,7 @@ export function useGroupQuery(groupId: string): UseQueryResult<IGroup, Error> {
 }
 
 export function useCreateGroupMutation() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation<IGroup, Error, Partial<IGroup>>({
@@ -64,10 +65,10 @@ export function useCreateGroupMutation() {
         queryKey: ["groups"],
       });
 
-      notifications.show({ message: "Group created successfully" });
+      notifications.show({ message: t("Group created successfully") });
     },
     onError: () => {
-      notifications.show({ message: "Failed to create group", color: "red" });
+      notifications.show({ message: t("Failed to create group"), color: "red" });
     },
   });
 }
@@ -134,7 +135,7 @@ export function useAddGroupMemberMutation() {
     },
     onError: () => {
       notifications.show({
-        message: "Failed to add group members",
+        message: t("Failed to add group members"),
         color: "red",
       });
     },

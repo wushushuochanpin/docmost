@@ -716,7 +716,7 @@ export class ShareService {
     references: Array<{ sourcePageId: string; transclusionId: string }>,
     workspaceId: string,
   ): Promise<{ items: TransclusionLookup[] }> {
-    const share = await this.shareRepo.findById(shareId);
+    const share = await this.shareRepo.findById(shareId, { workspaceId });
     if (!share || share.workspaceId !== workspaceId) {
       throw new NotFoundException('Share not found');
     }
