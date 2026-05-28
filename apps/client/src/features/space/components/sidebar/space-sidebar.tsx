@@ -61,7 +61,7 @@ export function SpaceSidebar() {
   }
 
   function handleCreateFolder() {
-    handleCreate(null);
+    handleCreate(null, { nodeType: "folder" });
   }
 
   return (
@@ -142,7 +142,11 @@ interface SpaceMenuProps {
   canManagePages: boolean;
   onSpaceSettings: () => void;
 }
-function SpaceMenu({ spaceId, canManagePages, onSpaceSettings }: SpaceMenuProps) {
+function SpaceMenu({
+  spaceId,
+  canManagePages,
+  onSpaceSettings,
+}: SpaceMenuProps) {
   const { t } = useTranslation();
   const { spaceSlug } = useParams();
   const [importOpened, { open: openImportModal, close: closeImportModal }] =
@@ -179,11 +183,7 @@ function SpaceMenu({ spaceId, canManagePages, onSpaceSettings }: SpaceMenuProps)
             withArrow
             position="top"
           >
-            <ActionIcon
-              variant="subtle"
-              size={20}
-              aria-label={t("Space menu")}
-            >
+            <ActionIcon variant="subtle" size={20} aria-label={t("Space menu")}>
               <IconDots size={16} stroke={1.75} />
             </ActionIcon>
           </Tooltip>

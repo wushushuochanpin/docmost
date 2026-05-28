@@ -162,7 +162,7 @@ export class PageService {
       sidebarCategoryId: string | null;
     }
   > {
-    const nodeType = this.normalizeNodeType(createPageDto.nodeType);
+    const nodeType = this.resolveCreateNodeType(createPageDto);
 
     let parentPageId = undefined;
     let parentNodeType: PageNodeType | null = null;
@@ -1932,6 +1932,16 @@ export class PageService {
 
   private normalizeNodeType(nodeType: string | null | undefined): PageNodeType {
     return nodeType === 'folder' ? 'folder' : 'file';
+  }
+
+  private resolveCreateNodeType(
+    createPageDto: Pick<CreatePageDto, 'nodeType' | 'parentPageId'>,
+  ): PageNodeType {
+    if (createPageDto.nodeType) {
+      return this.normalizeNodeType(createPageDto.nodeType);
+    }
+
+    return createPageDto.parentPageId ? 'file' : 'folder';
   }
 
   private async assertValidMoveTargetParent(

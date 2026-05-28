@@ -25,6 +25,15 @@ export const treeModel = {
     return [...found.parents, found.node];
   },
 
+  ancestorIds<T extends object>(
+    tree: TreeNode<T>[],
+    id: string,
+  ): string[] | null {
+    const path = treeModel.path(tree, id);
+    if (!path) return null;
+    return path.slice(0, -1).map((node) => node.id);
+  },
+
   siblingsOf<T extends object>(
     tree: TreeNode<T>[],
     id: string,

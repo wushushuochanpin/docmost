@@ -41,6 +41,18 @@ describe('treeModel.path', () => {
   });
 });
 
+describe('treeModel.ancestorIds', () => {
+  it('returns all ancestor ids for a nested id', () => {
+    expect(treeModel.ancestorIds(fixture, 'a1a')).toEqual(['a', 'a1']);
+  });
+  it('returns an empty array for a root-level id', () => {
+    expect(treeModel.ancestorIds(fixture, 'b')).toEqual([]);
+  });
+  it('returns null for unknown id', () => {
+    expect(treeModel.ancestorIds(fixture, 'zzz')).toBeNull();
+  });
+});
+
 describe('treeModel.siblingsOf', () => {
   it('returns siblings + parent + index for a child', () => {
     const info = treeModel.siblingsOf(fixture, 'a2');

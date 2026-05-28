@@ -1,5 +1,5 @@
-# Test environment: run only docmost and reuse the existing
-# docmost DB/Redis on the shared Docker network.
+# Test environment: reuse the existing docmost DB for data inspection,
+# but keep Redis isolated so sessions/collaboration state cannot collide.
 # Usage:
 #   docker compose -p test-doc -f docker-compose.test.yml up -d --build --force-recreate
 # Requirements:

@@ -29,6 +29,14 @@
 - Test deployments must not reuse production Redis for collaboration/session state. If test reuses production DB for data inspection, keep Redis isolated so editor leases, Socket.IO registrations, and Hocuspocus Redis sync state cannot collide across environments.
 - Run `pnpm run guard:realtime-deployment` after changing deployment compose files, runtime config injection, collaboration URL logic, or editor session settings.
 
+## Page Tree Guardrails
+
+- Root-level sidebar creation must create folders, not files. The root menu folder button must pass `nodeType: "folder"`.
+- Keep root and child creation defaults centralized in `apps/client/src/features/page/tree/hooks/build-tree-create-payload.ts`.
+- Backend page creation must default omitted `nodeType` to `folder` at the root and `file` under a parent, matching the page tree hierarchy rule that root nodes are folders.
+- The sidebar tree must auto-reveal the current route page by opening all loaded or fetched ancestors, and clicking a collapsed row with children should expand it while preserving navigation.
+- When changing sidebar creation, page tree creation, or `PageService.create`, run `pnpm --filter client test src/features/page/tree/model/tree-model.test.ts src/features/page/tree/hooks/build-tree-create-payload.test.ts`, `pnpm --filter client build`, and `pnpm run server:build`.
+
 ## Database Migration Guardrails
 
 - Treat merged migration files in `apps/server/src/database/migrations` as immutable and append-only.

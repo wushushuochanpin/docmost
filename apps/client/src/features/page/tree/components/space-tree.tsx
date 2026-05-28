@@ -80,81 +80,113 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
     setIsDataLoaded(true);
   }, [pagesData, hasNextPage, spaceId]);
 
+  const openAncestorNodes = useCallback(
+    (ancestorIds: string[]) => {
+      if (ancestorIds.length === 0) return;
+
+      setOpenTreeNodes((prev) => {
+        let changed = false;
+        const next = { ...prev };
+
+        for (const id of ancestorIds) {
+          if (!next[id]) {
+            next[id] = true;
+            changed = true;
+          }
+        }
+
+        return changed ? next : prev;
+      });
+    },
+    [setOpenTreeNodes],
+  );
+
   useEffect(() => {
     const effectSpaceId = spaceId;
+    let cancelled = false;
 
     const fetchData = async () => {
-      if (isDataLoaded && currentPage) {
-        // check if pageId node is present in the tree
-        const node = treeModel.find(data, currentPage.id);
-        if (node) {
-          // if node is found, no need to traverse its ancestors
-          return;
-        }
+      if (!isDataLoaded || !currentPage?.id) return;
 
-        // if not found, fetch and build its ancestors and their children
-        if (!currentPage.id) return;
-        const ancestors = await getPageBreadcrumbs(currentPage.id);
+      // If the current page is already loaded in the client tree, mirror the
+      // old react-arborist select() behavior by opening all loaded parents.
+      const loadedAncestorIds = treeModel.ancestorIds(data, currentPage.id);
+      if (loadedAncestorIds) {
+        openAncestorNodes(loadedAncestorIds);
+        return;
+      }
 
-        if (spaceIdRef.current !== effectSpaceId) return;
+      // If the selected page is deeper than the loaded tree, fetch and build
+      // its ancestor chain before opening those parents.
+      const ancestors = await getPageBreadcrumbs(currentPage.id);
 
-        if (ancestors && ancestors.length > 1) {
-          let flatTreeItems = [...buildTree(ancestors)];
+      if (cancelled || spaceIdRef.current !== effectSpaceId) return;
 
-          const fetchAndUpdateChildren = async (ancestor: IPage) => {
-            // we don't want to fetch the children of the opened page
-            if (ancestor.id === currentPage.id) return;
-            const children = await fetchAllAncestorChildren({
-              pageId: ancestor.id,
-              spaceId: ancestor.spaceId,
-            });
+      if (ancestors && ancestors.length > 1) {
+        let flatTreeItems = [...buildTree(ancestors)];
 
-            flatTreeItems = [
-              ...flatTreeItems,
-              ...children.filter(
-                (child) => !flatTreeItems.some((item) => item.id === child.id),
-              ),
-            ];
-          };
+        const fetchAndUpdateChildren = async (ancestor: IPage) => {
+          // we don't want to fetch the children of the opened page
+          if (ancestor.id === currentPage.id) return;
+          const children = await fetchAllAncestorChildren({
+            pageId: ancestor.id,
+            spaceId: ancestor.spaceId,
+          });
 
-          const fetchPromises = ancestors.map((ancestor) =>
-            fetchAndUpdateChildren(ancestor),
+          flatTreeItems = [
+            ...flatTreeItems,
+            ...children.filter(
+              (child) => !flatTreeItems.some((item) => item.id === child.id),
+            ),
+          ];
+        };
+
+        const fetchPromises = ancestors.map((ancestor) =>
+          fetchAndUpdateChildren(ancestor),
+        );
+
+        Promise.all(fetchPromises).then(() => {
+          if (cancelled || spaceIdRef.current !== effectSpaceId) return;
+
+          // build tree with children
+          const ancestorsTree = buildTreeWithChildren(flatTreeItems);
+          // child of root page we're attaching the built ancestors to
+          const rootChild = ancestorsTree[0];
+          if (!rootChild) return;
+
+          // attach built ancestors to tree using functional updater
+          setData((currentData) =>
+            treeModel.appendChildren(
+              currentData,
+              rootChild.id,
+              rootChild.children ?? [],
+            ),
           );
 
-          Promise.all(fetchPromises).then(() => {
-            if (spaceIdRef.current !== effectSpaceId) return;
-
-            // build tree with children
-            const ancestorsTree = buildTreeWithChildren(flatTreeItems);
-            // child of root page we're attaching the built ancestors to
-            const rootChild = ancestorsTree[0];
-
-            // attach built ancestors to tree using functional updater
-            setData((currentData) =>
-              treeModel.appendChildren(
-                currentData,
-                rootChild.id,
-                rootChild.children ?? [],
-              ),
-            );
-
-            // open all ancestors of the current page. DocTree picks up the
-            // selectedId change and scrolls the row into view on its own once
-            // flat contains it.
-            setOpenTreeNodes((prev) => {
-              const next = { ...prev };
-              for (const a of ancestors) {
-                if (a.id !== currentPage.id) next[a.id] = true;
-              }
-              return next;
-            });
-          });
-        }
+          // open all ancestors of the current page. DocTree picks up the
+          // selectedId change and scrolls the row into view on its own once
+          // flat contains it.
+          openAncestorNodes(
+            ancestors
+              .filter((ancestor) => ancestor.id !== currentPage.id)
+              .map((ancestor) => ancestor.id),
+          );
+        });
       }
     };
 
     fetchData();
-  }, [isDataLoaded, currentPage?.id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isDataLoaded,
+    currentPage?.id,
+    data,
+    spaceId,
+    setData,
+    openAncestorNodes,
+  ]);
 
   const openIds = useMemo(
     () => new Set(Object.keys(openTreeNodes).filter((k) => openTreeNodes[k])),
