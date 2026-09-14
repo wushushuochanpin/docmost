@@ -22,12 +22,12 @@ jobs:
       matrix:
         include:
           - platform: linux/amd64
-            runner: ubuntu-latest
             suffix: amd64
           - platform: linux/arm64
-            runner: ubuntu-24.04-arm
             suffix: arm64
-    runs-on: ${{ matrix.runner }}
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: docmost-linux-checks
+    timeout-minutes: 45
     steps:
       - name: Generate token
         id: app-token
@@ -103,7 +103,9 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: docmost-linux-checks
+    timeout-minutes: 45
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4

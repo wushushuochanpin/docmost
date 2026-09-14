@@ -1,0 +1,32 @@
+name: Runner policy
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: runner-policy-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  runner-policy:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: docmost-linux-checks
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check-ci-runner-policy.py
+      - name: Verify execution identity
+        run: |
+          test "$(id -u)" != 0
+          test "$RUNNER_NAME" = "superchat-dev-docmost-01"
+          echo "Self-hosted runner identity verified"
+      - name: Verify isolated Docker runtime
+        run: |
+          docker info --format '{{json .SecurityOptions}}' | grep -q rootless
+          test ! -w /var/run/docker.sock
+          printf '%s\n' 'FROM busybox:1.37' 'RUN echo runner-build-ok > /proof' 'CMD ["cat", "/proof"]' > "$RUNNER_TEMP/Dockerfile.smoke"
+          docker build -t runner-policy-smoke -f "$RUNNER_TEMP/Dockerfile.smoke" "$RUNNER_TEMP"
+          test "$(docker run --rm runner-policy-smoke)" = runner-build-ok
+      - name: Verify ARM64 release emulation
+        run: test "$(docker run --rm --platform linux/arm64 busybox:1.37 uname -m)" = aarch64
