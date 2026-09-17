@@ -122,17 +122,17 @@ export default defineConfig(({ mode }) => {
                 test: /[\\/]node_modules[\\/](dompurify|isomorphic-dompurify)([\\/]|$)/,
                 priority: 90,
               },
-              {
-                // Mermaid gets its own group (priority above the excalidraw
-                // group) because @excalidraw/excalidraw transitively depends on
-                // @excalidraw/mermaid-to-excalidraw -> mermaid. Without this
-                // group, the mermaid core is merged into the excalidraw chunk
-                // and any page that renders a mermaid block would pull in the
-                // entire excalidraw library too.
-                name: "vendor-mermaid",
-                test: /[\\/]node_modules[\\/](@mermaid-js|mermaid|cytoscape|elkjs)([\\/]|$)/,
-                priority: 80,
-              },
+              // Mermaid is intentionally NOT manually grouped. Grouping it with
+              // advancedChunks makes rolldown split mermaid into a group chunk
+              // plus separate sub-chunks (architectureDiagram etc.), and in
+              // server builds the sub-chunk's import names do not match the
+              // group chunk's re-exported names (`ut as a` vs importing `ut`)
+              // -> "TypeError: n is not a function" on every page render.
+              // Let rolldown chunk mermaid naturally (its dynamic import chain
+              // keeps it lazy); natural chunking guarantees consistent exports
+              // between chunks. The excalidraw group below uses
+              // includeDependenciesRecursively:false, so mermaid will not be
+              // dragged into vendor-excalidraw either.
               // Group only third-party packages. Our own source files under
               // .../excalidraw/, .../mermaid-view.tsx etc. must NOT match these
               // tests: matching them pulls the lazy wrappers into the vendor
