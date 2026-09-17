@@ -1,0 +1,45 @@
+.section {
+  flex: 0 0 auto;
+  padding: 2px 0 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--ui-border-default);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 4px;
+}
+
+.pinIcon {
+  color: var(--ui-text-tertiary);
+  margin-left: 2px;
+}
+
+.count {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ui-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hintIcon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ui-text-tertiary);
+  cursor: help;
+}
+
+.hint {
+  padding: 0 8px 6px;
+  line-height: 1.5;
+  font-size: 12px;
+}
+
+.tree {
+  /* Keep the pinned section compact: when many pages are pinned, scroll
+     inside the section instead of squeezing the main tree out of view. */
+  max-height: 320px;
+}

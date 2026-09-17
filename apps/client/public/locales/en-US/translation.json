@@ -1097,6 +1097,13 @@
   "Large": "Large",
   "No items in this folder.": "No items in this folder.",
   "Pinned": "Pinned",
+  "Pinned pages": "Pinned pages",
+  "Collapse pinned pages": "Collapse pinned pages",
+  "Expand pinned pages": "Expand pinned pages",
+  "Reordering pinned pages failed. Please try again.": "Reordering pinned pages failed. Please try again.",
+  "Pinned pages limit hint": "Too many pinned pages make them harder to scan. Keep only the pages you use most.",
+  "Pinned pages over limit hint": "{{count}} pages pinned. Too many pins make pages harder to find — keep only the ones you use most.",
+
   "Small": "Small",
   "ThemeLightSoft": "Light (Soft)",
   "ThemeDarkGray": "Dark (Gray)",

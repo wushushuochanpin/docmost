@@ -109,6 +109,17 @@ export async function unpinPage(
   return req.data;
 }
 
+export async function reorderPinnedPages(
+  pageIds: string[],
+): Promise<{ pageId: string; isPinned: boolean; pinnedAt: Date | null }[]> {
+  const req = await api.post<{
+    pageId: string;
+    isPinned: boolean;
+    pinnedAt: Date | null;
+  }[]>("/pages/reorder-pins", { pageIds });
+  return req.data;
+}
+
 export async function startFolderMigration(
   data: IFolderMigrationStartPayload,
 ): Promise<IFolderMigrationStartResult> {

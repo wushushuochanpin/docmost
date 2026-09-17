@@ -45,6 +45,7 @@ type Props<T extends object> = {
   readOnly: boolean;
   disableDrag?: (node: TreeNode<T>) => boolean;
   disableDrop?: (node: TreeNode<T>) => boolean;
+  blockMakeChild?: boolean;
   getDragLabel: (node: TreeNode<T>) => string;
   contextId: symbol;
   registerRowElement: (id: string, el: HTMLElement | null) => void;
@@ -72,6 +73,7 @@ function DocTreeRowInner<T extends object>(props: Props<T>) {
     readOnly,
     disableDrag,
     disableDrop,
+    blockMakeChild,
     getDragLabel,
     contextId,
     registerRowElement,
@@ -167,6 +169,7 @@ function DocTreeRowInner<T extends object>(props: Props<T>) {
       // Block 'reorder-below' when the row is open with children — ambiguous gesture,
       // force users to drop into the folder via 'make-child' instead.
       const block: Instruction['type'][] = ['reparent'];
+      if (blockMakeChild) block.push('make-child');
       if (isOpen && hasChildren) block.push('reorder-below');
 
       cleanups.push(
@@ -372,6 +375,7 @@ function arePropsEqual<T extends object>(
   if (prev.onToggle !== next.onToggle) return false;
   if (prev.disableDrag !== next.disableDrag) return false;
   if (prev.disableDrop !== next.disableDrop) return false;
+  if (prev.blockMakeChild !== next.blockMakeChild) return false;
   if (prev.getDragLabel !== next.getDragLabel) return false;
   if (prev.registerRowElement !== next.registerRowElement) return false;
   if (prev.getRootData !== next.getRootData) return false;

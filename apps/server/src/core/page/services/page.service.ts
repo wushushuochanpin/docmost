@@ -1483,6 +1483,59 @@ export class PageService {
     };
   }
 
+  /**
+   * Persist a user-defined order for pinned root pages.
+   *
+   * Pinned pages are sorted by `pinned_at DESC` in the sidebar query, so
+   * reordering is persisted by rewriting `pinnedAt` timestamps to descending
+   * values that match the requested order. `pinnedAt` is not surfaced anywhere
+   * in the UI (only used as a sort key), so this is invisible to users while
+   * keeping the feature free of a schema migration.
+   */
+  async reorderPinnedPages(
+    pageIds: string[],
+    workspaceId?: string,
+  ): Promise<{ pageId: string; isPinned: boolean; pinnedAt: Date | null }[]> {
+    if (pageIds.length === 0) return [];
+
+    const pages = await this.pageRepo.findManyByIds(pageIds, { workspaceId });
+    const pageMap = new Map(pages.map((page) => [page.id, page]));
+
+    // Base timestamp just below "now" so rewritten pinnedAt values are all in
+    // the past: a page pinned after a reorder gets pinnedAt = now and therefore
+    // sorts above every reordered item (newest pin first), matching the
+    // client-side "new pins go to the top" behavior.
+    const base = Date.now() - 1000;
+    const updated: {
+      pageId: string;
+      isPinned: boolean;
+      pinnedAt: Date | null;
+    }[] = [];
+
+    for (let i = 0; i < pageIds.length; i++) {
+      const page = pageMap.get(pageIds[i]);
+      if (!page) continue;
+
+      const currentMeta = await this.safeFindNodeMeta(page.id);
+      const meta = await this.safeUpsertNodeMeta({
+        pageId: page.id,
+        workspaceId: page.workspaceId,
+        spaceId: page.spaceId,
+        nodeType: this.normalizeNodeType(currentMeta?.nodeType),
+        isPinned: currentMeta?.isPinned ?? false,
+        pinnedAt: new Date(base - i * 1000),
+      });
+
+      updated.push({
+        pageId: page.id,
+        isPinned: meta?.isPinned ?? false,
+        pinnedAt: meta?.pinnedAt ?? null,
+      });
+    }
+
+    return updated;
+  }
+
   async batchMovePages(dto: BatchMovePageDto, workspaceId?: string) {
     const targetFolder = await this.pageRepo.findById(dto.targetFolderId, {
       workspaceId,

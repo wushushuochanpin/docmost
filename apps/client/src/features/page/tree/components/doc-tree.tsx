@@ -9,6 +9,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
+import clsx from 'clsx';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element';
 import type { TreeNode, DropOp } from '../model/tree-model.types';
@@ -64,6 +65,12 @@ export type DocTreeProps<T extends object> = {
   readOnly?: boolean;
   disableDrag?: (node: TreeNode<T>) => boolean;
   disableDrop?: (node: TreeNode<T>) => boolean;
+  // Flat lists (e.g. the pinned-pages section) only support sibling
+  // reordering — drop zones never offer "make child" there.
+  blockMakeChild?: boolean;
+  // Extra class merged onto the scroll container (e.g. to cap its height in a
+  // compact section).
+  containerClassName?: string;
 
   getDragLabel: (node: TreeNode<T>) => string;
   uniqueContextId?: symbol;
@@ -129,6 +136,8 @@ function DocTreeInner<T extends object>(
     readOnly = false,
     disableDrag,
     disableDrop,
+    blockMakeChild,
+    containerClassName,
     getDragLabel,
     uniqueContextId,
     emptyState,
@@ -478,7 +487,10 @@ function DocTreeInner<T extends object>(
   const totalSize = virtualizer.getTotalSize();
 
   return (
-    <div ref={scrollRef} className={styles.treeContainer}>
+    <div
+      ref={scrollRef}
+      className={clsx(styles.treeContainer, containerClassName)}
+    >
       <ul
         role="tree"
         aria-label={ariaLabel}
@@ -523,6 +535,7 @@ function DocTreeInner<T extends object>(
                 readOnly={readOnly}
                 disableDrag={disableDrag}
                 disableDrop={disableDrop}
+                blockMakeChild={blockMakeChild}
                 getDragLabel={getDragLabel}
                 contextId={contextId}
                 registerRowElement={registerRowElement}

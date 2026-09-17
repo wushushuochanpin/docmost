@@ -2,6 +2,22 @@
     border-radius: 0;
 }
 
+/* Stack layout: pinned-pages section (auto height) on top, main tree filling
+   the remaining height below. */
+.treeStack {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.treeFill {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
 .treeContainer {
     height: 100%;
     min-width: 0;

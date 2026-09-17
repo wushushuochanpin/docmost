@@ -1172,6 +1172,13 @@
   "No items in this folder.": "此文件夹暂无内容。",
   "{{folderCount}} folders · {{fileCount}} files": "{{folderCount}} 个文件夹 · {{fileCount}} 个文件",
   "Pinned": "已置顶",
+  "Pinned pages": "置顶",
+  "Collapse pinned pages": "折叠置顶页面",
+  "Expand pinned pages": "展开置顶页面",
+  "Reordering pinned pages failed. Please try again.": "置顶排序保存失败，请重试",
+  "Pinned pages limit hint": "置顶过多会降低查找效率，建议只保留最常用的页面。",
+  "Pinned pages over limit hint": "已置顶 {{count}} 项，过多置顶会降低查找效率，建议只保留最常用的页面。",
+
   "Unpinned": "已取消置顶",
   "Unpin": "取消置顶",
   "Pin to top": "置顶",

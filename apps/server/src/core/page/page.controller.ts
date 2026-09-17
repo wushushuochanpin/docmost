@@ -42,6 +42,7 @@ import { DuplicatePageDto } from './dto/duplicate-page.dto';
 import { DeletedPageDto } from './dto/deleted-page.dto';
 import { BatchMovePageDto } from './dto/batch-move-page.dto';
 import { PinPageDto } from './dto/pin-page.dto';
+import { ReorderPinsDto } from './dto/reorder-pins.dto';
 import { SidebarCategoryAssignmentDto } from './dto/sidebar-category-assignment.dto';
 import {
   RollbackFolderMigrationDto,
@@ -1016,6 +1017,38 @@ export class PageController {
     await this.pageAccessService.validateCanEdit(page, user);
 
     return this.pageService.setPagePinned(page.id, false, workspace.id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('reorder-pins')
+  async reorderPinnedPages(
+    @Body() dto: ReorderPinsDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const pages = await this.pageRepo.findManyByIds(dto.pageIds, {
+      workspaceId: workspace.id,
+    });
+    const pageMap = new Map(pages.map((page) => [page.id, page]));
+
+    for (const pageId of dto.pageIds) {
+      const page = pageMap.get(pageId);
+      if (!page) {
+        throw new NotFoundException('Page not found');
+      }
+      if (page.parentPageId !== null) {
+        throw new BadRequestException('PIN_REORDER_ONLY_ROOT_PAGES');
+      }
+
+      const ability = await this.spaceAbility.createForUser(user, page.spaceId);
+      if (ability.cannot(SpaceCaslAction.Edit, SpaceCaslSubject.Page)) {
+        throw new ForbiddenException();
+      }
+
+      await this.pageAccessService.validateCanEdit(page, user);
+    }
+
+    return this.pageService.reorderPinnedPages(dto.pageIds, workspace.id);
   }
 
   @HttpCode(HttpStatus.OK)

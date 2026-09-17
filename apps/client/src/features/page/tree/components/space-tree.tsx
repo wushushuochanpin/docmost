@@ -24,6 +24,7 @@ import { IPage } from "@/features/page/types/page.types.ts";
 import { extractPageSlugId } from "@/lib";
 import { DocTree } from "./doc-tree";
 import { SpaceTreeRow } from "./space-tree-row";
+import { PinnedPagesSection } from "./pinned-pages-section";
 
 interface SpaceTreeProps {
   spaceId: string;
@@ -186,6 +187,25 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
     [data, spaceId],
   );
 
+  // Pinned root pages live in their own collapsible section above the tree.
+  // Everything else (folders, unpinned roots, and pinned pages nested under a
+  // folder) stays in the tree.
+  const pinnedRoots = useMemo(
+    () =>
+      filteredData.filter(
+        (node) => node.parentPageId === null && node.isPinned,
+      ),
+    [filteredData],
+  );
+
+  const unpinnedRoots = useMemo(
+    () =>
+      filteredData.filter(
+        (node) => !(node.parentPageId === null && node.isPinned),
+      ),
+    [filteredData],
+  );
+
   // Stable callbacks for DocTree. Without these, every parent render recreates
   // the props and tears down every row's draggable/dropTarget subscription,
   // defeating memo(DocTreeRow).
@@ -205,27 +225,40 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
   );
 
   return (
-    <div className={classes.treeContainer}>
-      {isDataLoaded && filteredData.length === 0 && (
-        <Text size="xs" c="dimmed" py="xs" px="sm">
-          {t("No pages yet")}
-        </Text>
-      )}
-      {isDataLoaded && filteredData.length > 0 && (
-        <DocTree<SpaceTreeNode>
-          data={filteredData}
+    <div className={classes.treeStack}>
+      {pinnedRoots.length > 0 && (
+        <PinnedPagesSection
+          spaceId={spaceId}
+          readOnly={readOnly}
+          pages={pinnedRoots}
           openIds={openIds}
           selectedId={currentPage?.id}
-          renderRow={renderRow}
-          onMove={handleMove}
           onToggle={handleToggle}
-          readOnly={readOnly}
-          disableDrag={disableDragDrop}
-          disableDrop={disableDragDrop}
-          getDragLabel={getDragLabel}
-          aria-label={t("Pages")}
         />
       )}
+
+      <div className={classes.treeFill}>
+        {isDataLoaded && filteredData.length === 0 && (
+          <Text size="xs" c="dimmed" py="xs" px="sm">
+            {t("No pages yet")}
+          </Text>
+        )}
+        {isDataLoaded && filteredData.length > 0 && (
+          <DocTree<SpaceTreeNode>
+            data={unpinnedRoots}
+            openIds={openIds}
+            selectedId={currentPage?.id}
+            renderRow={renderRow}
+            onMove={handleMove}
+            onToggle={handleToggle}
+            readOnly={readOnly}
+            disableDrag={disableDragDrop}
+            disableDrop={disableDragDrop}
+            getDragLabel={getDragLabel}
+            aria-label={t("Pages")}
+          />
+        )}
+      </div>
     </div>
   );
 }
