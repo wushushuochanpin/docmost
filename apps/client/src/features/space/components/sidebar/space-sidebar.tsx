@@ -1,9 +1,11 @@
-import { ActionIcon, Group, Menu, Text, Tooltip } from "@mantine/core";
+import { ActionIcon, Group, Menu, Tooltip } from "@mantine/core";
 import {
   IconArrowDown,
   IconDots,
   IconFileExport,
   IconFolder,
+  IconLayoutGrid,
+  IconList,
   IconSettings,
   IconStar,
   IconStarFilled,
@@ -11,7 +13,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import classes from "./space-sidebar.module.css";
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { useAtom } from "jotai";
 import { useTreeMutation } from "@/features/page/tree/hooks/use-tree-mutation.ts";
 import { Link, useLocation, useParams } from "react-router-dom";
@@ -20,6 +22,10 @@ import { useDisclosure } from "@mantine/hooks";
 import SpaceSettingsModal from "@/features/space/components/settings-modal.tsx";
 import { useGetSpaceBySlugQuery } from "@/features/space/queries/space-query.ts";
 import SpaceTree from "@/features/page/tree/components/space-tree.tsx";
+import { SidebarViewTabs } from "@/features/page/tree/components/sidebar-view-tabs";
+import { RecentVisitsRail } from "@/features/page/tree/components/recent-visits-rail";
+import type { SidebarViewSelection } from "@/features/page/tree/components/sidebar-view-tabs";
+import type { SidebarViewMode } from "@/features/page/types/page.types";
 import { useSpaceAbility } from "@/features/space/permissions/use-space-ability.ts";
 import {
   SpaceCaslAction,
@@ -43,6 +49,29 @@ import { useUpgradeLabel } from "@/ee/hooks/use-upgrade-label";
 import { Feature } from "@/ee/features";
 import { ErrorBoundary } from "react-error-boundary";
 
+const SIDEBAR_VIEW_STORAGE_PREFIX = "docmost:sidebar-view:";
+const SIDEBAR_LAYOUT_STORAGE_PREFIX = "docmost:sidebar-layout:";
+
+type SidebarLayoutMode = "list" | "grid";
+
+function readStoredSidebarView(spaceId: string): SidebarViewMode {
+  try {
+    const stored = localStorage.getItem(SIDEBAR_VIEW_STORAGE_PREFIX + spaceId);
+    return stored === "pinned" ? "pinned" : "all";
+  } catch {
+    return "all";
+  }
+}
+
+function readStoredSidebarLayout(spaceId: string): SidebarLayoutMode {
+  try {
+    const stored = localStorage.getItem(SIDEBAR_LAYOUT_STORAGE_PREFIX + spaceId);
+    return stored === "grid" ? "grid" : "list";
+  } catch {
+    return "list";
+  }
+}
+
 export function SpaceSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
@@ -56,6 +85,60 @@ export function SpaceSidebar() {
   const spaceAbility = useSpaceAbility(spaceRules);
   const { handleCreate } = useTreeMutation(space?.id ?? "");
 
+  const [sidebarView, setSidebarView] = useState<SidebarViewMode>(() =>
+    space?.id ? readStoredSidebarView(space.id) : "all",
+  );
+  const [sidebarLayout, setSidebarLayout] = useState<SidebarLayoutMode>(() =>
+    space?.id ? readStoredSidebarLayout(space.id) : "list",
+  );
+
+  // When switching spaces, adopt the stored view for that space (or default
+  // back to "all"). The lazy initializer above only runs on first mount, so
+  // sync here too.
+  React.useEffect(() => {
+    if (space?.id) {
+      setSidebarView(readStoredSidebarView(space.id));
+      setSidebarLayout(readStoredSidebarLayout(space.id));
+    }
+  }, [space?.id]);
+
+  const toggleLayout = useCallback(() => {
+    setSidebarLayout((prev) => {
+      const next: SidebarLayoutMode = prev === "grid" ? "list" : "grid";
+      if (space?.id) {
+        try {
+          localStorage.setItem(
+            SIDEBAR_LAYOUT_STORAGE_PREFIX + space.id,
+            next,
+          );
+        } catch {
+          // ignore
+        }
+      }
+      return next;
+    });
+  }, [space?.id]);
+
+  const handleViewChange = useCallback(
+    (selection: SidebarViewSelection) => {
+      // Categories are not wired into the sidebar yet; treat them as "all".
+      const next: SidebarViewMode =
+        selection.viewMode === "pinned" ? "pinned" : "all";
+      setSidebarView(next);
+      if (space?.id) {
+        try {
+          localStorage.setItem(
+            SIDEBAR_VIEW_STORAGE_PREFIX + space.id,
+            next,
+          );
+        } catch {
+          // localStorage unavailable — view resets on reload, which is fine.
+        }
+      }
+    },
+    [space?.id],
+  );
+
   if (!space) {
     return <></>;
   }
@@ -63,6 +146,11 @@ export function SpaceSidebar() {
   function handleCreateFolder() {
     handleCreate(null, { nodeType: "folder" });
   }
+
+  const canManagePages = spaceAbility.can(
+    SpaceCaslAction.Manage,
+    SpaceCaslSubject.Page,
+  );
 
   return (
     <>
@@ -83,22 +171,46 @@ export function SpaceSidebar() {
         </div>
 
         <div className={clsx(classes.section, classes.sectionPages)}>
-          <Group className={classes.pagesHeader} justify="space-between">
-            <Text size="xs" fw={500} c="dimmed">
-              {t("Pages")}
-            </Text>
+          <div className={clsx(classes.pagesHeader, classes.pagesHeaderTabs)}>
+            <div className={classes.tabsSpacer}>
+              <SidebarViewTabs
+                categories={[]}
+                value={sidebarView}
+                canManageCategories={false}
+                onChange={handleViewChange}
+              />
+            </div>
 
-            {spaceAbility.can(
-              SpaceCaslAction.Manage,
-              SpaceCaslSubject.Page,
-            ) && (
-              <Group gap="xs">
+            {canManagePages && (
+              <Group gap="xs" className={classes.headerActions}>
+                {sidebarView === "all" && (
+                  <Tooltip
+                    label={
+                      sidebarLayout === "grid"
+                        ? t("Switch to list")
+                        : t("Switch to grid")
+                    }
+                    withArrow
+                    position="top"
+                  >
+                    <ActionIcon
+                      variant="subtle"
+                      size={20}
+                      onClick={toggleLayout}
+                      aria-label={t("Toggle layout")}
+                    >
+                      {sidebarLayout === "grid" ? (
+                        <IconList size={16} stroke={1.75} />
+                      ) : (
+                        <IconLayoutGrid size={16} stroke={1.75} />
+                      )}
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+
                 <SpaceMenu
                   spaceId={space.id}
-                  canManagePages={spaceAbility.can(
-                    SpaceCaslAction.Manage,
-                    SpaceCaslSubject.Page,
-                  )}
+                  canManagePages={canManagePages}
                   onSpaceSettings={openSettings}
                 />
 
@@ -114,16 +226,16 @@ export function SpaceSidebar() {
                 </Tooltip>
               </Group>
             )}
-          </Group>
+          </div>
 
           <div className={classes.pages}>
             <SpaceTree
               spaceId={space.id}
-              readOnly={spaceAbility.cannot(
-                SpaceCaslAction.Manage,
-                SpaceCaslSubject.Page,
-              )}
+              readOnly={!canManagePages}
+              viewMode={sidebarView}
+              layoutMode={sidebarLayout}
             />
+            <RecentVisitsRail spaceId={space.id} />
           </div>
         </div>
       </div>

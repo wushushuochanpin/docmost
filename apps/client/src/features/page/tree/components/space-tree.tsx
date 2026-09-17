@@ -11,6 +11,10 @@ import {
 import classes from "@/features/page/tree/styles/tree.module.css";
 import { treeDataAtom } from "@/features/page/tree/atoms/tree-data-atom.ts";
 import { openTreeNodesAtom } from "@/features/page/tree/atoms/open-tree-nodes-atom.ts";
+import {
+  recentVisitsAtom,
+  recordRecentVisit,
+} from "@/features/page/tree/atoms/recent-visits-atom.ts";
 import { useTreeMutation } from "@/features/page/tree/hooks/use-tree-mutation.ts";
 import {
   buildTree,
@@ -20,18 +24,36 @@ import {
 import { SpaceTreeNode } from "@/features/page/tree/types.ts";
 import { treeModel } from "@/features/page/tree/model/tree-model";
 import { getPageBreadcrumbs } from "@/features/page/services/page-service.ts";
-import { IPage } from "@/features/page/types/page.types.ts";
+import { IPage, SidebarViewMode } from "@/features/page/types/page.types.ts";
 import { extractPageSlugId } from "@/lib";
 import { DocTree } from "./doc-tree";
 import { SpaceTreeRow } from "./space-tree-row";
 import { PinnedPagesSection } from "./pinned-pages-section";
+import { SpaceGridView } from "./space-grid-view";
 
 interface SpaceTreeProps {
   spaceId: string;
   readOnly: boolean;
+  /**
+   * Which sidebar view the tabs above are showing. "pinned" renders only the
+   * pinned root pages (with their own drag-reorder); "all" renders the whole
+   * root tree. The category view mode is accepted for future use and falls
+   * back to "all" until categories are wired into the sidebar.
+   */
+  viewMode?: SidebarViewMode;
+  /**
+   * How the "all" view renders its root nodes: a tree list or a flat card
+   * grid. Ignored in the "pinned" view (always a chip list).
+   */
+  layoutMode?: "list" | "grid";
 }
 
-export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
+export default function SpaceTree({
+  spaceId,
+  readOnly,
+  viewMode = "all",
+  layoutMode = "list",
+}: SpaceTreeProps) {
   const { t } = useTranslation();
   const { pageSlug } = useParams();
   const [data, setData] = useAtom(treeDataAtom);
@@ -43,12 +65,27 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
     isFetching,
   } = useGetRootSidebarPagesQuery({ spaceId });
   const [openTreeNodes, setOpenTreeNodes] = useAtom(openTreeNodesAtom);
+  const [, setRecentVisits] = useAtom(recentVisitsAtom);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const spaceIdRef = useRef(spaceId);
   spaceIdRef.current = spaceId;
   const { data: currentPage } = usePageQuery({
     pageId: extractPageSlugId(pageSlug),
   });
+
+  // Record each opened page into the recent-visits rail (front of the list).
+  useEffect(() => {
+    if (!currentPage?.id) return;
+    setRecentVisits((prev) =>
+      recordRecentVisit(prev, {
+        id: currentPage.id,
+        slugId: currentPage.slugId,
+        name: currentPage.title || "",
+        icon: currentPage.icon ?? undefined,
+        spaceId: currentPage.spaceId,
+      }),
+    );
+  }, [currentPage?.id, setRecentVisits]);
 
   useEffect(() => {
     setIsDataLoaded(false);
@@ -220,8 +257,10 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
   );
 
   // Pinned root pages live in their own collapsible section above the tree.
-  // Everything else (folders, unpinned roots, and pinned pages nested under a
-  // folder) stays in the tree.
+  // In the "all" view the server already sorts pinned roots first, so the full
+  // filtered list is rendered directly as one tree. In the "pinned" view we
+  // render only these pinned roots via PinnedPagesSection (which owns their
+  // drag-reorder).
   const pinnedRoots = useMemo(
     () =>
       filteredData.filter(
@@ -230,13 +269,7 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
     [filteredData],
   );
 
-  const unpinnedRoots = useMemo(
-    () =>
-      filteredData.filter(
-        (node) => !(node.parentPageId === null && node.isPinned),
-      ),
-    [filteredData],
-  );
+  const showPinnedOnly = viewMode === "pinned";
 
   // Stable callbacks for DocTree. Without these, every parent render recreates
   // the props and tears down every row's draggable/dropTarget subscription,
@@ -258,39 +291,52 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
 
   return (
     <div className={classes.treeStack}>
-      {pinnedRoots.length > 0 && (
-        <PinnedPagesSection
-          spaceId={spaceId}
-          readOnly={readOnly}
-          pages={pinnedRoots}
-          openIds={openIds}
-          selectedId={currentPage?.id}
-          onToggle={handleToggle}
-        />
+      {showPinnedOnly ? (
+        <div className={classes.treeFill}>
+          {isDataLoaded && pinnedRoots.length === 0 && (
+            <Text size="xs" c="dimmed" py="xs" px="sm">
+              {t("No pinned pages yet")}
+            </Text>
+          )}
+          {pinnedRoots.length > 0 && (
+            <PinnedPagesSection
+              spaceId={spaceId}
+              readOnly={readOnly}
+              pages={pinnedRoots}
+              openIds={openIds}
+              selectedId={currentPage?.id}
+              onToggle={handleToggle}
+              showHeader={false}
+            />
+          )}
+        </div>
+      ) : (
+        <div className={classes.treeFill}>
+          {isDataLoaded && filteredData.length === 0 && (
+            <Text size="xs" c="dimmed" py="xs" px="sm">
+              {t("No pages yet")}
+            </Text>
+          )}
+          {isDataLoaded && filteredData.length > 0 &&
+            (layoutMode === "grid" ? (
+              <SpaceGridView nodes={filteredData} />
+            ) : (
+              <DocTree<SpaceTreeNode>
+                data={filteredData}
+                openIds={openIds}
+                selectedId={currentPage?.id}
+                renderRow={renderRow}
+                onMove={handleMove}
+                onToggle={handleToggle}
+                readOnly={readOnly}
+                disableDrag={disableDragDrop}
+                disableDrop={disableDragDrop}
+                getDragLabel={getDragLabel}
+                aria-label={t("Pages")}
+              />
+            ))}
+        </div>
       )}
-
-      <div className={classes.treeFill}>
-        {isDataLoaded && filteredData.length === 0 && (
-          <Text size="xs" c="dimmed" py="xs" px="sm">
-            {t("No pages yet")}
-          </Text>
-        )}
-        {isDataLoaded && filteredData.length > 0 && (
-          <DocTree<SpaceTreeNode>
-            data={unpinnedRoots}
-            openIds={openIds}
-            selectedId={currentPage?.id}
-            renderRow={renderRow}
-            onMove={handleMove}
-            onToggle={handleToggle}
-            readOnly={readOnly}
-            disableDrag={disableDragDrop}
-            disableDrop={disableDragDrop}
-            getDragLabel={getDragLabel}
-            aria-label={t("Pages")}
-          />
-        )}
-      </div>
     </div>
   );
 }

@@ -43,3 +43,59 @@
      inside the section instead of squeezing the main tree out of view. */
   max-height: 320px;
 }
+
+/* --- Chip mode (Pinned tab): flat wrap of pill labels --- */
+
+.chipsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 4px 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ui-border-default);
+  background: var(--ui-bg-subtle);
+  color: var(--ui-text-primary);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: grab;
+  user-select: none;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.chip:hover {
+  background: var(--ui-bg-muted);
+}
+
+.chipIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.chipLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.chipDropBefore {
+  border-color: #2563eb;
+  box-shadow: inset 2px 0 0 0 #2563eb;
+}
+
+.chipDropAfter {
+  border-color: #2563eb;
+  box-shadow: inset -2px 0 0 0 #2563eb;
+}

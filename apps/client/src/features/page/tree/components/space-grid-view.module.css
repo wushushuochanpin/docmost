@@ -1,0 +1,52 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  padding: 4px 4px 8px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--ui-border-default);
+  background: var(--ui-bg-surface, #fff);
+  text-decoration: none;
+  color: var(--ui-text-primary);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.card:hover {
+  background: var(--ui-bg-subtle);
+  border-color: var(--ui-border-strong, #d0d3d9);
+}
+
+.iconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+}
+
+.emoji {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.fallbackIcon {
+  color: var(--ui-text-tertiary);
+}
+
+.title {
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
