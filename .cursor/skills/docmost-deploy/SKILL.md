@@ -157,6 +157,25 @@ docker exec docmost-docmost-1 sh -c \
    --virtual-time-budget=15000 http://127.0.0.1:3000/ 2>/dev/null | grep -oE "<title>[^<]*</title>"'
 ```
 
+### 5. Bundle integrity（动了 vite.config.ts / 拆包配置时必跑）
+
+历史两次生产崩溃（"页面加载失败"，`TypeError: x is not a function`）根因都是
+`advancedChunks` 手动分组在**服务器构建**下产生坏跨块接口/循环拆分（mermaid 组块、
+excalidraw 组块各一次；本地构建可能恰好一致、复现不了）。因此改动拆包后，
+**必须在生产镜像内跑一遍接口校验**（本地校验通过不代表服务器构建通过）：
+
+```bash
+ssh superchat-sg-prod 'docker run --rm \
+  -v /root/coderepository/docmost/scripts/security/check-bundle-integrity.mjs:/check.mjs \
+  docmost:local node /check.mjs --assets /app/apps/client/dist/assets'
+# 期望输出：checked N bad 0 ... PASS；出现 FAIL 即为坏构建，禁止发布
+```
+
+脚本检查：跨块 import 符号是否存在于目标块导出集合（bad=0）、禁止
+vendor-mermaid/vendor-excalidraw/vendor-katex 分组块、急切闭包体积与懒加载性
+（大库不得回流首屏）。本地 CI 已通过 `pnpm run guard:bundle-integrity` 在
+`pnpm --filter client build` 后自动执行同样检查。
+
 ## 已知坑（预存状态，勿误判为本次部署问题）
 
 1. **ee submodule 未初始化**：`apps/server/src/ee` 是 git submodule

@@ -25,7 +25,8 @@
     "security:workspace-scope": "node scripts/security/check-workspace-scope.mjs",
     "security:migration-order": "node scripts/security/check-migration-order.mjs",
     "guard:prosemirror-singleton": "node scripts/security/check-prosemirror-singleton.mjs",
-    "guard:realtime-deployment": "node scripts/security/check-realtime-deployment-config.mjs"
+    "guard:realtime-deployment": "node scripts/security/check-realtime-deployment-config.mjs",
+    "guard:bundle-integrity": "node scripts/security/check-bundle-integrity.mjs"
   },
   "dependencies": {
     "@braintree/sanitize-url": "^7.1.2",
