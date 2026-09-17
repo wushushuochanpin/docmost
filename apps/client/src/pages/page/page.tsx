@@ -6,6 +6,7 @@ import { Helmet } from "react-helmet-async";
 import PageHeader from "@/features/page/components/header/page-header.tsx";
 import { extractPageSlugId } from "@/lib";
 import { useTranslation } from "react-i18next";
+import { reportFrontendError } from "@/lib/frontend-error-log.ts";
 import React, { Suspense, useCallback, useEffect, useMemo } from "react";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { IconAlertTriangle, IconFileOff } from "@tabler/icons-react";
@@ -64,22 +65,25 @@ export default function Page() {
   return (
     <ErrorBoundary
       resetKeys={[pageSlugId]}
-      fallbackRender={({ resetErrorBoundary }) => (
-        <EmptyState
-          icon={IconAlertTriangle}
-          title={t("Failed to load page. An error occurred.")}
-          action={
-            <Button
-              variant="default"
-              size="sm"
-              mt="xs"
-              onClick={resetErrorBoundary}
-            >
-              {t("Try again")}
-            </Button>
-          }
-        />
-      )}
+      fallbackRender={({ error, resetErrorBoundary }) => {
+        reportFrontendError("page-error-boundary", error);
+        return (
+          <EmptyState
+            icon={IconAlertTriangle}
+            title={t("Failed to load page. An error occurred.")}
+            action={
+              <Button
+                variant="default"
+                size="sm"
+                mt="xs"
+                onClick={resetErrorBoundary}
+              >
+                {t("Try again")}
+              </Button>
+            }
+          />
+        );
+      }}
     >
       <PageContent pageSlug={pageSlug} />
     </ErrorBoundary>
