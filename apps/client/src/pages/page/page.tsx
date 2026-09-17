@@ -29,6 +29,7 @@ import {
 import { normalizeProsemirrorContent } from "@/features/editor/utils/prosemirror-content.ts";
 import { canUseStaticRenderedHtml } from "@/features/share/rendered-utils.ts";
 import { lazyWithRetry } from "@/lib/lazy-import.ts";
+import { prefetchCollabToken } from "@/features/auth/queries/auth-query.tsx";
 import { FullEditor } from "@/features/editor/full-editor";
 import {
   markEditorBootstrapStage,
@@ -132,6 +133,29 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
 
     return normalizeProsemirrorContent(page.content);
   }, [isFolder, page]);
+
+  // Start the collab-token fetch in parallel with /pages/info instead of
+  // waiting for the editor to mount (PageEditor refetches would add a serial
+  // round trip on every page open). Token is cached for 10 minutes, so a
+  // fast navigation sequence reuses the same workspace-scoped JWT.
+  useEffect(() => {
+    if (!pageId || userPageEditMode === PageEditMode.Read) {
+      return;
+    }
+
+    const workspaceCollaborationEnabled =
+      currentUser?.workspace?.settings?.collaboration?.enabled !== false;
+
+    if (!isCollaborationEnabled() || !workspaceCollaborationEnabled) {
+      return;
+    }
+
+    void prefetchCollabToken();
+  }, [
+    currentUser?.workspace?.settings?.collaboration?.enabled,
+    pageId,
+    userPageEditMode,
+  ]);
 
   useEffect(() => {
     if (!page) {

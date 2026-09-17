@@ -31,20 +31,19 @@ const red: MantineColorsTuple = [
 ];
 
 const sansFontFamily = [
-  "Inter",
+  "system-ui",
+  "-apple-system",
+  "BlinkMacSystemFont",
+  "'Segoe UI'",
+  "Roboto",
+  "'Helvetica Neue'",
+  "Arial",
   "'PingFang SC'",
   "'Hiragino Sans GB'",
   "'Microsoft YaHei'",
   "'Noto Sans CJK SC'",
   "'Noto Sans SC'",
   "'Source Han Sans SC'",
-  "'WenQuanYi Micro Hei'",
-  "-apple-system",
-  "BlinkMacSystemFont",
-  "'Segoe UI'",
-  "Roboto",
-  "Helvetica",
-  "Arial",
   "sans-serif",
 ].join(", ");
 

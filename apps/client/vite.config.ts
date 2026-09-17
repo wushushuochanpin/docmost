@@ -83,15 +83,69 @@ export default defineConfig(({ mode }) => {
     build: {
       rolldownOptions: {
         output: {
+          strictExecutionOrder: true,
           advancedChunks: {
+            // Only the matched packages go into a group chunk; their
+            // dependencies (DOMPurify, jotai, floating-ui, mermaid, ...) are
+            // left to natural chunking. Rolldown defaults this to `true`, which
+            // recursively drags every transitive dependency into the group
+            // chunk — e.g. @excalidraw/excalidraw -> @excalidraw/
+            // mermaid-to-excalidraw -> mermaid, plus shared DOMPurify/jotai —
+            // and then any eager chunk that needs one of those shared modules
+            // statically imports the whole 5MB vendor chunk on every page load.
+            includeDependenciesRecursively: false,
             groups: [
               {
                 name: "vendor-mantine",
                 test: /[\\/]node_modules[\\/]@mantine[\\/]/,
               },
-              { name: "vendor-mermaid", test: /mermaid|cytoscape|elkjs/ },
-              { name: "vendor-excalidraw", test: /excalidraw/ },
-              { name: "vendor-katex", test: /katex/ },
+              {
+                // The shared `__vitePreload` module. Rolldown hosts it in ONE
+                // chunk and every chunk that dynamically imports with preload
+                // deps statically imports that chunk. If it lands in a heavy
+                // vendor chunk (mermaid/excalidraw), the whole library becomes
+                // an eager dependency of index/layout on every page load. Give
+                // it its own tiny high-priority chunk instead.
+                name: "vendor-preload-helper",
+                test: new RegExp("\\0vite/preload-helper\\.js$"),
+                priority: 100,
+              },
+              {
+                // DOMPurify is a shared dependency: the page editor sanitizes
+                // rendered HTML with it directly, and @excalidraw/excalidraw
+                // pulls it in too. With `includeDependenciesRecursively`,
+                // rolldown merges it into the excalidraw group chunk, so
+                // layout/page end up statically importing the 5MB excalidraw
+                // chunk just to reach DOMPurify. Keep it in its own small
+                // eager chunk instead.
+                name: "vendor-dompurify",
+                test: /[\\/]node_modules[\\/](dompurify|isomorphic-dompurify)([\\/]|$)/,
+                priority: 90,
+              },
+              {
+                // Mermaid gets its own group (priority above the excalidraw
+                // group) because @excalidraw/excalidraw transitively depends on
+                // @excalidraw/mermaid-to-excalidraw -> mermaid. Without this
+                // group, the mermaid core is merged into the excalidraw chunk
+                // and any page that renders a mermaid block would pull in the
+                // entire excalidraw library too.
+                name: "vendor-mermaid",
+                test: /[\\/]node_modules[\\/](@mermaid-js|mermaid|cytoscape|elkjs)([\\/]|$)/,
+                priority: 80,
+              },
+              // Group only third-party packages. Our own source files under
+              // .../excalidraw/, .../mermaid-view.tsx etc. must NOT match these
+              // tests: matching them pulls the lazy wrappers into the vendor
+              // chunk and makes the heavy libs a static (eager) dependency of
+              // the layout/page chunks on every page load.
+              {
+                name: "vendor-excalidraw",
+                test: /[\\/]node_modules[\\/]@excalidraw([\\/]|$)/,
+              },
+              {
+                name: "vendor-katex",
+                test: /[\\/]node_modules[\\/]katex([\\/]|$)/,
+              },
             ],
           },
         },

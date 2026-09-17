@@ -141,15 +141,6 @@ export default function PrintPreviewPage() {
     styleRef.current.textContent = buildPageCss(size, orientation, margins);
   }, [size, orientation, margins]);
 
-  useEffect(() => {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href =
-      "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap";
-    document.head.appendChild(link);
-    return () => link.remove();
-  }, []);
-
   function applyPreset(p: MarginPreset) {
     setPreset(p);
     if (p !== "custom") {
@@ -311,7 +302,7 @@ export default function PrintPreviewPage() {
                 boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
                 padding: `${margins.top * MM_TO_PX}px ${margins.right * MM_TO_PX}px ${margins.bottom * MM_TO_PX}px ${margins.left * MM_TO_PX}px`,
                 boxSizing: "border-box",
-                fontFamily: '"Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif',
+                fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif',
                 fontSize: 12,
                 lineHeight: 1.72,
                 color: "#111827",
