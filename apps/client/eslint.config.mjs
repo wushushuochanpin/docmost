@@ -3,7 +3,6 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
-import pluginQuery from "@tanstack/eslint-plugin-query";
 
 /**
  * Rollup/rolldown advancedChunks groups that pull heavy lazy libraries
@@ -115,7 +114,6 @@ export default tseslint.config(
     plugins: {
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
-      "@tanstack/query": pluginQuery,
       local: { rules: { "no-heavy-vendor-groups": noHeavyVendorGroups } },
     },
     rules: {

@@ -69,5 +69,8 @@ jobs:
       - name: Build client
         run: pnpm --filter client build
 
+      - name: Lint bundle config (no heavy vendor groups)
+        run: pnpm --filter client exec eslint vite.config.ts
+
       - name: Check client bundle integrity
         run: pnpm run guard:bundle-integrity
