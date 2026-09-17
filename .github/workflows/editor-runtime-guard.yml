@@ -63,6 +63,9 @@ jobs:
       - name: Check realtime deployment guard
         run: pnpm run guard:realtime-deployment
 
+      - name: Build editor-ext
+        run: pnpm run editor-ext:build
+
       - name: Build client
         run: pnpm --filter client build
 
