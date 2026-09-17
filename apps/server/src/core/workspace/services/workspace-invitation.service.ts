@@ -318,7 +318,7 @@ export class WorkspaceInvitationService {
 
       await this.mailService.sendToQueue({
         to: invitedByUser.email,
-        subject: `${newUser.name} has accepted your SuperChat invite`,
+        subject: `${newUser.name} has accepted your Xenzify invite`,
         template: emailTemplate,
       });
     }
@@ -467,7 +467,7 @@ export class WorkspaceInvitationService {
 
     await this.mailService.sendToQueue({
       to: inviteeEmail,
-      subject: `${invitedByName} invited you to SuperChat`,
+      subject: `${invitedByName} invited you to Xenzify`,
       template: emailTemplate,
     });
   }

@@ -80,9 +80,7 @@ export function SpaceTreeRow({
   };
 
   const handleUpdateNodeIcon = (nodeId: string, newIcon: string | null) => {
-    setTreeData((prev) =>
-      updateTreeNodeIcon(prev, nodeId, newIcon),
-    );
+    setTreeData((prev) => updateTreeNodeIcon(prev, nodeId, newIcon));
   };
 
   const handleEmojiIconClick = (e: React.MouseEvent) => {
@@ -137,6 +135,24 @@ export function SpaceTreeRow({
     }
   };
 
+  const handleNodeClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey &&
+      hasChildren &&
+      !isOpen
+    ) {
+      toggleOpen();
+    }
+
+    if (mobileSidebarOpened) {
+      toggleMobileSidebar();
+    }
+  };
+
   return (
     <Link
       ref={rowRef as React.Ref<HTMLAnchorElement>}
@@ -144,11 +160,7 @@ export function SpaceTreeRow({
       className={classes.node}
       tabIndex={tabIndex}
       {...treeItemProps}
-      onClick={() => {
-        if (mobileSidebarOpened) {
-          toggleMobileSidebar();
-        }
-      }}
+      onClick={handleNodeClick}
       onMouseEnter={prefetchPage}
       onMouseLeave={cancelPagePrefetch}
     >
@@ -281,7 +293,9 @@ function CreateNode({
     <ActionIcon
       variant="transparent"
       c="gray"
-      aria-label={t("Create subpage of {{name}}", { name: node.name || t("untitled") })}
+      aria-label={t("Create subpage of {{name}}", {
+        name: node.name || t("untitled"),
+      })}
       tabIndex={-1}
       onClick={(e) => {
         e.preventDefault();

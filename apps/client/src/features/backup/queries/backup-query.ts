@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 import {
   getBackupJobs,
   runBackup,
@@ -26,6 +27,7 @@ export function useBackupJobsQuery(params?: {
 }
 
 export function useRunBackupMutation() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -42,16 +44,17 @@ export function useRunBackupMutation() {
         }));
       }
       queryClient.invalidateQueries({ queryKey: ["backupJobs"] });
-      notifications.show({ message: "Backup started" });
+      notifications.show({ message: t("Backup started") });
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
-      const msg = err.response?.data?.message ?? "Failed to start backup";
+      const msg = err.response?.data?.message ?? t("Failed to start backup");
       notifications.show({ message: msg, color: "red" });
     },
   });
 }
 
 export function useCleanupStaleJobsMutation() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -61,19 +64,20 @@ export function useCleanupStaleJobsMutation() {
       notifications.show({
         message:
           count > 0
-            ? `Cleared ${count} stale backup job(s)`
-            : "No stale backup jobs found",
+            ? t("Cleared {{count}} stale backup job(s)", { count })
+            : t("No stale backup jobs found"),
       });
       queryClient.invalidateQueries({ queryKey: ["backupJobs"] });
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
-      const msg = err.response?.data?.message ?? "Failed to cleanup stale jobs";
+      const msg = err.response?.data?.message ?? t("Failed to cleanup stale jobs");
       notifications.show({ message: msg, color: "red" });
     },
   });
 }
 
 export function useClearFailedJobsMutation() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -83,30 +87,31 @@ export function useClearFailedJobsMutation() {
       notifications.show({
         message:
           count > 0
-            ? `Cleared ${count} failed backup job(s)`
-            : "No failed backup jobs found",
+            ? t("Cleared {{count}} failed backup job(s)", { count })
+            : t("No failed backup jobs found"),
       });
       queryClient.invalidateQueries({ queryKey: ["backupJobs"] });
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       const msg =
-        err.response?.data?.message ?? "Failed to clear failed backup jobs";
+        err.response?.data?.message ?? t("Failed to clear failed backup jobs");
       notifications.show({ message: msg, color: "red" });
     },
   });
 }
 
 export function useDeleteBackupArtifactMutation() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (jobId: string) => deleteBackupArtifact(jobId),
     onSuccess: () => {
-      notifications.show({ message: "Backup deleted" });
+      notifications.show({ message: t("Backup deleted") });
       queryClient.invalidateQueries({ queryKey: ["backupJobs"] });
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
-      const msg = err.response?.data?.message ?? "Failed to delete backup";
+      const msg = err.response?.data?.message ?? t("Failed to delete backup");
       notifications.show({ message: msg, color: "red" });
     },
   });

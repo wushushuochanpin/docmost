@@ -162,7 +162,7 @@ export class PageService {
       sidebarCategoryId: string | null;
     }
   > {
-    const nodeType = this.normalizeNodeType(createPageDto.nodeType);
+    const nodeType = this.resolveCreateNodeType(createPageDto);
 
     let parentPageId = undefined;
     let parentNodeType: PageNodeType | null = null;
@@ -1383,22 +1383,25 @@ export class PageService {
       }
     }
 
-    await this.pageRepo.updatePage(
-      {
-        position,
-        parentPageId: parentPageId,
-      },
-      dto.pageId,
-      undefined,
-      movedPage.workspaceId,
-    );
-
-    if (parentPageId) {
-      await this.clearSidebarCategoryForPages(
-        [dto.pageId],
+    await executeTx(this.db, async (trx) => {
+      await this.pageRepo.updatePage(
+        {
+          position,
+          parentPageId: parentPageId,
+        },
+        dto.pageId,
+        trx,
         movedPage.workspaceId,
       );
-    }
+
+      if (parentPageId) {
+        await this.clearSidebarCategoryForPages(
+          [dto.pageId],
+          movedPage.workspaceId,
+          trx,
+        );
+      }
+    });
   }
 
   async assignSidebarCategory(
@@ -1982,6 +1985,16 @@ export class PageService {
 
   private normalizeNodeType(nodeType: string | null | undefined): PageNodeType {
     return nodeType === 'folder' ? 'folder' : 'file';
+  }
+
+  private resolveCreateNodeType(
+    createPageDto: Pick<CreatePageDto, 'nodeType' | 'parentPageId'>,
+  ): PageNodeType {
+    if (createPageDto.nodeType) {
+      return this.normalizeNodeType(createPageDto.nodeType);
+    }
+
+    return createPageDto.parentPageId ? 'file' : 'folder';
   }
 
   private async assertValidMoveTargetParent(

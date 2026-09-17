@@ -201,8 +201,11 @@ export class PageController {
     @Body() dto: PageIdDto,
     @Body() pagination: PaginationOptions,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(dto.pageId);
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page) {
       throw new NotFoundException('Page not found');
     }
@@ -219,18 +222,16 @@ export class PageController {
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(dto.pageId);
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page || page.deletedAt) {
       throw new NotFoundException('Page not found');
     }
 
     await this.pageAccessService.validateCanEdit(page, user);
 
-    return this.labelService.addLabelsToPage(
-      page.id,
-      dto.names,
-      workspace.id,
-    );
+    return this.labelService.addLabelsToPage(page.id, dto.names, workspace.id);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -238,8 +239,11 @@ export class PageController {
   async removePageLabel(
     @Body() dto: RemoveLabelDto,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(dto.pageId);
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page || page.deletedAt) {
       throw new NotFoundException('Page not found');
     }
@@ -258,8 +262,11 @@ export class PageController {
   async getBacklinksCount(
     @Body() dto: PageIdDto,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ): Promise<{ incoming: number; outgoing: number }> {
-    const page = await this.pageRepo.findById(dto.pageId);
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page) {
       throw new NotFoundException('Page not found');
     }
@@ -274,8 +281,11 @@ export class PageController {
     @Body() dto: BacklinksListDto,
     @Body() pagination: PaginationOptions,
     @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
   ) {
-    const page = await this.pageRepo.findById(dto.pageId);
+    const page = await this.pageRepo.findById(dto.pageId, {
+      workspaceId: workspace.id,
+    });
     if (!page) {
       throw new NotFoundException('Page not found');
     }
@@ -571,17 +581,19 @@ export class PageController {
     const targetUserId = dto.userId ?? user.id;
 
     if (dto.spaceId) {
-      const ability = await this.spaceAbility.createForUser(
-        user,
-        dto.spaceId,
-      );
+      const ability = await this.spaceAbility.createForUser(user, dto.spaceId);
 
       if (ability.cannot(SpaceCaslAction.Read, SpaceCaslSubject.Page)) {
         throw new ForbiddenException();
       }
     }
 
-    return this.pageService.getCreatedByPages(targetUserId, user.id, pagination, dto.spaceId);
+    return this.pageService.getCreatedByPages(
+      targetUserId,
+      user.id,
+      pagination,
+      dto.spaceId,
+    );
   }
 
   @HttpCode(HttpStatus.OK)

@@ -35,6 +35,10 @@ import {
 import { currentRoutePageAtom } from "@/features/page/atoms/current-route-page-atom.ts";
 import { isEditorSessionEnabled } from "@/lib/config";
 import localEmitter from "@/lib/local-emitter.ts";
+import {
+  buildTreeCreatePayload,
+  type CreateTreeNodeOptions,
+} from "./build-tree-create-payload";
 
 type TreeMutationOptions = {
   rootViewMode?: SidebarViewMode;
@@ -43,7 +47,10 @@ type TreeMutationOptions = {
 
 export type UseTreeMutation = {
   handleMove: (sourceId: string, op: DropOp) => Promise<void>;
-  handleCreate: (parentId: string | null) => Promise<void>;
+  handleCreate: (
+    parentId: string | null,
+    options?: CreateTreeNodeOptions,
+  ) => Promise<void>;
   handleRename: (id: string, name: string) => void;
   handleDelete: (id: string) => Promise<void>;
 };
@@ -160,10 +167,8 @@ export function useTreeMutation(
   );
 
   const handleCreate = useCallback(
-    async (parentId: string | null) => {
-      const payload: { spaceId: string; parentPageId?: string } = { spaceId };
-      if (parentId) payload.parentPageId = parentId;
-
+    async (parentId: string | null, createOptions?: CreateTreeNodeOptions) => {
+      const payload = buildTreeCreatePayload(spaceId, parentId, createOptions);
       let createdPage: IPage;
       try {
         createdPage = await createPageMutation.mutateAsync(payload);
@@ -204,6 +209,7 @@ export function useTreeMutation(
         position: createdPage.position,
         spaceId: createdPage.spaceId,
         parentPageId: createdPage.parentPageId,
+        nodeType: createdPage.nodeType ?? payload.nodeType,
         hasChildren: false,
         isPinned: createdPage.isPinned ?? false,
         pinnedAt: createdPage.pinnedAt ?? null,
@@ -246,7 +252,16 @@ export function useTreeMutation(
         pendingFolderNavigationRef.current[createdPage.id] = createdPage.slugId;
       }
     },
-    [spaceId, options, createPageMutation, setData, store, emit, navigate, spaceSlug],
+    [
+      spaceId,
+      options,
+      createPageMutation,
+      setData,
+      store,
+      emit,
+      navigate,
+      spaceSlug,
+    ],
   );
 
   const handleRename = useCallback(
@@ -384,7 +399,16 @@ export function useTreeMutation(
         console.error("Failed to delete page:", error);
       }
     },
-    [removePageMutation, setData, store, pageSlug, navigate, spaceSlug, emit, spaceId],
+    [
+      removePageMutation,
+      setData,
+      store,
+      pageSlug,
+      navigate,
+      spaceSlug,
+      emit,
+      spaceId,
+    ],
   );
 
   return { handleMove, handleCreate, handleRename, handleDelete };

@@ -1,10 +1,13 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { AppException } from '../../../common/errors/app-exception';
+import { ErrorCode } from '../../../common/errors/error-codes';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { WorkspaceService } from '../../workspace/services/workspace.service';
 import { CreateWorkspaceDto } from '../../workspace/dto/create-workspace.dto';
 import { CreateAdminUserDto } from '../dto/create-admin-user.dto';
 import { UserRepo } from '@docmost/db/repos/user/user.repo';
 import { KyselyDB, KyselyTransaction } from '@docmost/db/types/kysely.types';
+import { sql } from 'kysely';
 import { executeTx } from '@docmost/db/utils';
 import { InjectKysely } from 'nestjs-kysely';
 import { User, Workspace } from '@docmost/db/types/entity.types';
@@ -37,9 +40,7 @@ export class SignupService {
     );
 
     if (userCheck) {
-      throw new BadRequestException(
-        'An account with this email already exists in this workspace',
-      );
+      throw new AppException(ErrorCode.USER_EMAIL_EXISTS, 'An account with this email already exists in this workspace', 400);
     }
 
     const user = await executeTx(
@@ -96,14 +97,52 @@ export class SignupService {
     createAdminUserDto: CreateAdminUserDto,
     trx?: KyselyTransaction,
   ) {
-    let user: User,
-      workspace: Workspace = null;
+    // Serialize setup attempts using a PostgreSQL advisory lock to prevent
+    // race conditions where concurrent requests could both pass the SetupGuard
+    // check and create duplicate workspaces/admin users.
+    const setupLockKey = 1; // fixed lock id for workspace setup
+    let lockAcquired = false;
 
-    await executeTx(
-      this.db,
-      async (trx) => {
-        // create user
-        user = await this.userRepo.insertUser(
+    try {
+      const lockResult = await sql<{ acquired: boolean }>`
+        SELECT pg_try_advisory_lock(${setupLockKey}) AS "acquired"
+      `.execute(this.db);
+
+      lockAcquired = lockResult.rows[0]?.acquired ?? false;
+
+      if (!lockAcquired) {
+        // Another setup is already in progress — re-check if a workspace
+        // was created in the meantime
+        const workspaceCount = await this.db
+          .selectFrom('workspaces')
+          .select((eb) => eb.fn.count('id').as('count'))
+          .executeTakeFirst();
+
+        if ((workspaceCount?.count as number) > 0) {
+          throw new AppException(ErrorCode.AUTH_SETUP_ALREADY_COMPLETED, 'Workspace setup already completed.', 400);
+        }
+
+        throw new AppException(ErrorCode.AUTH_SETUP_IN_PROGRESS, 'Setup is already in progress. Please try again.', 400);
+      }
+
+      let user: User,
+        workspace: Workspace = null;
+
+      await executeTx(
+        this.db,
+        async (trx) => {
+          // Double-check inside transaction
+          const existingCount = await trx
+            .selectFrom('workspaces')
+            .select((eb) => eb.fn.count('id').as('count'))
+            .executeTakeFirst();
+
+          if ((existingCount?.count as number) > 0) {
+            throw new AppException(ErrorCode.AUTH_SETUP_ALREADY_COMPLETED, 'Workspace setup already completed.', 400);
+          }
+
+          // create user
+          user = await this.userRepo.insertUser(
           {
             name: createAdminUserDto.name,
             email: createAdminUserDto.email,
@@ -133,5 +172,10 @@ export class SignupService {
     );
 
     return { user, workspace };
+    } finally {
+      if (lockAcquired) {
+        await sql`SELECT pg_advisory_unlock(${setupLockKey})`.execute(this.db);
+      }
+    }
   }
 }

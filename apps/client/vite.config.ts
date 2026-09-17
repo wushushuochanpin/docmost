@@ -4,6 +4,51 @@ import * as path from "path";
 
 const envPath = path.resolve(process.cwd(), "..", "..");
 
+const prosemirrorPackageEntries = [
+  ["changeset", "prosemirror-changeset", "dist/index.js"],
+  ["collab", "prosemirror-collab", "dist/index.js"],
+  ["commands", "prosemirror-commands", "dist/index.js"],
+  ["dropcursor", "prosemirror-dropcursor", "dist/index.js"],
+  ["gapcursor", "prosemirror-gapcursor", "dist/index.js"],
+  ["history", "prosemirror-history", "dist/index.js"],
+  ["inputrules", "prosemirror-inputrules", "dist/index.js"],
+  ["keymap", "prosemirror-keymap", "dist/index.js"],
+  ["markdown", "prosemirror-markdown", "dist/index.js"],
+  ["menu", "prosemirror-menu", "dist/index.js"],
+  ["model", "prosemirror-model", "dist/index.js"],
+  ["schema-basic", "prosemirror-schema-basic", "dist/index.js"],
+  ["schema-list", "prosemirror-schema-list", "dist/index.js"],
+  ["state", "prosemirror-state", "dist/index.js"],
+  ["tables", "prosemirror-tables", "dist/index.js"],
+  [
+    "trailing-node",
+    "prosemirror-trailing-node",
+    "dist/prosemirror-trailing-node.js",
+  ],
+  ["transform", "prosemirror-transform", "dist/index.js"],
+  ["view", "prosemirror-view", "dist/index.js"],
+] as const;
+
+const prosemirrorAliases = prosemirrorPackageEntries.flatMap(
+  ([tiptapName, packageName, entryPoint]) => {
+    const replacement = path.resolve(
+      envPath,
+      "node_modules",
+      packageName,
+      entryPoint,
+    );
+
+    return [
+      { find: `@tiptap/pm/${tiptapName}`, replacement },
+      { find: packageName, replacement },
+    ];
+  },
+);
+
+const prosemirrorPackageNames = prosemirrorPackageEntries.map(
+  ([, packageName]) => packageName,
+);
+
 export default defineConfig(({ mode }) => {
   const {
     APP_URL,
@@ -40,7 +85,10 @@ export default defineConfig(({ mode }) => {
         output: {
           advancedChunks: {
             groups: [
-              { name: "vendor-mantine", test: /[\\/]node_modules[\\/]@mantine[\\/]/ },
+              {
+                name: "vendor-mantine",
+                test: /[\\/]node_modules[\\/]@mantine[\\/]/,
+              },
               { name: "vendor-mermaid", test: /mermaid|cytoscape|elkjs/ },
               { name: "vendor-excalidraw", test: /excalidraw/ },
               { name: "vendor-katex", test: /katex/ },
@@ -50,9 +98,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     resolve: {
-      alias: {
-        "@": "/src",
-      },
+      alias: [...prosemirrorAliases, { find: "@", replacement: "/src" }],
+      dedupe: prosemirrorPackageNames,
     },
     server: {
       proxy: {

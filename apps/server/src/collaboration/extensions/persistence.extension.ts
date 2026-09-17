@@ -38,6 +38,10 @@ import { TransclusionService } from '../../core/page/transclusion/transclusion.s
 export class PersistenceExtension implements Extension {
   private readonly logger = new Logger(PersistenceExtension.name);
   private contributors: Map<string, Set<string>> = new Map();
+  // Track last onChange time per document for stale-contributor cleanup.
+  // Keys older than 5 minutes without a store are considered stale.
+  private contributorLastSeen: Map<string, number> = new Map();
+  private static readonly CONTRIBUTOR_STALE_MS = 5 * 60 * 1000;
 
   constructor(
     private readonly pageRepo: PageRepo,
@@ -116,11 +120,21 @@ export class PersistenceExtension implements Extension {
     try {
       textContent = jsonToText(tiptapJson);
     } catch (err) {
-      this.logger.warn('jsonToText' + err?.['message']);
+      this.logger.warn(
+        `jsonToText failed for page ${pageId}: ${err?.['message']}. Falling back to plain-text extraction.`,
+      );
+      // Fallback: extract plain text by stripping JSON structure
+      try {
+        textContent = this.extractPlainTextFallback(tiptapJson);
+      } catch (fallbackErr) {
+        this.logger.error(
+          `Plain-text fallback also failed for page ${pageId}: ${fallbackErr?.['message']}`,
+        );
+      }
     }
 
     let page: Page = null;
-    const editingUserIds = this.consumeContributors(documentName);
+    const editingUserIds = this.captureContributors(documentName);
 
     if (!workspaceId) {
       this.logger.warn(`Missing workspace in collab store context for ${pageId}`);
@@ -157,7 +171,7 @@ export class PersistenceExtension implements Extension {
             ]),
           );
         } catch (err) {
-          //this.logger.debug('Contributors error:' + err?.['message']);
+          this.logger.debug(`Contributors merge failed: ${err?.['message']}`);
         }
 
         await this.pageRepo.updatePage(
@@ -180,6 +194,10 @@ export class PersistenceExtension implements Extension {
     }
 
     if (page) {
+      // Only clear contributors after a successful save. If the save failed,
+      // contributors stay in the map but will be cleaned up by the stale-
+      // contributor check on the next onChange for this document.
+      this.clearContributors(documentName);
       await this.syncTransclusion(pageId, page.workspaceId, tiptapJson);
     }
 
@@ -228,19 +246,40 @@ export class PersistenceExtension implements Extension {
     }
 
     this.contributors.get(documentName).add(userId);
+    this.contributorLastSeen.set(documentName, Date.now());
   }
 
   async afterUnloadDocument(data: afterUnloadDocumentPayload) {
     const documentName = data.documentName;
     this.contributors.delete(documentName);
+    this.contributorLastSeen.delete(documentName);
   }
 
-  private consumeContributors(documentName: string): string[] {
+  /**
+   * Capture current contributors without removing them, and discard any
+   * that have been idle beyond CONTRIBUTOR_STALE_MS.  Only
+   * clearContributors() removes the tracked set (called after a successful
+   * onStoreDocument).
+   */
+  private captureContributors(documentName: string): string[] {
+    // Stale cleanup: discard contributors for documents that haven't seen
+    // an onChange in over CONTRIBUTOR_STALE_MS.
+    const now = Date.now();
+    const lastSeen = this.contributorLastSeen.get(documentName);
+    if (lastSeen !== undefined && now - lastSeen > PersistenceExtension.CONTRIBUTOR_STALE_MS) {
+      this.contributors.delete(documentName);
+      this.contributorLastSeen.delete(documentName);
+      return [];
+    }
+
     const contributorSet = this.contributors.get(documentName);
     if (!contributorSet) return [];
-    const userIds = [...contributorSet];
+    return [...contributorSet];
+  }
+
+  private clearContributors(documentName: string): void {
     this.contributors.delete(documentName);
-    return userIds;
+    this.contributorLastSeen.delete(documentName);
   }
 
   private async enqueuePageHistory(page: Page): Promise<void> {
@@ -263,6 +302,29 @@ export class PersistenceExtension implements Extension {
    * isolates each call so a failure here cannot affect the page save itself.
    * The diff is idempotent — the next save converges if a round drops anything.
    */
+  /**
+   * Fallback plain-text extraction from Tiptap JSON when jsonToText fails.
+   * Recursively walks the JSON tree and concatenates text nodes.
+   */
+  private extractPlainTextFallback(json: any): string {
+    if (!json) return '';
+
+    const parts: string[] = [];
+    const walk = (node: any) => {
+      if (!node) return;
+      if (node.type === 'text' && typeof node.text === 'string') {
+        parts.push(node.text);
+      }
+      if (Array.isArray(node.content)) {
+        for (const child of node.content) {
+          walk(child);
+        }
+      }
+    };
+    walk(json);
+    return parts.join(' ').replace(/\s+/g, ' ').trim();
+  }
+
   private async syncTransclusion(
     pageId: string,
     workspaceId: string,

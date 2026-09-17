@@ -233,7 +233,17 @@ const SHARE_MESSAGES: Partial<
     "Loading timed out": "加载超时",
     "Please check your network and try again.": "请检查网络后重试。",
     Retry: "重试",
-  },
+      "Toggle Color Scheme": "切换颜色主题",
+    "Close sidebar": "关闭侧边栏",
+    "Close table of contents": "关闭目录",
+    "No table of contents.": "无目录内容。",
+    "Open preview": "打开预览",
+    "Load {{provider}} preview": "加载 {{provider}} 预览",
+    "Preview is unavailable for this embed.": "此嵌入内容暂不支持预览。",
+    "Load preview": "加载预览",
+    "Open original": "打开原始内容",
+    "Close preview": "关闭预览",
+},
 };
 
 const SHARE_LOCALE_ALIASES: Record<string, ShareLocale> = {

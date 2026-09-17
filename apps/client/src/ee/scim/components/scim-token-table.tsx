@@ -1,6 +1,7 @@
 import { ActionIcon, Group, Menu, Table, Text } from "@mantine/core";
 import { IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
 import { format } from "date-fns";
+import { formatDateLocale } from "@/lib/time";
 import { useTranslation } from "react-i18next";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
 import React from "react";
@@ -24,7 +25,7 @@ export function ScimTokenTable({
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return t("Never");
-    return format(new Date(date), "MMM dd, yyyy");
+    return formatDateLocale(new Date(date), "MMM dd, yyyy");
   };
 
   return (

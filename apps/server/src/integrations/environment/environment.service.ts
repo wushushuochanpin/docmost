@@ -236,7 +236,7 @@ export class EnvironmentService {
   }
 
   getMailFromName(): string {
-    return this.configService.get<string>('MAIL_FROM_NAME', 'SuperChat');
+    return this.configService.get<string>('MAIL_FROM_NAME', 'Xenzify');
   }
 
   getMailBlockedRecipientDomains(): string[] {

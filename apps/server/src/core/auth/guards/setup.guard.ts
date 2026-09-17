@@ -1,4 +1,6 @@
-import { CanActivate, ForbiddenException, Injectable } from '@nestjs/common';
+import { CanActivate, Injectable } from '@nestjs/common';
+import { AppException } from '../../../common/errors/app-exception';
+import { ErrorCode } from '../../../common/errors/error-codes';
 import { WorkspaceRepo } from '@docmost/db/repos/workspace/workspace.repo';
 import { EnvironmentService } from '../../../integrations/environment/environment.service';
 
@@ -16,7 +18,7 @@ export class SetupGuard implements CanActivate {
 
     const workspaceCount = await this.workspaceRepo.count();
     if (workspaceCount > 0) {
-      throw new ForbiddenException('Workspace setup already completed.');
+      throw new AppException(ErrorCode.AUTH_SETUP_ALREADY_COMPLETED, 'Workspace setup already completed.', 403);
     }
     return true;
   }
