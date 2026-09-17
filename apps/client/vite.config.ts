@@ -130,22 +130,24 @@ export default defineConfig(({ mode }) => {
               // -> "TypeError: n is not a function" on every page render.
               // Let rolldown chunk mermaid naturally (its dynamic import chain
               // keeps it lazy); natural chunking guarantees consistent exports
-              // between chunks. The excalidraw group below uses
-              // includeDependenciesRecursively:false, so mermaid will not be
-              // dragged into vendor-excalidraw either.
+              // between chunks.
+              // Excalidraw and katex are intentionally NOT manually grouped
+              // for the same reason: grouping @excalidraw/excalidraw split it
+              // into vendor-excalidraw plus a `prod` sub-chunk that imports the
+              // group chunk's re-exports, and server builds produced a cyclic
+              // split (prod <-> index) whose re-exported value is not yet
+              // initialized when prod runs -> "TypeError: b is not a function"
+              // in prod-*.js whenever an excalidraw node renders. Natural
+              // chunking keeps excalidraw lazy via its dynamic import chain
+              // (excalidraw-view/excalidraw-menu) and guarantees consistent
+              // exports between chunks.
               // Group only third-party packages. Our own source files under
               // .../excalidraw/, .../mermaid-view.tsx etc. must NOT match these
               // tests: matching them pulls the lazy wrappers into the vendor
               // chunk and makes the heavy libs a static (eager) dependency of
               // the layout/page chunks on every page load.
-              {
-                name: "vendor-excalidraw",
-                test: /[\\/]node_modules[\\/]@excalidraw([\\/]|$)/,
-              },
-              {
-                name: "vendor-katex",
-                test: /[\\/]node_modules[\\/]katex([\\/]|$)/,
-              },
+              // (vendor-mermaid / vendor-excalidraw / vendor-katex groups were
+              // removed — see the two comments above.)
             ],
           },
         },
