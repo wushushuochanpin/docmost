@@ -75,8 +75,7 @@ import {
   createResizeHandle,
   buildResizeClasses,
 } from "@/features/editor/components/common/node-resize-handles.ts";
-import MathInlineView from "@/features/editor/components/math/math-inline.tsx";
-import MathBlockView from "@/features/editor/components/math/math-block.tsx";
+import { createLazyNodeView } from "@/features/editor/extensions/lazy-node-view";
 import ImageView from "@/features/editor/components/image/image-view.tsx";
 import CalloutView from "@/features/editor/components/callout/callout-view.tsx";
 import StatusView from "@/features/editor/components/status/status-view.tsx";
@@ -228,11 +227,18 @@ export const mainExtensions = [
   TableHandleCommandsExtension,
   TableHeaderPin,
   TableReadonlySort,
+  // Lazy-load the math views so katex (and the components themselves) only
+  // load when a page actually renders a math node. Static imports here pulled
+  // katex (~257KB) into the eager page chunk.
   MathInline.configure({
-    view: MathInlineView,
+    view: createLazyNodeView(
+      () => import("@/features/editor/components/math/math-inline.tsx"),
+    ),
   }),
   MathBlock.configure({
-    view: MathBlockView,
+    view: createLazyNodeView(
+      () => import("@/features/editor/components/math/math-block.tsx"),
+    ),
   }),
   Details,
   DetailsSummary,

@@ -691,7 +691,6 @@ export class PageService {
     }
 
     const pageIds = items.map((item) => item.id);
-    const rootValues = sql.join(pageIds.map((id) => sql`(${id}::uuid)`));
     const pageIdInClause = sql.join(pageIds.map((id) => sql`${id}::uuid`));
 
     try {
@@ -712,40 +711,6 @@ export class PageService {
         group by child.parent_page_id
       `.execute(this.db);
 
-      const descendantCountsResult = await sql<{
-        pageId: string;
-        descendantFolderCount: number;
-        descendantFileCount: number;
-        descendantTotalCount: number;
-      }>`
-        with recursive roots(page_id) as (
-          values ${rootValues}
-        ),
-        descendants(root_id, id) as (
-          select roots.page_id, child.id
-          from roots
-          join pages child
-            on child.parent_page_id = roots.page_id
-           and child.deleted_at is null
-           and child.space_id = ${spaceId}
-          union all
-          select descendants.root_id, child.id
-          from descendants
-          join pages child
-            on child.parent_page_id = descendants.id
-           and child.deleted_at is null
-           and child.space_id = ${spaceId}
-        )
-        select
-          descendants.root_id as "pageId",
-          count(*) filter (where coalesce(meta.node_type, 'file') = 'folder')::int as "descendantFolderCount",
-          count(*) filter (where coalesce(meta.node_type, 'file') = 'file')::int as "descendantFileCount",
-          count(*)::int as "descendantTotalCount"
-        from descendants
-        left join page_node_meta meta on meta.page_id = descendants.id
-        group by descendants.root_id
-      `.execute(this.db);
-
       const directCountMap = new Map<
         string,
         { directChildCount: number; directChildFolderCount: number }
@@ -758,34 +723,19 @@ export class PageService {
           },
         ]),
       );
-      const descendantCountMap = new Map<
-        string,
-        {
-          descendantFolderCount: number;
-          descendantFileCount: number;
-          descendantTotalCount: number;
-        }
-      >(
-        descendantCountsResult.rows.map((row) => [
-          row.pageId,
-          {
-            descendantFolderCount: Number(row.descendantFolderCount ?? 0),
-            descendantFileCount: Number(row.descendantFileCount ?? 0),
-            descendantTotalCount: Number(row.descendantTotalCount ?? 0),
-          },
-        ]),
-      );
 
       return items.map((item) => {
         const direct = directCountMap.get(item.id);
-        const descendant = descendantCountMap.get(item.id);
         return {
           ...item,
           directChildCount: direct?.directChildCount ?? 0,
           directChildFolderCount: direct?.directChildFolderCount ?? 0,
-          descendantFolderCount: descendant?.descendantFolderCount ?? 0,
-          descendantFileCount: descendant?.descendantFileCount ?? 0,
-          descendantTotalCount: descendant?.descendantTotalCount ?? 0,
+          // Descendant counts were previously computed with a full recursive
+          // CTE over the whole subtree on every sidebar load, but the client
+          // never renders them. They are returned as 0 to keep the API shape.
+          descendantFolderCount: 0,
+          descendantFileCount: 0,
+          descendantTotalCount: 0,
         };
       });
     } catch (err) {
@@ -793,51 +743,14 @@ export class PageService {
         throw err;
       }
 
-      const descendantTotalsResult = await sql<{
-        pageId: string;
-        descendantTotalCount: number;
-      }>`
-        with recursive roots(page_id) as (
-          values ${rootValues}
-        ),
-        descendants(root_id, id) as (
-          select roots.page_id, child.id
-          from roots
-          join pages child
-            on child.parent_page_id = roots.page_id
-           and child.deleted_at is null
-           and child.space_id = ${spaceId}
-          union all
-          select descendants.root_id, child.id
-          from descendants
-          join pages child
-            on child.parent_page_id = descendants.id
-           and child.deleted_at is null
-           and child.space_id = ${spaceId}
-        )
-        select
-          descendants.root_id as "pageId",
-          count(*)::int as "descendantTotalCount"
-        from descendants
-        group by descendants.root_id
-      `.execute(this.db);
-
-      const descendantTotalMap = new Map<string, number>(
-        descendantTotalsResult.rows.map((row) => [
-          row.pageId,
-          Number(row.descendantTotalCount ?? 0),
-        ]),
-      );
-
       return items.map((item) => {
-        const descendantTotalCount = descendantTotalMap.get(item.id) ?? 0;
         return {
           ...item,
           directChildCount: 0,
           directChildFolderCount: 0,
           descendantFolderCount: 0,
-          descendantFileCount: descendantTotalCount,
-          descendantTotalCount,
+          descendantFileCount: 0,
+          descendantTotalCount: 0,
         };
       });
     }
