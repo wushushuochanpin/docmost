@@ -21,13 +21,23 @@ export default function CodeBlockView(props: NodeViewProps) {
   const { node, updateAttributes, extension, editor, getPos } = props;
   const language =
     typeof node.attrs.language === "string" ? node.attrs.language : "";
-  const isHtml = language === "html";
+  // `html` = static styled card (scripts disabled); `html-app` = runnable
+  // single-file HTML app (scripts allowed in an isolated origin).
+  const isHtml = language === "html" || language === "html-app";
   const [languageValue, setLanguageValue] = useState<string | null>(
     language || null,
   );
   const [isSelected, setIsSelected] = useState(false);
   const [showHtmlSource, setShowHtmlSource] = useState(false);
   const codeText = node.textContent;
+
+  const lowlightLanguages = extension.options.lowlight
+    .listLanguages()
+    .sort();
+  const selectData = [
+    ...lowlightLanguages,
+    { value: "html-app", label: "HTML 交互应用（允许脚本）" },
+  ];
 
   useEffect(() => {
     const updateSelection = () => {
@@ -81,7 +91,7 @@ export default function CodeBlockView(props: NodeViewProps) {
         <Select
           placeholder="auto"
           checkIconPosition="right"
-          data={extension.options.lowlight.listLanguages().sort()}
+          data={selectData}
           value={languageValue}
           onChange={changeLanguage}
           searchable

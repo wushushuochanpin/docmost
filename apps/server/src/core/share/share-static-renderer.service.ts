@@ -270,10 +270,10 @@ export class ShareStaticRendererService {
 
       // `html` code blocks render as a live sandboxed preview on share pages,
       // matching the editor's HtmlView. The iframe is created after the global
-      // sanitization pass, so its srcdoc survives; an empty sandbox token list
-      // disables scripts, forms and same-origin access.
-      if (language === 'html') {
-        this.replaceHtmlCodeBlockWithPreview($, $pre, $code);
+      // sanitization pass, so its srcdoc survives. `html-app` grants
+      // allow-scripts (no allow-same-origin) so a single-file app still runs.
+      if (language === 'html' || language === 'html-app') {
+        this.replaceHtmlCodeBlockWithPreview($, $pre, $code, language);
         return;
       }
 
@@ -299,22 +299,24 @@ export class ShareStaticRendererService {
     $: ReturnType<typeof load>,
     $pre: ReturnType<typeof $>,
     $code: ReturnType<typeof $>,
+    language: string,
   ): void {
     const source = $code.text();
+    const interactive = language === 'html-app';
     const $wrapper = $('<section></section>')
       .addClass('share-code-block share-html-preview')
-      .attr('data-language', 'html');
+      .attr('data-language', language);
     const $meta = $('<div></div>')
       .addClass('share-code-block__meta')
-      .text('HTML preview');
+      .text(interactive ? 'HTML app preview' : 'HTML preview');
     const $frame = $('<iframe></iframe>')
       .attr('class', 'share-html-frame')
-      .attr('sandbox', '')
+      .attr('sandbox', interactive ? 'allow-scripts allow-modals' : '')
       .attr('title', 'HTML preview')
       .attr('loading', 'lazy')
       .attr(
         'style',
-        'width:100%;height:420px;border:0;border-radius:12px;background:#ffffff;',
+        `width:100%;height:${interactive ? 600 : 420}px;border:0;border-radius:12px;background:#ffffff;`,
       )
       .attr('srcdoc', source);
 

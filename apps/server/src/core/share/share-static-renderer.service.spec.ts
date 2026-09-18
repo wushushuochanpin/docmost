@@ -69,6 +69,21 @@ describe('ShareStaticRendererService', () => {
     expect(payload.html).not.toContain('class="language-html"');
   });
 
+  it('renders html-app code blocks with script-enabled sandbox on share pages', () => {
+    mockedJsonToHtml.mockReturnValue(
+      '<pre><code class="language-html-app">&lt;script&gt;alert(1)&lt;/script&gt;</code></pre>',
+    );
+
+    const payload = service.render({
+      type: 'doc',
+      content: [],
+    });
+
+    expect(payload.html).toContain('share-html-preview');
+    expect(payload.html).toContain('sandbox="allow-scripts allow-modals"');
+    expect(payload.html).toContain('HTML app preview');
+  });
+
   it('marks interactive blocks and strips dangerous URLs during post process', () => {
     mockedJsonToHtml.mockReturnValue(
       [

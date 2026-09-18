@@ -6,17 +6,21 @@ interface HtmlViewProps {
 }
 
 /**
- * Live preview for `html` language code blocks.
+ * Live preview for `html` / `html-app` language code blocks.
  *
- * The user-authored HTML is rendered inside a sandboxed `<iframe>` with an
- * empty sandbox token list: inline styles and layout render as expected, but
- * scripts, forms, same-origin access and popups are all disabled. This keeps
- * untrusted author markup from touching the host document (XSS boundary) —
- * the same security posture the share page uses for embeds.
+ * - `html` (default, safe): empty sandbox token — inline styles render, but
+ *   scripts, forms, same-origin access and popups are all disabled.
+ * - `html-app` (interactive): `allow-scripts allow-modals` so a self-contained
+ *   single-file HTML app can actually run. `allow-same-origin` is deliberately
+ *   NOT granted: scripts execute in an opaque origin and cannot read the host
+ *   document's cookies / localStorage, keeping the XSS boundary.
  */
 export default function HtmlView({ props }: HtmlViewProps) {
   const { node } = props;
   const source = node.textContent;
+  const language =
+    typeof node.attrs.language === "string" ? node.attrs.language : "";
+  const interactive = language === "html-app";
 
   if (!source.trim()) {
     return null;
@@ -25,13 +29,13 @@ export default function HtmlView({ props }: HtmlViewProps) {
   return (
     <div className={classes.htmlPreview} contentEditable={false}>
       <iframe
-        sandbox=""
+        sandbox={interactive ? "allow-scripts allow-modals" : ""}
         title="HTML preview"
         srcDoc={source}
         loading="lazy"
         style={{
           width: "100%",
-          height: "420px",
+          height: interactive ? "600px" : "420px",
           border: "1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4))",
           borderRadius: 12,
           background: "#ffffff",

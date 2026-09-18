@@ -17,7 +17,7 @@ export default function ReadonlyCodeBlockView(props: NodeViewProps) {
   const language =
     typeof node.attrs.language === "string" ? node.attrs.language : "";
   const isMermaid = language === "mermaid";
-  const isHtml = language === "html";
+  const isHtml = language === "html" || language === "html-app";
   const codeText = node.textContent;
 
   return (
