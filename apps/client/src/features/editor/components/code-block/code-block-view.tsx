@@ -1,7 +1,7 @@
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ActionIcon, Group, Select, Tooltip } from "@mantine/core";
 import { useEffect, useState } from "react";
-import { IconCode, IconEye } from "@tabler/icons-react";
+import { IconCode, IconEye, IconTrash } from "@tabler/icons-react";
 import classes from "./code-block.module.css";
 import React from "react";
 import { Suspense } from "react";
@@ -75,6 +75,12 @@ export default function CodeBlockView(props: NodeViewProps) {
     });
   }
 
+  function deleteBlock() {
+    const from = getPos();
+    const to = from + node.nodeSize;
+    editor.chain().focus().deleteRange({ from, to }).run();
+  }
+
   const hideSource =
     codeText.length > 0 &&
     (((language === "mermaid" && !editor.isEditable) ||
@@ -117,6 +123,14 @@ export default function CodeBlockView(props: NodeViewProps) {
         )}
 
         <CodeBlockCopyMenu text={codeText} language={language} />
+
+        {editor.isEditable && (
+          <Tooltip label={t("Delete block")} withArrow position="right">
+            <ActionIcon color="red" variant="subtle" onClick={deleteBlock}>
+              <IconTrash size={16} />
+            </ActionIcon>
+          </Tooltip>
+        )}
       </Group>
 
       <NodeViewContent
