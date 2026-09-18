@@ -49,6 +49,26 @@ describe('ShareStaticRendererService', () => {
     expect(mockedJsonToHtml).toHaveBeenCalledTimes(1);
   });
 
+  it('renders html code blocks as sandboxed preview frames on share pages', () => {
+    mockedJsonToHtml.mockReturnValue(
+      '<pre><code class="language-html">&lt;div style=&quot;color:red&quot;&gt;hi&lt;/div&gt;</code></pre>',
+    );
+
+    const payload = service.render({
+      type: 'doc',
+      content: [],
+    });
+
+    expect(payload.deliveryMode).toBe('full');
+    expect(payload.html).toContain('share-html-preview');
+    expect(payload.html).toContain('share-html-frame');
+    expect(payload.html).toContain('HTML preview');
+    expect(payload.html).toContain('sandbox=""');
+    // Author source is preserved inside srcdoc and rendered, not leaked as plain code
+    expect(payload.html).toContain('color:red');
+    expect(payload.html).not.toContain('class="language-html"');
+  });
+
   it('marks interactive blocks and strips dangerous URLs during post process', () => {
     mockedJsonToHtml.mockReturnValue(
       [

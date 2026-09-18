@@ -10,11 +10,16 @@ const MermaidView = React.lazy(
   () => import("@/features/editor/components/code-block/mermaid-view.tsx"),
 );
 
+const HtmlView = React.lazy(
+  () => import("@/features/editor/components/code-block/html-view.tsx"),
+);
+
 export default function ReadonlyCodeBlockView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { node } = props;
   const { language } = node.attrs;
   const isMermaid = language === "mermaid";
+  const isHtml = language === "html";
 
   return (
     <NodeViewWrapper className="codeBlock">
@@ -42,7 +47,12 @@ export default function ReadonlyCodeBlockView(props: NodeViewProps) {
         </CopyButton>
       </Group>
 
-      <pre spellCheck="false" hidden={isMermaid && node.textContent.length > 0}>
+      <pre
+        spellCheck="false"
+        hidden={
+          (isMermaid || isHtml) && node.textContent.length > 0
+        }
+      >
         {/* @ts-ignore */}
         <NodeViewContent as="code" className={`language-${language}`} />
       </pre>
@@ -50,6 +60,12 @@ export default function ReadonlyCodeBlockView(props: NodeViewProps) {
       {isMermaid && (
         <Suspense fallback={null}>
           <MermaidView props={props} />
+        </Suspense>
+      )}
+
+      {isHtml && (
+        <Suspense fallback={null}>
+          <HtmlView props={props} />
         </Suspense>
       )}
     </NodeViewWrapper>

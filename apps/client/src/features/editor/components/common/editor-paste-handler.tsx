@@ -83,6 +83,38 @@ function looksLikeSpreadsheetPaste(
   return /\t/.test(plainTextData || "");
 }
 
+/**
+ * Detects pasted raw HTML markup (e.g. a generated HTML card copied from a
+ * "view code" view). Such text should land in an `html` code block so it can
+ * be rendered live, instead of being flattened into paragraphs.
+ */
+function looksLikeHtmlSource(text?: string): boolean {
+  if (!text) {
+    return false;
+  }
+
+  const trimmed = text.trim();
+  if (trimmed.length < 80) {
+    return false;
+  }
+
+  const tagMatches = trimmed.match(/<\/?[a-zA-Z][\w-]*/g) || [];
+  if (tagMatches.length < 3) {
+    return false;
+  }
+
+  // Single-line prose that merely mentions a tag-ish string should not be
+  // captured; require either real newlines or markup attributes.
+  const hasAttributes = /\s(style|class|id|href|src|width|height)=/i.test(
+    trimmed,
+  );
+  if (!trimmed.includes("\n") && !hasAttributes) {
+    return false;
+  }
+
+  return true;
+}
+
 function getEmbeddedHtmlImageSources(htmlData?: string): string[] {
   if (!htmlData || !/<img[\s>]/i.test(htmlData)) {
     return [];
@@ -286,6 +318,22 @@ export const handlePaste = (
       creatorId,
       anchorId,
     );
+    return true;
+  }
+
+  // Pasted raw HTML markup becomes an `html` code block that renders live,
+  // instead of being flattened into paragraphs. Skip when the cursor is
+  // already inside a code block so users can still paste text into code.
+  if (looksLikeHtmlSource(plainTextData) && !editor.isActive("codeBlock")) {
+    event.preventDefault();
+    editor
+      .chain()
+      .insertContent({
+        type: "codeBlock",
+        attrs: { language: "html" },
+        content: [{ type: "text", text: plainTextData.replace(/\n+$/, "") }],
+      })
+      .run();
     return true;
   }
 

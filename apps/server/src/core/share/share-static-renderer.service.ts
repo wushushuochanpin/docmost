@@ -267,6 +267,16 @@ export class ShareStaticRendererService {
       }
 
       const language = this.getCodeBlockLanguage($code.attr('class'));
+
+      // `html` code blocks render as a live sandboxed preview on share pages,
+      // matching the editor's HtmlView. The iframe is created after the global
+      // sanitization pass, so its srcdoc survives; an empty sandbox token list
+      // disables scripts, forms and same-origin access.
+      if (language === 'html') {
+        this.replaceHtmlCodeBlockWithPreview($, $pre, $code);
+        return;
+      }
+
       const label = this.getCodeBlockLabel(language);
       const $wrapper = $('<section></section>')
         .addClass('share-code-block')
@@ -283,6 +293,33 @@ export class ShareStaticRendererService {
       $wrapper.append($meta, $content);
       $pre.replaceWith($wrapper);
     });
+  }
+
+  private replaceHtmlCodeBlockWithPreview(
+    $: ReturnType<typeof load>,
+    $pre: ReturnType<typeof $>,
+    $code: ReturnType<typeof $>,
+  ): void {
+    const source = $code.text();
+    const $wrapper = $('<section></section>')
+      .addClass('share-code-block share-html-preview')
+      .attr('data-language', 'html');
+    const $meta = $('<div></div>')
+      .addClass('share-code-block__meta')
+      .text('HTML preview');
+    const $frame = $('<iframe></iframe>')
+      .attr('class', 'share-html-frame')
+      .attr('sandbox', '')
+      .attr('title', 'HTML preview')
+      .attr('loading', 'lazy')
+      .attr(
+        'style',
+        'width:100%;height:420px;border:0;border-radius:12px;background:#ffffff;',
+      )
+      .attr('srcdoc', source);
+
+    $wrapper.append($meta, $frame);
+    $pre.replaceWith($wrapper);
   }
 
   private buildSegments(
