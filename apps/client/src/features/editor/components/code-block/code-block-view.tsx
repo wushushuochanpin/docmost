@@ -1,12 +1,12 @@
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ActionIcon, Group, Select, Tooltip } from "@mantine/core";
-import { CopyButton } from "@/components/common/copy-button";
 import { useEffect, useState } from "react";
-import { IconCheck, IconCode, IconCopy, IconEye } from "@tabler/icons-react";
+import { IconCode, IconEye } from "@tabler/icons-react";
 import classes from "./code-block.module.css";
 import React from "react";
 import { Suspense } from "react";
 import { useTranslation } from "react-i18next";
+import { CodeBlockCopyMenu } from "./code-block-copy-menu";
 
 const MermaidView = React.lazy(
   () => import("@/features/editor/components/code-block/mermaid-view.tsx"),
@@ -19,13 +19,15 @@ const HtmlView = React.lazy(
 export default function CodeBlockView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { node, updateAttributes, extension, editor, getPos } = props;
-  const { language } = node.attrs;
+  const language =
+    typeof node.attrs.language === "string" ? node.attrs.language : "";
   const isHtml = language === "html";
   const [languageValue, setLanguageValue] = useState<string | null>(
     language || null,
   );
   const [isSelected, setIsSelected] = useState(false);
   const [showHtmlSource, setShowHtmlSource] = useState(false);
+  const codeText = node.textContent;
 
   useEffect(() => {
     const updateSelection = () => {
@@ -44,6 +46,10 @@ export default function CodeBlockView(props: NodeViewProps) {
     };
   }, [editor, getPos(), node.nodeSize]);
 
+  useEffect(() => {
+    setLanguageValue(language || null);
+  }, [language]);
+
   // Falling back to another language must not keep the html preview toggle
   // state around for a block that is no longer html.
   useEffect(() => {
@@ -52,15 +58,15 @@ export default function CodeBlockView(props: NodeViewProps) {
     }
   }, [isHtml]);
 
-  function changeLanguage(language: string) {
-    setLanguageValue(language);
+  function changeLanguage(language: string | null) {
+    setLanguageValue(language || null);
     updateAttributes({
-      language: language,
+      language: language || null,
     });
   }
 
   const hideSource =
-    node.textContent.length > 0 &&
+    codeText.length > 0 &&
     (((language === "mermaid" && !editor.isEditable) ||
       (language === "mermaid" && !isSelected)) ||
       (isHtml && !showHtmlSource));
@@ -100,29 +106,15 @@ export default function CodeBlockView(props: NodeViewProps) {
           </Tooltip>
         )}
 
-        <CopyButton value={node?.textContent} timeout={2000}>
-          {({ copied, copy }) => (
-            <Tooltip
-              label={copied ? t("Copied") : t("Copy")}
-              withArrow
-              position="right"
-            >
-              <ActionIcon
-                color={copied ? "teal" : "gray"}
-                variant="subtle"
-                onClick={copy}
-              >
-                {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </CopyButton>
+        <CodeBlockCopyMenu text={codeText} language={language} />
       </Group>
 
-      <pre spellCheck="false" hidden={hideSource}>
-        {/* @ts-ignore */}
-        <NodeViewContent as="code" className={`language-${language}`} />
-      </pre>
+      <NodeViewContent
+        as={"pre" as any}
+        spellCheck="false"
+        className={`language-${language || "plaintext"}`}
+        hidden={hideSource}
+      />
 
       {language === "mermaid" && (
         <Suspense fallback={null}>

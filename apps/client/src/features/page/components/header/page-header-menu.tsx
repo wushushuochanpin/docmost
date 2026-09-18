@@ -1,4 +1,5 @@
 import { ActionIcon, Group, Loader, Menu, Text, ThemeIcon, Tooltip } from "@mantine/core";
+import type { Editor } from "@tiptap/core";
 import {
   IconArrowRight,
   IconArrowsHorizontal,
@@ -6,6 +7,7 @@ import {
   IconChevronUp,
   IconDots,
   IconFileExport,
+  IconFileText,
   IconHistory,
   IconLink,
   IconMarkdown,
@@ -46,6 +48,10 @@ import { useTimeAgo } from "@/hooks/use-time-ago.tsx";
 import { IPage } from "@/features/page/types/page.types.ts";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { canUseStaticRenderedHtml } from "@/features/share/rendered-utils.ts";
+import {
+  normalizeMarkdownClipboard,
+  normalizePlainTextClipboard,
+} from "@/features/editor/utils/clipboard-format.ts";
 
 const LazyExportModal = React.lazy(
   () => import("@/components/common/export-modal"),
@@ -141,6 +147,16 @@ function getWordCountFromText(text?: string | null) {
   return cjkMatches.length + wordMatches.length;
 }
 
+function getEditorPlainText(editor: Editor) {
+  const doc = editor?.state?.doc;
+
+  if (!doc) {
+    return "";
+  }
+
+  return doc.textBetween(0, doc.content.size, "\n\n");
+}
+
 interface PageActionMenuProps {
   readOnly?: boolean;
   page: IPage;
@@ -189,12 +205,27 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
     notifications.show({ message: t("Link copied") });
   };
 
+  const getStaticHtml = () =>
+    currentPage.rendered?.deliveryMode === "full" &&
+    canUseStaticRenderedHtml(currentPage.rendered)
+      ? (currentPage.rendered.html ?? currentPage.rendered.headHtml ?? "")
+      : "";
+
+  const handleCopyAsPlainText = () => {
+    const body = activeEditor
+      ? getEditorPlainText(activeEditor)
+      : (currentPage.textContent ?? "");
+    const title = currentPage.title ? `${currentPage.title}\n\n` : "";
+    const text = normalizePlainTextClipboard(`${title}${body}`);
+
+    if (!text) return;
+
+    clipboard.copy(text);
+    notifications.show({ message: t("Copied") });
+  };
+
   const handleCopyAsMarkdown = async () => {
-    const staticHtml =
-      currentPage.rendered?.deliveryMode === "full" &&
-      canUseStaticRenderedHtml(currentPage.rendered)
-        ? (currentPage.rendered.html ?? currentPage.rendered.headHtml ?? "")
-        : "";
+    const staticHtml = getStaticHtml();
     const html = activeEditor ? activeEditor.getHTML() : staticHtml;
 
     if (!html) return;
@@ -202,7 +233,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
     const { htmlToMarkdown } = await import("@docmost/editor-ext");
     const markdown = htmlToMarkdown(html);
     const title = currentPage.title ? `# ${currentPage.title}\n\n` : "";
-    clipboard.copy(`${title}${markdown}`);
+    clipboard.copy(normalizeMarkdownClipboard(`${title}${markdown}`));
     notifications.show({ message: t("Copied") });
   };
 
@@ -225,6 +256,9 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
     activeEditor ||
     (currentPage.rendered?.deliveryMode === "full" &&
       canUseStaticRenderedHtml(currentPage.rendered)),
+  );
+  const canCopyAsPlainText = Boolean(
+    activeEditor || currentPage.textContent || currentPage.title,
   );
 
   const toggleSharePanel = () => {
@@ -307,6 +341,14 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
             onClick={handleCopyLink}
           >
             {t("Copy link")}
+          </Menu.Item>
+
+          <Menu.Item
+            leftSection={<IconFileText size={16} />}
+            onClick={handleCopyAsPlainText}
+            disabled={!canCopyAsPlainText}
+          >
+            {t("Copy as plain text")}
           </Menu.Item>
 
           <Menu.Item

@@ -164,7 +164,9 @@ export const CustomCodeBlock = CodeBlock.extend<CodeBlockLowlightOptions>({
     // Force the react node view to render immediately using flush sync (https://github.com/ueberdosis/tiptap/blob/b4db352f839e1d82f9add6ee7fb45561336286d8/packages/react/src/ReactRenderer.tsx#L183-L191)
     this.editor.isInitialized = true;
 
-    return ReactNodeViewRenderer(this.options.view);
+    return ReactNodeViewRenderer(this.options.view, {
+      contentDOMElementTag: 'code',
+    } as any);
   },
 
   addProseMirrorPlugins() {

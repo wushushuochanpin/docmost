@@ -1,10 +1,8 @@
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { ActionIcon, Group, Tooltip } from "@mantine/core";
-import { CopyButton } from "@/components/common/copy-button";
-import { IconCheck, IconCopy } from "@tabler/icons-react";
+import { Group } from "@mantine/core";
 import classes from "./code-block.module.css";
 import React, { Suspense } from "react";
-import { useTranslation } from "react-i18next";
+import { CodeBlockCopyMenu } from "./code-block-copy-menu";
 
 const MermaidView = React.lazy(
   () => import("@/features/editor/components/code-block/mermaid-view.tsx"),
@@ -15,11 +13,12 @@ const HtmlView = React.lazy(
 );
 
 export default function ReadonlyCodeBlockView(props: NodeViewProps) {
-  const { t } = useTranslation();
   const { node } = props;
-  const { language } = node.attrs;
+  const language =
+    typeof node.attrs.language === "string" ? node.attrs.language : "";
   const isMermaid = language === "mermaid";
   const isHtml = language === "html";
+  const codeText = node.textContent;
 
   return (
     <NodeViewWrapper className="codeBlock">
@@ -28,34 +27,15 @@ export default function ReadonlyCodeBlockView(props: NodeViewProps) {
         contentEditable={false}
         className={classes.menuGroup}
       >
-        <CopyButton value={node.textContent} timeout={2000}>
-          {({ copied, copy }) => (
-            <Tooltip
-              label={copied ? t("Copied") : t("Copy")}
-              withArrow
-              position="right"
-            >
-              <ActionIcon
-                color={copied ? "teal" : "gray"}
-                variant="subtle"
-                onClick={copy}
-              >
-                {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </CopyButton>
+        <CodeBlockCopyMenu text={codeText} language={language} />
       </Group>
 
-      <pre
+      <NodeViewContent
+        as={"pre" as any}
         spellCheck="false"
-        hidden={
-          (isMermaid || isHtml) && node.textContent.length > 0
-        }
-      >
-        {/* @ts-ignore */}
-        <NodeViewContent as="code" className={`language-${language}`} />
-      </pre>
+        className={`language-${language || "plaintext"}`}
+        hidden={(isMermaid || isHtml) && codeText.length > 0}
+      />
 
       {isMermaid && (
         <Suspense fallback={null}>
