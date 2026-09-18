@@ -114,8 +114,38 @@
 }
 
 .htmlPreview {
+    position: relative;
     display: block;
     width: 100%;
     border-radius: 12px;
     overflow: hidden;
+}
+
+.htmlResizeHandle {
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    transform: translateX(-50%);
+    width: 48px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: row-resize;
+    border-radius: 9px;
+    opacity: 0;
+    transition: opacity 120ms ease;
+    background: light-dark(rgba(255, 255, 255, 0.75), rgba(20, 20, 20, 0.75));
+}
+
+.htmlPreview:hover .htmlResizeHandle,
+.htmlResizeHandle:active {
+    opacity: 1;
+}
+
+.htmlResizeHandleGrip {
+    width: 28px;
+    height: 3px;
+    border-radius: 2px;
+    background: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-3));
 }

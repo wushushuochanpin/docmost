@@ -273,7 +273,8 @@ export class ShareStaticRendererService {
       // sanitization pass, so its srcdoc survives. `html-app` grants
       // allow-scripts (no allow-same-origin) so a single-file app still runs.
       if (language === 'html' || language === 'html-app') {
-        this.replaceHtmlCodeBlockWithPreview($, $pre, $code, language);
+        const customHeight = $pre.attr('data-html-height');
+        this.replaceHtmlCodeBlockWithPreview($, $pre, $code, language, customHeight);
         return;
       }
 
@@ -300,9 +301,17 @@ export class ShareStaticRendererService {
     $pre: ReturnType<typeof $>,
     $code: ReturnType<typeof $>,
     language: string,
+    customHeight?: string,
   ): void {
     const source = $code.text();
     const interactive = language === 'html-app';
+    const parsedHeight = Number.parseInt(customHeight || '', 10);
+    const heightPx =
+      Number.isFinite(parsedHeight) && parsedHeight > 0
+        ? parsedHeight
+        : interactive
+          ? 600
+          : 420;
     const $wrapper = $('<section></section>')
       .addClass('share-code-block share-html-preview')
       .attr('data-language', language);
@@ -316,7 +325,7 @@ export class ShareStaticRendererService {
       .attr('loading', 'lazy')
       .attr(
         'style',
-        `width:100%;height:${interactive ? 600 : 420}px;border:0;border-radius:12px;background:#ffffff;`,
+        `width:100%;height:${heightPx}px;border:0;border-radius:12px;background:#ffffff;`,
       )
       .attr('srcdoc', source);
 

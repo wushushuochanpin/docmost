@@ -40,6 +40,26 @@ export const CustomCodeBlock = CodeBlock.extend<CodeBlockLowlightOptions>({
     };
   },
 
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      // Persisted iframe height for html / html-app previews, stored on the
+      // node so drag-resize survives reloads and syncs to collaborators and
+      // the share renderer.
+      htmlHeight: {
+        default: null,
+        parseHTML: (element: HTMLElement) =>
+          element.getAttribute('data-html-height'),
+        renderHTML: (attributes: Record<string, any>) => {
+          if (!attributes.htmlHeight) {
+            return {};
+          }
+          return { 'data-html-height': attributes.htmlHeight };
+        },
+      },
+    };
+  },
+
   addKeyboardShortcuts() {
     const isMermaid = (node: any) =>
       node?.type === this.type && node.attrs.language === 'mermaid';
