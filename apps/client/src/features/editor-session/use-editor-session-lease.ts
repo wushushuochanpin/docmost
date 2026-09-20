@@ -166,6 +166,30 @@ export function useEditorSessionLease(opts: {
     registerClient,
   ]);
 
+  const runHeartbeat = useCallback(() => {
+    const editSession = editSessionRef.current;
+    if (!enabled || !opts.resourceId || !editSession) return;
+
+    heartbeatEditorSession({
+      resourceType: opts.resourceType,
+      resourceId: opts.resourceId,
+      editSession,
+    })
+      .then(applyResponse)
+      .catch((error) => {
+        if (isEditorSessionConflict(error)) {
+          void reacquire();
+          return;
+        }
+      });
+  }, [
+    applyResponse,
+    enabled,
+    opts.resourceId,
+    opts.resourceType,
+    reacquire,
+  ]);
+
   useEffect(() => {
     if (!enabled || !opts.resourceId) {
       editSessionRef.current = undefined;
@@ -235,34 +259,28 @@ export function useEditorSessionLease(opts: {
       if (event.persisted) return;
       releaseOnUnload();
     };
+    const heartbeatOnVisible = () => {
+      // Refresh the lease the moment the tab becomes visible again, so any
+      // collab reconnect that follows validates against a fresh lease instead
+      // of the stale one (which the server would reject with 409 and close).
+      if (document.visibilityState === "visible") {
+        runHeartbeat();
+      }
+    };
 
     window.addEventListener("pagehide", releaseOnPageHide);
     window.addEventListener("beforeunload", releaseOnUnload);
+    document.addEventListener("visibilitychange", heartbeatOnVisible);
 
-    const interval = window.setInterval(() => {
-      const editSession = editSessionRef.current;
-      if (!editSession) return;
-
-      heartbeatEditorSession({
-        resourceType: opts.resourceType,
-        resourceId: opts.resourceId!,
-        editSession,
-      })
-        .then(applyResponse)
-        .catch((error) => {
-          if (isEditorSessionConflict(error)) {
-            void reacquire();
-            return;
-          }
-        });
-    }, 5000);
+    const interval = window.setInterval(runHeartbeat, 5000);
 
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("pagehide", releaseOnPageHide);
       window.removeEventListener("beforeunload", releaseOnUnload);
+      document.removeEventListener("visibilitychange", heartbeatOnVisible);
     };
-  }, [applyResponse, enabled, opts.resourceId, opts.resourceType, reacquire]);
+  }, [enabled, opts.resourceId, opts.resourceType, runHeartbeat]);
 
   useEffect(() => {
     if (!enabled || !opts.resourceId || !socket) return;
@@ -320,5 +338,6 @@ export function useEditorSessionLease(opts: {
     enabled,
     release,
     takeover,
+    reacquire,
   };
 }

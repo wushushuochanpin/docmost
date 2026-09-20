@@ -14,7 +14,16 @@ import {
   WebSocketStatus,
   HocuspocusProviderWebsocket,
   onSyncedParameters,
+  onCloseParameters,
 } from "@hocuspocus/provider";
+
+// WS close code the collab server uses when it kills a connection because the
+// editor-session lease is missing/expired/mismatched (409 EDITOR_SESSION_CONFLICT).
+// Keep in sync with the server constant EDITOR_SESSION_COLLAB_CLOSE_CODE.
+const EDITOR_SESSION_CONFLICT_CLOSE_CODE = 4409;
+// Cooldown between lease re-acquire attempts triggered by collab close 4409,
+// so a server that keeps rejecting does not cause a tight re-acquire loop.
+const COLLAB_CONFLICT_REACQUIRE_COOLDOWN_MS = 10_000;
 import {
   Editor,
   EditorContent,
@@ -1031,10 +1040,43 @@ export default function PageEditor({
     socket: HocuspocusProviderWebsocket;
   } | null>(null);
   const [providersReady, setProvidersReady] = useState(false);
+  // Track the live provider instance so provider recreation (e.g. after a lease
+  // re-acquire) re-runs the attach effect. Without this, a recreated provider
+  // stays detached and never sends/receives collab messages.
+  const [remoteProvider, setRemoteProvider] = useState<HocuspocusProvider | null>(
+    null,
+  );
+  const leaseActiveRef = useRef(false);
+  useEffect(() => {
+    leaseActiveRef.current =
+      shouldAcquirePageLease && pageLease.status === "active";
+  }, [pageLease.status, shouldAcquirePageLease]);
+  const pageLeaseReacquireRef = useRef<(() => Promise<void>) | undefined>(
+    undefined,
+  );
+  useEffect(() => {
+    pageLeaseReacquireRef.current = pageLease.reacquire;
+  });
+  const lastCollabConflictRecoveryAtRef = useRef(0);
+  const handleCollabClose = useCallback(({ event }: onCloseParameters) => {
+    // The collab server closed the connection because our editor-session lease
+    // is missing/expired/mismatched. Re-acquire the lease so the provider is
+    // recreated with a fresh editSession instead of retrying a stale one.
+    if (event.code !== EDITOR_SESSION_CONFLICT_CLOSE_CODE) return;
+    if (!leaseActiveRef.current) return;
+
+    const now = Date.now();
+    if (now - lastCollabConflictRecoveryAtRef.current < COLLAB_CONFLICT_REACQUIRE_COOLDOWN_MS) {
+      return;
+    }
+    lastCollabConflictRecoveryAtRef.current = now;
+    void pageLeaseReacquireRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (!canStartCollabProvider) {
       setProvidersReady(false);
+      setRemoteProvider(null);
       setIsLocalSynced(false);
       setIsRemoteSynced(false);
       setHasLocalDocumentContent(false);
@@ -1109,10 +1151,12 @@ export default function PageEditor({
         onAuthenticationFailed: onAuthenticationFailedHandler,
         onStatus: onStatusHandler,
         onSynced: onSyncedHandler,
+        onClose: handleCollabClose,
       });
 
       local.on("synced", onLocalSyncedHandler);
       providersRef.current = { socket, local, remote };
+      setRemoteProvider(remote);
       setProvidersReady(true);
     } else {
       setProvidersReady(true);
@@ -1169,17 +1213,16 @@ export default function PageEditor({
   }, [documentState, isIdle, providersReady, resetIdle, yjsConnectionStatus]);
 
   useEffect(() => {
-    if (!providersReady || !providersRef.current) {
+    if (!remoteProvider) {
       return;
     }
 
-    const remoteProvider = providersRef.current.remote;
     remoteProvider.attach();
 
     return () => {
       remoteProvider.detach();
     };
-  }, [providersReady, pageId]);
+  }, [remoteProvider, pageId]);
 
   const currentUserId = currentUser?.user.id;
   const currentUserName = currentUser?.user.name;
