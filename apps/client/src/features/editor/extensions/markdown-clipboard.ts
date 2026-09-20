@@ -58,11 +58,10 @@ export const MarkdownClipboard = Extension.create({
             const isVscodeMarkdown = language === "markdown";
             const isPlainTextOnly = !html && !vscode && !!text;
 
-            if (!isVscodeMarkdown && !isPlainTextOnly) {
-              return false;
-            }
-
-            if (isPlainTextOnly) {
+            // Plain-text pastes (no HTML payload): respect the
+            // transformPastedText / shiftKey opt-out and bail out for bare URLs,
+            // matching the previous behavior.
+            if (isPlainTextOnly && !isVscodeMarkdown) {
               if ((view as any).input?.shiftKey || !this.options.transformPastedText) {
                 return false;
               }
@@ -76,11 +75,29 @@ export const MarkdownClipboard = Extension.create({
               }
             }
 
+            let body: HTMLElement;
+
+            if (isVscodeMarkdown || isPlainTextOnly) {
+              // Markdown / plain-text source: run through marked so that
+              // `$...$` and `$$...$$` are recognized as math nodes.
+              const parsed = markdownToHtml(text.replace(/\n+$/, ""));
+              body = elementFromString(parsed);
+            } else if (html) {
+              // Rich-text source (web pages, docs apps, ChatGPT, ...): keep the
+              // pasted HTML structure, but lift `$...$` / `$$...$$` out of plain
+              // text into the math node markers the schema understands. Without
+              // this, LaTeX survives as literal text.
+              body = new window.DOMParser()
+                .parseFromString(html, "text/html")
+                .body as HTMLElement;
+              extractMathFromDom(body);
+            } else {
+              return false;
+            }
+
             const { tr } = view.state;
             const { from, to } = view.state.selection;
 
-            const parsed = markdownToHtml(text.replace(/\n+$/, ""));
-            const body = elementFromString(parsed);
             normalizeTableColumnWidths(body);
 
             const contentNodes = DOMParser.fromSchema(
@@ -138,6 +155,72 @@ function elementFromString(value) {
   const wrappedValue = `<body>${value}</body>`;
 
   return new window.DOMParser().parseFromString(wrappedValue, "text/html").body;
+}
+
+// Mirrors the delimiter rules used by the marked math extensions so that
+// pasted rich-text (which never carries the `data-type="mathInline"` markers
+// the schema expects) still lifts `$...$` and `$$...$$` out of plain text.
+const INLINE_MATH_PASTE_RE = /\$(?!\s)([^$]+?)(?<!\s)\$(?!\d)/g;
+const BLOCK_MATH_PASTE_RE = /^\s*\$\$([\s\S]+?)\$\$\s*$/;
+const SKIP_MATH_PASTE_SELECTOR =
+  "code, pre, script, style, [data-type='mathInline'], [data-type='mathBlock']";
+
+function extractMathFromDom(root: HTMLElement): void {
+  // Block math: a block-level element whose entire text content is a
+  // `$$...$$` span becomes a mathBlock node.
+  const blockCandidates = root.querySelectorAll(
+    "p, div, li, h1, h2, h3, h4, h5, h6",
+  );
+  for (const el of Array.from(blockCandidates)) {
+    if (el.closest(SKIP_MATH_PASTE_SELECTOR)) continue;
+    const text = el.textContent || "";
+    const m = text.match(BLOCK_MATH_PASTE_RE);
+    if (!m) continue;
+    const mathDiv = document.createElement("div");
+    mathDiv.setAttribute("data-type", "mathBlock");
+    mathDiv.setAttribute("data-katex", "true");
+    mathDiv.textContent = m[1].trim();
+    el.replaceWith(mathDiv);
+  }
+
+  // Inline math: walk remaining text nodes and split `$...$` runs into
+  // mathInline spans.
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) {
+    textNodes.push(walker.currentNode as Text);
+  }
+
+  for (const node of textNodes) {
+    const parent = node.parentElement;
+    if (!parent) continue;
+    if (parent.closest(SKIP_MATH_PASTE_SELECTOR)) continue;
+    const text = node.textContent || "";
+    if (!text.includes("$")) continue;
+
+    const frag = document.createDocumentFragment();
+    let lastIndex = 0;
+    let matched = false;
+    INLINE_MATH_PASTE_RE.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = INLINE_MATH_PASTE_RE.exec(text)) !== null) {
+      matched = true;
+      if (match.index > lastIndex) {
+        frag.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+      }
+      const span = document.createElement("span");
+      span.setAttribute("data-type", "mathInline");
+      span.setAttribute("data-katex", "true");
+      span.textContent = match[1];
+      frag.appendChild(span);
+      lastIndex = match.index + match[0].length;
+    }
+    if (!matched) continue;
+    if (lastIndex < text.length) {
+      frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+    node.parentNode?.replaceChild(frag, node);
+  }
 }
 
 const DEFAULT_PASTE_COL_WIDTH_PX = 150;

@@ -18,7 +18,10 @@ export interface MathBlockAttributes {
   text: string;
 }
 
-export const inputRegex = /(?:^|\s)((?:\$\$\$)((?:[^$]+))(?:\$\$\$))$/;
+// Standard display math delimiter is `$$...$$`, matching the marked
+// tokenizer in math-block.marked.ts. Previously this required `$$$...$$$`,
+// which is one `$` off and left user-typed `$$...$$` as raw text.
+export const inputRegex = /(?:^|\s)(\$\$([^$]+?)\$\$)$/;
 
 export const MathBlock = Node.create({
   name: "mathBlock",

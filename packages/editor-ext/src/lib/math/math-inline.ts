@@ -18,7 +18,11 @@ export interface MathInlineAttributes {
   text: string;
 }
 
-export const inputRegex = /(?:^|\s)((?:\$\$)((?:[^$]+))(?:\$\$))$/;
+// Standard inline math delimiter is a single `$`, matching the marked
+// tokenizer in math-inline.marked.ts (inlineMathRegex). Previously this
+// required `$$...$$`, which is one `$` off the CommonMark/KaTeX convention
+// and left user-typed `$...$` as raw text.
+export const inputRegex = /(?:^|\s)(\$(?!\s)([^$]+?)(?<!\s)\$)$/;
 
 export const MathInline = Node.create<MathInlineOption>({
   name: "mathInline",
