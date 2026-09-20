@@ -80,7 +80,8 @@ export const MarkdownClipboard = Extension.create({
             if (isVscodeMarkdown || isPlainTextOnly) {
               // Markdown / plain-text source: run through marked so that
               // `$...$` and `$$...$$` are recognized as math nodes.
-              const parsed = markdownToHtml(text.replace(/\n+$/, ""));
+              const parseOptions = isPlainTextOnly && !isVscodeMarkdown ? { breaks: false } : undefined;
+              const parsed = markdownToHtml(text.replace(/\n+$/, ""), parseOptions);
               body = elementFromString(parsed);
             } else if (html) {
               // Rich-text source (web pages, docs apps, ChatGPT, ...): keep the

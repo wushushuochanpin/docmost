@@ -41,6 +41,7 @@ marked.setOptions({ breaks: true });
 
 export function markdownToHtml(
   markdownInput: string,
+  options?: { breaks?: boolean },
 ): string | Promise<string> {
   const YAML_FONT_MATTER_REGEX = /^\s*---[\s\S]*?---\s*/;
 
@@ -48,5 +49,5 @@ export function markdownToHtml(
     .replace(YAML_FONT_MATTER_REGEX, "")
     .trimStart();
 
-  return marked.parse(markdown).toString();
+  return marked.parse(markdown, options ?? {}).toString();
 }
