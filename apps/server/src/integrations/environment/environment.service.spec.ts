@@ -33,7 +33,7 @@ describe('EnvironmentService', () => {
       APP_URL: 'https://book.Xenzify.help/share/demo?x=1',
     });
 
-    expect(service.getConfiguredAppUrl()).toBe('https://book.Xenzify.help');
+    expect(service.getConfiguredAppUrl()).toBe('https://book.xenzify.help');
   });
 
   it('falls back to localhost app url when app url is not configured', () => {
