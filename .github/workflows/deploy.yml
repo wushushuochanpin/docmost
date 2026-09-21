@@ -1,0 +1,41 @@
+name: Deploy to book.superchat.help
+
+# 部署自动化：push 到 main 自动部署；也可手动触发。
+# 经 SSH 到 superchat-dev（43.134.45.185）执行 scripts/deploy-book.sh，
+# 只重建/更新 docmost 应用容器，不动数据库与共享 nginx。部署后带健康检查，失败即任务标红。
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: docmost-book-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: docmost-linux-checks
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy on superchat-dev
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DOCMOST_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          cat scripts/deploy-book.sh | ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+            root@43.134.45.185 'bash -s'
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "::error::docmost 部署失败，请检查服务器 /root/coderepository/docmost 与容器状态"
