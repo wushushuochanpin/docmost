@@ -58,6 +58,7 @@ import {
   PageNodeType,
 } from '@docmost/db/repos/page/page-node-meta.repo';
 import { BatchMovePageDto } from '../dto/batch-move-page.dto';
+import { DEFAULT_PAGE_TITLE_LABELS } from '../page.constants';
 import { sql } from 'kysely';
 import { SpaceSidebarCategoryRepo } from '@docmost/db/repos/space/space-sidebar-category.repo';
 import { EditorSessionService } from '../../editor-session/editor-session.service';
@@ -207,9 +208,20 @@ export class PageService {
       ydoc = createYdocFromJson(prosemirrorJson);
     }
 
+    const hasTitle = Boolean(createPageDto.title?.trim());
+    let title: string | undefined = createPageDto.title;
+    if (!hasTitle) {
+      const now = new Date();
+      const seq = await this.nextDefaultTitleSeq(
+        createPageDto.spaceId,
+        now,
+      );
+      title = this.buildDefaultPageTitle(nodeType, seq, now);
+    }
+
     const createdPage = await this.pageRepo.insertPage({
       slugId: generateSlugId(),
-      title: createPageDto.title,
+      title,
       position: await this.nextPagePosition(
         createPageDto.spaceId,
         parentPageId,
@@ -1908,6 +1920,33 @@ export class PageService {
     }
 
     return createPageDto.parentPageId ? 'file' : 'folder';
+  }
+
+  private async nextDefaultTitleSeq(
+    spaceId: string,
+    now: Date,
+  ): Promise<number> {
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+
+    const { count } = await this.db
+      .selectFrom('pages')
+      .select(this.db.fn.countAll().as('count'))
+      .where('spaceId', '=', spaceId)
+      .where('createdAt', '>=', dayStart)
+      .where('createdAt', '<', dayEnd)
+      .executeTakeFirstOrThrow();
+
+    return Number(count) + 1;
+  }
+
+  private buildDefaultPageTitle(
+    nodeType: PageNodeType,
+    seq: number,
+    now: Date,
+  ): string {
+    const datePart = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}`;
+    return `${datePart}.${seq} ·${DEFAULT_PAGE_TITLE_LABELS[nodeType]}`;
   }
 
   private async assertValidMoveTargetParent(

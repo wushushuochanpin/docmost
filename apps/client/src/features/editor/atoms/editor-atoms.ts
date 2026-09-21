@@ -27,6 +27,13 @@ export type PageEditorSessionStatus =
 
 export const titleEditorAtom = atom<Editor | null>(null);
 
+/**
+ * Page id whose title editor should be focused with the whole title selected
+ * right after mount. Set by the tree mutation right before navigating to a
+ * newly created page so the user can immediately type over the default name.
+ */
+export const pendingTitleFocusPageIdAtom = atom<string | null>(null);
+
 export const readOnlyEditorAtom = atom<Editor | null>(null);
 
 export const yjsConnectionStatusAtom = atom<string>("");

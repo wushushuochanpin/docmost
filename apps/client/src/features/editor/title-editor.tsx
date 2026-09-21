@@ -13,6 +13,7 @@ import {
   currentPageEditModeAtom,
   pageEditorAtom,
   pageEditorSessionStatusAtom,
+  pendingTitleFocusPageIdAtom,
   titleEditorAtom,
 } from "@/features/editor/atoms/editor-atoms";
 import {
@@ -307,6 +308,31 @@ export function TitleEditor({
       },
     },
   });
+
+  const pendingTitleFocusPageId = useAtomValue(pendingTitleFocusPageIdAtom);
+
+  // Newly created pages: focus the title and select the whole (default) title
+  // so typing replaces it right away. The pending id is cleared after firing.
+  useEffect(() => {
+    if (!titleEditor || titleEditor.isDestroyed) return;
+    if (pendingTitleFocusPageId !== pageId) return;
+
+    // Not editable: consume the pending flag without stealing focus, so it
+    // does not fire later when the page becomes editable.
+    if (!effectiveEditable) {
+      store.set(pendingTitleFocusPageIdAtom as any, null);
+      return;
+    }
+
+    const raf = requestAnimationFrame(() => {
+      if (titleEditor.isDestroyed) return;
+      titleEditor.commands.selectAll();
+      titleEditor.commands.focus();
+      store.set(pendingTitleFocusPageIdAtom as any, null);
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [titleEditor, pendingTitleFocusPageId, pageId, effectiveEditable, store]);
 
   useEffect(() => {
     isMountedRef.current = true;

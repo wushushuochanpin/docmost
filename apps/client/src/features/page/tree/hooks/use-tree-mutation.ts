@@ -31,6 +31,7 @@ import {
 import {
   pageEditorEditSessionAtom,
   pageEditorSessionStatusAtom,
+  pendingTitleFocusPageIdAtom,
 } from "@/features/editor/atoms/editor-atoms.ts";
 import { currentRoutePageAtom } from "@/features/page/atoms/current-route-page-atom.ts";
 import { isEditorSessionEnabled } from "@/lib/config";
@@ -202,10 +203,14 @@ export function useTreeMutation(
         throw new Error("Failed to create page");
       }
 
+      // Focus the title editor with the whole (default) title selected once the
+      // new page mounts, so the user can type over the default name immediately.
+      store.set(pendingTitleFocusPageIdAtom as any, createdPage.id);
+
       const newNode: SpaceTreeNode = {
         id: createdPage.id,
         slugId: createdPage.slugId,
-        name: "",
+        name: createdPage.title || "",
         position: createdPage.position,
         spaceId: createdPage.spaceId,
         parentPageId: createdPage.parentPageId,
