@@ -1,9 +1,13 @@
 // adapted from: https://github.com/aguingand/tiptap-markdown/blob/main/src/extensions/tiptap/clipboard.js - MIT
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
-import { DOMParser, DOMSerializer, Fragment, Slice } from "@tiptap/pm/model";
+import { DOMParser, DOMSerializer, Fragment, Node, Slice } from "@tiptap/pm/model";
 import { find } from "linkifyjs";
 import { markdownToHtml, htmlToMarkdown } from "@docmost/editor-ext";
+import {
+  normalizeMarkdownClipboard,
+  tightenListBlankLines,
+} from "../utils/clipboard-format";
 
 export const MarkdownClipboard = Extension.create({
   name: "markdownClipboard",
@@ -80,8 +84,15 @@ export const MarkdownClipboard = Extension.create({
             if (isVscodeMarkdown || isPlainTextOnly) {
               // Markdown / plain-text source: run through marked so that
               // `$...$` and `$$...$$` are recognized as math nodes.
+              // normalizeMarkdownClipboard folds runs of blank lines (which
+              // web/chat/Gemini paste payloads love to emit) down to a single
+              // paragraph break, so pastes don't come in with extra blank
+              // lines between paragraphs.
               const parseOptions = isPlainTextOnly && !isVscodeMarkdown ? { breaks: false } : undefined;
-              const parsed = markdownToHtml(text.replace(/\n+$/, ""), parseOptions);
+              const parsed = markdownToHtml(
+                tightenListBlankLines(normalizeMarkdownClipboard(text)),
+                parseOptions,
+              );
               body = elementFromString(parsed);
             } else if (html) {
               // Rich-text source (web pages, docs apps, ChatGPT, ...): keep the
@@ -91,7 +102,24 @@ export const MarkdownClipboard = Extension.create({
               body = new window.DOMParser()
                 .parseFromString(html, "text/html")
                 .body as HTMLElement;
-              extractMathFromDom(body);
+
+              // Some AI chat products (Gemini, etc.) ship their "Copy" button's
+              // text/html payload as a <pre> (or a white-space:pre container)
+              // wrapping the Markdown source, while text/plain carries the same
+              // Markdown. Detect this "pseudo rich text" — no block-level rich-text
+              // tags at all — and fall back to parsing text/plain through marked,
+              // so the article isn't swallowed into a single codeBlock node by the
+              // <pre> -> codeBlock parse rule.
+              if (looksLikeMarkdownSourceHtml(body) && text) {
+                const parsed = markdownToHtml(
+                  tightenListBlankLines(normalizeMarkdownClipboard(text)),
+                  { breaks: false },
+                );
+                body = elementFromString(parsed);
+              } else {
+                extractMathFromDom(body);
+                cleanupPastedHtml(body);
+              }
             } else {
               return false;
             }
@@ -114,36 +142,28 @@ export const MarkdownClipboard = Extension.create({
             view.dispatch(tr);
             return true;
           },
-          // Strip trailing whitespace-only paragraphs from pasted content.
-          // Terminals (GNOME Terminal, etc.) often include trailing
-          // whitespace in their HTML clipboard data, which ProseMirror
-          // parses as an extra paragraph. Inside a list item this creates
-          // an orphan empty line that breaks the list structure.
+          // Drop every whitespace-only paragraph from pasted content — both
+          // trailing (terminal clipboard artifacts) and interstitial (marked
+          // occasionally emits <p></p> around lists / headings). Blank lines
+          // between paragraphs are block spacing, not empty paragraphs; the
+          // user can add real blank lines manually if they want them.
           transformPasted: (slice) => {
-            let { content, openStart, openEnd } = slice;
+            const children: Node[] = [];
+            let removed = false;
 
-            // Remove trailing paragraphs that contain only whitespace
-            while (content.childCount > 1) {
-              const lastChild = content.lastChild;
+            slice.content.forEach((node) => {
               if (
-                lastChild?.type.name === "paragraph" &&
-                lastChild.textContent.trim() === ""
+                node.type.name === "paragraph" &&
+                node.textContent.trim() === ""
               ) {
-                const children = [];
-                for (let i = 0; i < content.childCount - 1; i++) {
-                  children.push(content.child(i));
-                }
-                content = Fragment.from(children);
-              } else {
-                break;
+                removed = true;
+                return;
               }
-            }
+              children.push(node);
+            });
 
-            if (content !== slice.content) {
-              return new Slice(content, openStart, Math.max(openEnd, 1));
-            }
-
-            return slice;
+            if (!removed || children.length === 0) return slice;
+            return new Slice(Fragment.from(children), slice.openStart, slice.openEnd);
           },
         },
       }),
@@ -166,8 +186,63 @@ const BLOCK_MATH_PASTE_RE = /^\s*\$\$([\s\S]+?)\$\$\s*$/;
 const SKIP_MATH_PASTE_SELECTOR =
   "code, pre, script, style, [data-type='mathInline'], [data-type='mathBlock']";
 
-function extractMathFromDom(root: HTMLElement): void {
-  // Block math: a block-level element whose entire text content is a
+// Block-level tags that indicate a real rich-text HTML payload. If none of
+// these appear in the pasted html, it is almost certainly a <pre> or
+// white-space:pre container wrapping plain text / Markdown source (e.g.
+// Gemini's Copy button) rather than a structured rich-text fragment. In
+// that case the text/plain payload is the authoritative content and
+// should be run through marked instead of being parsed as HTML (which
+// would map the <pre> into a single codeBlock node).
+const RICH_TEXT_BLOCK_SELECTOR =
+  "h1, h2, h3, h4, h5, h6, p, ul, ol, table, blockquote, dl";
+
+export function looksLikeMarkdownSourceHtml(body: HTMLElement): boolean {
+  return !body.querySelector(RICH_TEXT_BLOCK_SELECTOR);
+}
+
+// AI chat products (Gemini, ChatGPT, ...) paste HTML that is structurally
+// fine but visually noisy: loose lists (<li> wrapping <p>), empty paragraphs,
+// and trailing <br>s that ProseMirror renders as big extra gaps. Strip those
+// noise nodes away. Math markers (data-type=mathInline/mathBlock) and real
+// block content (images, tables, nested lists) are preserved.
+export function cleanupPastedHtml(root: HTMLElement): void {
+  // 1. Unwrap every <p> inside <li> — loose lists become tight lists.
+  root.querySelectorAll("li p").forEach((p) => {
+    while (p.firstChild) p.parentNode!.insertBefore(p.firstChild, p);
+    p.remove();
+  });
+
+  // 2. Drop empty paragraphs / divs that only hold whitespace.
+  root.querySelectorAll("p, div").forEach((el) => {
+    if (el.closest(SKIP_MATH_PASTE_SELECTOR)) return;
+    const hasBlockChild = el.querySelector(
+      "img, table, ul, ol, blockquote, pre, h1, h2, h3, h4, h5, h6, [data-type]",
+    );
+    if (!hasBlockChild && (el.textContent || "").trim() === "") {
+      el.remove();
+    }
+  });
+
+  // 3. Drop <br> that sit at the end of a block element — they produce
+  // phantom trailing lines.
+  root.querySelectorAll("br").forEach((br) => {
+    let parent: ParentNode | null = br.parentNode;
+    while (parent && parent !== root && parent.childNodes.length === 1) {
+      parent = parent.parentNode;
+    }
+    if (!parent) return;
+    const blockParent = parent instanceof HTMLElement ? parent : null;
+    if (
+      blockParent &&
+      /^(P|DIV|LI|H[1-6]|BLOCKQUOTE)$/i.test(blockParent.tagName) &&
+      br === blockParent.lastChild
+    ) {
+      br.remove();
+    }
+  });
+}
+
+function extractMathFromDom(root: HTMLElement): void {  // Block math: a block-level element whose entire text content is a
   // `$$...$$` span becomes a mathBlock node.
   const blockCandidates = root.querySelectorAll(
     "p, div, li, h1, h2, h3, h4, h5, h6",

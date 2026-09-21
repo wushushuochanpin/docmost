@@ -84,6 +84,61 @@ export function normalizeMarkdownClipboard(value: string): string {
   return normalized.join("\n");
 }
 
+const LIST_ITEM_RE = /^\s*(?:[-*+]|\d+[.)])\s+/;
+const INDENTED_CONTINUATION_RE = /^\s+\S/;
+
+// Gemini / ChatGPT paste payloads often put a blank line between ordered
+// list items. CommonMark turns that into a *loose* list (every <li> wraps a
+// <p>), which renders with a big extra gap between items. Drop blank lines
+// that sit between consecutive list items so marked produces a tight list.
+// Code-fence contents are preserved verbatim.
+export function tightenListBlankLines(value: string): string {
+  const lines = value.split("\n");
+  const out: string[] = [];
+  let fenceChar: "`" | "~" | null = null;
+
+  const lastMeaningful = (): string | undefined => {
+    for (let i = out.length - 1; i >= 0; i--) {
+      if (out[i].trim() !== "") return out[i];
+    }
+    return undefined;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})/);
+
+    if (fenceMatch) {
+      out.push(line);
+      fenceChar = fenceChar ? null : (fenceMatch[1][0] as "`" | "~");
+      continue;
+    }
+
+    if (fenceChar) {
+      out.push(line);
+      continue;
+    }
+
+    if (line.trim() === "") {
+      const next = lines[i + 1] || "";
+      const prev = lastMeaningful();
+      // Blank line between two list items (or between a list item and the
+      // next item via a continuation line) → drop it to keep the list tight.
+      if (
+        LIST_ITEM_RE.test(next) &&
+        prev !== undefined &&
+        (LIST_ITEM_RE.test(prev) || INDENTED_CONTINUATION_RE.test(prev))
+      ) {
+        continue;
+      }
+    }
+
+    out.push(line);
+  }
+
+  return out.join("\n");
+}
+
 function getFenceForContent(content: string): string {
   const longestBacktickRun = Math.max(
     0,
