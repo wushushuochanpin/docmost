@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { useShareDocumentTitle } from "@/features/share/hooks/use-share-document-title.ts";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
+import { getAppName } from "@/lib/config.ts";
 import classes from "./share-page-state.module.css";
 
 export default function ShareNotFound() {
   const { t } = useShareTranslation();
-  useShareDocumentTitle(`${t("404 page not found")} - Xenzify`);
+  useShareDocumentTitle(`${t("404 page not found")} - ${getAppName()}`);
 
   return (
     <div className={classes.centeredViewport}>

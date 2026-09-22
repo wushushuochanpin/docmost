@@ -125,6 +125,14 @@ export class TrashCleanupService {
           .where('id', 'in', pageIds)
           .where('deletedAt', 'is not', null)
           .execute();
+
+        // Cascade-delete public shares bound to the permanently removed
+        // pages so the sharing list never shows zombie links.
+        await this.db
+          .deleteFrom('shares')
+          .where('workspaceId', '=', workspaceId)
+          .where('pageId', 'in', pageIds)
+          .execute();
       }
     } catch (error) {
       // Log but don't throw - pages might have been deleted by another node

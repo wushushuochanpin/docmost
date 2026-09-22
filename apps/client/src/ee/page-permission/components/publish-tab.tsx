@@ -70,18 +70,29 @@ export function PublishTab({
 
   const handleChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.currentTarget.checked;
+    const previousValue = isPagePublic;
 
     if (value) {
-      createShareMutation.mutateAsync({
-        pageId: pageId,
-        includeSubPages: true,
-        searchIndexing: false,
-      });
       setIsPagePublic(value);
+      try {
+        await createShareMutation.mutateAsync({
+          pageId: pageId,
+          includeSubPages: true,
+          searchIndexing: false,
+        });
+      } catch {
+        // mutation onError already surfaces the failure; restore the toggle
+        // so the UI does not drift from the server state.
+        setIsPagePublic(previousValue);
+      }
     } else {
       if (share && share.id) {
-        deleteShareMutation.mutateAsync(share.id);
         setIsPagePublic(value);
+        try {
+          await deleteShareMutation.mutateAsync(share.id);
+        } catch {
+          setIsPagePublic(previousValue);
+        }
       }
     }
   };

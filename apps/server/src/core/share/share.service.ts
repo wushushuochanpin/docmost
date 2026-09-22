@@ -437,7 +437,11 @@ export class ShareService {
       };
     }
 
-    page.content = await this.updatePublicAttachments(page);
+    page.content = await this.updatePublicAttachments(
+      page,
+      share.id,
+      share.securityVersion ?? 1,
+    );
     const rendered = this.shareStaticRendererService.render(page.content);
     const hasStaticRenderableOutput = canUseStaticShareRender(rendered);
 
@@ -482,7 +486,11 @@ export class ShareService {
       throw this.shareNotFoundException();
     }
 
-    page.content = await this.updatePublicAttachments(page);
+    page.content = await this.updatePublicAttachments(
+      page,
+      share.id,
+      share.securityVersion ?? 1,
+    );
     const segment = this.shareStaticRendererService.getSegment(
       page.content,
       dto.cursor,
@@ -787,6 +795,8 @@ export class ShareService {
           item.content,
           item.sourcePageId,
           workspaceId,
+          share.id,
+          share.securityVersion ?? 1,
         );
         return { ...item, content: doc?.toJSON() ?? item.content };
       }),
@@ -833,11 +843,17 @@ export class ShareService {
     return !workspaceDisabled && !spaceDisabled;
   }
 
-  async updatePublicAttachments(page: Page): Promise<any> {
+  async updatePublicAttachments(
+    page: Page,
+    shareId?: string,
+    securityVersion?: number,
+  ): Promise<any> {
     const doc = await this.prepareContentForShare(
       page.content,
       page.id,
       page.workspaceId,
+      shareId,
+      securityVersion,
     );
     return doc?.toJSON() ?? page.content;
   }
@@ -867,6 +883,8 @@ export class ShareService {
     content: unknown,
     attachmentOwnerPageId: string,
     workspaceId: string,
+    shareId?: string,
+    securityVersion?: number,
   ): Promise<Node | null> {
     const pmJson = getProsemirrorContent(content);
     const attachmentIds = getAttachmentIds(pmJson);
@@ -878,6 +896,8 @@ export class ShareService {
           attachmentId,
           pageId: attachmentOwnerPageId,
           workspaceId,
+          shareId,
+          securityVersion,
         });
         tokenMap.set(attachmentId, token);
       }),

@@ -2373,6 +2373,16 @@ export class PageService {
         .where('workspaceId', '=', workspaceId)
         .where('id', 'in', pageIds)
         .execute();
+
+      // Cascade-delete public shares bound to the removed pages so the
+      // sharing list never shows zombie links and a restored/repurposed
+      // page id cannot resurrect an old share.
+      await this.db
+        .deleteFrom('shares')
+        .where('workspaceId', '=', workspaceId)
+        .where('pageId', 'in', pageIds)
+        .execute();
+
       this.eventEmitter.emit(EventName.PAGE_DELETED, {
         pageIds: pageIds,
         workspaceId,

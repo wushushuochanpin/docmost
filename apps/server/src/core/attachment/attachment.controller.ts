@@ -48,6 +48,8 @@ import {
 import WorkspaceAbilityFactory from '../casl/abilities/workspace-ability.factory';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { AttachmentRepo } from '@docmost/db/repos/attachment/attachment.repo';
+import { ShareRepo } from '@docmost/db/repos/share/share.repo';
+import { ShareAccessMode } from '../share/share.constants';
 import { validate as isValidUUID } from 'uuid';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 import { TokenService } from '../auth/services/token.service';
@@ -77,6 +79,7 @@ export class AttachmentController {
     private readonly spaceAbility: SpaceAbilityFactory,
     private readonly pageRepo: PageRepo,
     private readonly attachmentRepo: AttachmentRepo,
+    private readonly shareRepo: ShareRepo,
     private readonly environmentService: EnvironmentService,
     private readonly tokenService: TokenService,
     private readonly pageAccessService: PageAccessService,
@@ -307,6 +310,24 @@ export class AttachmentController {
       jwtPayload.pageId !== attachment.pageId
     ) {
       throw new NotFoundException('File not found');
+    }
+
+    // Revoke public attachment access as soon as the originating share is
+    // deleted, regenerated (securityVersion bump), or expired. Tokens minted
+    // before this check existed carry no shareId and are tolerated only for
+    // their short remaining lifetime.
+    if (jwtPayload.shareId) {
+      const share = await this.shareRepo.findById(jwtPayload.shareId, {
+        workspaceId: workspace.id,
+      });
+      if (
+        !share ||
+        share.securityVersion !== jwtPayload.securityVersion ||
+        (share.accessMode === ShareAccessMode.PasswordExpiring &&
+          (!share.expiresAt || share.expiresAt.getTime() <= Date.now()))
+      ) {
+        throw new NotFoundException('File not found');
+      }
     }
 
     try {

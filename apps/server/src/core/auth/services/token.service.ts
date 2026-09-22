@@ -78,13 +78,18 @@ export class TokenService {
     attachmentId: string;
     pageId: string;
     workspaceId: string;
+    shareId?: string;
+    securityVersion?: number;
   }): Promise<string> {
-    const { attachmentId, pageId, workspaceId } = opts;
+    const { attachmentId, pageId, workspaceId, shareId, securityVersion } =
+      opts;
     const payload: JwtAttachmentPayload = {
       attachmentId: attachmentId,
       pageId: pageId,
       workspaceId: workspaceId,
       type: JwtType.ATTACHMENT,
+      ...(shareId ? { shareId } : {}),
+      ...(securityVersion != null ? { securityVersion } : {}),
     };
     return this.jwtService.sign(payload, { expiresIn: '1h' });
   }

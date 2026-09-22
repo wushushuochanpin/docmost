@@ -35,6 +35,12 @@ export type JwtAttachmentPayload = {
   pageId: string;
   workspaceId: string;
   type: 'attachment';
+  /** Present when the token was minted for a public share viewer. Used to
+   *  revoke access as soon as the underlying share is deleted, regenerated,
+   *  or expired. Legacy tokens without this field are tolerated for their
+   *  short remaining lifetime. */
+  shareId?: string;
+  securityVersion?: number;
 };
 
 export type JwtShareAccessPayload = {
