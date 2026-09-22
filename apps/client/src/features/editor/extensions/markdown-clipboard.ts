@@ -1,13 +1,14 @@
 // adapted from: https://github.com/aguingand/tiptap-markdown/blob/main/src/extensions/tiptap/clipboard.js - MIT
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
-import { DOMParser, DOMSerializer, Fragment, Node, Slice } from "@tiptap/pm/model";
+import { DOMParser, DOMSerializer } from "@tiptap/pm/model";
 import { find } from "linkifyjs";
 import { markdownToHtml, htmlToMarkdown } from "@docmost/editor-ext";
 import {
   normalizeMarkdownClipboard,
   tightenListBlankLines,
 } from "../utils/clipboard-format";
+import { normalizePastedSlice } from "../utils/pasted-slice-format";
 
 export const MarkdownClipboard = Extension.create({
   name: "markdownClipboard",
@@ -118,7 +119,6 @@ export const MarkdownClipboard = Extension.create({
                 body = elementFromString(parsed);
               } else {
                 extractMathFromDom(body);
-                cleanupPastedHtml(body);
               }
             } else {
               return false;
@@ -135,36 +135,28 @@ export const MarkdownClipboard = Extension.create({
               preserveWhitespace: true,
             });
 
-            tr.replaceRange(from, to, contentNodes);
+            // Strip phantom blank lines (empty paragraphs, consecutive
+            // <br>, edge line breaks) from the parsed slice before it lands
+            // in the document. Shared with the default paste path
+            // (transformPasted), idempotent, and confined to the pasted
+            // fragment — it never touches manual blank lines afterwards.
+            const cleanedSlice = normalizePastedSlice(
+              contentNodes,
+              this.editor.schema,
+            );
+
+            tr.replaceRange(from, to, cleanedSlice);
             const insertEnd = tr.mapping.map(from, 1);
             tr.setSelection(TextSelection.near(tr.doc.resolve(Math.max(from, insertEnd - 2)), -1));
             tr.setMeta('paste', true)
             view.dispatch(tr);
             return true;
           },
-          // Drop every whitespace-only paragraph from pasted content — both
-          // trailing (terminal clipboard artifacts) and interstitial (marked
-          // occasionally emits <p></p> around lists / headings). Blank lines
-          // between paragraphs are block spacing, not empty paragraphs; the
-          // user can add real blank lines manually if they want them.
-          transformPasted: (slice) => {
-            const children: Node[] = [];
-            let removed = false;
-
-            slice.content.forEach((node) => {
-              if (
-                node.type.name === "paragraph" &&
-                node.textContent.trim() === ""
-              ) {
-                removed = true;
-                return;
-              }
-              children.push(node);
-            });
-
-            if (!removed || children.length === 0) return slice;
-            return new Slice(Fragment.from(children), slice.openStart, slice.openEnd);
-          },
+          // Default paste path (plain-text opt-out, code-block cursor, bare
+          // URLs, shift+paste, ...): run the exact same cleanup the custom
+          // handlePaste runs, so every paste entry point gets the same
+          // normalized slice.
+          transformPasted: (slice) => normalizePastedSlice(slice, this.editor.schema),
         },
       }),
     ];
@@ -198,48 +190,6 @@ const RICH_TEXT_BLOCK_SELECTOR =
 
 export function looksLikeMarkdownSourceHtml(body: HTMLElement): boolean {
   return !body.querySelector(RICH_TEXT_BLOCK_SELECTOR);
-}
-
-// AI chat products (Gemini, ChatGPT, ...) paste HTML that is structurally
-// fine but visually noisy: loose lists (<li> wrapping <p>), empty paragraphs,
-// and trailing <br>s that ProseMirror renders as big extra gaps. Strip those
-// noise nodes away. Math markers (data-type=mathInline/mathBlock) and real
-// block content (images, tables, nested lists) are preserved.
-export function cleanupPastedHtml(root: HTMLElement): void {
-  // 1. Unwrap every <p> inside <li> — loose lists become tight lists.
-  root.querySelectorAll("li p").forEach((p) => {
-    while (p.firstChild) p.parentNode!.insertBefore(p.firstChild, p);
-    p.remove();
-  });
-
-  // 2. Drop empty paragraphs / divs that only hold whitespace.
-  root.querySelectorAll("p, div").forEach((el) => {
-    if (el.closest(SKIP_MATH_PASTE_SELECTOR)) return;
-    const hasBlockChild = el.querySelector(
-      "img, table, ul, ol, blockquote, pre, h1, h2, h3, h4, h5, h6, [data-type]",
-    );
-    if (!hasBlockChild && (el.textContent || "").trim() === "") {
-      el.remove();
-    }
-  });
-
-  // 3. Drop <br> that sit at the end of a block element — they produce
-  // phantom trailing lines.
-  root.querySelectorAll("br").forEach((br) => {
-    let parent: ParentNode | null = br.parentNode;
-    while (parent && parent !== root && parent.childNodes.length === 1) {
-      parent = parent.parentNode;
-    }
-    if (!parent) return;
-    const blockParent = parent instanceof HTMLElement ? parent : null;
-    if (
-      blockParent &&
-      /^(P|DIV|LI|H[1-6]|BLOCKQUOTE)$/i.test(blockParent.tagName) &&
-      br === blockParent.lastChild
-    ) {
-      br.remove();
-    }
-  });
 }
 
 function extractMathFromDom(root: HTMLElement): void {  // Block math: a block-level element whose entire text content is a

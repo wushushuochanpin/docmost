@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  cleanupPastedHtml,
-  looksLikeMarkdownSourceHtml,
-} from "./markdown-clipboard";
+import { looksLikeMarkdownSourceHtml } from "./markdown-clipboard";
 
 function parseBody(html: string): HTMLElement {
   return new DOMParser().parseFromString(html, "text/html").body;
@@ -44,51 +41,5 @@ describe("looksLikeMarkdownSourceHtml", () => {
       "<table><tr><td>a</td></tr></table><blockquote>quote</blockquote>",
     );
     expect(looksLikeMarkdownSourceHtml(body)).toBe(false);
-  });
-});
-
-describe("cleanupPastedHtml", () => {
-  it("unwraps every <p> inside <li> so lists render tight", () => {
-    const body = parseBody(
-      "<ol><li><p>first</p></li><li><p>second with <strong>bold</strong></p></li></ol>",
-    );
-    cleanupPastedHtml(body);
-    expect(body.querySelector("li p")).toBeNull();
-    expect(body.querySelectorAll("li").length).toBe(2);
-    expect(body.querySelector("li strong")?.textContent).toBe("bold");
-  });
-
-  it("drops empty paragraphs and divs", () => {
-    const body = parseBody(
-      "<p>real</p><p>   </p><div>\n</div><p>after</p>",
-    );
-    cleanupPastedHtml(body);
-    const ps = Array.from(body.querySelectorAll("p")).map((p) => p.textContent);
-    expect(ps).toEqual(["real", "after"]);
-  });
-
-  it("drops trailing <br> inside a block", () => {
-    const body = parseBody("<p>hello<br></p>");
-    cleanupPastedHtml(body);
-    expect(body.querySelector("br")).toBeNull();
-    expect(body.textContent).toBe("hello");
-  });
-
-  it("keeps nested lists intact", () => {
-    const body = parseBody(
-      "<ol><li><p>intro</p><ul><li><p>nested</p></li></ul></li></ol>",
-    );
-    cleanupPastedHtml(body);
-    expect(body.querySelectorAll("li").length).toBe(2);
-    expect(body.querySelector("li p")).toBeNull();
-  });
-
-  it("preserves math markers", () => {
-    const body = parseBody(
-      '<div data-type="mathBlock" data-katex="true">x^2</div><p>text <span data-type="mathInline" data-katex="true">y</span></p>',
-    );
-    cleanupPastedHtml(body);
-    expect(body.querySelector('[data-type="mathBlock"]')).not.toBeNull();
-    expect(body.querySelector('[data-type="mathInline"]')).not.toBeNull();
   });
 });
