@@ -3,6 +3,7 @@ import {
   formatCodeBlockAsMarkdown,
   normalizeMarkdownClipboard,
   normalizePlainTextClipboard,
+  repairMarkdownTables,
   tightenListBlankLines,
 } from "./clipboard-format";
 
@@ -133,5 +134,133 @@ describe("tightenListBlankLines", () => {
         "3. three",
       ].join("\n"),
     );
+  });
+});
+
+describe("repairMarkdownTables", () => {
+  it("drops the blank line between the delimiter row and the body", () => {
+    const markdown = [
+      "| A | B | C |",
+      "| --- | --- | --- |",
+      "",
+      "| 1 | 2 | 3 |",
+      "| 4 | 5 | 6 |",
+    ].join("\n");
+
+    expect(repairMarkdownTables(markdown)).toBe(
+      [
+        "| A | B | C |",
+        "| --- | --- | --- |",
+        "| 1 | 2 | 3 |",
+        "| 4 | 5 | 6 |",
+      ].join("\n"),
+    );
+  });
+
+  it("drops blank lines between body rows (Gemini loose tables)", () => {
+    const markdown = [
+      "| 维度组合 | 全天指标：健康 (≥88%) |",
+      "| --- | --- |",
+      "",
+      "| 时段指标：健康 (≥85%) | 🟢 正常态 |",
+      "",
+      "| 时段指标：偏低 (80%∼85%) | 🟡 黄色预警 |",
+    ].join("\n");
+
+    expect(repairMarkdownTables(markdown)).toBe(
+      [
+        "| 维度组合 | 全天指标：健康 (≥88%) |",
+        "| --- | --- |",
+        "| 时段指标：健康 (≥85%) | 🟢 正常态 |",
+        "| 时段指标：偏低 (80%∼85%) | 🟡 黄色预警 |",
+      ].join("\n"),
+    );
+  });
+
+  it("merges pipe-less continuation lines back into the preceding row (multi-line cells)", () => {
+    const markdown = [
+      "| 维度组合 | 健康 (≥88%) | 偏低 (83%∼88%) | 崩塌 (<83%) |",
+      "| --- | --- | --- | --- |",
+      "| 时段健康 (≥85%) | 🟢 正常态 | 🟡 黄色预警 | 🟠 橙色预警 |",
+      "（各指标均达标） | （全天拖后腿） | （全天严重失守） |",
+    ].join("\n");
+
+    expect(repairMarkdownTables(markdown)).toBe(
+      [
+        "| 维度组合 | 健康 (≥88%) | 偏低 (83%∼88%) | 崩塌 (<83%) |",
+        "| --- | --- | --- | --- |",
+        "| 时段健康 (≥85%) | 🟢 正常态<br>（各指标均达标） | 🟡 黄色预警<br>（全天拖后腿） | 🟠 橙色预警<br>（全天严重失守） |",
+      ].join("\n"),
+    );
+  });
+
+  it("merges continuation lines when there are blank lines between them", () => {
+    const markdown = [
+      "| A | B | C |",
+      "| --- | --- | --- |",
+      "| row1 | title1 | title2 |",
+      "",
+      "desc1 | desc2 |",
+      "",
+      "| row2 | title3 | title4 |",
+    ].join("\n");
+
+    expect(repairMarkdownTables(markdown)).toBe(
+      [
+        "| A | B | C |",
+        "| --- | --- | --- |",
+        "| row1 | title1<br>desc1 | title2<br>desc2 |",
+        "| row2 | title3 | title4 |",
+      ].join("\n"),
+    );
+  });
+
+  it("leaves already-tight WorkBuddy-style tables untouched", () => {
+    const markdown = [
+      "| 层面 | 叫法 | 出处 |",
+      "| --- | --- | --- |",
+      "| 圆角做法 | 部分圆角 | SwiftUI |",
+      "| 画线方式 | 开放路径 | 描边 |",
+    ].join("\n");
+    expect(repairMarkdownTables(markdown)).toBe(markdown);
+  });
+
+  it("keeps the blank line that separates the table from following text", () => {
+    const markdown = [
+      "| A | B |",
+      "| --- | --- |",
+      "| 1 | 2 |",
+      "",
+      "Tail paragraph",
+      "",
+      "More text",
+    ].join("\n");
+
+    expect(repairMarkdownTables(markdown)).toBe(markdown);
+  });
+
+  it("preserves blank lines inside fenced code blocks", () => {
+    const markdown = [
+      "| A | B |",
+      "| --- | --- |",
+      "",
+      "```ts",
+      "const a = 1;",
+      "",
+      "",
+      "const b = 2;",
+      "```",
+      "",
+      "tail paragraph",
+    ].join("\n");
+
+    expect(repairMarkdownTables(markdown)).toBe(markdown);
+  });
+
+  it("does not treat non-table content as a table", () => {
+    const markdown = ["Intro", "", "not | a | table", "", "---", "", "tail"].join(
+      "\n",
+    );
+    expect(repairMarkdownTables(markdown)).toBe(markdown);
   });
 });

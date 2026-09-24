@@ -6,6 +6,7 @@ import { find } from "linkifyjs";
 import { markdownToHtml, htmlToMarkdown } from "@docmost/editor-ext";
 import {
   normalizeMarkdownClipboard,
+  repairMarkdownTables,
   tightenListBlankLines,
 } from "../utils/clipboard-format";
 import { normalizePastedSlice } from "../utils/pasted-slice-format";
@@ -91,7 +92,9 @@ export const MarkdownClipboard = Extension.create({
               // lines between paragraphs.
               const parseOptions = isPlainTextOnly && !isVscodeMarkdown ? { breaks: false } : undefined;
               const parsed = markdownToHtml(
-                tightenListBlankLines(normalizeMarkdownClipboard(text)),
+                repairMarkdownTables(
+                  tightenListBlankLines(normalizeMarkdownClipboard(text)),
+                ),
                 parseOptions,
               );
               body = elementFromString(parsed);
@@ -113,7 +116,9 @@ export const MarkdownClipboard = Extension.create({
               // <pre> -> codeBlock parse rule.
               if (looksLikeMarkdownSourceHtml(body) && text) {
                 const parsed = markdownToHtml(
-                  tightenListBlankLines(normalizeMarkdownClipboard(text)),
+                  repairMarkdownTables(
+                    tightenListBlankLines(normalizeMarkdownClipboard(text)),
+                  ),
                   { breaks: false },
                 );
                 body = elementFromString(parsed);

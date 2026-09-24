@@ -222,6 +222,96 @@ describe("paste integration matrix", () => {
     expect(row.content[0].content[0].type).toBe("paragraph");
   });
 
+  it("pastes a Gemini-style loose GFM table as one full table (blank lines inside the table do not split it)", () => {
+    // Gemini's Copy button emits markdown with blank lines inside tables
+    // (after the delimiter row and between body rows), just like its known
+    // loose-list behavior. marked would terminate the table at the first
+    // blank line, turning the header into a lone 1-row table and dropping the
+    // body rows into literal-text paragraphs ("第一行识别为表格了，另外几行成文本了").
+    const markdown = [
+      "| 维度组合 | 全天指标：健康 (≥88%) | 全天指标：偏低 (83%∼88%) | 全天指标：崩塌 (<83%) |",
+      "| --- | --- | --- | --- |",
+      "",
+      "| 时段指标：健康 (≥85%) | 🟢 正常态（各指标均达标，无告警） | 🟡 黄色预警（全天拖后腿，触发基础关注） | 🟠 橙色预警（全天严重失守，拉响警报） |",
+      "",
+      "| 时段指标：偏低 (80%∼85%) | 🟡 黄色预警（时段开始恶化，局部告警） | 🟠 橙色预警（双指标同时偏低，升级应对） | 🔴 红色预警（历史与当下双双崩塌） |",
+      "",
+      "| 时段指标：崩塌 (<80%) | 🟠 橙色预警（时段突发恶劣，立即介入） | 🔴 红色预警（现场爆仓，全员升级） | 🔴 红色预警（系统性瘫痪，最高级别） |",
+    ].join("\n");
+    const editor = editorBetweenBlocks();
+    simulatePaste(editor, {
+      html: `<pre style="white-space:pre-wrap">${markdown.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>`,
+      text: markdown,
+    });
+    const doc = editor.getJSON() as any;
+    const table = doc.content.find((n: any) => n.type === "table");
+    expect(table).toBeTruthy();
+    // Header row + 3 body rows, 4 cells each — no stray pipe-text paragraphs.
+    expect(table.content).toHaveLength(4);
+    expect(table.content.every((row: any) => row.content.length === 4)).toBe(true);
+    expect(table.content[0].content[0].content[0].content[0].text).toBe("维度组合");
+    expect(table.content[1].content[0].content[0].content[0].text).toBe(
+      "时段指标：健康 (≥85%)",
+    );
+    expect(table.content[1].content[1].content[0].content[0].text).toBe(
+      "🟢 正常态（各指标均达标，无告警）",
+    );
+    expect(table.content[3].content[3].content[0].content[0].text).toBe(
+      "🔴 红色预警（系统性瘫痪，最高级别）",
+    );
+    // No literal pipe paragraphs leaked out of the table body.
+    expect(
+      doc.content.some(
+        (n: any) => n.type === "paragraph" && /^\s*\|/.test(n.content?.[0]?.text ?? ""),
+      ),
+    ).toBe(false);
+  });
+
+  it("pastes a Gemini multi-line-cell table (pipe-less continuation lines merged into cells)", () => {
+    // Gemini's Copy button emits multi-line table cells as:
+    //   | row | title1 | title2 | title3 |
+    //   desc1 | desc2 | desc3 |
+    // The continuation line has NO leading pipe, so marked treats it as a
+    // paragraph. The pre-processor merges it back into the preceding row's
+    // cells (joined with <br>), producing a proper multi-line-cell table.
+    const markdown = [
+      "| 维度组合 | 全天指标：健康 (≥88%) | 全天指标：偏低 (83%∼88%) | 全天指标：崩塌 (<83%) |",
+      "| --- | --- | --- | --- |",
+      "| 时段指标：健康 (≥85%) | 🟢 正常态 | 🟡 黄色预警 | 🟠 橙色预警 |",
+      "（各指标均达标，无告警） | （全天拖后腿，触发基础关注） | （全天严重失守，拉响警报） |",
+      "| 时段指标：偏低 (80%∼85%) | 🟡 黄色预警 | 🟠 橙色预警 | 🔴 红色预警 |",
+      "（时段开始恶化，局部告警） | （双指标同时偏低，升级应对） | （历史与当下双双崩塌） |",
+      "| 时段指标：崩塌 (<80%) | 🟠 橙色预警 | 🔴 红色预警 | 🔴 红色预警 |",
+      "（时段突发恶劣，立即介入） | （现场爆仓，全员升级） | （系统性瘫痪，最高级别） |",
+    ].join("\n");
+    const editor = editorBetweenBlocks();
+    simulatePaste(editor, {
+      html: `<pre style="white-space:pre-wrap">${markdown.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>`,
+      text: markdown,
+    });
+    const doc = editor.getJSON() as any;
+    const table = doc.content.find((n: any) => n.type === "table");
+    expect(table).toBeTruthy();
+    // Header + 3 body rows, 4 cells each.
+    expect(table.content).toHaveLength(4);
+    expect(table.content.every((row: any) => row.content.length === 4)).toBe(true);
+    // Row 1 cell 2 should contain both title and description (merged).
+    const cellText = (cell: any) =>
+      (cell.content ?? [])
+        .map((p: any) => (p.content ?? []).map((s: any) => s.text ?? "").join(""))
+        .join("");
+    expect(cellText(table.content[1].content[1])).toContain("🟢 正常态");
+    expect(cellText(table.content[1].content[1])).toContain("（各指标均达标，无告警）");
+    expect(cellText(table.content[3].content[3])).toContain("🔴 红色预警");
+    expect(cellText(table.content[3].content[3])).toContain("（系统性瘫痪，最高级别）");
+    // No stray pipe paragraphs.
+    expect(
+      doc.content.some(
+        (n: any) => n.type === "paragraph" && /^\s*\|/.test(n.content?.[0]?.text ?? ""),
+      ),
+    ).toBe(false);
+  });
+
   it("keeps image / formula blocks (non-text content is valid)", () => {
     const editor = editorBetweenBlocks();
     simulatePaste(editor, {
