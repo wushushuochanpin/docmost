@@ -11,7 +11,7 @@ cd /root/coderepository/docmost
 echo "== repo =="
 git fetch origin main
 git checkout main
-git pull --ff-only origin main
+git reset --hard origin/main
 git log -1 --format='deploying %h %ci %s'
 
 echo "== build & up =="
