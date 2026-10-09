@@ -13,6 +13,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: docmost-release-${{ inputs.version || github.ref }}
+  cancel-in-progress: false
+
 env:
   VERSION: ${{ inputs.version || github.ref_name }}
 
@@ -79,17 +83,20 @@ jobs:
         id: strip-v
         run: echo "version=${VERSION#v}" >> "$GITHUB_OUTPUT"
         
-      - name: Export Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          push: false
-          tags: |
-            docmost/docmost:latest
-            docmost/docmost:${{ steps.strip-v.outputs.version }}
-          outputs: type=docker,dest=docmost-${{ matrix.suffix }}.docker.tar
-          cache-from: type=gha,scope=${{ matrix.suffix }}
+      - name: Export the verified registry image without rebuilding
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE_PLATFORM: ${{ matrix.platform }}
+          IMAGE_SUFFIX: ${{ matrix.suffix }}
+          IMAGE_VERSION: ${{ steps.strip-v.outputs.version }}
+        run: |
+          set -euo pipefail
+          SOURCE_IMAGE="docmost/docmost@${IMAGE_DIGEST}"
+          docker pull --platform "$IMAGE_PLATFORM" "$SOURCE_IMAGE"
+          docker tag "$SOURCE_IMAGE" docmost/docmost:latest
+          docker tag "$SOURCE_IMAGE" "docmost/docmost:${IMAGE_VERSION}"
+          docker save -o "docmost-${IMAGE_SUFFIX}.docker.tar" \
+            docmost/docmost:latest "docmost/docmost:${IMAGE_VERSION}"
 
       - name: Compress image
         run: gzip docmost-${{ matrix.suffix }}.docker.tar

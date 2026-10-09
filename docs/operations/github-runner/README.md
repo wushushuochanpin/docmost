@@ -2,14 +2,21 @@
 file: docs/operations/github-runner/README.md
 description: Self-hosted Linux CI routing, isolation and branch inheritance.
 created_at: 2026-09-14 14:10:00 Asia/Shanghai
-updated_at: 2026-09-14 14:10:00 Asia/Shanghai
+updated_at: 2026-09-25 14:52:50 Asia/Shanghai
 timezone: Asia/Shanghai
-source_of_truth: .github/workflows, GitHub repository runner registration, superchat-dev systemd services
+source_of_truth: .github/workflows, GitHub repository runner registration, live ARC resources, DriveAcademy shared runner configuration
 applies_to: [operations, ci]
 disclaimer: This document is for reference and may change. Current code and live configuration take precedence.
 ---
 
 # GitHub Actions Runner
+
+## 2026-09-25 当前状态
+
+实时盘点确认 Linux runner 已迁移到旧版 ARC 的 `RunnerDeployment` / `HorizontalRunnerAutoscaler`。本文下面关于裸进程、systemd 账号或独立 rootless Docker 的描述属于历史记录，不可直接作为当前重启命令。当前共享镜像、发布与回退方案见 [跨项目 CI 效率](https://github.com/wushushuochanpin/DriveAcademy/blob/main/docs/operations/ci-efficiency/README.md)。
+
+本次候选规则：功能分支由 PR 检查，主干 push 保留；同一 PR 的新提交取消过时检查，部署使用独立并发规则。仅本地改动不会影响远端；预装镜像通过测试、发布并逐池切换后才会改变实际工具准备耗时。保留项目版本要求、必需检查名称与现有 macOS 路由。
+
 
 Linux jobs use `docmost-linux-checks`, registered to this repository as
 `superchat-dev-docmost-01` on `superchat-dev` (43.134.45.185).

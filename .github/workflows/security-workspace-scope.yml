@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   workspace-scope-check:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
