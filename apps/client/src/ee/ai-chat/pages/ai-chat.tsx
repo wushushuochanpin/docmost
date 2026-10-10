@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { ErrorBoundary } from "react-error-boundary";
 import { Button } from "@mantine/core";
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AiChatLayout from "../components/ai-chat-layout";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
@@ -17,7 +17,7 @@ export default function AiChat() {
         resetKeys={[chatId]}
         fallbackRender={({ resetErrorBoundary }) => (
           <EmptyState
-            icon={IconAlertTriangle}
+            icon={AlertTriangle}
             title={t("Failed to load chat. An error occurred.")}
             action={
               <Button

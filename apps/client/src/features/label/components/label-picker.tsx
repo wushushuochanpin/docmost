@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, KeyboardEvent } from "react";
 import clsx from "clsx";
-import { IconPlus } from "@tabler/icons-react";
+import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useComputedColorScheme } from "@mantine/core";
 import { ILabel } from "@/features/label/types/label.types.ts";
@@ -147,7 +147,7 @@ export function LabelPicker({
             onClick={() => select(suggestions.length)}
           >
             <span className={classes.popoverCreatePlus}>
-              <IconPlus size={12} stroke={2} />
+              <Plus size={12} strokeWidth={2} />
             </span>
             <span className={classes.popoverItemName}>
               {t("Create")} <b>"{normalized}"</b>

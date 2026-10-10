@@ -21,7 +21,7 @@ import {
 import clsx from "clsx";
 import classes from "./mention.module.css";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
-import { IconFileDescription, IconFolder, IconPlus } from "@tabler/icons-react";
+import { FileText, Folder, Plus } from "lucide-react";
 import { useSpaceQuery } from "@/features/space/queries/space-query.ts";
 import { useParams } from "react-router-dom";
 import { v7 as uuid7 } from "uuid";
@@ -432,9 +432,9 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
                     {item.icon ? (
                       item.icon
                     ) : item.nodeType === "folder" ? (
-                      <IconFolder size={18} stroke={1.5} />
+                      <Folder size={18} strokeWidth={1.5} />
                     ) : (
-                      <IconFileDescription size={18} stroke={1.5} />
+                      <FileText size={18} strokeWidth={1.5} />
                     )}
                   </ActionIcon>
 
@@ -477,7 +477,7 @@ const MentionList = forwardRef<any, MentionListProps>((props, ref) => {
                   size="sm"
                   aria-hidden="true"
                 >
-                  <IconPlus size={16} stroke={1.5} />
+                  <Plus size={16} strokeWidth={1.5} />
                 </ActionIcon>
 
                 <div style={{ flex: 1, minWidth: 0 }}>

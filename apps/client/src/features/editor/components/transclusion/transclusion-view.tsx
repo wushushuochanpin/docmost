@@ -5,13 +5,7 @@ import {
 } from "@tiptap/react";
 import { ActionIcon, Menu, Tooltip } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import {
-  IconCheck,
-  IconCopy,
-  IconDots,
-  IconLinkOff,
-  IconTrash,
-} from "@tabler/icons-react";
+import { Check, Copy, MoreHorizontal, Link2Off, Trash } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import classes from "./transclusion.module.css";
@@ -92,26 +86,26 @@ export default function TransclusionView(props: NodeViewProps) {
               onClick={handleCopy}
               disabled={!sourcePageId || !transclusionId}
             >
-              {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+              {copied ? <Check size={14} /> : <Copy size={14} />}
             </ActionIcon>
           </Tooltip>
 
           <Menu position="bottom-end" withinPortal onChange={trackOpen}>
             <Menu.Target>
               <ActionIcon variant="subtle" color="gray" size="sm">
-                <IconDots size={14} />
+                <MoreHorizontal size={14} />
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item
-                leftSection={<IconLinkOff size={14} />}
+                leftSection={<Link2Off size={14} />}
                 onClick={handleUnsync}
               >
                 {t("Unsync")}
               </Menu.Item>
               <Menu.Item
                 color="red"
-                leftSection={<IconTrash size={14} />}
+                leftSection={<Trash size={14} />}
                 onClick={() => deleteNode()}
               >
                 {t("Delete synced block")}

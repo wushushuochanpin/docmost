@@ -25,12 +25,7 @@ import {
   mobileTableOfContentAsideAtom,
   tableOfContentAsideAtom,
 } from "@/features/share/atoms/sidebar-atom.ts";
-import {
-  IconLayoutSidebarRightCollapse,
-  IconLayoutSidebarRightExpand,
-  IconList,
-  IconSearch,
-} from "@tabler/icons-react";
+import { PanelRightClose, PanelRightOpen, List, Search } from "lucide-react";
 import { useToggleToc } from "@/features/share/hooks/use-toggle-toc.ts";
 import classes from "./share-shell.module.css";
 import StaticTableOfContents from "@/features/share/components/static-table-of-contents.tsx";
@@ -306,9 +301,9 @@ export default function ShareShell({
                   title={t("Sidebar toggle")}
                 >
                   {mobileOpened ? (
-                    <IconLayoutSidebarRightExpand size={18} stroke={1.75} />
+                    <PanelRightOpen size={18} strokeWidth={1.75} />
                   ) : (
-                    <IconLayoutSidebarRightCollapse size={18} stroke={1.75} />
+                    <PanelRightClose size={18} strokeWidth={1.75} />
                   )}
                 </button>
 
@@ -322,9 +317,9 @@ export default function ShareShell({
                   title={t("Sidebar toggle")}
                 >
                   {desktopOpened ? (
-                    <IconLayoutSidebarRightExpand size={18} stroke={1.75} />
+                    <PanelRightOpen size={18} strokeWidth={1.75} />
                   ) : (
-                    <IconLayoutSidebarRightCollapse size={18} stroke={1.75} />
+                    <PanelRightClose size={18} strokeWidth={1.75} />
                   )}
                 </button>
               </>
@@ -339,7 +334,7 @@ export default function ShareShell({
                 onClick={openShareSearch}
                 aria-label={t("Search")}
               >
-                <IconSearch size={16} stroke={1.75} />
+                <Search size={16} strokeWidth={1.75} />
                 <span className={classes.searchLabel}>{t("Search")}</span>
                 <span className={classes.shortcut}>Ctrl + K</span>
               </button>
@@ -357,7 +352,7 @@ export default function ShareShell({
                 aria-label={t("Table of contents")}
                 title={t("Table of contents")}
               >
-                <IconList size={18} stroke={1.75} />
+                <List size={18} strokeWidth={1.75} />
               </button>
             )}
           </div>
@@ -465,7 +460,7 @@ export default function ShareShell({
           aria-label={t("Search")}
           title={t("Search")}
         >
-          <IconSearch size={20} stroke={1.75} />
+          <Search size={20} strokeWidth={1.75} />
         </button>
       )}
 
@@ -479,7 +474,7 @@ export default function ShareShell({
           aria-label={t("Table of contents")}
           title={t("Table of contents")}
         >
-          <IconList size={20} stroke={1.75} />
+          <List size={20} strokeWidth={1.75} />
         </button>
       )}
 

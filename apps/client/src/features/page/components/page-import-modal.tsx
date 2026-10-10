@@ -7,16 +7,7 @@ import {
   Text,
   Tooltip,
 } from "@mantine/core";
-import {
-  IconBrandNotion,
-  IconCheck,
-  IconFileCode,
-  IconFileTypeDocx,
-  IconFileTypePdf,
-  IconFileTypeZip,
-  IconMarkdown,
-  IconX,
-} from "@tabler/icons-react";
+import { NotebookText, Check, FileCode, FileText, FileArchive, X } from "lucide-react";
 import {
   importPage,
   importZip,
@@ -158,7 +149,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
         color: "red",
         title: t("Failed to upload import file"),
         message: err?.response.data.message,
-        icon: <IconX size={18} />,
+        icon: <X size={18} />,
         loading: false,
         withCloseButton: true,
         autoClose: false,
@@ -180,7 +171,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
             color: "teal",
             title: t("Import complete"),
             message: t("Your pages were successfully imported."),
-            icon: <IconCheck size={18} />,
+            icon: <Check size={18} />,
             loading: false,
             withCloseButton: true,
             autoClose: false,
@@ -215,7 +206,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
                 reason: fileTask.errorMessage,
               },
             ),
-            icon: <IconX size={18} />,
+            icon: <X size={18} />,
             loading: false,
             withCloseButton: true,
             autoClose: false,
@@ -235,7 +226,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
               reason: err.response?.data.message,
             },
           ),
-          icon: <IconX size={18} />,
+          icon: <X size={18} />,
           loading: false,
           withCloseButton: true,
           autoClose: false,
@@ -311,7 +302,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
         color: "teal",
         title: `${t("Successfully imported")} ${pageCountText}`,
         message: t("Your import is complete."),
-        icon: <IconCheck size={18} />,
+        icon: <Check size={18} />,
         loading: false,
         autoClose: 5000,
       });
@@ -321,7 +312,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
         color: "red",
         title: t("Failed to import pages"),
         message: t("Unable to import pages. Please try again."),
-        icon: <IconX size={18} />,
+        icon: <X size={18} />,
         loading: false,
         autoClose: 5000,
       });
@@ -345,7 +336,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
             <Button
               justify="start"
               variant="default"
-              leftSection={<IconMarkdown size={16} stroke={1.75} />}
+              leftSection={<FileCode size={16} strokeWidth={1.75} />}
               {...props}
             >
               Markdown
@@ -366,7 +357,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
             <Button
               justify="start"
               variant="default"
-              leftSection={<IconFileCode size={16} stroke={1.75} />}
+              leftSection={<FileCode size={16} strokeWidth={1.75} />}
               {...props}
             >
               HTML
@@ -392,7 +383,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
                 disabled={!canUseDocx}
                 justify="start"
                 variant="default"
-                leftSection={<IconFileTypeDocx size={18} />}
+                leftSection={<FileText size={18} />}
                 {...props}
               >
                 Word (DOCX)
@@ -419,7 +410,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
                 disabled={!canUsePdf}
                 justify="start"
                 variant="default"
-                leftSection={<IconFileTypePdf size={18} />}
+                leftSection={<FileText size={18} />}
                 {...props}
               >
                 PDF
@@ -440,7 +431,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
             <Button
               justify="start"
               variant="default"
-              leftSection={<IconBrandNotion size={16} stroke={1.75} />}
+              leftSection={<NotebookText size={16} strokeWidth={1.75} />}
               {...props}
             >
               Notion
@@ -499,7 +490,7 @@ function ImportFormatSelection({ spaceId, onClose }: ImportFormatSelection) {
               <Group justify="center">
                 <Button
                   justify="center"
-                  leftSection={<IconFileTypeZip size={16} stroke={1.75} />}
+                  leftSection={<FileArchive size={16} strokeWidth={1.75} />}
                   {...props}
                 >
                   {t("Upload file")}

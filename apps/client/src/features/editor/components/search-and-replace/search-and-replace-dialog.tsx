@@ -8,14 +8,7 @@ import {
   Text,
   Tooltip,
 } from "@mantine/core";
-import {
-  IconArrowNarrowDown,
-  IconArrowNarrowUp,
-  IconLetterCase,
-  IconReplace,
-  IconSearch,
-  IconX,
-} from "@tabler/icons-react";
+import { MoveDown, MoveUp, CaseSensitive, Replace, Search, X } from "lucide-react";
 import { useEditor } from "@tiptap/react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { searchAndReplaceStateAtom } from "@/features/editor/components/search-and-replace/atoms/search-and-replace-state-atom.ts";
@@ -195,7 +188,7 @@ function SearchAndReplaceDialog({ editor, editable = true }: PageFindDialogDialo
             ref={inputRef}
             placeholder={t("Find")}
             aria-label={t("Find")}
-            leftSection={<IconSearch size={16} />}
+            leftSection={<Search size={16} />}
             rightSection={
               <Text size="xs" ta="right">
                 {resultsCount}
@@ -225,9 +218,9 @@ function SearchAndReplaceDialog({ editor, editable = true }: PageFindDialogDialo
                 onClick={previous}
                 aria-label={t("Previous match (Shift+Enter)")}
               >
-                <IconArrowNarrowUp
+                <MoveUp
                   style={{ width: "70%", height: "70%" }}
-                  stroke={1.5}
+                  strokeWidth={1.5}
                 />
               </ActionIcon>
             </Tooltip>
@@ -238,9 +231,9 @@ function SearchAndReplaceDialog({ editor, editable = true }: PageFindDialogDialo
                 onClick={next}
                 aria-label={t("Next match (Enter)")}
               >
-                <IconArrowNarrowDown
+                <MoveDown
                   style={{ width: "70%", height: "70%" }}
-                  stroke={1.5}
+                  strokeWidth={1.5}
                 />
               </ActionIcon>
             </Tooltip>
@@ -252,9 +245,9 @@ function SearchAndReplaceDialog({ editor, editable = true }: PageFindDialogDialo
                 aria-label={t("Match case (Alt+C)")}
                 aria-pressed={caseSensitive.isCaseSensitive}
               >
-                <IconLetterCase
+                <CaseSensitive
                   style={{ width: "70%", height: "70%" }}
-                  stroke={1.5}
+                  strokeWidth={1.5}
                 />
               </ActionIcon>
             </Tooltip>
@@ -267,9 +260,9 @@ function SearchAndReplaceDialog({ editor, editable = true }: PageFindDialogDialo
                   aria-label={t("Replace")}
                   aria-pressed={replaceButton.isReplaceShow}
                 >
-                  <IconReplace
+                  <Replace
                     style={{ width: "70%", height: "70%" }}
-                    stroke={1.5}
+                    strokeWidth={1.5}
                   />
                 </ActionIcon>
               </Tooltip>
@@ -281,7 +274,7 @@ function SearchAndReplaceDialog({ editor, editable = true }: PageFindDialogDialo
                 onClick={closeDialog}
                 aria-label={t("Close (Escape)")}
               >
-                <IconX style={{ width: "70%", height: "70%" }} stroke={1.5} />
+                <X style={{ width: "70%", height: "70%" }} strokeWidth={1.5} />
               </ActionIcon>
             </Tooltip>
           </ActionIcon.Group>
@@ -291,7 +284,7 @@ function SearchAndReplaceDialog({ editor, editable = true }: PageFindDialogDialo
             <Input
               placeholder={t("Replace")}
               aria-label={t("Replace")}
-              leftSection={<IconReplace size={16} />}
+              leftSection={<Replace size={16} />}
               rightSection={<div></div>}
               rightSectionPointerEvents="all"
               size="xs"

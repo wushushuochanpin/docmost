@@ -1,7 +1,7 @@
 import "@mantine/spotlight/styles.css";
 import { Group, Center, Text } from "@mantine/core";
 import { createSpotlight, Spotlight } from "@mantine/spotlight";
-import { IconSearch } from "@tabler/icons-react";
+import { Search } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDebouncedValue } from "@mantine/hooks";
@@ -101,7 +101,7 @@ export function ShareSearchSpotlight({
         <Spotlight.Search
           placeholder={t("Search...")}
           aria-label={t("Search")}
-          leftSection={<IconSearch size={20} stroke={1.5} />}
+          leftSection={<Search size={20} strokeWidth={1.5} />}
         />
         <Spotlight.ActionsList>
           {query.length === 0 && pages.length === 0 && (

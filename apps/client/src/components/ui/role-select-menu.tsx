@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import { IconCheck, IconChevronDown } from "@tabler/icons-react";
+import { Check, ChevronDown } from "lucide-react";
 import { Group, Text, Menu, Button } from "@mantine/core";
 import { IRoleData } from "@/lib/types.ts";
 import { useTranslation } from "react-i18next";
@@ -16,7 +16,7 @@ const RoleButton = forwardRef<HTMLButtonElement, RoleButtonProps>(
       style={{
         border: "none",
       }}
-      rightSection={<IconChevronDown size="1rem" />}
+      rightSection={<ChevronDown size="1rem" />}
       {...others}
     >
       {name}
@@ -58,7 +58,7 @@ export default function RoleSelectMenu({
                   {t(item.description)}
                 </Text>
               </div>
-              {item.label === roleName && <IconCheck size={20} />}
+              {item.label === roleName && <Check size={20} />}
             </Group>
           </Menu.Item>
         ))}

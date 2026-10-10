@@ -8,7 +8,7 @@ import { AvatarIconType } from "@/features/attachments/types/attachment.types";
 import { getSpaceUrl } from "@/lib/config";
 import { prefetchSpace } from "@/features/space/queries/space-query";
 import StarButton from "@/features/favorite/components/star-button";
-import { IconChevronDown } from "@tabler/icons-react";
+import { ChevronDown } from "lucide-react";
 import spaceClasses from "../space-grid.module.css";
 
 const INITIAL_COUNT = 8;
@@ -79,7 +79,7 @@ export default function FavoriteSpacesGrid() {
           <Button
             variant="subtle"
             size="xs"
-            rightSection={<IconChevronDown size={14} />}
+            rightSection={<ChevronDown size={14} />}
             onClick={() => setExpanded(true)}
           >
             {t("Show more")}

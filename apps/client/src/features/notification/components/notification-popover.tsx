@@ -10,13 +10,7 @@ import {
   Title,
   Tooltip,
 } from "@mantine/core";
-import {
-  IconBell,
-  IconCheck,
-  IconChecks,
-  IconDots,
-  IconFilter,
-} from "@tabler/icons-react";
+import { Bell, Check, CheckCheck, MoreHorizontal, Filter } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NotificationList } from "./notification-list";
 import {
@@ -75,7 +69,7 @@ export function NotificationPopover() {
               withBorder
               disabled={unreadCount === 0}
             >
-              <IconBell size={20} />
+              <Bell size={20} />
             </Indicator>
           </ActionIcon>
         </Tooltip>
@@ -105,7 +99,7 @@ export function NotificationPopover() {
                     size="sm"
                     aria-label={t("Filter")}
                   >
-                    <IconFilter size={16} />
+                    <Filter size={16} />
                   </ActionIcon>
                 </Tooltip>
               </Menu.Target>
@@ -114,7 +108,7 @@ export function NotificationPopover() {
                 <Menu.Item
                   onClick={() => setFilter("all")}
                   rightSection={
-                    filter === "all" ? <IconCheck size={14} /> : null
+                    filter === "all" ? <Check size={14} /> : null
                   }
                 >
                   {t("All notifications")}
@@ -122,7 +116,7 @@ export function NotificationPopover() {
                 <Menu.Item
                   onClick={() => setFilter("unread")}
                   rightSection={
-                    filter === "unread" ? <IconCheck size={14} /> : null
+                    filter === "unread" ? <Check size={14} /> : null
                   }
                 >
                   {t("Unread only")}
@@ -145,13 +139,13 @@ export function NotificationPopover() {
                     size="sm"
                     aria-label={t("More options")}
                   >
-                    <IconDots size={16} />
+                    <MoreHorizontal size={16} />
                   </ActionIcon>
                 </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Item
-                  leftSection={<IconChecks size={16} />}
+                  leftSection={<CheckCheck size={16} />}
                   onClick={handleMarkAllRead}
                   disabled={unreadCount === 0}
                 >

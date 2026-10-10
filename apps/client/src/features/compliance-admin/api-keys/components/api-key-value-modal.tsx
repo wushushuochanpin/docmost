@@ -8,7 +8,7 @@ import {
   Text,
   UnstyledButton,
 } from "@mantine/core";
-import { IconAlertCircle, IconCheck, IconCopy } from "@tabler/icons-react";
+import { AlertCircle, Check, Copy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CopyButton } from "@/components/common/copy-button.tsx";
 
@@ -37,7 +37,7 @@ export default function ApiKeyValueModal({
         </Modal.Header>
         <Modal.Body>
           <Stack>
-            <Alert color="yellow" icon={<IconAlertCircle size={18} />}>
+            <Alert color="yellow" icon={<AlertCircle size={18} />}>
               {t("Store this token securely. It will not be shown again.")}
             </Alert>
 
@@ -64,7 +64,7 @@ export default function ApiKeyValueModal({
                 {({ copied, copy }) => (
                   <UnstyledButton onClick={copy}>
                     <Group gap={8}>
-                      {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                      {copied ? <Check size={16} /> : <Copy size={16} />}
                       <Text size="sm">
                         {copied ? t("Copied") : t("Copy token")}
                       </Text>

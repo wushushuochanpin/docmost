@@ -1,5 +1,5 @@
 import { Text, Tabs, Space } from "@mantine/core";
-import { IconClockHour3, IconStar, IconUser } from "@tabler/icons-react";
+import { Clock3, Star, User } from "lucide-react";
 import RecentChanges from "@/components/common/recent-changes";
 import FavoritesPages from "@/features/home/components/favorites-pages";
 import CreatedByMe from "@/features/home/components/created-by-me";
@@ -24,17 +24,17 @@ export default function SpaceHomeTabs() {
       }}
     >
       <Tabs.List style={{ flexWrap: "nowrap", overflowX: "auto" }}>
-        <Tabs.Tab value="recent" leftSection={<IconClockHour3 size={18} />}>
+        <Tabs.Tab value="recent" leftSection={<Clock3 size={18} />}>
           <Text size="sm" fw={500}>
             {t("Recently updated")}
           </Text>
         </Tabs.Tab>
-        <Tabs.Tab value="favorites" leftSection={<IconStar size={18} />}>
+        <Tabs.Tab value="favorites" leftSection={<Star size={18} />}>
           <Text size="sm" fw={500}>
             {t("Favorites")}
           </Text>
         </Tabs.Tab>
-        <Tabs.Tab value="created" leftSection={<IconUser size={18} />}>
+        <Tabs.Tab value="created" leftSection={<User size={18} />}>
           <Text size="sm" fw={500}>
             {t("Created by me")}
           </Text>

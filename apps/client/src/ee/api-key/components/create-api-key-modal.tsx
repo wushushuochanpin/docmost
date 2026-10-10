@@ -5,7 +5,7 @@ import { zod4Resolver } from "mantine-form-zod-resolver";
 import { z } from "zod/v4";
 import { useTranslation } from "react-i18next";
 import { useCreateApiKeyMutation } from "@/ee/api-key/queries/api-key-query";
-import { IconCalendar } from "@tabler/icons-react";
+import { Calendar } from "lucide-react";
 import { IApiKey } from "@/ee/api-key";
 
 const DateInput = lazy(() =>
@@ -124,7 +124,7 @@ export function CreateApiKeyModal({
             data={expirationOptions}
             value={expirationOption}
             onChange={(value) => setExpirationOption(value || "30")}
-            leftSection={<IconCalendar size={16} />}
+            leftSection={<Calendar size={16} />}
             allowDeselect={false}
           />
 

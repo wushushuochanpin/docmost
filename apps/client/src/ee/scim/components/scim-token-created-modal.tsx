@@ -7,7 +7,7 @@ import {
   Button,
   TextInput,
 } from "@mantine/core";
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import CopyTextButton from "@/components/common/copy.tsx";
 import { IScimToken } from "@/ee/scim/types/scim-token.types";
@@ -36,7 +36,7 @@ export function ScimTokenCreatedModal({
     >
       <Stack gap="md">
         <Alert
-          icon={<IconAlertTriangle size={16} />}
+          icon={<AlertTriangle size={16} />}
           title={t("Important")}
           color="red"
         >

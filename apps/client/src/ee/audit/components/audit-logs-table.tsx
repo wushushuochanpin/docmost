@@ -10,11 +10,7 @@ import {
 } from "@mantine/core";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  IconChevronRight,
-  IconChevronDown,
-  IconArrowRight,
-} from "@tabler/icons-react";
+import { ChevronRight, ChevronDown, ArrowRight } from "lucide-react";
 import { IAuditLog } from "@/ee/audit/types/audit.types";
 import { CustomAvatar } from "@/components/ui/custom-avatar";
 import { getEventLabel } from "@/ee/audit/lib/audit-event-labels";
@@ -89,7 +85,7 @@ function ChangesDiff({ changes }: { changes: IAuditLog["changes"] }) {
               </Text>
             )}
             {hasBefore && hasAfter && (
-              <IconArrowRight size={10} color="var(--mantine-color-dimmed)" />
+              <ArrowRight size={10} color="var(--mantine-color-dimmed)" />
             )}
             {hasAfter && (
               <Text fz="xs" component="span">
@@ -244,12 +240,12 @@ export default function AuditLogsTable({
                       <Group gap="sm" wrap="nowrap">
                         {expandable ? (
                           isExpanded ? (
-                            <IconChevronDown
+                            <ChevronDown
                               size={16}
                               color="var(--mantine-color-dimmed)"
                             />
                           ) : (
-                            <IconChevronRight
+                            <ChevronRight
                               size={16}
                               color="var(--mantine-color-dimmed)"
                             />

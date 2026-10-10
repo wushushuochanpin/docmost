@@ -10,7 +10,7 @@ import {
   Tooltip,
   VisuallyHidden,
 } from "@mantine/core";
-import { IconDots, IconSettings, IconEye, IconEyeOff } from "@tabler/icons-react";
+import { MoreHorizontal, Settings, Eye, EyeOff } from "lucide-react";
 import StarButton from "@/features/favorite/components/star-button";
 import {
   useWatchedSpaceIds,
@@ -65,9 +65,9 @@ function WatchButton({ spaceId, watchedIds, size = 16 }: { spaceId: string; watc
         loading={isPending}
       >
         {isWatching ? (
-          <IconEyeOff size={size} stroke={2} />
+          <EyeOff size={size} strokeWidth={2} />
         ) : (
-          <IconEye size={size} stroke={2} />
+          <Eye size={size} strokeWidth={2} />
         )}
       </ActionIcon>
     </Tooltip>
@@ -183,12 +183,12 @@ export default function AllSpacesList({
                             color="gray"
                             aria-label={t("Space menu")}
                           >
-                            <IconDots size={16} stroke={1.75} />
+                            <MoreHorizontal size={16} strokeWidth={1.75} />
                           </ActionIcon>
                         </Menu.Target>
                         <Menu.Dropdown>
                           <Menu.Item
-                            leftSection={<IconSettings size={16} stroke={1.75} />}
+                            leftSection={<Settings size={16} strokeWidth={1.75} />}
                             onClick={() => handleOpenSettings(space.id)}
                           >
                             {t("Space settings")}

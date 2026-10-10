@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 import classes from "./space-carousel.module.css";
 import { formatMemberCount } from "@/lib";
 import { useTranslation } from "react-i18next";
-import { IconArrowRight } from "@tabler/icons-react";
+import { ArrowRight } from "lucide-react";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
 import { AvatarIconType } from "@/features/attachments/types/attachment.types.ts";
 import CardCarousel from "@/components/ui/card-carousel";
@@ -93,7 +93,7 @@ export default function SpaceCarousel() {
             component={Link}
             to="/spaces"
             variant="subtle"
-            rightSection={<IconArrowRight size={16} />}
+            rightSection={<ArrowRight size={16} />}
             size="sm"
           >
             {t("View all spaces")}

@@ -1,10 +1,5 @@
 import { Group, Menu, Text, UnstyledButton } from "@mantine/core";
-import {
-  IconChevronDown,
-  IconLock,
-  IconShieldLock,
-  IconCheck,
-} from "@tabler/icons-react";
+import { ChevronDown, Lock, ShieldLock, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import classes from "./page-permission.module.css";
 
@@ -41,10 +36,10 @@ export function GeneralAccessSelect({
       : t("Everyone in this space can access");
 
   const CurrentIcon = showInheritedState
-    ? IconShieldLock
+    ? ShieldLock
     : isDirectlyRestricted
-      ? IconLock
-      : IconShieldLock;
+      ? Lock
+      : ShieldLock;
 
   const accessOptions = [
     {
@@ -53,7 +48,7 @@ export function GeneralAccessSelect({
       description: hasInheritedRestriction
         ? t("Use only inherited restrictions")
         : t("No additional restrictions on this page"),
-      icon: IconShieldLock,
+      icon: ShieldLock,
     },
     {
       value: "restricted" as const,
@@ -61,7 +56,7 @@ export function GeneralAccessSelect({
       description: hasInheritedRestriction
         ? t("Add restrictions on top of inherited")
         : t("Only specific people can access"),
-      icon: IconLock,
+      icon: Lock,
     },
   ];
 
@@ -72,14 +67,14 @@ export function GeneralAccessSelect({
           <div
             className={`${classes.generalAccessIcon} ${isDirectlyRestricted || showInheritedState ? classes.generalAccessIconRestricted : ""}`}
           >
-            <CurrentIcon size={18} stroke={1.5} />
+            <CurrentIcon size={18} strokeWidth={1.5} />
           </div>
           <div style={{ flex: 1 }}>
             <Group gap={4}>
               <Text size="sm" fw={500}>
                 {currentLabel}
               </Text>
-              {!disabled && <IconChevronDown size={14} />}
+              {!disabled && <ChevronDown size={14} />}
             </Group>
             <Text size="xs" c="dimmed">
               {currentDescription}
@@ -93,9 +88,9 @@ export function GeneralAccessSelect({
           <Menu.Item
             key={option.value}
             onClick={() => onChange(option.value)}
-            leftSection={<option.icon size={16} stroke={1.5} />}
+            leftSection={<option.icon size={16} strokeWidth={1.5} />}
             rightSection={
-              option.value === value ? <IconCheck size={16} /> : null
+              option.value === value ? <Check size={16} /> : null
             }
           >
             <div>

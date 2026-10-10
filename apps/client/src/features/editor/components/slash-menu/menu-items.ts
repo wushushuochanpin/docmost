@@ -1,34 +1,4 @@
-import {
-  IconBlockquote,
-  IconCaretRightFilled,
-  IconCheckbox,
-  IconCode,
-  IconH1,
-  IconH2,
-  IconH3,
-  IconInfoCircle,
-  IconList,
-  IconListNumbers,
-  IconMath,
-  IconMathFunction,
-  IconMovie,
-  IconMusic,
-  IconPaperclip,
-  IconFileTypePdf,
-  IconPhoto,
-  IconTable,
-  IconTypography,
-  IconMenu4,
-  IconPageBreak,
-  IconCalendar,
-  IconAppWindow,
-  IconSitemap,
-  IconColumns3,
-  IconColumns2,
-  IconTag,
-  IconMoodSmile,
-  IconRotate2,
-} from "@tabler/icons-react";
+import { Quote, ChevronRight, SquareCheck, Code, Heading1, Heading2, Heading3, Info, List, ListOrdered, Sigma, FunctionSquare, Film, Music, Paperclip, FileText, Image, Table, CaseSensitive, Menu, SeparatorHorizontal, Calendar, AppWindow, Network, Columns3, Columns2, Tag, Smile, RotateCw } from "lucide-react";
 import {
   CommandProps,
   SlashMenuGroupedItemsType,
@@ -62,7 +32,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Text",
       description: "Just start typing with plain text.",
       searchTerms: ["p", "paragraph"],
-      icon: IconTypography,
+      icon: CaseSensitive,
       command: ({ editor, range }: CommandProps) => {
         editor
           .chain()
@@ -76,7 +46,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "To-do list",
       description: "Track tasks with a to-do list.",
       searchTerms: ["todo", "task", "list", "check", "checkbox"],
-      icon: IconCheckbox,
+      icon: SquareCheck,
       command: ({ editor, range }: CommandProps) => {
         editor.chain().focus().deleteRange(range).toggleTaskList().run();
       },
@@ -85,7 +55,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Heading 1",
       description: "Big section heading.",
       searchTerms: ["title", "big", "large"],
-      icon: IconH1,
+      icon: Heading1,
       command: ({ editor, range }: CommandProps) => {
         editor
           .chain()
@@ -99,7 +69,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Heading 2",
       description: "Medium section heading.",
       searchTerms: ["subtitle", "medium"],
-      icon: IconH2,
+      icon: Heading2,
       command: ({ editor, range }: CommandProps) => {
         editor
           .chain()
@@ -113,7 +83,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Heading 3",
       description: "Small section heading.",
       searchTerms: ["subtitle", "small"],
-      icon: IconH3,
+      icon: Heading3,
       command: ({ editor, range }: CommandProps) => {
         editor
           .chain()
@@ -127,7 +97,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Bullet list",
       description: "Create a simple bullet list.",
       searchTerms: ["unordered", "point", "list"],
-      icon: IconList,
+      icon: List,
       command: ({ editor, range }: CommandProps) => {
         editor.chain().focus().deleteRange(range).toggleBulletList().run();
       },
@@ -136,7 +106,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Numbered list",
       description: "Create a list with numbering.",
       searchTerms: ["numbered", "ordered", "list", "ol"],
-      icon: IconListNumbers,
+      icon: ListOrdered,
       command: ({ editor, range }: CommandProps) => {
         editor.chain().focus().deleteRange(range).toggleOrderedList().run();
       },
@@ -145,7 +115,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Quote",
       description: "Create block quote.",
       searchTerms: ["blockquote", "quotes"],
-      icon: IconBlockquote,
+      icon: Quote,
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
     },
@@ -153,7 +123,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Code",
       description: "Insert code snippet.",
       searchTerms: ["codeblock"],
-      icon: IconCode,
+      icon: Code,
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
     },
@@ -161,7 +131,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Divider",
       description: "Insert horizontal rule divider",
       searchTerms: ["horizontal rule", "hr"],
-      icon: IconMenu4,
+      icon: Menu,
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
     },
@@ -169,7 +139,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Page break",
       description: "Insert a page break for printing.",
       searchTerms: ["page", "break", "pagebreak", "print"],
-      icon: IconPageBreak,
+      icon: SeparatorHorizontal,
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).setPageBreak().run(),
     },
@@ -177,7 +147,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Image",
       description: "Upload any image from your device.",
       searchTerms: ["photo", "picture", "media", "file", "attachment"],
-      icon: IconPhoto,
+      icon: Image,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
 
@@ -210,7 +180,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Video",
       description: "Upload any video from your device.",
       searchTerms: ["video", "mp4", "media", "file", "attachment"],
-      icon: IconMovie,
+      icon: Film,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
 
@@ -251,7 +221,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
         "file",
         "attachment",
       ],
-      icon: IconMusic,
+      icon: Music,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
 
@@ -284,7 +254,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Embed PDF",
       description: "Upload and embed a PDF file.",
       searchTerms: ["pdf", "document", "embed"],
-      icon: IconFileTypePdf,
+      icon: FileText,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
 
@@ -315,7 +285,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "File attachment",
       description: "Upload any file from your device.",
       searchTerms: ["file", "attachment", "upload", "csv", "zip"],
-      icon: IconPaperclip,
+      icon: Paperclip,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
 
@@ -348,7 +318,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Table",
       description: "Insert a table.",
       searchTerms: ["table", "rows", "columns"],
-      icon: IconTable,
+      icon: Table,
       command: ({ editor, range }: CommandProps) =>
         editor
           .chain()
@@ -361,7 +331,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Toggle block",
       description: "Insert collapsible block.",
       searchTerms: ["collapsible", "block", "toggle", "details", "expand"],
-      icon: IconCaretRightFilled,
+      icon: ChevronRight,
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).setDetails().run(),
     },
@@ -378,7 +348,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
         "error",
         "danger",
       ],
-      icon: IconInfoCircle,
+      icon: Info,
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).toggleCallout().run(),
     },
@@ -396,7 +366,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
         "latex",
         "tex",
       ],
-      icon: IconMathFunction,
+      icon: FunctionSquare,
       command: ({ editor, range }: CommandProps) =>
         editor
           .chain()
@@ -419,7 +389,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
         "latex",
         "tex",
       ],
-      icon: IconMath,
+      icon: Sigma,
       command: ({ editor, range }: CommandProps) =>
         editor.chain().focus().deleteRange(range).setMathBlock().run(),
     },
@@ -457,7 +427,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Date",
       description: "Insert current date",
       searchTerms: ["date", "today"],
-      icon: IconCalendar,
+      icon: Calendar,
       command: ({ editor, range }: CommandProps) => {
         const currentDate = new Date().toLocaleDateString("en-US", {
           year: "numeric",
@@ -477,7 +447,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Status",
       description: "Insert inline status badge.",
       searchTerms: ["status", "badge", "label", "lozenge"],
-      icon: IconTag,
+      icon: Tag,
       command: ({ editor, range }: CommandProps) => {
         editor
           .chain()
@@ -491,7 +461,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Emoji",
       description: "Insert emoji.",
       searchTerms: ["emoji", "icon", "smiley", "emoticon", "symbol", "reaction"],
-      icon: IconMoodSmile,
+      icon: Smile,
       command: ({ editor, range }: CommandProps) => {
         editor.chain().focus().deleteRange(range).insertContent(":").run();
       },
@@ -507,7 +477,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
         "hierarchy",
         "toc",
       ],
-      icon: IconSitemap,
+      icon: Network,
       command: ({ editor, range }: CommandProps) => {
         editor.chain().focus().deleteRange(range).insertSubpages().run();
       },
@@ -524,7 +494,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
         "reusable",
         "snippet",
       ],
-      icon: IconRotate2,
+      icon: RotateCw,
       command: ({ editor, range }: CommandProps) => {
         editor
           .chain()
@@ -538,7 +508,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "2 Columns",
       description: "Split content into two columns.",
       searchTerms: ["columns", "layout", "split", "side"],
-      icon: IconColumns2,
+      icon: Columns2,
       command: ({ editor, range }: CommandProps) =>
         editor
           .chain()
@@ -551,7 +521,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "3 Columns",
       description: "Split content into three columns.",
       searchTerms: ["columns", "layout", "split", "triple"],
-      icon: IconColumns3,
+      icon: Columns3,
       command: ({ editor, range }: CommandProps) =>
         editor
           .chain()
@@ -590,7 +560,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       title: "Iframe embed",
       description: "Embed any Iframe",
       searchTerms: ["iframe"],
-      icon: IconAppWindow,
+      icon: AppWindow,
       command: ({ editor, range }: CommandProps) => {
         editor
           .chain()

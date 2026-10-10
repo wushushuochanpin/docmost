@@ -1,5 +1,5 @@
 import { ActionIcon, Tooltip } from "@mantine/core";
-import { IconCircleCheck, IconCircleCheckFilled } from "@tabler/icons-react";
+import { CircleCheck } from "lucide-react";
 import { useResolveCommentMutation } from "@/ee/comment/queries/comment-query";
 import { useTranslation } from "react-i18next";
 import { Editor } from "@tiptap/react";
@@ -55,9 +55,9 @@ function ResolveComment({
         disabled={resolveCommentMutation.isPending}
       >
         {isResolved ? (
-          <IconCircleCheckFilled size={18} />
+          <CircleCheck size={18} />
         ) : (
-          <IconCircleCheck size={18} />
+          <CircleCheck size={18} />
         )}
       </ActionIcon>
     </Tooltip>

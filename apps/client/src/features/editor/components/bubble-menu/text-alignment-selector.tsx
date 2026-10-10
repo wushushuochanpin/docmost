@@ -1,12 +1,5 @@
 import React, { Dispatch, FC, SetStateAction } from "react";
-import {
-  IconAlignCenter,
-  IconAlignJustified,
-  IconAlignLeft,
-  IconAlignRight,
-  IconCheck,
-  IconChevronDown,
-} from "@tabler/icons-react";
+import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Check, ChevronDown } from "lucide-react";
 import { Menu, Button, Tooltip, rem } from "@mantine/core";
 import type { Editor } from "@tiptap/react";
 import { useEditorState } from "@tiptap/react";
@@ -57,25 +50,25 @@ export const TextAlignmentSelector: FC<TextAlignmentProps> = ({
       name: "Align left",
       isActive: () => editorState?.isAlignLeft,
       command: () => editor.chain().focus().setTextAlign("left").run(),
-      icon: IconAlignLeft,
+      icon: AlignLeft,
     },
     {
       name: "Align center",
       isActive: () => editorState?.isAlignCenter,
       command: () => editor.chain().focus().setTextAlign("center").run(),
-      icon: IconAlignCenter,
+      icon: AlignCenter,
     },
     {
       name: "Align right",
       isActive: () => editorState?.isAlignRight,
       command: () => editor.chain().focus().setTextAlign("right").run(),
-      icon: IconAlignRight,
+      icon: AlignRight,
     },
     {
       name: "Justify",
       isActive: () => editorState?.isAlignJustify,
       command: () => editor.chain().focus().setTextAlign("justify").run(),
-      icon: IconAlignJustified,
+      icon: AlignJustify,
     },
   ];
 
@@ -96,14 +89,14 @@ export const TextAlignmentSelector: FC<TextAlignmentProps> = ({
             style={{ border: "none", height: "34px" }}
             px="5"
             radius="0"
-            rightSection={<IconChevronDown size={16} />}
+            rightSection={<ChevronDown size={16} />}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setIsOpen(!isOpen)}
             aria-label={t("Text align")}
             aria-haspopup="menu"
             aria-expanded={isOpen}
           >
-            <activeItem.icon style={{ width: rem(16) }} stroke={2} />
+            <activeItem.icon style={{ width: rem(16) }} strokeWidth={2} />
           </Button>
         </Tooltip>
       </Menu.Target>
@@ -114,7 +107,7 @@ export const TextAlignmentSelector: FC<TextAlignmentProps> = ({
             key={index}
             leftSection={<item.icon size={16} />}
             rightSection={
-              activeItem.name === item.name ? <IconCheck size={16} /> : null
+              activeItem.name === item.name ? <Check size={16} /> : null
             }
             onClick={() => {
               item.command();

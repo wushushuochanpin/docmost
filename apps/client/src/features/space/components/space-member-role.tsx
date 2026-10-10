@@ -1,4 +1,4 @@
-import { IconCheck } from "@tabler/icons-react";
+import { Check } from "lucide-react";
 import { Group, Select, SelectProps, Text } from "@mantine/core";
 import React from "react";
 import { spaceRoleData } from "@/features/space/types/space-role-data.ts";
@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { IRoleData } from "@/lib/types.ts";
 
 const iconProps = {
-  stroke: 1.5,
+  strokeWidth: 1.5,
   color: "currentColor",
   opacity: 0.6,
   size: 18,
@@ -24,7 +24,7 @@ const renderSelectOption: SelectProps["renderOption"] = ({
       </Text>
     </div>{" "}
     {checked && (
-      <IconCheck style={{ marginInlineStart: "auto" }} {...iconProps} />
+      <Check style={{ marginInlineStart: "auto" }} {...iconProps} />
     )}
   </Group>
 );

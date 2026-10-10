@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Popover, TextInput, Group, Box } from "@mantine/core";
 import { useDebouncedCallback } from "@mantine/hooks";
-import { IconCheck } from "@tabler/icons-react";
+import { Check } from "lucide-react";
 import clsx from "clsx";
 import classes from "./status.module.css";
 import type { StatusColor } from "@docmost/editor-ext";
@@ -147,7 +147,7 @@ export default function StatusView(props: NodeViewProps) {
                 aria-label={name}
                 aria-pressed={color === name}
               >
-                {color === name && <IconCheck size={14} />}
+                {color === name && <Check size={14} />}
               </Box>
             ))}
           </Group>

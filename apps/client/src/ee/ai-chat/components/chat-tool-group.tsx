@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  IconChevronRight,
-  IconChevronDown,
-  IconLoader2,
-} from "@tabler/icons-react";
+import { ChevronRight, ChevronDown, LoaderCircle } from "lucide-react";
 import type { AiChatToolCall } from "../types/ai-chat.types";
 import ChatToolResult, { TOOL_LABELS } from "./chat-tool-result";
 import classes from "../styles/chat-message.module.css";
@@ -43,11 +39,11 @@ export default function ChatToolGroup({ toolCalls, isStreaming }: Props) {
         }}
       >
         {activeLabel ? (
-          <IconLoader2 size={12} className={classes.processingSpinner} />
+          <LoaderCircle size={12} className={classes.processingSpinner} />
         ) : expanded ? (
-          <IconChevronDown size={12} />
+          <ChevronDown size={12} />
         ) : (
-          <IconChevronRight size={12} />
+          <ChevronRight size={12} />
         )}
         <span className={classes.toolGroupLabel}>
           {activeLabel ? `${activeLabel}…` : `Steps ${toolCalls.length}`}

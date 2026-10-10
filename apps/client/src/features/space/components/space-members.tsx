@@ -9,7 +9,7 @@ import {
   ScrollArea,
 } from "@mantine/core";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { IconDots } from "@tabler/icons-react";
+import { MoreHorizontal } from "lucide-react";
 import { modals } from "@mantine/modals";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
 import {
@@ -212,7 +212,7 @@ export default function SpaceMembersList({
                             c="gray"
                             aria-label={t("Member actions")}
                           >
-                            <IconDots size={18} stroke={1.75} />
+                            <MoreHorizontal size={18} strokeWidth={1.75} />
                           </ActionIcon>
                         </Menu.Target>
 

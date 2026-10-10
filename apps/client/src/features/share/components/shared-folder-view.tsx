@@ -1,11 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { useAtomValue } from "jotai";
-import {
-  IconChevronRight,
-  IconFileText,
-  IconFolder,
-} from "@tabler/icons-react";
+import { ChevronRight, FileText, Folder } from "lucide-react";
 import { buildSharedPageUrl } from "@/features/page/page.utils.ts";
 import { useShareTranslation } from "@/features/share/share-translations.ts";
 import { useSharedPageSubpages } from "@/features/share/hooks/use-shared-page-subpages.ts";
@@ -82,9 +78,9 @@ export default function SharedFolderView({
                       {item.icon ? (
                         item.icon
                       ) : item.nodeType === "folder" ? (
-                        <IconFolder size={16} stroke={1.75} />
+                        <Folder size={16} strokeWidth={1.75} />
                       ) : (
-                        <IconFileText size={16} stroke={1.75} />
+                        <FileText size={16} strokeWidth={1.75} />
                       )}
                     </span>
                     <span className={classes.itemTitle}>
@@ -93,7 +89,7 @@ export default function SharedFolderView({
                   </div>
 
                   <span className={classes.itemMeta} aria-hidden="true">
-                    <IconChevronRight size={16} stroke={1.75} />
+                    <ChevronRight size={16} strokeWidth={1.75} />
                   </span>
                 </a>
               );

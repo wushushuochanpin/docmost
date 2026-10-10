@@ -1,11 +1,5 @@
 import { ActionIcon, Menu, Tooltip } from "@mantine/core";
-import {
-  IconDots,
-  IconEdit,
-  IconTrash,
-  IconCircleCheck,
-  IconCircleCheckFilled,
-} from "@tabler/icons-react";
+import { MoreHorizontal, Edit, Trash, CircleCheck } from "lucide-react";
 import { modals } from "@mantine/modals";
 import { useTranslation } from "react-i18next";
 import { useHasFeature } from "@/ee/hooks/use-feature";
@@ -51,7 +45,7 @@ function CommentMenu({
           style={{ border: "none" }}
           aria-label={t("Comment menu")}
         >
-          <IconDots size={18} stroke={1.75} />
+          <MoreHorizontal size={18} strokeWidth={1.75} />
         </ActionIcon>
       </Menu.Target>
 
@@ -59,7 +53,7 @@ function CommentMenu({
         {canEdit && (
           <Menu.Item
             onClick={onEditComment}
-            leftSection={<IconEdit size={14} />}
+            leftSection={<Edit size={14} />}
           >
             {t("Edit comment")}
           </Menu.Item>
@@ -70,9 +64,9 @@ function CommentMenu({
               onClick={onResolveComment}
               leftSection={
                 isResolved ? (
-                  <IconCircleCheckFilled size={14} />
+                  <CircleCheck size={14} />
                 ) : (
-                  <IconCircleCheck size={14} />
+                  <CircleCheck size={14} />
                 )
               }
             >
@@ -80,13 +74,13 @@ function CommentMenu({
             </Menu.Item>
           ) : (
             <Tooltip label={upgradeLabel} position="left" withinPortal={false}>
-              <Menu.Item disabled leftSection={<IconCircleCheck size={14} />}>
+              <Menu.Item disabled leftSection={<CircleCheck size={14} />}>
                 {t("Resolve comment")}
               </Menu.Item>
             </Tooltip>
           ))}
         <Menu.Item
-          leftSection={<IconTrash size={14} />}
+          leftSection={<Trash size={14} />}
           onClick={openDeleteModal}
         >
           {t("Delete comment")}

@@ -8,13 +8,7 @@ import {
   Text,
   UnstyledButton,
 } from "@mantine/core";
-import {
-  IconArrowLeft,
-  IconArrowRight,
-  IconCertificate2,
-  IconCheck,
-  IconRefresh,
-} from "@tabler/icons-react";
+import { ArrowLeft, ArrowRight, Award, Check, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAtom } from "jotai";
 import classes from "./page-verification-modal.module.css";
@@ -56,7 +50,7 @@ function WorkflowChooser({ onSelect }: WorkflowChooserProps) {
         >
           <div className={classes.titleRow}>
             <span className={classes.iconStamp}>
-              <IconRefresh size={15} stroke={1.7} />
+              <RefreshCw size={15} strokeWidth={1.7} />
             </span>
             <h3 className={classes.title}>{t("Recurring verification")}</h3>
           </div>
@@ -68,7 +62,7 @@ function WorkflowChooser({ onSelect }: WorkflowChooserProps) {
 
           <div className={classes.meta}>
             <div className={classes.metaItem}>
-              <IconCheck size={13} stroke={2.4} className={classes.metaIcon} />
+              <Check size={13} strokeWidth={2.4} className={classes.metaIcon} />
               {t("Re-verify on a schedule (e.g every 30 days )")}
             </div>
           </div>
@@ -78,7 +72,7 @@ function WorkflowChooser({ onSelect }: WorkflowChooserProps) {
               {t("Best for runbooks, FAQs, living documentation")}
             </span>
             <span className={classes.arrow}>
-              <IconArrowRight size={16} stroke={1.8} />
+              <ArrowRight size={16} strokeWidth={1.8} />
             </span>
           </div>
         </UnstyledButton>
@@ -91,7 +85,7 @@ function WorkflowChooser({ onSelect }: WorkflowChooserProps) {
         >
           <div className={classes.titleRow}>
             <span className={classes.iconStamp}>
-              <IconCertificate2 size={15} stroke={1.7} />
+              <Award size={15} strokeWidth={1.7} />
             </span>
             <h3 className={classes.title}>{t("Approval workflow")}</h3>
           </div>
@@ -103,11 +97,11 @@ function WorkflowChooser({ onSelect }: WorkflowChooserProps) {
 
           <div className={classes.meta}>
             <div className={classes.metaItem}>
-              <IconCheck size={13} stroke={2.4} className={classes.metaIcon} />
+              <Check size={13} strokeWidth={2.4} className={classes.metaIcon} />
               {t("Draft → In approval → Approved → Obsolete")}
             </div>
             <div className={classes.metaItem}>
-              <IconCheck size={13} stroke={2.4} className={classes.metaIcon} />
+              <Check size={13} strokeWidth={2.4} className={classes.metaIcon} />
               {t("Designed for ISO 9001, ISO 13485, and FDA")}
             </div>
           </div>
@@ -117,7 +111,7 @@ function WorkflowChooser({ onSelect }: WorkflowChooserProps) {
               {t("Best for SOPs and controlled documents")}
             </span>
             <span className={classes.arrow}>
-              <IconArrowRight size={16} stroke={1.8} />
+              <ArrowRight size={16} strokeWidth={1.8} />
             </span>
           </div>
         </UnstyledButton>
@@ -232,15 +226,15 @@ export function SetupVerificationForm({
           className={classes.backButton}
           onClick={() => setType(null)}
         >
-          <IconArrowLeft size={12} stroke={2.2} />
+          <ArrowLeft size={12} strokeWidth={2.2} />
           {t("Back")}
         </button>
         <div className={classes.configureHeader}>
           <span className={classes.iconStamp}>
             {isQms ? (
-              <IconCertificate2 size={16} stroke={1.6} />
+              <Award size={16} strokeWidth={1.6} />
             ) : (
-              <IconRefresh size={16} stroke={1.6} />
+              <RefreshCw size={16} strokeWidth={1.6} />
             )}
           </span>
           <div>

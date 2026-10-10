@@ -2,17 +2,7 @@ import { FC } from "react";
 import type { Editor } from "@tiptap/react";
 import { useEditorState } from "@tiptap/react";
 import { Button, Menu } from "@mantine/core";
-import {
-  IconBlockquote,
-  IconBraces,
-  IconChevronDown,
-  IconH1,
-  IconH2,
-  IconH3,
-  IconMenu4,
-  IconPageBreak,
-  IconTypography,
-} from "@tabler/icons-react";
+import { Quote, Braces, ChevronDown, Heading1, Heading2, Heading3, Menu as MenuIcon, SeparatorHorizontal, CaseSensitive } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface Props {
@@ -47,14 +37,14 @@ export const BlockTypeGroup: FC<Props> = ({ editor }) => {
           variant="subtle"
           color="dark"
           size="xs"
-          rightSection={<IconChevronDown size={14} />}
+          rightSection={<ChevronDown size={14} />}
         >
           {label}
         </Button>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
-          leftSection={<IconTypography size={16} />}
+          leftSection={<CaseSensitive size={16} />}
           onClick={() =>
             editor.chain().focus().toggleNode("paragraph", "paragraph").run()
           }
@@ -62,7 +52,7 @@ export const BlockTypeGroup: FC<Props> = ({ editor }) => {
           {t("Text")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconH1 size={16} />}
+          leftSection={<Heading1 size={16} />}
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 1 }).run()
           }
@@ -70,7 +60,7 @@ export const BlockTypeGroup: FC<Props> = ({ editor }) => {
           {t("Heading 1")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconH2 size={16} />}
+          leftSection={<Heading2 size={16} />}
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 2 }).run()
           }
@@ -78,7 +68,7 @@ export const BlockTypeGroup: FC<Props> = ({ editor }) => {
           {t("Heading 2")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconH3 size={16} />}
+          leftSection={<Heading3 size={16} />}
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 3 }).run()
           }
@@ -86,25 +76,25 @@ export const BlockTypeGroup: FC<Props> = ({ editor }) => {
           {t("Heading 3")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconBlockquote size={16} />}
+          leftSection={<Quote size={16} />}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
         >
           {t("Quote")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconBraces size={16} />}
+          leftSection={<Braces size={16} />}
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         >
           {t("Code block")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconMenu4 size={16} />}
+          leftSection={<MenuIcon size={16} />}
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
         >
           {t("Divider")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconPageBreak size={16} />}
+          leftSection={<SeparatorHorizontal size={16} />}
           onClick={() => editor.chain().focus().setPageBreak().run()}
         >
           {t("Page break")}

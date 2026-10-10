@@ -8,7 +8,7 @@ import {
   pageEditorAtom,
   readOnlyEditorAtom,
 } from "@/features/editor/atoms/editor-atoms.ts";
-import { IconX } from "@tabler/icons-react";
+import { X } from "lucide-react";
 import { pageStaticTocAtom } from "@/features/page/atoms/page-static-render-atom.ts";
 import StaticTableOfContents from "@/features/share/components/static-table-of-contents.tsx";
 
@@ -68,7 +68,7 @@ export default function Aside({ tab, onClose }: AsideProps) {
             aria-label={t("Close panel")}
             onClick={onClose}
           >
-            <IconX size={18} stroke={1.75} />
+            <X size={18} strokeWidth={1.75} />
           </ActionIcon>
         </Group>
       )}

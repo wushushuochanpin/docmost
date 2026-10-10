@@ -13,7 +13,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Info } from "lucide-react";
 import { useAtom } from "jotai";
 import { userAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { editorFontSizePreferenceAtom } from "@/features/editor/atoms/editor-view-preference-atoms.ts";
@@ -232,7 +232,7 @@ function PageByline({ creator, contributors, readOnly }: PageBylineProps) {
           aria-label={t("Details")}
           {...detailsTriggerProps}
         >
-          <IconInfoCircle size={20} stroke={1.5} />
+          <Info size={20} strokeWidth={1.5} />
         </ActionIcon>
       </Tooltip>
 

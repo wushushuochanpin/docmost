@@ -12,12 +12,7 @@ import {
   PasswordInput,
 } from "@mantine/core";
 import { CopyButton } from "@/components/common/copy-button";
-import {
-  IconRefresh,
-  IconCopy,
-  IconCheck,
-  IconAlertCircle,
-} from "@tabler/icons-react";
+import { RefreshCw, Copy, Check, AlertCircle } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
@@ -108,7 +103,7 @@ export function MfaBackupCodesModal({
           <form onSubmit={form.onSubmit(handleRegenerate)}>
             <Stack gap="md">
               <Alert
-                icon={<IconAlertCircle size={20} />}
+                icon={<AlertCircle size={20} />}
                 title={t("About backup codes")}
                 color="blue"
                 variant="light"
@@ -146,7 +141,7 @@ export function MfaBackupCodesModal({
                 type="submit"
                 fullWidth
                 loading={regenerateMutation.isPending}
-                leftSection={<IconRefresh size={18} />}
+                leftSection={<RefreshCw size={18} />}
               >
                 {t("Generate new backup codes")}
               </Button>
@@ -155,7 +150,7 @@ export function MfaBackupCodesModal({
         ) : (
           <>
             <Alert
-              icon={<IconAlertCircle size={20} />}
+              icon={<AlertCircle size={20} />}
               title={t("Save your new backup codes")}
               color="yellow"
             >
@@ -179,9 +174,9 @@ export function MfaBackupCodesModal({
                       onClick={copy}
                       leftSection={
                         copied ? (
-                          <IconCheck size={14} />
+                          <Check size={14} />
                         ) : (
-                          <IconCopy size={14} />
+                          <Copy size={14} />
                         )
                       }
                     >
@@ -202,7 +197,7 @@ export function MfaBackupCodesModal({
             <Button
               fullWidth
               onClick={handleClose}
-              leftSection={<IconCheck size={18} />}
+              leftSection={<Check size={18} />}
             >
               {t("I've saved my backup codes")}
             </Button>

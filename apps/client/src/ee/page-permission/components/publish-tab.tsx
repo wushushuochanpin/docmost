@@ -9,7 +9,7 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-import { IconExternalLink, IconLock } from "@tabler/icons-react";
+import { ExternalLink, Lock } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getPageIcon } from "@/lib";
@@ -134,7 +134,7 @@ export function PublishTab({
           href={publicLink}
           size="sm"
         >
-          <IconExternalLink size={16} />
+          <ExternalLink size={16} />
         </ActionIcon>
       </Group>
     ),
@@ -144,7 +144,7 @@ export function PublishTab({
   if (isCloud() && isTrial) {
     return (
       <Stack align="center" py="md">
-        <IconLock size={20} stroke={1.5} />
+        <Lock size={20} strokeWidth={1.5} />
         <Text size="sm" ta="center" fw={500}>
           {t("Upgrade to share pages")}
         </Text>
@@ -163,7 +163,7 @@ export function PublishTab({
   if (workspaceSharingDisabled || spaceSharingDisabled) {
     return (
       <Stack align="center" py="md">
-        <IconLock size={20} stroke={1.5} />
+        <Lock size={20} strokeWidth={1.5} />
         <Text size="sm" ta="center" fw={500}>
           {t("Public sharing is disabled")}
         </Text>
@@ -179,7 +179,7 @@ export function PublishTab({
   if (isRestricted) {
     return (
       <Stack align="center" py="md">
-        <IconLock size={20} stroke={1.5} />
+        <Lock size={20} strokeWidth={1.5} />
         <Text size="sm" ta="center" fw={500}>
           {t("Restricted page")}
         </Text>

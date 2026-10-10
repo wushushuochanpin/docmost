@@ -21,7 +21,7 @@ import {
 import { IAttachment } from "@/features/attachments/types/attachment.types";
 import { decodeBase64ToSvgString, svgStringToFile } from "@/lib/utils";
 import clsx from "clsx";
-import { IconEdit } from "@tabler/icons-react";
+import { Edit } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { modals } from "@mantine/modals";
 import { useEditorSessionLease } from "@/features/editor-session/use-editor-session-lease";
@@ -229,7 +229,7 @@ export default function DrawioView(props: NodeViewProps) {
             color="gray"
             aria-label={t("Edit diagram")}
           >
-            <IconEdit size={18} />
+            <Edit size={18} />
           </ActionIcon>
 
           <Text component="span" size="lg" c="dimmed">

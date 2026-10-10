@@ -1,11 +1,5 @@
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import {
-  IconAlertTriangleFilled,
-  IconCircleCheckFilled,
-  IconCircleXFilled,
-  IconInfoCircleFilled,
-  IconNotes,
-} from "@tabler/icons-react";
+import { TriangleAlert, CircleCheck, CircleX, Info, StickyNote } from "lucide-react";
 import { Alert } from "@mantine/core";
 import classes from "./callout.module.css";
 import { CalloutType } from "@docmost/editor-ext/src/lib/callout/utils.ts";
@@ -41,17 +35,17 @@ function getCalloutIcon(type: CalloutType, customIcon?: string) {
 
   switch (type) {
     case "info":
-      return <IconInfoCircleFilled />;
+      return <Info />;
     case "note":
-      return <IconNotes />;
+      return <StickyNote />;
     case "success":
-      return <IconCircleCheckFilled />;
+      return <CircleCheck />;
     case "warning":
-      return <IconAlertTriangleFilled />;
+      return <TriangleAlert />;
     case "danger":
-      return <IconCircleXFilled />;
+      return <CircleX />;
     default:
-      return <IconInfoCircleFilled />;
+      return <Info />;
   }
 }
 

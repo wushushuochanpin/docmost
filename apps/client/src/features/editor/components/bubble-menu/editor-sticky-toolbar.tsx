@@ -1,14 +1,7 @@
 import { FC, useState } from "react";
 import { useEditorState } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
-import {
-  IconBold,
-  IconCode,
-  IconItalic,
-  IconMessage,
-  IconStrikethrough,
-  IconUnderline,
-} from "@tabler/icons-react";
+import { Bold, Code, Italic, MessageSquare, Strikethrough, Underline } from "lucide-react";
 import clsx from "clsx";
 import { ActionIcon, rem, Tooltip } from "@mantine/core";
 import { NodeSelector } from "@/features/editor/components/bubble-menu/node-selector.tsx";
@@ -32,7 +25,7 @@ type ToolbarItem = {
   name: string;
   isActive: () => boolean;
   command: () => void;
-  icon: typeof IconBold;
+  icon: typeof Bold;
 };
 
 export const EditorStickyToolbar: FC<EditorStickyToolbarProps> = ({ editor }) => {
@@ -77,31 +70,31 @@ export const EditorStickyToolbar: FC<EditorStickyToolbarProps> = ({ editor }) =>
       name: "Bold",
       isActive: () => resolvedState.isBold,
       command: () => editor.chain().focus().toggleBold().run(),
-      icon: IconBold,
+      icon: Bold,
     },
     {
       name: "Italic",
       isActive: () => resolvedState.isItalic,
       command: () => editor.chain().focus().toggleItalic().run(),
-      icon: IconItalic,
+      icon: Italic,
     },
     {
       name: "Underline",
       isActive: () => resolvedState.isUnderline,
       command: () => editor.chain().focus().toggleUnderline().run(),
-      icon: IconUnderline,
+      icon: Underline,
     },
     {
       name: "Strike",
       isActive: () => resolvedState.isStrike,
       command: () => editor.chain().focus().toggleStrike().run(),
-      icon: IconStrikethrough,
+      icon: Strikethrough,
     },
     {
       name: "Code",
       isActive: () => resolvedState.isCode,
       command: () => editor.chain().focus().toggleCode().run(),
-      icon: IconCode,
+      icon: Code,
     },
   ];
 
@@ -141,7 +134,7 @@ export const EditorStickyToolbar: FC<EditorStickyToolbarProps> = ({ editor }) =>
                 className={clsx({ [classes.active]: item.isActive() })}
                 onClick={item.command}
               >
-                <item.icon style={{ width: rem(16) }} stroke={1.75} />
+                <item.icon style={{ width: rem(16) }} strokeWidth={1.75} />
               </ActionIcon>
             </Tooltip>
           ))}
@@ -182,7 +175,7 @@ export const EditorStickyToolbar: FC<EditorStickyToolbarProps> = ({ editor }) =>
               setShowCommentPopup(true);
             }}
           >
-            <IconMessage size={16} stroke={1.75} />
+            <MessageSquare size={16} strokeWidth={1.75} />
           </ActionIcon>
         </Tooltip>
       </div>

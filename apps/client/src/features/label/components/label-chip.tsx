@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useComputedColorScheme } from "@mantine/core";
-import { IconX } from "@tabler/icons-react";
+import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ILabel } from "@/features/label/types/label.types.ts";
 import { getLabelColor } from "@/features/label/utils/label-colors.ts";
@@ -43,7 +43,7 @@ export function LabelChip({ label, onRemove, asLink }: LabelChipProps) {
           }}
           aria-label={t("Remove label {{name}}", { name: label.name })}
         >
-          <IconX size={12} stroke={2} />
+          <X size={12} strokeWidth={2} />
         </button>
       )}
     </span>

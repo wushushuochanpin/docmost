@@ -2,7 +2,7 @@ import { useAtom } from "jotai";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
-import { IconClock, IconFileDescription } from "@tabler/icons-react";
+import { Clock, FileText } from "lucide-react";
 
 import { recentVisitsAtom } from "@/features/page/tree/atoms/recent-visits-atom";
 import { buildPageUrl } from "@/features/page/page.utils";
@@ -29,7 +29,7 @@ export function RecentVisitsRail({ spaceId }: { spaceId: string }) {
   return (
     <div className={classes.rail}>
       <div className={classes.header}>
-        <IconClock size={13} stroke={1.8} className={classes.headerIcon} />
+        <Clock size={13} strokeWidth={1.8} className={classes.headerIcon} />
         <span className={classes.headerText}>{t("Recent visits")}</span>
       </div>
       <div className={classes.chips}>
@@ -41,7 +41,7 @@ export function RecentVisitsRail({ spaceId }: { spaceId: string }) {
               {visit.icon ? (
                 <span className={classes.chipIcon}>{visit.icon}</span>
               ) : (
-                <IconFileDescription size={13} className={classes.chipIcon} />
+                <FileText size={13} className={classes.chipIcon} />
               )}
               <span className={classes.chipLabel}>{title}</span>
             </Link>

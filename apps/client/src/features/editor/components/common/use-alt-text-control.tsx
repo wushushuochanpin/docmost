@@ -9,7 +9,7 @@ import {
   Textarea,
   Tooltip,
 } from "@mantine/core";
-import { IconAlt } from "@tabler/icons-react";
+import { CaseSensitive } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const ALT_MAX_LENGTH = 300;
@@ -87,7 +87,7 @@ export function useAltTextControl({
         aria-label={t("Alt text")}
         variant="subtle"
       >
-        <IconAlt size={18} />
+        <CaseSensitive size={18} />
       </ActionIcon>
     </Tooltip>
   );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { TextInput, Group } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconSearch } from "@tabler/icons-react";
+import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import classes from "./search-input.module.css";
 
@@ -32,7 +32,7 @@ export function SearchInput({
         size="sm"
         placeholder={placeholder || t("Search...")}
         aria-label={ariaLabel || placeholder || t("Search")}
-        leftSection={<IconSearch size={15} stroke={1.75} />}
+        leftSection={<Search size={15} strokeWidth={1.75} />}
         radius="md"
         className={classes.input}
         value={value}

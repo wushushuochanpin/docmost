@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Anchor, Alert, Button, Group, Space, Text } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Info } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { Trans, useTranslation } from "react-i18next";
 import SettingsTitle from "@/components/settings/settings-title";
@@ -67,7 +67,7 @@ export default function UserApiKeys() {
       </Text>
 
       {mcpEnabled && canCreate && (
-        <Alert variant="light" color="blue" mb="md" p="sm" icon={<IconInfoCircle />}>
+        <Alert variant="light" color="blue" mb="md" p="sm" icon={<Info />}>
           <Text size="sm">
             {t(
               "Your workspace has MCP enabled. Use your API key to connect AI assistants.",
@@ -96,7 +96,7 @@ export default function UserApiKeys() {
           </Button>
         </Group>
       ) : restrictToAdmins ? (
-        <Alert variant="light" color="yellow" mb="md" p="sm" icon={<IconInfoCircle />}>
+        <Alert variant="light" color="yellow" mb="md" p="sm" icon={<Info />}>
           <Text size="sm">
             {t("API key creation is restricted to admins by your workspace administrator.")}
           </Text>

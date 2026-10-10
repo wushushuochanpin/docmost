@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { ActionIcon, TextInput, ScrollArea, Loader } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconSearch, IconFileDescription } from "@tabler/icons-react";
+import { Search, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useGetSpacesQuery } from "@/features/space/queries/space-query";
 import { useSearchSuggestionsQuery } from "@/features/search/queries/search-query";
@@ -124,7 +124,7 @@ export function DestinationPicker({
   return (
     <>
       <TextInput
-        leftSection={<IconSearch size={16} />}
+        leftSection={<Search size={16} />}
         placeholder={
           searchSpacesOnly
             ? t("Search spaces...")
@@ -179,7 +179,7 @@ export function DestinationPicker({
                           c="gray"
                           size={22}
                         >
-                          <IconFileDescription size={18} />
+                          <FileText size={18} />
                         </ActionIcon>
                       )}
                     </div>

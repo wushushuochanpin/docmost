@@ -6,7 +6,7 @@ import { TextSelection } from "@tiptap/pm/state";
 import { columnResizingPluginKey } from "@tiptap/pm/tables";
 import { useFloating, offset, autoUpdate, hide } from "@floating-ui/react";
 import { Menu, UnstyledButton } from "@mantine/core";
-import { IconChevronDown } from "@tabler/icons-react";
+import { ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { isCellSelection } from "@docmost/editor-ext";
@@ -110,7 +110,7 @@ export const CellChevron = React.memo(function CellChevron({
           className={clsx(classes.cellChevron)}
           aria-label={t("Cell actions")}
         >
-          <IconChevronDown size={14} />
+          <ChevronDown size={14} />
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>

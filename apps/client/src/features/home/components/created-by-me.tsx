@@ -12,7 +12,7 @@ import PageListSkeleton from "@/components/ui/page-list-skeleton";
 import { buildPageUrl } from "@/features/page/page.utils";
 import { formattedDate } from "@/lib/time";
 import { useCreatedByQuery } from "@/features/page/queries/page-query";
-import { IconFileDescription, IconFiles } from "@tabler/icons-react";
+import { FileText, Files } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getSpaceUrl } from "@/lib/config";
 import { useTranslation } from "react-i18next";
@@ -68,7 +68,7 @@ export default function CreatedByMe({ spaceId }: Props) {
                           color="gray"
                           size={18}
                         >
-                          <IconFileDescription size={18} />
+                          <FileText size={18} />
                         </ThemeIcon>
                       )}
                       <Text fw={500} size="md" lineClamp={1}>
@@ -120,7 +120,7 @@ export default function CreatedByMe({ spaceId }: Props) {
     </>
   ) : (
     <EmptyState
-      icon={IconFiles}
+      icon={Files}
       title={t("No pages yet")}
       description={t("Pages you create will show up here.")}
     />

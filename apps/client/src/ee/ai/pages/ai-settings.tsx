@@ -9,7 +9,7 @@ import EnableGenerativeAi from "@/ee/ai/components/enable-generative-ai.tsx";
 import EnableAiChat from "@/ee/ai-chat/components/enable-ai-chat.tsx";
 import McpSettings from "@/ee/ai/components/mcp-settings.tsx";
 import { Alert, Stack, Tabs } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Info } from "lucide-react";
 import { useHasFeature } from "@/ee/hooks/use-feature";
 import { Feature } from "@/ee/features";
 import { useUpgradeLabel } from "@/ee/hooks/use-upgrade-label";
@@ -58,7 +58,7 @@ export default function AiSettings() {
         <Tabs.Panel value="ai" pt="md">
           {!hasAccess && (
             <Alert
-              icon={<IconInfoCircle />}
+              icon={<Info />}
               title={upgradeLabel}
               color="blue"
               mb="lg"

@@ -3,7 +3,7 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { Group, MultiSelect, MultiSelectProps, Text } from "@mantine/core";
 import { useGetGroupsQuery } from "@/features/group/queries/group-query.ts";
 import { IGroup } from "@/features/group/types/group.types.ts";
-import { IconUsersGroup } from "@tabler/icons-react";
+import { UsersRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface MultiGroupSelectProps {
@@ -17,7 +17,7 @@ const renderMultiSelectOption: MultiSelectProps["renderOption"] = ({
   option,
 }) => (
   <Group gap="sm">
-    {<IconUsersGroup size={18} />}
+    {<UsersRound size={18} />}
     <div>
       <Text size="sm">{option.label}</Text>
     </div>

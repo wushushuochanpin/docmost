@@ -17,7 +17,7 @@ import classes from "@/ee/security/components/sso.module.css";
 import { IAuthProvider } from "@/ee/security/types/security.types.ts";
 import { useTranslation } from "react-i18next";
 import { useUpdateSsoProviderMutation } from "@/ee/security/queries/security-query.ts";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Info } from "lucide-react";
 
 const ssoSchema = z.object({
   name: z.string().min(1, "Display name is required"),
@@ -154,7 +154,7 @@ export function SsoLDAPForm({ provider, onClose }: SsoFormProps) {
 
           <Accordion variant="separated">
             <Accordion.Item value="advanced">
-              <Accordion.Control icon={<IconInfoCircle size={20} />}>
+              <Accordion.Control icon={<Info size={20} />}>
                 {t("Advanced Settings")}
               </Accordion.Control>
               <Accordion.Panel>

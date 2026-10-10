@@ -6,17 +6,7 @@ import {
   ShouldShowProps,
 } from "@/features/editor/components/table/types/types.ts";
 import { ActionIcon, Tooltip } from "@mantine/core";
-import {
-  IconColumnInsertLeft,
-  IconColumnInsertRight,
-  IconColumnRemove,
-  IconRowInsertBottom,
-  IconRowInsertTop,
-  IconRowRemove,
-  IconTableColumn,
-  IconTableRow,
-  IconTrashX,
-} from "@tabler/icons-react";
+import { PanelLeft, PanelRight, TableProperties, Rows3, Trash2 } from "lucide-react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { isCellSelection, isEditorReady, isTextSelected } from "@docmost/editor-ext";
 import { useTranslation } from "react-i18next";
@@ -133,7 +123,7 @@ export const TableMenu = React.memo(
               size="lg"
               aria-label={t("Add left column")}
             >
-              <IconColumnInsertLeft size={18} />
+              <PanelLeft size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -148,7 +138,7 @@ export const TableMenu = React.memo(
               size="lg"
               aria-label={t("Add right column")}
             >
-              <IconColumnInsertRight size={18} />
+              <PanelRight size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -163,7 +153,7 @@ export const TableMenu = React.memo(
               size="lg"
               aria-label={t("Delete column")}
             >
-              <IconColumnRemove size={18} />
+              <TableProperties size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -180,7 +170,7 @@ export const TableMenu = React.memo(
               size="lg"
               aria-label={t("Add row above")}
             >
-              <IconRowInsertTop size={18} />
+              <Rows3 size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -195,7 +185,7 @@ export const TableMenu = React.memo(
               size="lg"
               aria-label={t("Add row below")}
             >
-              <IconRowInsertBottom size={18} />
+              <Rows3 size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -206,7 +196,7 @@ export const TableMenu = React.memo(
               size="lg"
               aria-label={t("Delete row")}
             >
-              <IconRowRemove size={18} />
+              <TableProperties size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -223,7 +213,7 @@ export const TableMenu = React.memo(
               size="lg"
               aria-label={t("Toggle header row")}
             >
-              <IconTableRow size={18} />
+              <Rows3 size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -238,7 +228,7 @@ export const TableMenu = React.memo(
               size="lg"
               aria-label={t("Toggle header column")}
             >
-              <IconTableColumn size={18} />
+              <TableProperties size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -255,7 +245,7 @@ export const TableMenu = React.memo(
               size="lg"
               aria-label={t("Delete table")}
             >
-              <IconTrashX size={18} />
+              <Trash2 size={18} />
             </ActionIcon>
           </Tooltip>
         </div>

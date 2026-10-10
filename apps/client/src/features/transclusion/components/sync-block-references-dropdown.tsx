@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { Loader, Popover } from "@mantine/core";
-import {
-  IconChevronDown,
-  IconCornerDownLeft,
-  IconFile,
-  IconInfoCircle,
-} from "@tabler/icons-react";
+import { ChevronDown, CornerDownLeft, File, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useReferencesQuery } from "@/features/transclusion/queries/transclusion-query";
@@ -88,11 +83,11 @@ export default function SyncBlockReferencesDropdown({
           aria-haspopup="dialog"
         >
           <span className={classes.triggerIcon}>
-            <IconCornerDownLeft size={14} stroke={1.8} />
+            <CornerDownLeft size={14} strokeWidth={1.8} />
           </span>
           <span>{label}</span>
           <span className={classes.triggerChev}>
-            <IconChevronDown size={12} stroke={2} />
+            <ChevronDown size={12} strokeWidth={2} />
           </span>
         </button>
       </Popover.Target>
@@ -101,7 +96,7 @@ export default function SyncBlockReferencesDropdown({
         {mode === "reference" && data?.source && (
           <div className={classes.banner}>
             <span className={classes.bannerIcon}>
-              <IconInfoCircle size={16} stroke={1.6} />
+              <Info size={16} strokeWidth={1.6} />
             </span>
             <div>
               <Trans
@@ -156,7 +151,7 @@ export default function SyncBlockReferencesDropdown({
                         <span className={classes.rowEmoji}>{page.icon}</span>
                       ) : (
                         <span className={classes.rowIcon}>
-                          <IconFile size={16} stroke={1.6} />
+                          <File size={16} strokeWidth={1.6} />
                         </span>
                       )}
                       <span className={classes.rowTitle} title={title}>

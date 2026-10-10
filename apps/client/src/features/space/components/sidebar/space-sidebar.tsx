@@ -1,17 +1,5 @@
 import { ActionIcon, Group, Menu, Tooltip } from "@mantine/core";
-import {
-  IconArrowDown,
-  IconDots,
-  IconFileExport,
-  IconFolder,
-  IconLayoutGrid,
-  IconList,
-  IconSettings,
-  IconStar,
-  IconStarFilled,
-  IconTemplate,
-  IconTrash,
-} from "@tabler/icons-react";
+import { ArrowDown, MoreHorizontal, FileDown, Folder, LayoutGrid, List, Settings, Star, LayoutTemplate, Trash } from "lucide-react";
 import classes from "./space-sidebar.module.css";
 import React, { useCallback, useState } from "react";
 import { useAtom } from "jotai";
@@ -200,9 +188,9 @@ export function SpaceSidebar() {
                       aria-label={t("Toggle layout")}
                     >
                       {sidebarLayout === "grid" ? (
-                        <IconList size={16} stroke={1.75} />
+                        <List size={16} strokeWidth={1.75} />
                       ) : (
-                        <IconLayoutGrid size={16} stroke={1.75} />
+                        <LayoutGrid size={16} strokeWidth={1.75} />
                       )}
                     </ActionIcon>
                   </Tooltip>
@@ -221,7 +209,7 @@ export function SpaceSidebar() {
                     onClick={handleCreateFolder}
                     aria-label={t("Create folder")}
                   >
-                    <IconFolder size={16} stroke={1.75} />
+                    <Folder size={16} strokeWidth={1.75} />
                   </ActionIcon>
                 </Tooltip>
               </Group>
@@ -296,7 +284,7 @@ function SpaceMenu({
             position="top"
           >
             <ActionIcon variant="subtle" size={20} aria-label={t("Space menu")}>
-              <IconDots size={16} stroke={1.75} />
+              <MoreHorizontal size={16} strokeWidth={1.75} />
             </ActionIcon>
           </Tooltip>
         </Menu.Target>
@@ -306,12 +294,12 @@ function SpaceMenu({
             onClick={handleToggleFavorite}
             leftSection={
               isFavorited ? (
-                <IconStarFilled
+                <Star
                   size={16}
                   color="var(--mantine-color-yellow-filled)"
                 />
               ) : (
-                <IconStar size={16} />
+                <Star size={16} />
               )
             }
           >
@@ -329,7 +317,7 @@ function SpaceMenu({
               >
                 <Menu.Item
                   onClick={hasTemplates ? openTemplatePicker : undefined}
-                  leftSection={<IconTemplate size={16} />}
+                  leftSection={<LayoutTemplate size={16} />}
                   data-disabled={!hasTemplates || undefined}
                   aria-disabled={!hasTemplates || undefined}
                 >
@@ -345,14 +333,14 @@ function SpaceMenu({
 
               <Menu.Item
                 onClick={openImportModal}
-                leftSection={<IconArrowDown size={16} />}
+                leftSection={<ArrowDown size={16} />}
               >
                 {t("Import pages")}
               </Menu.Item>
 
               <Menu.Item
                 onClick={openExportModal}
-                leftSection={<IconFileExport size={16} />}
+                leftSection={<FileDown size={16} />}
               >
                 {t("Export space")}
               </Menu.Item>
@@ -361,7 +349,7 @@ function SpaceMenu({
 
               <Menu.Item
                 onClick={onSpaceSettings}
-                leftSection={<IconSettings size={16} />}
+                leftSection={<Settings size={16} />}
               >
                 {t("Space settings")}
               </Menu.Item>
@@ -369,7 +357,7 @@ function SpaceMenu({
               <Menu.Item
                 component={Link}
                 to={`/s/${spaceSlug}/trash`}
-                leftSection={<IconTrash size={16} />}
+                leftSection={<Trash size={16} />}
               >
                 {t("Trash")}
               </Menu.Item>

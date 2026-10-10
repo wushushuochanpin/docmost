@@ -11,11 +11,7 @@ import {
   SegmentedControl,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import {
-  IconArrowRight,
-  IconSearch,
-  IconFileText,
-} from "@tabler/icons-react";
+import { ArrowRight, Search, FileText } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -147,7 +143,7 @@ export default function TemplatePickerModal({
         title={<Text fw={500}>{t("Use a template")}</Text>}
       >
         <TextInput
-          leftSection={<IconSearch size={16} />}
+          leftSection={<Search size={16} />}
           placeholder={t("Search templates...")}
           variant="filled"
           value={query}
@@ -192,7 +188,7 @@ export default function TemplatePickerModal({
                   {tpl.icon ? (
                     <span>{tpl.icon}</span>
                   ) : (
-                    <IconFileText
+                    <FileText
                       size={16}
                       color="var(--mantine-color-gray-6)"
                     />
@@ -228,7 +224,7 @@ export default function TemplatePickerModal({
             to="/templates"
             variant="subtle"
             size="sm"
-            rightSection={<IconArrowRight size={16} />}
+            rightSection={<ArrowRight size={16} />}
             onClick={handleClose}
           >
             {t("Browse all templates")}

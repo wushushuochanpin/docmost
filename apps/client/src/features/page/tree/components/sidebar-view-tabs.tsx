@@ -1,10 +1,5 @@
 import { ActionIcon, Button, Tooltip } from "@mantine/core";
-import {
-  IconCategory2,
-  IconPinned,
-  IconSettings2,
-  IconStack2,
-} from "@tabler/icons-react";
+import { Layers2, Pin, Settings, Layers } from "lucide-react";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { ISidebarCategory } from "@/features/space/types/sidebar-category.types.ts";
@@ -45,7 +40,7 @@ export function SidebarViewTabs({
             size="xs"
             variant={isAllActive ? "light" : "subtle"}
             color={isAllActive ? "blue" : "gray"}
-            leftSection={<IconStack2 size={14} stroke={1.8} />}
+            leftSection={<Layers size={14} strokeWidth={1.8} />}
             className={clsx(classes.tabButton, {
               [classes.tabButtonActive]: isAllActive,
             })}
@@ -66,7 +61,7 @@ export function SidebarViewTabs({
             size="xs"
             variant={isPinnedActive ? "light" : "subtle"}
             color={isPinnedActive ? "blue" : "gray"}
-            leftSection={<IconPinned size={14} stroke={1.8} />}
+            leftSection={<Pin size={14} strokeWidth={1.8} />}
             className={clsx(classes.tabButton, {
               [classes.tabButtonActive]: isPinnedActive,
             })}
@@ -93,7 +88,7 @@ export function SidebarViewTabs({
                 size="xs"
                 variant={isActive ? "light" : "subtle"}
                 color={isActive ? "blue" : "gray"}
-                leftSection={<IconCategory2 size={14} stroke={1.8} />}
+                leftSection={<Layers2 size={14} strokeWidth={1.8} />}
                 className={clsx(classes.tabButton, {
                   [classes.tabButtonActive]: isActive,
                 })}
@@ -122,7 +117,7 @@ export function SidebarViewTabs({
             onClick={onManageCategories}
             aria-label={t("Manage categories")}
           >
-            <IconSettings2 size={16} stroke={1.8} />
+            <Settings size={16} strokeWidth={1.8} />
           </ActionIcon>
         </Tooltip>
       ) : null}

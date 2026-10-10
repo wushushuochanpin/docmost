@@ -11,7 +11,7 @@ import {
   Title,
   Tooltip,
 } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Info } from "lucide-react";
 import React, { useState } from "react";
 import useUserRole from "@/hooks/use-user-role.tsx";
 import SsoProviderList from "@/ee/security/components/sso-provider-list.tsx";
@@ -111,7 +111,7 @@ export default function Security() {
           </Title>
 
           <Alert
-            icon={<IconInfoCircle size={16} />}
+            icon={<Info size={16} />}
             color="blue"
             variant="light"
             mb="md"

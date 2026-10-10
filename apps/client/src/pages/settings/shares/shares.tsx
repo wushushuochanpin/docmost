@@ -4,7 +4,7 @@ import { getAppName } from "@/lib/config.ts";
 import { useTranslation } from "react-i18next";
 import ShareList from "@/features/share/components/share-list.tsx";
 import { Alert, Text } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Info } from "lucide-react";
 import React from "react";
 
 export default function Shares() {
@@ -19,7 +19,7 @@ export default function Shares() {
       </Helmet>
       <SettingsTitle title={t("Public sharing")} />
 
-      <Alert variant="light" color="blue" icon={<IconInfoCircle />}>
+      <Alert variant="light" color="blue" icon={<Info />}>
         {t(
           "Publicly shared pages from spaces you are a member of will appear here",
         )}

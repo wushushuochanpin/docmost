@@ -1,6 +1,6 @@
 import React from "react";
 import { Container, Paper, Title, Text, Alert, Stack } from "@mantine/core";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { MfaSetupModal } from "@/ee/mfa";
 import APP_ROUTE, { getPostLoginRedirect } from "@/lib/app-route.ts";
@@ -24,7 +24,7 @@ export default function MfaSetupRequired() {
             {t("Two-factor authentication required")}
           </Title>
 
-          <Alert icon={<IconAlertCircle size="1rem" />} color="yellow">
+          <Alert icon={<AlertCircle size="1rem" />} color="yellow">
             <Text size="sm">
               {t(
                 "Your workspace requires two-factor authentication. Please set it up to continue.",

@@ -11,7 +11,7 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-import { IconAlertTriangle, IconSearch } from "@tabler/icons-react";
+import { AlertTriangle, Search } from "lucide-react";
 import { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useAtomValue } from "jotai";
@@ -110,7 +110,7 @@ export default function MoveToModal({
         <Modal.Body className={classes.body}>
           {showCrossSpaceConfirm ? (
             <Stack gap="md" p="lg">
-              <Alert color="yellow" icon={<IconAlertTriangle size={18} />}>
+              <Alert color="yellow" icon={<AlertTriangle size={18} />}>
                 <Text size="sm">
                   {t(
                     'This will move "{{title}}" and all its sub-pages to the "{{space}}" space.',
@@ -138,7 +138,7 @@ export default function MoveToModal({
           ) : (
             <Stack gap={0}>
               <TextInput
-                leftSection={<IconSearch size={16} />}
+                leftSection={<Search size={16} />}
                 placeholder={t("Search or paste a link...")}
                 value={moveTo.query}
                 onChange={(event) => moveTo.setQuery(event.currentTarget.value)}

@@ -1,6 +1,6 @@
 import { ActionIcon, MantineColor, MantineSize, Tooltip } from "@mantine/core";
 import { CopyButton } from "@/components/common/copy-button";
-import { IconCheck, IconCopy } from "@tabler/icons-react";
+import { Check, Copy } from "lucide-react";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -31,7 +31,7 @@ export default function CopyTextButton({ text, size, label }: CopyProps) {
             size={size}
             aria-label={copied ? t("Copied") : copyLabel}
           >
-            {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+            {copied ? <Check size={16} /> : <Copy size={16} />}
           </ActionIcon>
         </Tooltip>
       )}

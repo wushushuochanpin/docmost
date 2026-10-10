@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 import { updateWorkspace } from "@/features/workspace/services/workspace-service.ts";
 import { notifications } from "@mantine/notifications";
 import { getAppUrl } from "@/lib/config.ts";
-import { IconCheck, IconCopy } from "@tabler/icons-react";
+import { Check, Copy } from "lucide-react";
 import { CopyButton } from "@/components/common/copy-button.tsx";
 
 export default function McpSettings() {
@@ -83,7 +83,7 @@ export default function McpSettings() {
                     variant="subtle"
                     onClick={copy}
                   >
-                    {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                    {copied ? <Check size={16} /> : <Copy size={16} />}
                   </ActionIcon>
                 </Tooltip>
               )}

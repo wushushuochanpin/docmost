@@ -1,23 +1,6 @@
 import { ActionIcon, Group, Loader, Menu, Text, ThemeIcon, Tooltip } from "@mantine/core";
 import type { Editor } from "@tiptap/core";
-import {
-  IconArrowRight,
-  IconArrowsHorizontal,
-  IconChevronDown,
-  IconChevronUp,
-  IconDots,
-  IconFileExport,
-  IconFileText,
-  IconHistory,
-  IconLink,
-  IconMarkdown,
-  IconMessage,
-  IconPrinter,
-  IconTrash,
-  IconWifi,
-  IconWifiOff,
-  IconWorld,
-} from "@tabler/icons-react";
+import { ArrowRight, MoveHorizontal, ChevronDown, ChevronUp, MoreHorizontal, FileDown, FileText, History, Link, FileCode, MessageSquare, Printer, Trash, Wifi, WifiOff, Globe } from "lucide-react";
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import useToggleAside from "@/hooks/use-toggle-aside.tsx";
 import { useAsideTriggerProps } from "@/hooks/use-toggle-aside.tsx";
@@ -288,18 +271,18 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
             color="dark"
             aria-label={t("Page actions")}
           >
-            <IconDots size={20} />
+            <MoreHorizontal size={20} />
           </ActionIcon>
         </Menu.Target>
 
         <Menu.Dropdown>
           <Menu.Item
-            leftSection={<IconWorld size={16} />}
+            leftSection={<Globe size={16} />}
             rightSection={
               shareExpanded ? (
-                <IconChevronUp size={14} />
+                <ChevronUp size={14} />
               ) : (
-                <IconChevronDown size={14} />
+                <ChevronDown size={14} />
               )
             }
             closeMenuOnClick={false}
@@ -328,7 +311,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
           )}
 
           <Menu.Item
-            leftSection={<IconMessage size={16} />}
+            leftSection={<MessageSquare size={16} />}
             onClick={() => toggleAside("comments")}
           >
             {t("Comments")}
@@ -337,14 +320,14 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
           <Menu.Divider />
 
           <Menu.Item
-            leftSection={<IconLink size={16} />}
+            leftSection={<Link size={16} />}
             onClick={handleCopyLink}
           >
             {t("Copy link")}
           </Menu.Item>
 
           <Menu.Item
-            leftSection={<IconFileText size={16} />}
+            leftSection={<FileText size={16} />}
             onClick={handleCopyAsPlainText}
             disabled={!canCopyAsPlainText}
           >
@@ -352,7 +335,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
           </Menu.Item>
 
           <Menu.Item
-            leftSection={<IconMarkdown size={16} />}
+            leftSection={<FileCode size={16} />}
             onClick={handleCopyAsMarkdown}
             disabled={!canCopyAsMarkdown}
           >
@@ -360,14 +343,14 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
           </Menu.Item>
           <Menu.Divider />
 
-          <Menu.Item leftSection={<IconArrowsHorizontal size={16} />}>
+          <Menu.Item leftSection={<MoveHorizontal size={16} />}>
             <Group wrap="nowrap">
               <PageWidthToggle label={t("Full width")} />
             </Group>
           </Menu.Item>
 
           <Menu.Item
-            leftSection={<IconHistory size={16} />}
+            leftSection={<History size={16} />}
             onClick={openHistoryModal}
           >
             {t("Page history")}
@@ -378,13 +361,13 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
           {!readOnly && (
             <>
               <Menu.Item
-                leftSection={<IconArrowRight size={16} />}
+                leftSection={<ArrowRight size={16} />}
                 onClick={openMoveToModal}
               >
                 {t("Move to...")}
               </Menu.Item>
               <Menu.Item
-                leftSection={<IconArrowRight size={16} />}
+                leftSection={<ArrowRight size={16} />}
                 onClick={openMovePageModal}
               >
                 {t("Move to space")}
@@ -393,14 +376,14 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
           )}
 
           <Menu.Item
-            leftSection={<IconFileExport size={16} />}
+            leftSection={<FileDown size={16} />}
             onClick={openExportModal}
           >
             {t("Export")}
           </Menu.Item>
 
           <Menu.Item
-            leftSection={<IconPrinter size={16} />}
+            leftSection={<Printer size={16} />}
             onClick={handlePrint}
           >
             {t("Print")}
@@ -411,7 +394,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
               <Menu.Divider />
               <Menu.Item
                 color={"red"}
-                leftSection={<IconTrash size={16} />}
+                leftSection={<Trash size={16} />}
                 onClick={handleDeletePage}
               >
                 {t("Move to trash")}
@@ -661,7 +644,7 @@ function CollaborationStatusIndicator({ readOnly }: { readOnly?: boolean }) {
     connected: {
       label: t("Live collaboration is connected"),
       color: "teal",
-      icon: <IconWifi size={18} stroke={1.75} />,
+      icon: <Wifi size={18} strokeWidth={1.75} />,
     },
     connecting: {
       label: t("Connecting live collaboration"),
@@ -671,22 +654,22 @@ function CollaborationStatusIndicator({ readOnly }: { readOnly?: boolean }) {
     reconnecting: {
       label: t("Live collaboration connection lost. Retrying..."),
       color: "red",
-      icon: <IconWifiOff size={18} stroke={1.75} />,
+      icon: <WifiOff size={18} strokeWidth={1.75} />,
     },
     local: {
       label: t("Collaboration is unavailable. Saving changes locally."),
       color: "yellow.7",
-      icon: <IconWifiOff size={18} stroke={1.75} />,
+      icon: <WifiOff size={18} strokeWidth={1.75} />,
     },
     disabled: {
       label: t("Live collaboration is off. Changes are saved locally."),
       color: "gray",
-      icon: <IconWifiOff size={18} stroke={1.75} />,
+      icon: <WifiOff size={18} strokeWidth={1.75} />,
     },
     error: {
       label: t("Live collaboration is unavailable"),
       color: "red",
-      icon: <IconWifiOff size={18} stroke={1.75} />,
+      icon: <WifiOff size={18} strokeWidth={1.75} />,
     },
   }[effectiveStatus];
 

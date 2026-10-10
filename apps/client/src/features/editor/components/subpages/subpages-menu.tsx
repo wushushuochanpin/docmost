@@ -3,7 +3,7 @@ import { posToDOMRect, findParentNode } from "@tiptap/react";
 import { Node as PMNode } from "@tiptap/pm/model";
 import React, { useCallback } from "react";
 import { ActionIcon, Tooltip } from "@mantine/core";
-import { IconTrash } from "@tabler/icons-react";
+import { Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Editor } from "@tiptap/core";
 import { isEditorReady } from "@docmost/editor-ext";
@@ -72,7 +72,7 @@ export const SubpagesMenu = React.memo(
             color="red"
             aria-label={t("Delete")}
           >
-            <IconTrash size={18} />
+            <Trash size={18} />
           </ActionIcon>
         </Tooltip>
       </BaseBubbleMenu>

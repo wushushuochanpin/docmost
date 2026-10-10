@@ -1,6 +1,6 @@
 import { KeyboardEvent, useState } from "react";
 import { ActionIcon } from "@mantine/core";
-import { IconChevronRight, IconFileDescription } from "@tabler/icons-react";
+import { ChevronRight, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { IPage } from "@/features/page/types/page.types";
 import { PageChildren } from "./page-children";
@@ -73,7 +73,7 @@ export function PageRow({
               setExpanded(!expanded);
             }}
           >
-            <IconChevronRight size={14} />
+            <ChevronRight size={14} />
           </ActionIcon>
         ) : (
           <div style={{ width: 20, flexShrink: 0 }} />
@@ -89,7 +89,7 @@ export function PageRow({
               c="gray"
               size={22}
             >
-              <IconFileDescription size={18} />
+              <FileText size={18} />
             </ActionIcon>
           )}
         </div>

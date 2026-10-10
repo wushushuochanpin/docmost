@@ -15,7 +15,7 @@ import {
   Alert,
 } from "@mantine/core";
 import { useState } from "react";
-import { IconCheck, IconInfoCircle } from "@tabler/icons-react";
+import { Check, Info } from "lucide-react";
 import { getCheckoutLink } from "@/ee/billing/services/billing-service.ts";
 import { useBillingPlans } from "@/ee/billing/queries/billing-query.ts";
 import { useAtomValue } from "jotai";
@@ -85,7 +85,7 @@ export default function BillingPlans() {
       {/* Tiered pricing notice for eligible workspaces */}
       {showTieredPricingNotice && !hasTieredPlans && (
         <Alert
-          icon={<IconInfoCircle size={16} />} 
+          icon={<Info size={16} />} 
           title="Want the old tiered pricing?" 
           color="blue"
           mb="lg"
@@ -215,7 +215,7 @@ export default function BillingPlans() {
                   size="sm"
                   icon={
                     <ThemeIcon size={20} radius="xl">
-                      <IconCheck size={14} />
+                      <Check size={14} />
                     </ThemeIcon>
                   }
                 >

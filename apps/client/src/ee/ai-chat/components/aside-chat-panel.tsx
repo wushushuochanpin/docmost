@@ -1,15 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { ActionIcon, Popover, Tooltip, UnstyledButton } from "@mantine/core";
-import {
-  IconPlus,
-  IconChevronDown,
-  IconArrowsDiagonal,
-  IconX,
-  IconSparkles,
-  IconFileText,
-  IconLanguage,
-  IconSearch,
-} from "@tabler/icons-react";
+import { Plus, ChevronDown, MoveDiagonal, X, Sparkles, FileText, Languages, Search } from "lucide-react";
 import { useAtom } from "jotai";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -139,9 +130,9 @@ export default function AsideChatPanel() {
   const hasMessages = messages.length > 0 || isStreaming;
 
   const quickActions: QuickAction[] = [
-    { icon: <IconFileText size={16} />, label: t("Summarize this page"), prompt: "Summarize this page" },
-    { icon: <IconLanguage size={16} />, label: t("Translate this page"), prompt: "Translate this page" },
-    { icon: <IconSearch size={16} />, label: t("Analyze for insights"), prompt: "Analyze this page for insights" },
+    { icon: <FileText size={16} />, label: t("Summarize this page"), prompt: "Summarize this page" },
+    { icon: <Languages size={16} />, label: t("Translate this page"), prompt: "Translate this page" },
+    { icon: <Search size={16} />, label: t("Analyze for insights"), prompt: "Analyze this page for insights" },
   ];
 
   return (
@@ -162,7 +153,7 @@ export default function AsideChatPanel() {
               <span className={classes.titleText}>
                 {chatInfoQuery.data?.chat?.title || t("New chat")}
               </span>
-              <IconChevronDown size={16} stroke={1.75} />
+              <ChevronDown size={16} strokeWidth={1.75} />
             </UnstyledButton>
           </Popover.Target>
           <Popover.Dropdown>
@@ -181,7 +172,7 @@ export default function AsideChatPanel() {
             aria-label={t("New chat")}
             onClick={handleNewChat}
           >
-            <IconPlus size={20} stroke={1.75} />
+            <Plus size={20} strokeWidth={1.75} />
           </ActionIcon>
         </Tooltip>
 
@@ -192,7 +183,7 @@ export default function AsideChatPanel() {
             aria-label={t("Open full page")}
             onClick={handleExpand}
           >
-            <IconArrowsDiagonal size={18} stroke={1.5} />
+            <MoveDiagonal size={18} strokeWidth={1.5} />
           </ActionIcon>
         </Tooltip>
 
@@ -203,7 +194,7 @@ export default function AsideChatPanel() {
             aria-label={t("Close")}
             onClick={handleClose}
           >
-            <IconX size={20} stroke={1.75} />
+            <X size={20} strokeWidth={1.75} />
           </ActionIcon>
         </Tooltip>
       </div>
@@ -233,7 +224,7 @@ export default function AsideChatPanel() {
         </>
       ) : (
         <div className={classes.emptyState}>
-          <IconSparkles size={36} stroke={1.5} className={classes.emptyStateIcon} />
+          <Sparkles size={36} strokeWidth={1.5} className={classes.emptyStateIcon} />
           <div className={classes.emptyStateTitle}>{t("How can I help you today?")}</div>
           <div className={classes.quickActions}>
             {quickActions.map((action) => (

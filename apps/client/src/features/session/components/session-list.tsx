@@ -9,7 +9,7 @@ import {
   Text,
   VisuallyHidden,
 } from "@mantine/core";
-import { IconDevices } from "@tabler/icons-react";
+import { MonitorSmartphone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useGetSessionsQuery,
@@ -115,7 +115,7 @@ export default function SessionList() {
             <Table.Tr key={session.id}>
               <Table.Td>
                 <Group gap="xs">
-                  <IconDevices size={18} stroke={1.5} />
+                  <MonitorSmartphone size={18} strokeWidth={1.5} />
                   <div>
                     <Text size="sm">
                       {session.deviceName || t("Unknown device")}

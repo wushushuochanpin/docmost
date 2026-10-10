@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useDisclosure } from "@mantine/hooks";
 import { Button, Menu, Group } from "@mantine/core";
-import { IconChevronDown, IconLock, IconServer } from "@tabler/icons-react";
+import { ChevronDown, Lock, Server } from "lucide-react";
 import { useCreateSsoProviderMutation } from "@/ee/security/queries/security-query.ts";
 import { SSO_PROVIDER } from "@/ee/security/contants.ts";
 import { IAuthProvider } from "@/ee/security/types/security.types.ts";
@@ -65,7 +65,7 @@ export default function CreateSsoProvider() {
           withinPortal
         >
           <Menu.Target>
-            <Button rightSection={<IconChevronDown size={16} />} pr={12}>
+            <Button rightSection={<ChevronDown size={16} />} pr={12}>
               Create SSO
             </Button>
           </Menu.Target>
@@ -73,7 +73,7 @@ export default function CreateSsoProvider() {
           <Menu.Dropdown>
             <Menu.Item
               onClick={handleCreateSAML}
-              leftSection={<IconLock size={16} />}
+              leftSection={<Lock size={16} />}
             >
               SAML
             </Menu.Item>
@@ -87,7 +87,7 @@ export default function CreateSsoProvider() {
 
             <Menu.Item
               onClick={handleCreateLDAP}
-              leftSection={<IconServer size={16} />}
+              leftSection={<Server size={16} />}
             >
               LDAP / Active Directory
             </Menu.Item>

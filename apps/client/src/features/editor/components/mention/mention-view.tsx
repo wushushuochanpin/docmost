@@ -1,6 +1,6 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ActionIcon, Anchor, Text } from "@mantine/core";
-import { IconFileDescription, IconFolder } from "@tabler/icons-react";
+import { FileText, Folder } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { usePageQuery } from "@/features/page/queries/page-query.ts";
 import { useSharePageQuery } from "@/features/share/queries/share-query.ts";
@@ -82,9 +82,9 @@ export default function MentionView(props: NodeViewProps) {
           >
             {sharedPage?.page?.nodeType === "folder" ||
             nodeType === "folder" ? (
-              <IconFolder size={18} />
+              <Folder size={18} />
             ) : (
-              <IconFileDescription size={18} />
+              <FileText size={18} />
             )}
           </ActionIcon>
           <span className={classes.pageMentionText}>
@@ -110,9 +110,9 @@ export default function MentionView(props: NodeViewProps) {
             style={{ verticalAlign: "text-bottom" }}
           >
             {nodeType === "folder" ? (
-              <IconFolder size={18} />
+              <Folder size={18} />
             ) : (
-              <IconFileDescription size={18} />
+              <FileText size={18} />
             )}
           </ActionIcon>
           <span className={classes.pageMentionText}>
@@ -141,9 +141,9 @@ export default function MentionView(props: NodeViewProps) {
               style={{ verticalAlign: "text-bottom" }}
             >
               {page?.nodeType === "folder" || nodeType === "folder" ? (
-                <IconFolder size={18} />
+                <Folder size={18} />
               ) : (
-                <IconFileDescription size={18} />
+                <FileText size={18} />
               )}
             </ActionIcon>
           )}

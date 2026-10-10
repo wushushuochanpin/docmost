@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Paper, Text, Group, Stack, Loader, Box } from "@mantine/core";
-import { IconSparkles, IconFileText } from "@tabler/icons-react";
+import { Sparkles, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { IAiSearchResponse } from "../services/ai-search-service.ts";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
@@ -62,7 +62,7 @@ export function AiSearchResult({
     <Stack gap="md" p="md">
       <Paper p="md" radius="md" withBorder>
         <Group gap="xs" mb="sm">
-          <IconSparkles size={20} color="var(--mantine-color-blue-6)" />
+          <Sparkles size={20} color="var(--mantine-color-blue-6)" />
           <Text fw={600} size="sm">
             {t("AI Answer")}
           </Text>
@@ -98,7 +98,7 @@ export function AiSearchResult({
                 style={{ cursor: "pointer" }}
               >
                 <Group gap="xs">
-                  <IconFileText size={16} />
+                  <FileText size={16} />
                   <Text size="sm" truncate>
                     {source.title}
                   </Text>

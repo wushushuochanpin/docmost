@@ -1,6 +1,6 @@
 import { FC } from "react";
 import type { Editor } from "@tiptap/react";
-import { IconLink } from "@tabler/icons-react";
+import { Link } from "lucide-react";
 import { ActionIcon, Tooltip } from "@mantine/core";
 import { useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
@@ -28,7 +28,7 @@ export const LinkSelector: FC<LinkSelectorProps> = ({ setIsOpen }) => {
           setShowLinkMenu(true);
         }}
       >
-        <IconLink size={16} />
+        <Link size={16} />
       </ActionIcon>
     </Tooltip>
   );

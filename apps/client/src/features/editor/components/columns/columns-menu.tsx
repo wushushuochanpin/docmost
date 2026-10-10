@@ -8,17 +8,7 @@ import {
 } from "@/features/editor/components/table/types/types.ts";
 import { ActionIcon, Tooltip, Popover, Button } from "@mantine/core";
 import clsx from "clsx";
-import {
-  IconChevronDown,
-  IconCheck,
-  IconColumns2,
-  IconColumns3,
-  IconLayoutSidebar,
-  IconLayoutSidebarRight,
-  IconLayoutAlignCenter,
-  IconCopy,
-  IconTrash,
-} from "@tabler/icons-react";
+import { ChevronDown, Check, Columns2, Columns3, PanelLeft, PanelRight, AlignCenterHorizontal, Copy, Trash } from "lucide-react";
 import { isEditorReady, isTextSelected } from "@docmost/editor-ext";
 import type { WidthMode, ColumnsLayout } from "@docmost/editor-ext";
 import { useTranslation } from "react-i18next";
@@ -31,32 +21,32 @@ type LayoutPreset = {
 };
 
 const twoColumnPresets: LayoutPreset[] = [
-  { layout: "two_equal", label: "Equal columns", icon: IconColumns2 },
+  { layout: "two_equal", label: "Equal columns", icon: Columns2 },
   {
     layout: "two_left_sidebar",
     label: "Left sidebar",
-    icon: IconLayoutSidebar,
+    icon: PanelLeft,
   },
   {
     layout: "two_right_sidebar",
     label: "Right sidebar",
-    icon: IconLayoutSidebarRight,
+    icon: PanelRight,
   },
 ];
 
 const threeColumnPresets: LayoutPreset[] = [
-  { layout: "three_equal", label: "Equal columns", icon: IconColumns3 },
+  { layout: "three_equal", label: "Equal columns", icon: Columns3 },
   {
     layout: "three_with_sidebars",
     label: "Wide center",
-    icon: IconLayoutAlignCenter,
+    icon: AlignCenterHorizontal,
   },
   {
     layout: "three_left_wide",
     label: "Left wide",
-    icon: IconLayoutSidebarRight,
+    icon: PanelRight,
   },
-  { layout: "three_right_wide", label: "Right wide", icon: IconLayoutSidebar },
+  { layout: "three_right_wide", label: "Right wide", icon: PanelLeft },
 ];
 
 function getPresetsForCount(count: number): LayoutPreset[] {
@@ -275,7 +265,7 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
               variant="subtle"
               color="dark"
               size="compact-sm"
-              rightSection={<IconChevronDown size={12} />}
+              rightSection={<ChevronDown size={12} />}
               onClick={() => setIsCountOpen(!isCountOpen)}
               aria-label={t("Column count")}
             >
@@ -292,7 +282,7 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
                   justify="space-between"
                   fullWidth
                   rightSection={
-                    n === columnCount ? <IconCheck size={14} /> : null
+                    n === columnCount ? <Check size={14} /> : null
                   }
                   onClick={() => setColumnCount(n)}
                   size="xs"
@@ -336,9 +326,9 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
             variant="subtle"
           >
             {copied ? (
-              <IconCheck size={18} color="var(--mantine-color-green-6)" />
+              <Check size={18} color="var(--mantine-color-green-6)" />
             ) : (
-              <IconCopy size={18} />
+              <Copy size={18} />
             )}
           </ActionIcon>
         </Tooltip>
@@ -350,7 +340,7 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
             aria-label={t("Delete")}
             variant="subtle"
           >
-            <IconTrash size={18} />
+            <Trash size={18} />
           </ActionIcon>
         </Tooltip>
       </div>

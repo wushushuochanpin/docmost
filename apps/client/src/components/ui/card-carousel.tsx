@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import classes from "./card-carousel.module.css";
 
@@ -60,7 +60,7 @@ export default function CardCarousel({ children, ariaLabel }: Props) {
         aria-label={t("Scroll left")}
         tabIndex={canScrollLeft ? 0 : -1}
       >
-        <IconChevronLeft size={18} />
+        <ChevronLeft size={18} />
       </button>
 
       <button
@@ -70,7 +70,7 @@ export default function CardCarousel({ children, ariaLabel }: Props) {
         aria-label={t("Scroll right")}
         tabIndex={canScrollRight ? 0 : -1}
       >
-        <IconChevronRight size={18} />
+        <ChevronRight size={18} />
       </button>
     </div>
   );

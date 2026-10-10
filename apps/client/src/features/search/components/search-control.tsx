@@ -1,4 +1,4 @@
-import { IconSearch } from "@tabler/icons-react";
+import { Search } from "lucide-react";
 import cx from "clsx";
 import {
   ActionIcon,
@@ -23,7 +23,7 @@ export function SearchControl({ className, ...others }: SearchControlProps) {
   return (
     <UnstyledButton {...others} className={cx(classes.root, className)}>
       <Group gap="xs" wrap="nowrap">
-        <IconSearch style={{ width: rem(15), height: rem(15) }} stroke={1.75} />
+        <Search style={{ width: rem(15), height: rem(15) }} strokeWidth={1.75} />
         <Text fz="sm" className={classes.label}>
           {t("Search")}
         </Text>
@@ -51,7 +51,7 @@ export function SearchMobileControl({ onSearch }: SearchMobileControlProps) {
         onClick={onSearch}
         size="sm"
       >
-        <IconSearch size={18} stroke={1.75} />
+        <Search size={18} strokeWidth={1.75} />
       </ActionIcon>
     </Tooltip>
   );

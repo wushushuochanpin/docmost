@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconChevronRight, IconChevronDown } from "@tabler/icons-react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import type { AiChatToolCall } from "../types/ai-chat.types";
 import classes from "../styles/chat-message.module.css";
 
@@ -27,9 +27,9 @@ export default function ChatToolResult({ toolCall }: Props) {
       >
         <span className={classes.toolStepBullet}>·</span>
         {expanded ? (
-          <IconChevronDown size={12} />
+          <ChevronDown size={12} />
         ) : (
-          <IconChevronRight size={12} />
+          <ChevronRight size={12} />
         )}
         <span>{label}</span>
       </div>

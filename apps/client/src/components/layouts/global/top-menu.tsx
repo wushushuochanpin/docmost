@@ -5,19 +5,7 @@ import {
   UnstyledButton,
   useMantineColorScheme,
 } from "@mantine/core";
-import {
-  IconBrightnessFilled,
-  IconBrush,
-  IconCheck,
-  IconChevronDown,
-  IconDeviceDesktop,
-  IconLogout,
-  IconMoon,
-  IconSettings,
-  IconSun,
-  IconUserCircle,
-  IconUsers,
-} from "@tabler/icons-react";
+import { Sun, Brush, Check, ChevronDown, Monitor, LogOut, Moon, Settings, UserCircle, Users } from "lucide-react";
 import { useAtom } from "jotai";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { Link } from "react-router-dom";
@@ -78,7 +66,7 @@ export default function TopMenu() {
             <Text fw={500} size="sm" lh={1} mr={3} lineClamp={1}>
               {workspace?.name}
             </Text>
-            <IconChevronDown size={iconSize} stroke={iconStroke} />
+            <ChevronDown size={iconSize} strokeWidth={iconStroke} />
           </Group>
         </UnstyledButton>
       </Menu.Target>
@@ -88,7 +76,7 @@ export default function TopMenu() {
         <Menu.Item
           component={Link}
           to={APP_ROUTE.SETTINGS.WORKSPACE.GENERAL}
-          leftSection={<IconSettings size={iconSize} stroke={iconStroke} />}
+          leftSection={<Settings size={iconSize} strokeWidth={iconStroke} />}
         >
           {t("Workspace settings")}
         </Menu.Item>
@@ -96,7 +84,7 @@ export default function TopMenu() {
         <Menu.Item
           component={Link}
           to={APP_ROUTE.SETTINGS.WORKSPACE.MEMBERS}
-          leftSection={<IconUsers size={iconSize} stroke={iconStroke} />}
+          leftSection={<Users size={iconSize} strokeWidth={iconStroke} />}
         >
           {t("Manage members")}
         </Menu.Item>
@@ -125,7 +113,7 @@ export default function TopMenu() {
         <Menu.Item
           component={Link}
           to={APP_ROUTE.SETTINGS.ACCOUNT.PROFILE}
-          leftSection={<IconUserCircle size={iconSize} stroke={iconStroke} />}
+          leftSection={<UserCircle size={iconSize} strokeWidth={iconStroke} />}
         >
           {t("My profile")}
         </Menu.Item>
@@ -133,7 +121,7 @@ export default function TopMenu() {
         <Menu.Item
           component={Link}
           to={APP_ROUTE.SETTINGS.ACCOUNT.PREFERENCES}
-          leftSection={<IconBrush size={iconSize} stroke={iconStroke} />}
+          leftSection={<Brush size={iconSize} strokeWidth={iconStroke} />}
         >
           {t("My preferences")}
         </Menu.Item>
@@ -142,7 +130,7 @@ export default function TopMenu() {
           <Menu.Sub.Target>
             <Menu.Sub.Item
               leftSection={
-                <IconBrightnessFilled size={iconSize} stroke={iconStroke} />
+                <Sun size={iconSize} strokeWidth={iconStroke} />
               }
             >
               {t("Theme")}
@@ -154,10 +142,10 @@ export default function TopMenu() {
               const isSelected = currentOption === opt.value;
               const Icon =
                 opt.value === "auto"
-                  ? IconDeviceDesktop
+                  ? Monitor
                   : opt.colorScheme === "dark"
-                    ? IconMoon
-                    : IconSun;
+                    ? Moon
+                    : Sun;
               return (
                 <Menu.Item
                   key={opt.value}
@@ -166,10 +154,10 @@ export default function TopMenu() {
                     setPalette(opt.palette);
                     setStoredThemeOption(opt.value);
                   }}
-                  leftSection={<Icon size={iconSize} stroke={iconStroke} />}
+                  leftSection={<Icon size={iconSize} strokeWidth={iconStroke} />}
                   rightSection={
                     isSelected ? (
-                      <IconCheck size={iconSize} stroke={iconStroke} />
+                      <Check size={iconSize} strokeWidth={iconStroke} />
                     ) : null
                   }
                 >
@@ -184,7 +172,7 @@ export default function TopMenu() {
 
         <Menu.Item
           onClick={logout}
-          leftSection={<IconLogout size={iconSize} stroke={iconStroke} />}
+          leftSection={<LogOut size={iconSize} strokeWidth={iconStroke} />}
         >
           {t("Logout")}
         </Menu.Item>

@@ -8,7 +8,7 @@ import {
 import { useState } from "react";
 import { getFileUrl } from "@/lib/config.ts";
 import clsx from "clsx";
-import { IconEdit } from "@tabler/icons-react";
+import { Edit } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -85,7 +85,7 @@ export default function ExcalidrawView(props: NodeViewProps) {
                 right: 8,
               }}
             >
-              <IconEdit size={18} />
+              <Edit size={18} />
             </ActionIcon>
           )}
         </div>
@@ -108,7 +108,7 @@ export default function ExcalidrawView(props: NodeViewProps) {
             color="gray"
             aria-label={t("Edit drawing")}
           >
-            <IconEdit size={18} />
+            <Edit size={18} />
           </ActionIcon>
 
             <Text component="span" size="lg" c="dimmed">

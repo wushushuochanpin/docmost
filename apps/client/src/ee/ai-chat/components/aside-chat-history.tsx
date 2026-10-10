@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { TextInput, Loader, Text, ScrollArea } from "@mantine/core";
-import { IconSearch } from "@tabler/icons-react";
+import { Search } from "lucide-react";
 import { useChatsQuery, useSearchChatsQuery } from "../queries/ai-chat-query";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useTranslation } from "react-i18next";
@@ -29,7 +29,7 @@ export default function AsideChatHistory({ activeChatId, onSelect }: Props) {
     <div>
       <TextInput
         placeholder={t("Search chats...")}
-        leftSection={<IconSearch size={14} />}
+        leftSection={<Search size={14} />}
         size="xs"
         mb="xs"
         value={searchValue}

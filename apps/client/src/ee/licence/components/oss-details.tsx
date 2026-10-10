@@ -1,5 +1,5 @@
 import { Group, List, Stack, Table, Text, ThemeIcon } from "@mantine/core";
-import { IconCheck } from "@tabler/icons-react";
+import { Check } from "lucide-react";
 
 const enterpriseFeatures = [
   "AI Integration (Chat, Search & Assistant)",
@@ -43,7 +43,7 @@ export default function OssDetails() {
                       size={24}
                       radius="xl"
                     >
-                      <IconCheck size={16} />
+                      <Check size={16} />
                     </ThemeIcon>
                   </div>
                 </Group>
@@ -61,7 +61,7 @@ export default function OssDetails() {
           size="sm"
           icon={
             <ThemeIcon size={20} color={"gray"} radius="xl">
-              <IconCheck size={14} />
+              <Check size={14} />
             </ThemeIcon>
           }
         >

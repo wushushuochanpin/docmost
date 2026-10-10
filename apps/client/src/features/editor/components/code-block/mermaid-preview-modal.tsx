@@ -4,14 +4,7 @@ import {
   Portal,
   Tooltip,
 } from "@mantine/core";
-import {
-  IconFileTypePng,
-  IconFileTypeSvg,
-  IconX,
-  IconMinus,
-  IconPlus,
-  IconRestore,
-} from "@tabler/icons-react";
+import { FileImage, FileCode, X, Minus, Plus, RotateCcw } from "lucide-react";
 import { saveAs } from "file-saver";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -529,7 +522,7 @@ export default function MermaidPreviewModal({
           onClick={onClose}
           aria-label={t("Close")}
         >
-          <IconX size={18} />
+          <X size={18} />
         </ActionIcon>
 
         <div
@@ -567,7 +560,7 @@ export default function MermaidPreviewModal({
               className={classes.mermaidPreviewToolbarIcon}
               onClick={zoomOut}
             >
-              <IconMinus size={16} />
+              <Minus size={16} />
             </ActionIcon>
           </Tooltip>
           <div className={classes.mermaidPreviewZoomValue}>{Math.round(zoom * 100)}%</div>
@@ -578,7 +571,7 @@ export default function MermaidPreviewModal({
               className={classes.mermaidPreviewToolbarIcon}
               onClick={zoomIn}
             >
-              <IconPlus size={16} />
+              <Plus size={16} />
             </ActionIcon>
           </Tooltip>
           <Tooltip label={t("Reset")} withArrow>
@@ -588,7 +581,7 @@ export default function MermaidPreviewModal({
               className={classes.mermaidPreviewToolbarIcon}
               onClick={resetView}
             >
-              <IconRestore size={16} />
+              <RotateCcw size={16} />
             </ActionIcon>
           </Tooltip>
           <div className={classes.mermaidPreviewToolbarDivider} />
@@ -603,7 +596,7 @@ export default function MermaidPreviewModal({
                 });
               }}
             >
-              <IconFileTypePng size={16} />
+              <FileImage size={16} />
             </ActionIcon>
           </Tooltip>
           <Tooltip label={t("Download SVG")} withArrow>
@@ -613,7 +606,7 @@ export default function MermaidPreviewModal({
               className={classes.mermaidPreviewToolbarIcon}
               onClick={downloadSvg}
             >
-              <IconFileTypeSvg size={16} />
+              <FileCode size={16} />
             </ActionIcon>
           </Tooltip>
         </Group>

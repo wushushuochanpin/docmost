@@ -31,6 +31,7 @@ const red: MantineColorsTuple = [
 ];
 
 const sansFontFamily = [
+  "'Inter Variable'",
   "system-ui",
   "-apple-system",
   "BlinkMacSystemFont",

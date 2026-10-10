@@ -10,7 +10,7 @@ import {
   getDefaultZIndex,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconCheck, IconSearch } from "@tabler/icons-react";
+import { Check, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useGetSpacesQuery } from "@/features/space/queries/space-query";
 
@@ -64,7 +64,7 @@ export function SpaceFilterMenu({
           placeholder={t("Find a space")}
           data-autofocus
           autoFocus
-          leftSection={<IconSearch size={16} />}
+          leftSection={<Search size={16} />}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           size="sm"
@@ -94,7 +94,7 @@ export function SpaceFilterMenu({
                   {t("Search in all your spaces")}
                 </Text>
               </div>
-              {!value && <IconCheck size={20} aria-hidden />}
+              {!value && <Check size={20} aria-hidden />}
             </Group>
           </Menu.Item>
 
@@ -117,7 +117,7 @@ export function SpaceFilterMenu({
                 <Text size="sm" fw={500} style={{ flex: 1 }} truncate>
                   {space.name}
                 </Text>
-                {value === space.id && <IconCheck size={20} aria-hidden />}
+                {value === space.id && <Check size={20} aria-hidden />}
               </Group>
             </Menu.Item>
           ))}

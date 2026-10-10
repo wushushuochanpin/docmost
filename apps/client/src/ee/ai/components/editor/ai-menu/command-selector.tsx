@@ -1,5 +1,5 @@
 import { Loader, Menu, ScrollArea } from "@mantine/core";
-import { IconChevronRight } from "@tabler/icons-react";
+import { ChevronRight } from "lucide-react";
 import { ReactNode } from "react";
 import { CommandItem } from "./command-items.ts";
 import classes from "./ai-menu.module.css";
@@ -53,7 +53,7 @@ const CommandSelector = ({
                 }
                 rightSection={
                   item.subCommandSet ? (
-                    <IconChevronRight size={14} />
+                    <ChevronRight size={14} />
                   ) : undefined
                 }
                 onClick={() => handleCommand(item)}

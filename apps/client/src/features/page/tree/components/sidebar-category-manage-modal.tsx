@@ -8,13 +8,7 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-import {
-  IconArrowDown,
-  IconArrowUp,
-  IconCheck,
-  IconPlus,
-  IconTrash,
-} from "@tabler/icons-react";
+import { ArrowDown, ArrowUp, Check, Plus, Trash } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -152,7 +146,7 @@ export function SidebarCategoryManageModal({
             disabled={isBusy}
           />
           <Button
-            leftSection={<IconPlus size={16} stroke={1.8} />}
+            leftSection={<Plus size={16} strokeWidth={1.8} />}
             onClick={handleCreateCategory}
             loading={createMutation.isPending}
             disabled={!newCategoryName.trim()}
@@ -191,7 +185,7 @@ export function SidebarCategoryManageModal({
                   disabled={isBusy || index === 0}
                   aria-label={t("Move up")}
                 >
-                  <IconArrowUp size={16} stroke={1.8} />
+                  <ArrowUp size={16} strokeWidth={1.8} />
                 </ActionIcon>
 
                 <ActionIcon
@@ -201,7 +195,7 @@ export function SidebarCategoryManageModal({
                   disabled={isBusy || index === categories.length - 1}
                   aria-label={t("Move down")}
                 >
-                  <IconArrowDown size={16} stroke={1.8} />
+                  <ArrowDown size={16} strokeWidth={1.8} />
                 </ActionIcon>
 
                 <ActionIcon
@@ -212,7 +206,7 @@ export function SidebarCategoryManageModal({
                   disabled={isBusy || !draftNames[category.id]?.trim()}
                   aria-label={t("Save")}
                 >
-                  <IconCheck size={16} stroke={1.8} />
+                  <Check size={16} strokeWidth={1.8} />
                 </ActionIcon>
 
                 <ActionIcon
@@ -223,7 +217,7 @@ export function SidebarCategoryManageModal({
                   disabled={isBusy}
                   aria-label={t("Delete")}
                 >
-                  <IconTrash size={16} stroke={1.8} />
+                  <Trash size={16} strokeWidth={1.8} />
                 </ActionIcon>
               </Group>
             ))

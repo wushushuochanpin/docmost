@@ -3,14 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import { ActionIcon, rem } from "@mantine/core";
-import {
-  IconChevronDown,
-  IconChevronRight,
-  IconFileDescription,
-  IconFolder,
-  IconPlus,
-  IconPointFilled,
-} from "@tabler/icons-react";
+import { ChevronDown, ChevronRight, FileText, Folder, Plus, Dot } from "lucide-react";
 
 import EmojiPicker from "@/components/ui/emoji-picker.tsx";
 import { queryClient } from "@/query-client.ts";
@@ -177,9 +170,9 @@ export function SpaceTreeRow({
             node.icon ? (
               node.icon
             ) : node.nodeType === "folder" ? (
-              <IconFolder size="18" />
+              <Folder size="18" />
             ) : (
-              <IconFileDescription size="18" />
+              <FileText size="18" />
             )
           }
           readOnly={!canEdit}
@@ -230,7 +223,7 @@ function PageArrow({ isOpen, hasChildren, onToggle }: PageArrowProps) {
           flexShrink: 0,
         }}
       >
-        <IconPointFilled size={8} />
+        <Dot size={8} />
       </span>
     );
   }
@@ -250,9 +243,9 @@ function PageArrow({ isOpen, hasChildren, onToggle }: PageArrowProps) {
       }}
     >
       {isOpen ? (
-        <IconChevronDown stroke={2} size={18} />
+        <ChevronDown strokeWidth={2} size={18} />
       ) : (
-        <IconChevronRight stroke={2} size={18} />
+        <ChevronRight strokeWidth={2} size={18} />
       )}
     </ActionIcon>
   );
@@ -303,7 +296,7 @@ function CreateNode({
         handleClickCreate();
       }}
     >
-      <IconPlus style={{ width: rem(20), height: rem(20) }} stroke={2} />
+      <Plus style={{ width: rem(20), height: rem(20) }} strokeWidth={2} />
     </ActionIcon>
   );
 }

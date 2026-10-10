@@ -9,13 +9,7 @@ import {
 } from "@/features/editor/components/table/types/types.ts";
 import { ActionIcon, Tooltip } from "@mantine/core";
 import clsx from "clsx";
-import {
-  IconLayoutAlignCenter,
-  IconLayoutAlignLeft,
-  IconLayoutAlignRight,
-  IconDownload,
-  IconTrash,
-} from "@tabler/icons-react";
+import { AlignCenterHorizontal, AlignStartHorizontal, AlignEndHorizontal, Download, Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getFileUrl } from "@/lib/config.ts";
 import { useAltTextControl } from "@/features/editor/components/common/use-alt-text-control.tsx";
@@ -149,7 +143,7 @@ export function VideoMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isAlignLeft })}
           >
-            <IconLayoutAlignLeft size={18} />
+            <AlignStartHorizontal size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -161,7 +155,7 @@ export function VideoMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isAlignCenter })}
           >
-            <IconLayoutAlignCenter size={18} />
+            <AlignCenterHorizontal size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -173,7 +167,7 @@ export function VideoMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isAlignRight })}
           >
-            <IconLayoutAlignRight size={18} />
+            <AlignEndHorizontal size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -190,7 +184,7 @@ export function VideoMenu({ editor }: EditorMenuProps) {
             aria-label={t("Download")}
             variant="subtle"
           >
-            <IconDownload size={18} />
+            <Download size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -201,7 +195,7 @@ export function VideoMenu({ editor }: EditorMenuProps) {
             aria-label={t("Delete")}
             variant="subtle"
           >
-            <IconTrash size={18} />
+            <Trash size={18} />
           </ActionIcon>
         </Tooltip>
         </div>

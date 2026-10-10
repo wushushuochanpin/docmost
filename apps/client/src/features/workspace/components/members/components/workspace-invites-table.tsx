@@ -3,7 +3,7 @@ import { useWorkspaceInvitationsQuery } from "@/features/workspace/queries/works
 import React from "react";
 import { getUserRoleLabel } from "@/features/workspace/types/user-role-data.ts";
 import InviteActionMenu from "@/features/workspace/components/members/components/invite-action-menu.tsx";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Info } from "lucide-react";
 import { timeAgo } from "@/lib/time.ts";
 import useUserRole from "@/hooks/use-user-role.tsx";
 import { useTranslation } from "react-i18next";
@@ -21,7 +21,7 @@ export default function WorkspaceInvitesTable() {
 
   return (
     <>
-      <Alert variant="light" color="blue" icon={<IconInfoCircle />}>
+      <Alert variant="light" color="blue" icon={<Info />}>
         {t(
           "Invited members who are yet to accept their invitation will appear here.",
         )}

@@ -6,7 +6,7 @@ import {
   Text,
   UnstyledButton,
 } from "@mantine/core";
-import { IconChevronRight } from "@tabler/icons-react";
+import { ChevronRight } from "lucide-react";
 import { useDisclosure } from "@mantine/hooks";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
@@ -231,7 +231,7 @@ function BacklinksRow({
           ) : (
             <Text size="sm">{count}</Text>
           )}
-          <IconChevronRight size={16} stroke={2} color="var(--mantine-color-dimmed)" />
+          <ChevronRight size={16} strokeWidth={2} color="var(--mantine-color-dimmed)" />
         </Group>
       </Group>
     </UnstyledButton>

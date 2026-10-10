@@ -1,5 +1,5 @@
 import { Spotlight } from "@mantine/spotlight";
-import { IconSearch, IconSparkles } from "@tabler/icons-react";
+import { Search, Sparkles } from "lucide-react";
 import { Group, Button, VisuallyHidden } from "@mantine/core";
 import React, { useState, useMemo, useEffect } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
@@ -127,7 +127,7 @@ export function SearchSpotlight({ spaceId }: SearchSpotlightProps) {
           <Spotlight.Search
             placeholder={isAiMode ? t("Ask a question...") : t("Search...")}
             aria-label={isAiMode ? t("Ask a question...") : t("Search")}
-            leftSection={<IconSearch size={20} stroke={1.5} />}
+            leftSection={<Search size={20} strokeWidth={1.5} />}
             style={{ flex: 1 }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && isAiMode && query.trim() && !isAiLoading) {
@@ -139,7 +139,7 @@ export function SearchSpotlight({ spaceId }: SearchSpotlightProps) {
           {isAiMode && hasAiFeature && (
             <Button
               size="xs"
-              leftSection={<IconSparkles size={16} />}
+              leftSection={<Sparkles size={16} />}
               onClick={handleAiSearchTrigger}
               disabled={!query.trim()}
               loading={isAiLoading}

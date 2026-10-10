@@ -8,10 +8,7 @@ import {
   ShouldShowProps,
 } from "@/features/editor/components/table/types/types.ts";
 import { ActionIcon, Tooltip } from "@mantine/core";
-import {
-  IconPaperclip,
-  IconTrash,
-} from "@tabler/icons-react";
+import { Paperclip, Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import classes from "../common/toolbar-menu.module.css";
 
@@ -123,7 +120,7 @@ export function PdfMenu({ editor }: EditorMenuProps) {
             aria-label={t("Convert to attachment")}
             variant="subtle"
           >
-            <IconPaperclip size={18} />
+            <Paperclip size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -134,7 +131,7 @@ export function PdfMenu({ editor }: EditorMenuProps) {
             aria-label={t("Delete")}
             variant="subtle"
           >
-            <IconTrash size={18} />
+            <Trash size={18} />
           </ActionIcon>
         </Tooltip>
       </div>

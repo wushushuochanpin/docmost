@@ -1,5 +1,5 @@
 import { validate as isValidUUID } from "uuid";
-import { IconFileDescription } from "@tabler/icons-react";
+import { FileText } from "lucide-react";
 import type { ReactNode } from "react";
 import type { TFunction } from "i18next";
 
@@ -86,7 +86,7 @@ export function capitalizeFirstChar(string: string) {
 export function getPageIcon(icon: string, size = 18): string | ReactNode {
   return (
     icon || (
-      <IconFileDescription
+      <FileText
         size={size}
         color="var(--mantine-color-gray-6)"
         aria-hidden="true"

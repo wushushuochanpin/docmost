@@ -9,13 +9,7 @@ import { useAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import { buildSharedPageUrl } from "@/features/page/page.utils.ts";
 import clsx from "clsx";
-import {
-  IconChevronDown,
-  IconChevronRight,
-  IconFileDescription,
-  IconFolder,
-  IconPointFilled,
-} from "@tabler/icons-react";
+import { ChevronDown, ChevronRight, FileText, Folder, Dot } from "lucide-react";
 import { ActionIcon, Box } from "@mantine/core";
 import { extractPageSlugId } from "@/lib";
 import classes from "@/features/page/tree/styles/tree.module.css";
@@ -156,9 +150,9 @@ function SharedTreeRow({
             node.icon ? (
               node.icon
             ) : node.nodeType === "folder" ? (
-              <IconFolder size="18" />
+              <Folder size="18" />
             ) : (
-              <IconFileDescription size="18" />
+              <FileText size="18" />
             )
           }
           readOnly={true}
@@ -196,7 +190,7 @@ function SharedPageArrow({
           flexShrink: 0,
         }}
       >
-        <IconPointFilled size={4} />
+        <Dot size={4} />
       </span>
     );
   }
@@ -214,9 +208,9 @@ function SharedPageArrow({
       }}
     >
       {isOpen ? (
-        <IconChevronDown stroke={2} size={16} />
+        <ChevronDown strokeWidth={2} size={16} />
       ) : (
-        <IconChevronRight stroke={2} size={16} />
+        <ChevronRight strokeWidth={2} size={16} />
       )}
     </ActionIcon>
   );

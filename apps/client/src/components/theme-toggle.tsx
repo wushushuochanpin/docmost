@@ -5,7 +5,7 @@ import {
   useComputedColorScheme,
   useMantineColorScheme,
 } from "@mantine/core";
-import { IconMoon, IconSun } from "@tabler/icons-react";
+import { Moon, Sun } from "lucide-react";
 import classes from "./theme-toggle.module.css";
 
 export function ThemeToggle() {
@@ -22,8 +22,8 @@ export function ThemeToggle() {
         }}
         aria-label={t("Toggle color scheme")}
       >
-        <IconSun className={classes.light} size={18} stroke={1.5} />
-        <IconMoon className={classes.dark} size={18} stroke={1.5} />
+        <Sun className={classes.light} size={18} strokeWidth={1.5} />
+        <Moon className={classes.dark} size={18} strokeWidth={1.5} />
       </ActionIcon>
     </Tooltip>
   );

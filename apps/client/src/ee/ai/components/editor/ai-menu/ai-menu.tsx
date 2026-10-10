@@ -4,7 +4,7 @@ import { useDebouncedCallback, useMediaQuery } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAtom } from "jotai";
-import { IconArrowUp } from "@tabler/icons-react";
+import { ArrowUp } from "lucide-react";
 import { showAiMenuAtom } from "@/features/editor/atoms/editor-atoms.ts";
 import { useAiGenerateStreamMutation } from "@/ee/ai/queries/ai-query.ts";
 import { AiAction } from "@/ee/ai/types/ai.types.ts";
@@ -334,7 +334,7 @@ const EditorAiMenu = ({ editor }: EditorAiMenuProps): JSX.Element | null => {
                 size="sm"
                 onClick={() => handleGenerate()}
               >
-                <IconArrowUp size={14} stroke={2.5} />
+                <ArrowUp size={14} strokeWidth={2.5} />
               </ActionIcon>
             }
             onKeyDown={handleKeyDown}

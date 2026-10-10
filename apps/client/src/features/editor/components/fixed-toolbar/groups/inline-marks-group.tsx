@@ -1,19 +1,7 @@
 import { FC } from "react";
 import type { Editor } from "@tiptap/react";
 import { ActionIcon, Menu, Tooltip } from "@mantine/core";
-import {
-  IconBold,
-  IconChevronDown,
-  IconClearFormatting,
-  IconCode,
-  IconIndentDecrease,
-  IconIndentIncrease,
-  IconItalic,
-  IconStrikethrough,
-  IconSubscript,
-  IconSuperscript,
-  IconUnderline,
-} from "@tabler/icons-react";
+import { Bold, ChevronDown, RemoveFormatting, Code, IndentDecrease, IndentIncrease, Italic, Strikethrough, Subscript, Superscript, Underline } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 import type { ToolbarState } from "../use-toolbar-state";
@@ -39,7 +27,7 @@ export const InlineMarksGroup: FC<Props> = ({ editor, state }) => {
           className={clsx({ [classes.active]: state.isBold })}
           onClick={() => editor.chain().focus().toggleBold().run()}
         >
-          <IconBold size={16} />
+          <Bold size={16} />
         </ActionIcon>
       </Tooltip>
       <Tooltip label={t("Underline")} withArrow>
@@ -52,7 +40,7 @@ export const InlineMarksGroup: FC<Props> = ({ editor, state }) => {
           className={clsx({ [classes.active]: state.isUnderline })}
           onClick={() => editor.chain().focus().toggleUnderline().run()}
         >
-          <IconUnderline size={16} />
+          <Underline size={16} />
         </ActionIcon>
       </Tooltip>
       <Tooltip label={t("Italic")} withArrow>
@@ -65,7 +53,7 @@ export const InlineMarksGroup: FC<Props> = ({ editor, state }) => {
           className={clsx({ [classes.active]: state.isItalic })}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         >
-          <IconItalic size={16} />
+          <Italic size={16} />
         </ActionIcon>
       </Tooltip>
       <Menu shadow="md" position="bottom-start" withArrow={false}>
@@ -76,50 +64,50 @@ export const InlineMarksGroup: FC<Props> = ({ editor, state }) => {
             size="md"
             aria-label={t("More inline formatting")}
           >
-            <IconChevronDown size={14} />
+            <ChevronDown size={14} />
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
-            leftSection={<IconStrikethrough size={16} />}
+            leftSection={<Strikethrough size={16} />}
             onClick={() => editor.chain().focus().toggleStrike().run()}
           >
             {t("Strikethrough")}
           </Menu.Item>
           <Menu.Item
-            leftSection={<IconCode size={16} />}
+            leftSection={<Code size={16} />}
             onClick={() => editor.chain().focus().toggleCode().run()}
           >
             {t("Inline code")}
           </Menu.Item>
           <Menu.Item
-            leftSection={<IconSubscript size={16} />}
+            leftSection={<Subscript size={16} />}
             onClick={() => editor.chain().focus().toggleSubscript().run()}
           >
             {t("Subscript")}
           </Menu.Item>
           <Menu.Item
-            leftSection={<IconSuperscript size={16} />}
+            leftSection={<Superscript size={16} />}
             onClick={() => editor.chain().focus().toggleSuperscript().run()}
           >
             {t("Superscript")}
           </Menu.Item>
           <Menu.Divider />
           <Menu.Item
-            leftSection={<IconIndentIncrease size={16} />}
+            leftSection={<IndentIncrease size={16} />}
             onClick={() => editor.chain().focus().indent().run()}
           >
             {t("Increase indent")}
           </Menu.Item>
           <Menu.Item
-            leftSection={<IconIndentDecrease size={16} />}
+            leftSection={<IndentDecrease size={16} />}
             onClick={() => editor.chain().focus().outdent().run()}
           >
             {t("Decrease indent")}
           </Menu.Item>
           <Menu.Divider />
           <Menu.Item
-            leftSection={<IconClearFormatting size={16} />}
+            leftSection={<RemoveFormatting size={16} />}
             onClick={() => editor.chain().focus().unsetAllMarks().run()}
           >
             {t("Clear formatting")}

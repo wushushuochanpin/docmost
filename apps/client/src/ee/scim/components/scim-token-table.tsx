@@ -1,5 +1,5 @@
 import { ActionIcon, Group, Menu, Table, Text } from "@mantine/core";
-import { IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
+import { MoreHorizontal, Edit, Trash } from "lucide-react";
 import { format } from "date-fns";
 import { formatDateLocale } from "@/lib/time";
 import { useTranslation } from "react-i18next";
@@ -99,13 +99,13 @@ export function ScimTokenTable({
                         color="gray"
                         aria-label={t("Token actions")}
                       >
-                        <IconDots size={16} />
+                        <MoreHorizontal size={16} />
                       </ActionIcon>
                     </Menu.Target>
                     <Menu.Dropdown>
                       {onUpdate && (
                         <Menu.Item
-                          leftSection={<IconEdit size={16} />}
+                          leftSection={<Edit size={16} />}
                           onClick={() => onUpdate(token)}
                         >
                           {t("Rename")}
@@ -113,7 +113,7 @@ export function ScimTokenTable({
                       )}
                       {onRevoke && (
                         <Menu.Item
-                          leftSection={<IconTrash size={16} />}
+                          leftSection={<Trash size={16} />}
                           color="red"
                           onClick={() => onRevoke(token)}
                         >

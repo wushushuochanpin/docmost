@@ -1,6 +1,6 @@
 import { Menu, ActionIcon, Text } from "@mantine/core";
 import React from "react";
-import { IconDots, IconTrash, IconUserOff, IconUserCheck } from "@tabler/icons-react";
+import { MoreHorizontal, Trash, UserX, UserCheck } from "lucide-react";
 import { modals } from "@mantine/modals";
 import {
   useDeleteWorkspaceMemberMutation,
@@ -88,7 +88,7 @@ export default function MemberActionMenu({ userId, deactivatedAt }: Props) {
             c="gray"
             aria-label={t("Member actions")}
           >
-            <IconDots size={18} stroke={1.75} />
+            <MoreHorizontal size={18} strokeWidth={1.75} />
           </ActionIcon>
         </Menu.Target>
 
@@ -97,9 +97,9 @@ export default function MemberActionMenu({ userId, deactivatedAt }: Props) {
             onClick={openDeactivateModal}
             leftSection={
               isDeactivated ? (
-                <IconUserCheck size={16} />
+                <UserCheck size={16} />
               ) : (
-                <IconUserOff size={16} />
+                <UserX size={16} />
               )
             }
             disabled={!isAdmin}
@@ -112,7 +112,7 @@ export default function MemberActionMenu({ userId, deactivatedAt }: Props) {
           <Menu.Item
             c="red"
             onClick={openRevokeModal}
-            leftSection={<IconTrash size={16} stroke={1.75} />}
+            leftSection={<Trash size={16} strokeWidth={1.75} />}
             disabled={!isAdmin}
           >
             {t("Delete member")}

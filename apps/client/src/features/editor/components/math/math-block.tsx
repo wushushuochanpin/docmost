@@ -6,7 +6,7 @@ import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ActionIcon, Flex, Popover, Stack, Textarea } from "@mantine/core";
 import classes from "./math.module.css";
 import { v4 } from "uuid";
-import { IconTrashX } from "@tabler/icons-react";
+import { Trash2 } from "lucide-react";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useTranslation } from "react-i18next";
 
@@ -155,7 +155,7 @@ export default function MathBlockView(props: NodeViewProps) {
               aria-label={t("Delete equation")}
               onClick={() => props.deleteNode()}
             >
-              <IconTrashX size={18} />
+              <Trash2 size={18} />
             </ActionIcon>
           </Flex>
         </Stack>

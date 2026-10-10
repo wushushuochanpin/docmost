@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ThemeIcon, Tooltip } from "@mantine/core";
-import { IconFileDescription } from "@tabler/icons-react";
+import { FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ILabelPageItem } from "@/features/label/types/label.types.ts";
 import { LabelChip } from "@/features/label/components/label-chip.tsx";
@@ -35,7 +35,7 @@ export function LabelPageRow({ page, currentLabelName }: LabelPageRowProps) {
             <span style={{ fontSize: 16, lineHeight: 1 }}>{page.icon}</span>
           ) : (
             <ThemeIcon variant="transparent" color="gray" size={18}>
-              <IconFileDescription size={18} />
+              <FileText size={18} />
             </ThemeIcon>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { ActionIcon, Tooltip } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconStar, IconStarFilled } from "@tabler/icons-react";
+import { Star } from "lucide-react";
 import {
   useFavoriteIds,
   useAddFavoriteMutation,
@@ -95,9 +95,9 @@ export default function StarButton(props: StarButtonProps) {
         loading={isPending}
       >
         {isFavorited ? (
-          <IconStarFilled size={size} />
+          <Star size={size} />
         ) : (
-          <IconStar size={size} stroke={2} />
+          <Star size={size} strokeWidth={2} />
         )}
       </ActionIcon>
     </Tooltip>

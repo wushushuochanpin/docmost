@@ -5,13 +5,7 @@ import {
 } from "@/features/editor/components/table/types/types.ts";
 import { isCellSelection } from "@docmost/editor-ext";
 import { ActionIcon, Tooltip } from "@mantine/core";
-import {
-  IconBoxMargin,
-  IconColumnRemove,
-  IconRowRemove,
-  IconSquareToggle,
-  IconTableRow,
-} from "@tabler/icons-react";
+import { Box, TableProperties, Square, Rows3 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TableBackgroundColor } from "./table-background-color";
 import { TableTextAlignment } from "./table-text-alignment";
@@ -83,7 +77,7 @@ export const TableCellMenu = React.memo(
               size="lg"
               aria-label={t("Merge cells")}
             >
-              <IconBoxMargin size={18} />
+              <Box size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -94,7 +88,7 @@ export const TableCellMenu = React.memo(
               size="lg"
               aria-label={t("Split cell")}
             >
-              <IconSquareToggle size={18} />
+              <Square size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -107,7 +101,7 @@ export const TableCellMenu = React.memo(
               size="lg"
               aria-label={t("Delete column")}
             >
-              <IconColumnRemove size={18} />
+              <TableProperties size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -118,7 +112,7 @@ export const TableCellMenu = React.memo(
               size="lg"
               aria-label={t("Delete row")}
             >
-              <IconRowRemove size={18} />
+              <TableProperties size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -131,7 +125,7 @@ export const TableCellMenu = React.memo(
               size="lg"
               aria-label={t("Toggle header cell")}
             >
-              <IconTableRow size={18} />
+              <Rows3 size={18} />
             </ActionIcon>
           </Tooltip>
         </div>

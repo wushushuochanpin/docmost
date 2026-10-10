@@ -13,7 +13,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { zod4Resolver } from "mantine-form-zod-resolver";
-import { IconDeviceMobile, IconLock } from "@tabler/icons-react";
+import { Smartphone, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { notifications } from "@mantine/notifications";
 import classes from "./mfa-challenge.module.css";
@@ -73,7 +73,7 @@ export function MfaChallenge() {
         <Stack align="center" gap="xl">
           <Center>
             <ThemeIcon size={80} radius="xl" variant="light" color="blue">
-              <IconDeviceMobile size={40} stroke={1.5} />
+              <Smartphone size={40} strokeWidth={1.5} />
             </ThemeIcon>
           </Center>
 
@@ -122,7 +122,7 @@ export function MfaChallenge() {
                   fullWidth
                   size="md"
                   loading={isLoading}
-                  leftSection={<IconLock size={18} />}
+                  leftSection={<Lock size={18} />}
                 >
                   {t("Verify")}
                 </Button>

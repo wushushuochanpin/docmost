@@ -1,10 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "@mantine/core";
-import {
-  IconFileDescription,
-  IconFolder,
-} from "@tabler/icons-react";
+import { FileText, Folder } from "lucide-react";
 
 import type { SpaceTreeNode } from "@/features/page/tree/types";
 import { buildPageUrl } from "@/features/page/page.utils";
@@ -31,9 +28,9 @@ export function SpaceGridView({ nodes }: SpaceGridViewProps) {
         const icon = node.icon ? (
           <span className={classes.emoji}>{node.icon}</span>
         ) : node.nodeType === "folder" ? (
-          <IconFolder size={26} className={classes.fallbackIcon} />
+          <Folder size={26} className={classes.fallbackIcon} />
         ) : (
-          <IconFileDescription size={26} className={classes.fallbackIcon} />
+          <FileText size={26} className={classes.fallbackIcon} />
         );
 
         return (

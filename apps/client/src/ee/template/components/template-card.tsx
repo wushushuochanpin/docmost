@@ -1,10 +1,5 @@
 import { Button, Card, Text, ActionIcon, Menu, Group } from "@mantine/core";
-import {
-  IconDots,
-  IconEdit,
-  IconTrash,
-  IconFileText,
-} from "@tabler/icons-react";
+import { MoreHorizontal, Edit, Trash, FileText } from "lucide-react";
 import { ITemplate } from "@/ee/template/types/template.types";
 import { useTranslation } from "react-i18next";
 import classes from "./template-card.module.css";
@@ -54,7 +49,7 @@ export default function TemplateCard({
             <div className={classes.icon}>{template.icon}</div>
           ) : (
             <div className={classes.iconFallback}>
-              <IconFileText size={20} stroke={1.5} />
+              <FileText size={20} strokeWidth={1.5} />
             </div>
           )}
 
@@ -81,13 +76,13 @@ export default function TemplateCard({
                     onClick={(e) => e.stopPropagation()}
                     aria-label={t("Template menu")}
                   >
-                    <IconDots size={16} />
+                    <MoreHorizontal size={16} />
                   </ActionIcon>
                 </Menu.Target>
 
                 <Menu.Dropdown>
                   <Menu.Item
-                    leftSection={<IconEdit size={14} />}
+                    leftSection={<Edit size={14} />}
                     onClick={(e) => {
                       e.stopPropagation();
                       onEdit?.(template);
@@ -97,7 +92,7 @@ export default function TemplateCard({
                   </Menu.Item>
                   <Menu.Item
                     color="red"
-                    leftSection={<IconTrash size={14} />}
+                    leftSection={<Trash size={14} />}
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete?.(template);

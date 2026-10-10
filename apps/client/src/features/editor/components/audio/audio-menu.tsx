@@ -8,10 +8,7 @@ import {
   ShouldShowProps,
 } from "@/features/editor/components/table/types/types.ts";
 import { ActionIcon, Tooltip } from "@mantine/core";
-import {
-  IconDownload,
-  IconTrash,
-} from "@tabler/icons-react";
+import { Download, Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getFileUrl } from "@/lib/config.ts";
 import classes from "../common/toolbar-menu.module.css";
@@ -102,7 +99,7 @@ export function AudioMenu({ editor }: EditorMenuProps) {
             aria-label={t("Download")}
             variant="subtle"
           >
-            <IconDownload size={18} />
+            <Download size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -113,7 +110,7 @@ export function AudioMenu({ editor }: EditorMenuProps) {
             aria-label={t("Delete")}
             variant="subtle"
           >
-            <IconTrash size={18} />
+            <Trash size={18} />
           </ActionIcon>
         </Tooltip>
       </div>

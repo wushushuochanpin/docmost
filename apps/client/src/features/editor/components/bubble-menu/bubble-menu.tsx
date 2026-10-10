@@ -2,15 +2,7 @@ import { BubbleMenu, BubbleMenuProps } from "@tiptap/react/menus";
 import { isNodeSelection, useEditorState } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import { FC, useEffect, useRef, useState } from "react";
-import {
-  IconBold,
-  IconCode,
-  IconItalic,
-  IconStrikethrough,
-  IconUnderline,
-  IconMessage,
-  IconSparkles,
-} from "@tabler/icons-react";
+import { Bold, Code, Italic, Strikethrough, Underline, MessageSquare, Sparkles } from "lucide-react";
 import clsx from "clsx";
 import classes from "./bubble-menu.module.css";
 import { ActionIcon, Button, rem, Tooltip } from "@mantine/core";
@@ -33,7 +25,7 @@ export interface BubbleMenuItem {
   name: string;
   isActive: () => boolean;
   command: () => void;
-  icon: typeof IconBold;
+  icon: typeof Bold;
 }
 
 type EditorBubbleMenuProps = Omit<BubbleMenuProps, "children" | "editor"> & {
@@ -90,31 +82,31 @@ export const EditorBubbleMenu: FC<EditorBubbleMenuProps> = (props) => {
       name: "Bold",
       isActive: () => editorState?.isBold,
       command: () => props.editor.chain().focus().toggleBold().run(),
-      icon: IconBold,
+      icon: Bold,
     },
     {
       name: "Italic",
       isActive: () => editorState?.isItalic,
       command: () => props.editor.chain().focus().toggleItalic().run(),
-      icon: IconItalic,
+      icon: Italic,
     },
     {
       name: "Underline",
       isActive: () => editorState?.isUnderline,
       command: () => props.editor.chain().focus().toggleUnderline().run(),
-      icon: IconUnderline,
+      icon: Underline,
     },
     {
       name: "Strike",
       isActive: () => editorState?.isStrike,
       command: () => props.editor.chain().focus().toggleStrike().run(),
-      icon: IconStrikethrough,
+      icon: Strikethrough,
     },
     {
       name: "Code",
       isActive: () => editorState?.isCode,
       command: () => props.editor.chain().focus().toggleCode().run(),
-      icon: IconCode,
+      icon: Code,
     },
   ];
 
@@ -128,7 +120,7 @@ export const EditorBubbleMenu: FC<EditorBubbleMenuProps> = (props) => {
       setDraftCommentId(commentId);
       setShowCommentPopup(true);
     },
-    icon: IconMessage,
+    icon: MessageSquare,
   };
 
   const bubbleMenuProps: EditorBubbleMenuProps = {
@@ -181,7 +173,7 @@ export const EditorBubbleMenu: FC<EditorBubbleMenuProps> = (props) => {
               variant="default"
               className={clsx(classes.buttonRoot)}
               radius="0"
-              leftSection={<IconSparkles size={16} />}
+              leftSection={<Sparkles size={16} />}
               onClick={() => {
                 setShowAiMenu(true);
               }}
@@ -226,7 +218,7 @@ export const EditorBubbleMenu: FC<EditorBubbleMenuProps> = (props) => {
                     style={{ border: "none" }}
                     onClick={item.command}
                   >
-                    <item.icon style={{ width: rem(16) }} stroke={2} />
+                    <item.icon style={{ width: rem(16) }} strokeWidth={2} />
                   </ActionIcon>
                 </Tooltip>
               ))}
@@ -253,7 +245,7 @@ export const EditorBubbleMenu: FC<EditorBubbleMenuProps> = (props) => {
           aria-label={t(commentItem.name)}
           onClick={commentItem.command}
         >
-          <IconMessage size={16} stroke={1.75} />
+          <MessageSquare size={16} strokeWidth={1.75} />
         </ActionIcon>
       </div>
     </BubbleMenu>

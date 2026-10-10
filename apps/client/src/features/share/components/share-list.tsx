@@ -2,7 +2,7 @@ import { Table, Group, Text, Anchor } from "@mantine/core";
 import React from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { IconWorld } from "@tabler/icons-react";
+import { Globe } from "lucide-react";
 import Paginate from "@/components/common/paginate.tsx";
 import { useCursorPaginate } from "@/hooks/use-cursor-paginate";
 import { useGetSharesQuery } from "@/features/share/queries/share-query.ts";
@@ -23,7 +23,7 @@ export default function ShareList() {
   const { data, isLoading } = useGetSharesQuery({ cursor });
 
   if (!isLoading && data?.items.length === 0) {
-    return <EmptyState icon={IconWorld} title={t("No shared pages")} />;
+    return <EmptyState icon={Globe} title={t("No shared pages")} />;
   }
 
   return (

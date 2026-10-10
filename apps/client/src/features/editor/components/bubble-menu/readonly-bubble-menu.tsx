@@ -1,7 +1,7 @@
 import type { Editor } from "@tiptap/react";
 import { TextSelection } from "@tiptap/pm/state";
 import { FC, useCallback, useEffect, useRef, useState } from "react";
-import { IconMessage } from "@tabler/icons-react";
+import { MessageSquare } from "lucide-react";
 import classes from "./bubble-menu.module.css";
 import { ActionIcon, Tooltip } from "@mantine/core";
 import { useAtom } from "jotai";
@@ -150,7 +150,7 @@ export const ReadonlyBubbleMenu: FC<ReadonlyBubbleMenuProps> = ({ editor }) => {
               isInteractingRef.current = false;
             }}
           >
-            <IconMessage size={16} stroke={2} />
+            <MessageSquare size={16} strokeWidth={2} />
           </ActionIcon>
         </Tooltip>
       </div>

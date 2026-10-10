@@ -1,13 +1,7 @@
 import { FC } from "react";
 import type { Editor } from "@tiptap/react";
 import { ActionIcon, Menu, Tooltip } from "@mantine/core";
-import {
-  IconFileTypePdf,
-  IconMovie,
-  IconMusic,
-  IconPaperclip,
-  IconPhoto,
-} from "@tabler/icons-react";
+import { FileText, Film, Music, Paperclip, Image } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { uploadImageAction } from "@/features/editor/components/image/upload-image-action";
 import { uploadVideoAction } from "@/features/editor/components/video/upload-video-action";
@@ -73,31 +67,31 @@ export const MediaGroup: FC<Props> = ({ editor }) => {
             size="md"
             aria-label={t("Insert media")}
           >
-            <IconPhoto size={16} />
+            <Image size={16} />
           </ActionIcon>
         </Tooltip>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
-          leftSection={<IconPhoto size={16} />}
+          leftSection={<Image size={16} />}
           onClick={() => pickFile(editor, "image/*", true, uploadImageAction)}
         >
           {t("Image")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconMovie size={16} />}
+          leftSection={<Film size={16} />}
           onClick={() => pickFile(editor, "video/*", true, uploadVideoAction)}
         >
           {t("Video")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconMusic size={16} />}
+          leftSection={<Music size={16} />}
           onClick={() => pickFile(editor, "audio/*", true, uploadAudioAction)}
         >
           {t("Audio")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconFileTypePdf size={16} />}
+          leftSection={<FileText size={16} />}
           onClick={() =>
             pickFile(editor, "application/pdf", false, uploadPdfAction)
           }
@@ -105,7 +99,7 @@ export const MediaGroup: FC<Props> = ({ editor }) => {
           PDF
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconPaperclip size={16} />}
+          leftSection={<Paperclip size={16} />}
           onClick={() =>
             pickFile(editor, "", true, uploadAttachmentAction, true)
           }

@@ -19,7 +19,7 @@ import {
 } from "@/features/page-history/atoms/history-atoms";
 import HistoryView from "@/features/page-history/components/history-view";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { IconCheck, IconChevronDown, IconChevronUp } from "@tabler/icons-react";
+import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { usePageHistoryListQuery } from "@/features/page-history/queries/page-history-query";
 import { formattedDate } from "@/lib/time";
@@ -140,7 +140,7 @@ export default function HistoryModalMobile({ pageId, pageTitle }: Props) {
                   {(option as { userName?: string }).userName}
                 </Text>
               </div>
-              {checked && <IconCheck size={16} />}
+              {checked && <Check size={16} />}
             </Group>
           )}
           comboboxProps={{ withinPortal: false }}
@@ -196,14 +196,14 @@ export default function HistoryModalMobile({ pageId, pageTitle }: Props) {
                   size="sm"
                   onClick={handlePrevChange}
                 >
-                  <IconChevronUp size={16} />
+                  <ChevronUp size={16} />
                 </ActionIcon>
                 <ActionIcon
                   variant="subtle"
                   size="sm"
                   onClick={handleNextChange}
                 >
-                  <IconChevronDown size={16} />
+                  <ChevronDown size={16} />
                 </ActionIcon>
               </Group>
             )}

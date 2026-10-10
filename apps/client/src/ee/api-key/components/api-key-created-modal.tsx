@@ -7,7 +7,7 @@ import {
   Button,
   TextInput,
 } from "@mantine/core";
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { IApiKey } from "@/ee/api-key";
 import CopyTextButton from "@/components/common/copy.tsx";
@@ -38,7 +38,7 @@ export function ApiKeyCreatedModal({
     >
       <Stack gap="md">
         <Alert
-          icon={<IconAlertTriangle size={16} />}
+          icon={<AlertTriangle size={16} />}
           title={t("Important")}
           color="red"
         >

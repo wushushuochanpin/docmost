@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IconArrowUp, IconPaperclip, IconPlayerStopFilled, IconX, IconFile, IconPhoto, IconPlus, IconAt, IconFileText } from "@tabler/icons-react";
+import { ArrowUp, Paperclip, Square, X, File, Image, Plus, AtSign, FileText } from "lucide-react";
 import { Popover } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { EditorContent, ReactNodeViewRenderer, useEditor } from "@tiptap/react";
@@ -290,7 +290,7 @@ export default function ChatInput({
         <div className={classes.attachmentChips}>
           {contextPages?.map((page) => (
             <div key={page.id} className={classes.attachmentChip}>
-              <IconFileText size={14} />
+              <FileText size={14} />
               <span className={classes.attachmentChipName}>
                 {page.title || "Untitled"}
               </span>
@@ -301,7 +301,7 @@ export default function ChatInput({
                   onClick={() => onRemoveContextPage(page.id)}
                   aria-label={`Remove ${page.title}`}
                 >
-                  <IconX size={12} />
+                  <X size={12} />
                 </button>
               )}
             </div>
@@ -312,9 +312,9 @@ export default function ChatInput({
               className={`${classes.attachmentChip} ${attachment.uploading ? classes.attachmentChipUploading : ""}`}
             >
               {IMAGE_EXTENSIONS.includes(attachment.fileExt) ? (
-                <IconPhoto size={14} />
+                <Image size={14} />
               ) : (
-                <IconFile size={14} />
+                <File size={14} />
               )}
               <span className={classes.attachmentChipName}>
                 {attachment.fileName}
@@ -326,7 +326,7 @@ export default function ChatInput({
                   onClick={() => removeAttachment(attachment.id)}
                   aria-label={`Remove ${attachment.fileName}`}
                 >
-                  <IconX size={12} />
+                  <X size={12} />
                 </button>
               )}
             </div>
@@ -352,7 +352,7 @@ export default function ChatInput({
               onClick={() => setPlusMenuOpen((o) => !o)}
               aria-label="Add content"
             >
-              <IconPlus size={14} />
+              <Plus size={14} />
             </button>
           </Popover.Target>
           <Popover.Dropdown p={4}>
@@ -372,7 +372,7 @@ export default function ChatInput({
                   : undefined
               }
             >
-              <IconPaperclip size={16} className={classes.plusMenuIcon} />
+              <Paperclip size={16} className={classes.plusMenuIcon} />
               {t("Add files")}
             </button>
             <button
@@ -384,7 +384,7 @@ export default function ChatInput({
                 setPlusMenuOpen(false);
               }}
             >
-              <IconAt size={16} className={classes.plusMenuIcon} />
+              <AtSign size={16} className={classes.plusMenuIcon} />
               Mention a page
             </button>
           </Popover.Dropdown>
@@ -399,7 +399,7 @@ export default function ChatInput({
             onClick={onStop}
             aria-label="Stop generation"
           >
-            <IconPlayerStopFilled size={14} />
+            <Square size={14} />
           </button>
         ) : (
           <button
@@ -409,7 +409,7 @@ export default function ChatInput({
             disabled={!hasContent}
             aria-label="Send message"
           >
-            <IconArrowUp size={16} stroke={2.5} />
+            <ArrowUp size={16} strokeWidth={2.5} />
           </button>
         )}
       </div>

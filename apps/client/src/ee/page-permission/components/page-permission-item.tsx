@@ -1,5 +1,5 @@
 import { Menu, Text, UnstyledButton, Group } from "@mantine/core";
-import { IconChevronDown, IconCheck } from "@tabler/icons-react";
+import { ChevronDown, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAtomValue } from "jotai";
 import { CustomAvatar } from "@/components/ui/custom-avatar";
@@ -69,7 +69,7 @@ export function PagePermissionItem({
               <UnstyledButton>
                 <Group gap={4}>
                   <Text size="sm">{t(roleLabel)}</Text>
-                  <IconChevronDown size={14} />
+                  <ChevronDown size={14} />
                 </Group>
               </UnstyledButton>
             </Menu.Target>
@@ -80,7 +80,7 @@ export function PagePermissionItem({
                   key={role.value}
                   onClick={() => onRoleChange(member.id, member.type, role.value)}
                   rightSection={
-                    role.value === member.role ? <IconCheck size={16} /> : null
+                    role.value === member.role ? <Check size={16} /> : null
                   }
                 >
                   <div>

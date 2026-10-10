@@ -12,7 +12,7 @@ import PageListSkeleton from "@/components/ui/page-list-skeleton";
 import { buildPageUrl } from "@/features/page/page.utils";
 import { formattedDate } from "@/lib/time";
 import { useFavoritesQuery } from "@/features/favorite/queries/favorite-query";
-import { IconFileDescription, IconStar } from "@tabler/icons-react";
+import { FileText, Star } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getSpaceUrl } from "@/lib/config";
 import { useTranslation } from "react-i18next";
@@ -69,7 +69,7 @@ export default function FavoritesPages({ spaceId }: Props) {
                             color="gray"
                             size={18}
                           >
-                            <IconFileDescription size={18} />
+                            <FileText size={18} />
                           </ThemeIcon>
                         )}
                         <Text fw={500} size="md" lineClamp={1}>
@@ -124,7 +124,7 @@ export default function FavoritesPages({ spaceId }: Props) {
     </>
   ) : (
     <EmptyState
-      icon={IconStar}
+      icon={Star}
       title={t("No favorites yet")}
       description={t("Pages you star will show up here.")}
     />

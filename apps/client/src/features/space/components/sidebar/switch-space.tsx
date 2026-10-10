@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SpaceSelect } from "./space-select";
 import { getSpaceUrl } from "@/lib/config";
 import { Button, Popover, Text } from "@mantine/core";
-import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useDisclosure } from "@mantine/hooks";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
 import { AvatarIconType } from "@/features/attachments/types/attachment.types.ts";
@@ -48,9 +48,9 @@ export function SwitchSpace({
           justify="space-between"
           rightSection={
             opened ? (
-              <IconChevronUp size={18} stroke={1.75} />
+              <ChevronUp size={18} strokeWidth={1.75} />
             ) : (
-              <IconChevronDown size={18} stroke={1.75} />
+              <ChevronDown size={18} strokeWidth={1.75} />
             )
           }
           color="gray"

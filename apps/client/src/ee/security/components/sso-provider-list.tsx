@@ -13,14 +13,7 @@ import {
   Text,
   ThemeIcon,
 } from "@mantine/core";
-import {
-  IconCheck,
-  IconDots,
-  IconLock,
-  IconPencil,
-  IconTrash,
-  IconX,
-} from "@tabler/icons-react";
+import { Check, MoreHorizontal, Lock, Pencil, Trash, X } from "lucide-react";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { IAuthProvider } from "@/ee/security/types/security.types.ts";
@@ -94,7 +87,7 @@ export default function SsoProviderList() {
                         {provider.type === SSO_PROVIDER.GOOGLE ? (
                           <GoogleIcon size={16} />
                         ) : (
-                          <IconLock size={16} />
+                          <Lock size={16} />
                         )}
                         <div>
                           <Text fz="sm" fw={500}>
@@ -123,7 +116,7 @@ export default function SsoProviderList() {
                     <Table.Td>
                       {provider.allowSignup ? (
                         <ThemeIcon variant="light" size={24} radius="xl">
-                          <IconCheck size={16} />
+                          <Check size={16} />
                         </ThemeIcon>
                       ) : (
                         <ThemeIcon
@@ -132,7 +125,7 @@ export default function SsoProviderList() {
                           size={24}
                           radius="xl"
                         >
-                          <IconX size={16} />
+                          <X size={16} />
                         </ThemeIcon>
                       )}
                     </Table.Td>
@@ -144,7 +137,7 @@ export default function SsoProviderList() {
                           aria-label={t("Edit {{name}}", { name: provider.name })}
                           onClick={() => handleEdit(provider)}
                         >
-                          <IconPencil size={16} />
+                          <Pencil size={16} />
                         </ActionIcon>
                         <Menu
                           transitionProps={{ transition: "pop" }}
@@ -160,19 +153,19 @@ export default function SsoProviderList() {
                                 name: provider.name,
                               })}
                             >
-                              <IconDots size={16} />
+                              <MoreHorizontal size={16} />
                             </ActionIcon>
                           </Menu.Target>
                           <Menu.Dropdown>
                             <Menu.Item
                               onClick={() => handleEdit(provider)}
-                              leftSection={<IconPencil size={16} />}
+                              leftSection={<Pencil size={16} />}
                             >
                               {t("Edit")}
                             </Menu.Item>
                             <Menu.Item
                               onClick={() => openDeleteModal(provider.id)}
-                              leftSection={<IconTrash size={16} />}
+                              leftSection={<Trash size={16} />}
                               color="red"
                               disabled={provider.type === SSO_PROVIDER.GOOGLE}
                             >

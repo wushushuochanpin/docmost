@@ -1,20 +1,5 @@
 import React, { Dispatch, FC, SetStateAction } from "react";
-import {
-  IconBlockquote,
-  IconCaretRightFilled,
-  IconCheck,
-  IconCheckbox,
-  IconChevronDown,
-  IconCode,
-  IconH1,
-  IconH2,
-  IconH3,
-  IconInfoCircle,
-  IconList,
-  IconListNumbers,
-  IconQuote,
-  IconTypography,
-} from "@tabler/icons-react";
+import { Quote, ChevronRight, Check, SquareCheck, ChevronDown, Code, Heading1, Heading2, Heading3, Info, List, ListOrdered, CaseSensitive } from "lucide-react";
 import { Popover, Button, ScrollArea, Tooltip } from "@mantine/core";
 import type { Editor } from "@tiptap/react";
 import { useEditorState } from "@tiptap/react";
@@ -68,7 +53,7 @@ export const NodeSelector: FC<NodeSelectorProps> = ({
   const items: BubbleMenuItem[] = [
     {
       name: "Text",
-      icon: IconTypography,
+      icon: CaseSensitive,
       command: () =>
         editor.chain().focus().toggleNode("paragraph", "paragraph").run(),
       isActive: () =>
@@ -78,43 +63,43 @@ export const NodeSelector: FC<NodeSelectorProps> = ({
     },
     {
       name: "Heading 1",
-      icon: IconH1,
+      icon: Heading1,
       command: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
       isActive: () => editorState?.isHeading1,
     },
     {
       name: "Heading 2",
-      icon: IconH2,
+      icon: Heading2,
       command: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
       isActive: () => editorState?.isHeading2,
     },
     {
       name: "Heading 3",
-      icon: IconH3,
+      icon: Heading3,
       command: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
       isActive: () => editorState?.isHeading3,
     },
     {
       name: "To-do List",
-      icon: IconCheckbox,
+      icon: SquareCheck,
       command: () => editor.chain().focus().toggleTaskList().run(),
       isActive: () => editorState?.isTaskItem,
     },
     {
       name: "Bullet List",
-      icon: IconList,
+      icon: List,
       command: () => editor.chain().focus().toggleBulletList().run(),
       isActive: () => editorState?.isBulletList,
     },
     {
       name: "Numbered List",
-      icon: IconListNumbers,
+      icon: ListOrdered,
       command: () => editor.chain().focus().toggleOrderedList().run(),
       isActive: () => editorState?.isOrderedList,
     },
     {
       name: "Blockquote",
-      icon: IconBlockquote,
+      icon: Quote,
       command: () =>
         editor
           .chain()
@@ -126,25 +111,25 @@ export const NodeSelector: FC<NodeSelectorProps> = ({
     },
     {
       name: "Synced block",
-      icon: IconQuote,
+      icon: Quote,
       command: () => editor.chain().focus().toggleTransclusionSource().run(),
       isActive: () => editorState?.isTransclusionSource,
     },
     {
       name: "Code",
-      icon: IconCode,
+      icon: Code,
       command: () => editor.chain().focus().toggleCodeBlock().run(),
       isActive: () => editorState?.isCodeBlock,
     },
     {
       name: "Callout",
-      icon: IconInfoCircle,
+      icon: Info,
       command: () => editor.chain().focus().toggleCallout().run(),
       isActive: () => editorState?.isCallout,
     },
     {
       name: "Toggle block",
-      icon: IconCaretRightFilled,
+      icon: ChevronRight,
       command: () => editor.chain().focus().setDetails().run(),
       isActive: () => editorState?.isDetails,
     },
@@ -168,7 +153,7 @@ export const NodeSelector: FC<NodeSelectorProps> = ({
             variant="default"
             style={{ border: "none", height: "34px" }}
             radius="0"
-            rightSection={<IconChevronDown size={16} />}
+            rightSection={<ChevronDown size={16} />}
             onClick={() => setIsOpen(!isOpen)}
             aria-label={t("Turn into")}
             aria-haspopup="menu"
@@ -188,7 +173,7 @@ export const NodeSelector: FC<NodeSelectorProps> = ({
                 variant="subtle"
                 leftSection={<item.icon size={16} />}
                 rightSection={
-                  activeItem.name === item.name && <IconCheck size={16} />
+                  activeItem.name === item.name && <Check size={16} />
                 }
                 justify="left"
                 fullWidth

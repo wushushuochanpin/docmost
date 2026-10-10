@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import { IconArrowDown, IconAlertTriangle } from "@tabler/icons-react";
+import { ArrowDown, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { VisuallyHidden } from "@mantine/core";
 import type { AiChatMessage, AiChatToolCall } from "../types/ai-chat.types";
@@ -11,7 +11,7 @@ function ChatMessageErrorFallback() {
   const { t } = useTranslation();
   return (
     <div className={classes.messageErrorFallback}>
-      <IconAlertTriangle size={14} />
+      <AlertTriangle size={14} />
       <span>{t("Failed to render this message.")}</span>
     </div>
   );
@@ -211,7 +211,7 @@ export default function ChatMessageList({
           className={classes.scrollToBottomButton}
           onClick={() => scrollToBottom("smooth")}
         >
-          <IconArrowDown size={16} stroke={2} />
+          <ArrowDown size={16} strokeWidth={2} />
         </button>
       )}
     </div>

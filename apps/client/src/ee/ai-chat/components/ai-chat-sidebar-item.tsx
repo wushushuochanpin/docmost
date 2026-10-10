@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { ActionIcon, Menu, TextInput } from "@mantine/core";
-import { IconDots, IconTrash, IconEdit } from "@tabler/icons-react";
+import { MoreHorizontal, Trash, Edit } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { AiChat } from "../types/ai-chat.types";
@@ -134,12 +134,12 @@ export default function AiChatSidebarItem({
               onClick={(e) => e.preventDefault()}
               aria-label={t("Chat menu")}
             >
-              <IconDots size={14} />
+              <MoreHorizontal size={14} />
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Item
-              leftSection={<IconEdit size={14} />}
+              leftSection={<Edit size={14} />}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -149,7 +149,7 @@ export default function AiChatSidebarItem({
               {t("Rename")}
             </Menu.Item>
             <Menu.Item
-              leftSection={<IconTrash size={14} />}
+              leftSection={<Trash size={14} />}
               color="red"
               onClick={(e) => {
                 e.preventDefault();

@@ -2,17 +2,7 @@ import React from "react";
 import type { Editor } from "@tiptap/react";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { ColorSwatch, Menu } from "@mantine/core";
-import {
-  IconBoxMargin,
-  IconColumnInsertRight,
-  IconColumnRemove,
-  IconEraser,
-  IconPalette,
-  IconRowInsertBottom,
-  IconRowRemove,
-  IconSquareToggle,
-  IconTableRow,
-} from "@tabler/icons-react";
+import { Box, PanelRight, TableProperties, Eraser, Palette, Rows3, Square } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useTableClear } from "../hooks/use-table-clear";
 import { TABLE_COLORS } from "../../table-background-color";
@@ -57,7 +47,7 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
     <>
       <Menu.Sub position="right-start">
         <Menu.Sub.Target>
-          <Menu.Sub.Item leftSection={<IconPalette size={16} />}>
+          <Menu.Sub.Item leftSection={<Palette size={16} />}>
             {t("Background color")}
           </Menu.Sub.Item>
         </Menu.Sub.Target>
@@ -99,21 +89,21 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
       <AlignmentSubmenu editor={editor} />
 
       <Menu.Item
-        leftSection={<IconBoxMargin size={16} />}
+        leftSection={<Box size={16} />}
         onClick={() => editor.chain().focus().mergeCells().run()}
         disabled={!editor.can().mergeCells()}
       >
         {t("Merge cells")}
       </Menu.Item>
       <Menu.Item
-        leftSection={<IconSquareToggle size={16} />}
+        leftSection={<Square size={16} />}
         onClick={() => editor.chain().focus().splitCell().run()}
         disabled={!editor.can().splitCell()}
       >
         {t("Split cell")}
       </Menu.Item>
       <Menu.Item
-        leftSection={<IconTableRow size={16} />}
+        leftSection={<Rows3 size={16} />}
         onClick={() => editor.chain().focus().toggleHeaderCell().run()}
       >
         {t("Toggle header cell")}
@@ -122,29 +112,29 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
       <Menu.Divider />
 
       <Menu.Item
-        leftSection={<IconColumnInsertRight size={16} />}
+        leftSection={<PanelRight size={16} />}
         onClick={() => editor.chain().focus().addColumnAfter().run()}
       >
         {t("Add column right")}
       </Menu.Item>
       <Menu.Item
-        leftSection={<IconRowInsertBottom size={16} />}
+        leftSection={<Rows3 size={16} />}
         onClick={() => editor.chain().focus().addRowAfter().run()}
       >
         {t("Add row below")}
       </Menu.Item>
 
-      <Menu.Item leftSection={<IconEraser size={16} />} onClick={clearCell}>
+      <Menu.Item leftSection={<Eraser size={16} />} onClick={clearCell}>
         {t("Clear cell")}
       </Menu.Item>
       <Menu.Item
-        leftSection={<IconColumnRemove size={16} />}
+        leftSection={<TableProperties size={16} />}
         onClick={() => editor.chain().focus().deleteColumn().run()}
       >
         {t("Delete column")}
       </Menu.Item>
       <Menu.Item
-        leftSection={<IconRowRemove size={16} />}
+        leftSection={<TableProperties size={16} />}
         onClick={() => editor.chain().focus().deleteRow().run()}
       >
         {t("Delete row")}

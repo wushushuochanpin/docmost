@@ -1,5 +1,5 @@
 import { Alert, Text } from "@mantine/core";
-import { IconLock } from "@tabler/icons-react";
+import { Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface FeatureDisabledNoticeProps {
@@ -18,7 +18,7 @@ export default function FeatureDisabledNotice({
       variant="light"
       color="gray"
       radius="md"
-      icon={<IconLock size={18} />}
+      icon={<Lock size={18} />}
       title={title}
     >
       <Text size="sm">

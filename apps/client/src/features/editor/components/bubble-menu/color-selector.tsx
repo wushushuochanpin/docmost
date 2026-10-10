@@ -1,5 +1,5 @@
 import React, { Dispatch, FC, SetStateAction } from "react";
-import { IconCheck, IconChevronDown } from "@tabler/icons-react";
+import { Check, ChevronDown } from "lucide-react";
 import {
   Button,
   Popover,
@@ -225,7 +225,7 @@ export const ColorSelector: FC<ColorSelectorProps> = ({
           <Button
             variant="default"
             radius="0"
-            rightSection={<IconChevronDown size={16} />}
+            rightSection={<ChevronDown size={16} />}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setIsOpen(!isOpen)}
             data-text-color={activeColorItem?.color || ""}
@@ -366,7 +366,7 @@ export const ColorSelector: FC<ColorSelectorProps> = ({
                       }}
                     >
                       {editorState[`highlight_${color}`] ? (
-                        <IconCheck
+                        <Check
                           size={16}
                           color="var(--mantine-color-green-7)"
                         />

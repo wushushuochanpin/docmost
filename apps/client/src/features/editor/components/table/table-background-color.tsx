@@ -1,5 +1,5 @@
 import React, { FC } from "react";
-import { IconCheck, IconPalette } from "@tabler/icons-react";
+import { Check, Palette } from "lucide-react";
 import {
   ActionIcon,
   ColorSwatch,
@@ -100,7 +100,7 @@ export const TableBackgroundColor: FC<TableBackgroundColorProps> = ({
             aria-label={t("Background color")}
             onClick={() => setOpened(!opened)}
           >
-            <IconPalette size={18} />
+            <Palette size={18} />
           </ActionIcon>
         </Tooltip>
       </Popover.Target>
@@ -138,7 +138,7 @@ export const TableBackgroundColor: FC<TableBackgroundColorProps> = ({
                   }}
                 >
                   {editorState.currentColor === item.color && (
-                    <IconCheck
+                    <Check
                       size={18}
                       style={{
                         color:

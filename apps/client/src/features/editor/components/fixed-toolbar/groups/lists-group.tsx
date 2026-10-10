@@ -1,7 +1,7 @@
 import { FC } from "react";
 import type { Editor } from "@tiptap/react";
 import { ActionIcon, Tooltip } from "@mantine/core";
-import { IconCheckbox, IconList, IconListNumbers } from "@tabler/icons-react";
+import { SquareCheck, List, ListOrdered } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 import type { ToolbarState } from "../use-toolbar-state";
@@ -27,7 +27,7 @@ export const ListsGroup: FC<Props> = ({ editor, state }) => {
           className={clsx({ [classes.active]: state.isBulletList })}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         >
-          <IconList size={16} />
+          <List size={16} />
         </ActionIcon>
       </Tooltip>
       <Tooltip label={t("Numbered List")} withArrow>
@@ -40,7 +40,7 @@ export const ListsGroup: FC<Props> = ({ editor, state }) => {
           className={clsx({ [classes.active]: state.isOrderedList })}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         >
-          <IconListNumbers size={16} />
+          <ListOrdered size={16} />
         </ActionIcon>
       </Tooltip>
       <Tooltip label={t("To-do List")} withArrow>
@@ -53,7 +53,7 @@ export const ListsGroup: FC<Props> = ({ editor, state }) => {
           className={clsx({ [classes.active]: state.isTaskList })}
           onClick={() => editor.chain().focus().toggleTaskList().run()}
         >
-          <IconCheckbox size={16} />
+          <SquareCheck size={16} />
         </ActionIcon>
       </Tooltip>
     </ActionIcon.Group>

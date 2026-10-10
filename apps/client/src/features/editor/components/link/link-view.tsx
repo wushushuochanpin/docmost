@@ -1,13 +1,6 @@
 import { MarkViewContent, MarkViewProps } from "@tiptap/react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import {
-  IconFileDescription,
-  IconCopy,
-  IconExternalLink,
-  IconLinkOff,
-  IconPencil,
-  IconWorld,
-} from "@tabler/icons-react";
+import { FileText, Copy, ExternalLink, Link2Off, Pencil, Globe } from "lucide-react";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { notifications } from "@mantine/notifications";
 import {
@@ -418,9 +411,9 @@ export default function LinkView(props: MarkViewProps) {
                     className={classes.linkChip}
                     onClick={() => setShowSearch(true)}
                   >
-                    <IconFileDescription
+                    <FileText
                       size={16}
-                      stroke={1.5}
+                      strokeWidth={1.5}
                       color="var(--mantine-color-dimmed)"
                       style={{ flexShrink: 0 }}
                     />
@@ -438,7 +431,7 @@ export default function LinkView(props: MarkViewProps) {
                     className={classes.removeLink}
                   >
                     <Group gap={8}>
-                      <IconLinkOff size={16} stroke={1.5} />
+                      <Link2Off size={16} strokeWidth={1.5} />
                       <Text size="sm">{t("Remove link")}</Text>
                     </Group>
                   </UnstyledButton>
@@ -453,9 +446,9 @@ export default function LinkView(props: MarkViewProps) {
               <>
                 <TextInput
                   leftSection={
-                    <IconWorld
+                    <Globe
                       size={16}
-                      stroke={1.5}
+                      strokeWidth={1.5}
                       color="var(--mantine-color-dimmed)"
                     />
                   }
@@ -487,7 +480,7 @@ export default function LinkView(props: MarkViewProps) {
                   className={classes.removeLink}
                 >
                   <Group gap={8}>
-                    <IconLinkOff size={16} stroke={1.5} />
+                    <Link2Off size={16} strokeWidth={1.5} />
                     <Text size="sm">{t("Remove link")}</Text>
                   </Group>
                 </UnstyledButton>
@@ -517,9 +510,9 @@ export default function LinkView(props: MarkViewProps) {
               }}
             >
               {isInternal ? (
-                <IconFileDescription size={18} color="gray" />
+                <FileText size={18} color="gray" />
               ) : (
-                <IconExternalLink size={18} color="gray" />
+                <ExternalLink size={18} color="gray" />
               )}
               <Text size="sm" truncate fw={500}>
                 {isInternal ? pageTitle || linkLabel : href}
@@ -539,7 +532,7 @@ export default function LinkView(props: MarkViewProps) {
                   setPopoverState("edit");
                 }}
               >
-                <IconPencil size={18} />
+                <Pencil size={18} />
               </ActionIcon>
             </Tooltip>
 
@@ -553,7 +546,7 @@ export default function LinkView(props: MarkViewProps) {
                   handleCopy(e);
                 }}
               >
-                <IconCopy size={18} />
+                <Copy size={18} />
               </ActionIcon>
             </Tooltip>
 
@@ -567,7 +560,7 @@ export default function LinkView(props: MarkViewProps) {
                   handleRemoveLink();
                 }}
               >
-                <IconLinkOff size={18} />
+                <Link2Off size={18} />
               </ActionIcon>
             </Tooltip>
           </Group>

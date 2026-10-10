@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  IconLayoutSidebarRightCollapse,
-  IconLayoutSidebarRightExpand
-} from "@tabler/icons-react";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { ActionIcon, BoxProps, ElementProps, MantineColor, MantineSize } from "@mantine/core";
 
 export interface SidebarToggleProps extends BoxProps, ElementProps<"button"> {
@@ -23,9 +20,9 @@ const SidebarToggle = React.forwardRef<HTMLButtonElement, SidebarToggleProps>(
         ref={ref}
       >
         {opened ? (
-          <IconLayoutSidebarRightExpand />
+          <PanelRightOpen />
         ) : (
-          <IconLayoutSidebarRightCollapse />
+          <PanelRightClose />
         )}
       </ActionIcon>
     );

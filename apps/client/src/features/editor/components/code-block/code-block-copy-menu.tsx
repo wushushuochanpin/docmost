@@ -1,10 +1,5 @@
 import { ActionIcon, Menu } from "@mantine/core";
-import {
-  IconCheck,
-  IconCopy,
-  IconFileText,
-  IconMarkdown,
-} from "@tabler/icons-react";
+import { Check, Copy, FileText, FileCode } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { formatCodeBlockAsMarkdown } from "@/features/editor/utils/clipboard-format";
@@ -32,19 +27,19 @@ export function CodeBlockCopyMenu({ text, language }: CodeBlockCopyMenuProps) {
           aria-label={t("Copy")}
           title={clipboard.copied ? t("Copied") : t("Copy")}
         >
-          {clipboard.copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+          {clipboard.copied ? <Check size={16} /> : <Copy size={16} />}
         </ActionIcon>
       </Menu.Target>
 
       <Menu.Dropdown>
         <Menu.Item
-          leftSection={<IconFileText size={16} />}
+          leftSection={<FileText size={16} />}
           onClick={() => copy(text)}
         >
           {t("Copy as plain text")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconMarkdown size={16} />}
+          leftSection={<FileCode size={16} />}
           onClick={() => copy(markdown)}
         >
           {t("Copy as Markdown")}

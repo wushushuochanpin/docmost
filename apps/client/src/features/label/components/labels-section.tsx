@@ -1,7 +1,7 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { Divider, Popover, Stack, Text } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { LabelChip } from "@/features/label/components/label-chip.tsx";
 import { LabelPicker } from "@/features/label/components/label-picker.tsx";
@@ -70,7 +70,7 @@ export function LabelsSection({ pageId, canEdit }: LabelsSectionProps) {
                   className={clsx(classes.addBtn, open && classes.addBtnOpen)}
                   onClick={() => setOpen((v) => !v)}
                 >
-                  <IconPlus size={12} stroke={2} />
+                  <Plus size={12} strokeWidth={2} />
                   <span>
                     {labels.length === 0 ? t("Add label") : t("Add")}
                   </span>

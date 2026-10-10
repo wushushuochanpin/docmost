@@ -1,5 +1,5 @@
 import { Center, Divider, Loader, Stack, Text } from "@mantine/core";
-import { IconBellOff } from "@tabler/icons-react";
+import { BellOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef } from "react";
 import { NotificationItem } from "./notification-item";
@@ -71,7 +71,7 @@ export function NotificationList({
     return (
       <Center py="xl">
         <Stack align="center" gap="xs">
-          <IconBellOff size={32} stroke={1.5} color="var(--mantine-color-dimmed)" />
+          <BellOff size={32} strokeWidth={1.5} color="var(--mantine-color-dimmed)" />
           <Text size="sm" c="dimmed">
             {filter === "unread"
               ? t("No unread notifications")

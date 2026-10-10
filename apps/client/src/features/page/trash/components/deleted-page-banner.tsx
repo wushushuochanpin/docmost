@@ -1,5 +1,5 @@
 import { ActionIcon, Button, Group, Paper, Text, Tooltip } from "@mantine/core";
-import { IconRestore, IconTrash } from "@tabler/icons-react";
+import { RotateCcw, Trash } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useTimeAgo } from "@/hooks/use-time-ago.tsx";
@@ -83,7 +83,7 @@ export function DeletedPageBanner({ slugId }: DeletedPageBannerProps) {
                   size="xs"
                   variant="light"
                   color="red"
-                  leftSection={<IconRestore size={16} />}
+                  leftSection={<RotateCcw size={16} />}
                   onClick={handleRestore}
                   loading={restorePageMutation.isPending}
                 >
@@ -95,7 +95,7 @@ export function DeletedPageBanner({ slugId }: DeletedPageBannerProps) {
                   size="xs"
                   variant="light"
                   color="red"
-                  leftSection={<IconTrash size={16} />}
+                  leftSection={<Trash size={16} />}
                   onClick={handlePermanentDelete}
                   loading={deletePageMutation.isPending}
                 >
@@ -113,7 +113,7 @@ export function DeletedPageBanner({ slugId }: DeletedPageBannerProps) {
                     loading={restorePageMutation.isPending}
                     aria-label={t("Restore page")}
                   >
-                    <IconRestore size={18} />
+                    <RotateCcw size={18} />
                   </ActionIcon>
                 </Tooltip>
               )}
@@ -127,7 +127,7 @@ export function DeletedPageBanner({ slugId }: DeletedPageBannerProps) {
                     loading={deletePageMutation.isPending}
                     aria-label={t("Permanently delete")}
                   >
-                    <IconTrash size={18} />
+                    <Trash size={18} />
                   </ActionIcon>
                 </Tooltip>
               )}

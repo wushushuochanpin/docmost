@@ -3,17 +3,7 @@ import type { Editor } from "@tiptap/react";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { ColorSwatch, Menu } from "@mantine/core";
 import { TABLE_COLORS } from "../../table-background-color";
-import {
-  IconArrowLeft,
-  IconArrowRight,
-  IconColumnInsertLeft,
-  IconColumnInsertRight,
-  IconColumnRemove,
-  IconEraser,
-  IconPalette,
-  IconSortAscendingLetters,
-  IconSortDescendingLetters,
-} from "@tabler/icons-react";
+import { ArrowLeft, ArrowRight, PanelLeft, PanelRight, TableProperties, Eraser, Palette, ArrowUpAZ, ArrowDownZA } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useTableMoveRowColumn } from "../hooks/use-table-move-row-column";
 import { useTableClear } from "../hooks/use-table-clear";
@@ -77,14 +67,14 @@ export const ColumnHandleMenu = React.memo(function ColumnHandleMenu({
   return (
     <>
       <Menu.Item
-        leftSection={<IconSortAscendingLetters size={16} />}
+        leftSection={<ArrowUpAZ size={16} />}
         onClick={sortAsc.handleSort}
         disabled={!sortAsc.canSort}
       >
         {t("Sort A → Z")}
       </Menu.Item>
       <Menu.Item
-        leftSection={<IconSortDescendingLetters size={16} />}
+        leftSection={<ArrowDownZA size={16} />}
         onClick={sortDesc.handleSort}
         disabled={!sortDesc.canSort}
       >
@@ -94,7 +84,7 @@ export const ColumnHandleMenu = React.memo(function ColumnHandleMenu({
 
       <Menu.Sub position="right-start">
         <Menu.Sub.Target>
-          <Menu.Sub.Item leftSection={<IconPalette size={16} />}>
+          <Menu.Sub.Item leftSection={<Palette size={16} />}>
             {t("Background color")}
           </Menu.Sub.Item>
         </Menu.Sub.Target>
@@ -129,13 +119,13 @@ export const ColumnHandleMenu = React.memo(function ColumnHandleMenu({
       <Menu.Divider />
 
       <Menu.Item
-        leftSection={<IconColumnInsertLeft size={16} />}
+        leftSection={<PanelLeft size={16} />}
         onClick={() => editor.chain().focus().addColumnBefore().run()}
       >
         {t("Add column left")}
       </Menu.Item>
       <Menu.Item
-        leftSection={<IconColumnInsertRight size={16} />}
+        leftSection={<PanelRight size={16} />}
         onClick={() => editor.chain().focus().addColumnAfter().run()}
       >
         {t("Add column right")}
@@ -144,13 +134,13 @@ export const ColumnHandleMenu = React.memo(function ColumnHandleMenu({
       <Menu.Divider />
 
       <Menu.Item
-        leftSection={<IconEraser size={16} />}
+        leftSection={<Eraser size={16} />}
         onClick={clearCol}
       >
         {t("Clear cells")}
       </Menu.Item>
       <Menu.Item
-        leftSection={<IconColumnRemove size={16} />}
+        leftSection={<TableProperties size={16} />}
         onClick={() => editor.chain().focus().deleteColumn().run()}
       >
         {t("Delete column")}
@@ -159,14 +149,14 @@ export const ColumnHandleMenu = React.memo(function ColumnHandleMenu({
       <Menu.Divider />
 
       <Menu.Item
-        leftSection={<IconArrowLeft size={16} />}
+        leftSection={<ArrowLeft size={16} />}
         onClick={moveLeft.handleMove}
         disabled={!moveLeft.canMove}
       >
         {t("Move column left")}
       </Menu.Item>
       <Menu.Item
-        leftSection={<IconArrowRight size={16} />}
+        leftSection={<ArrowRight size={16} />}
         onClick={moveRight.handleMove}
         disabled={!moveRight.canMove}
       >

@@ -11,7 +11,7 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-import { IconEdit } from "@tabler/icons-react";
+import { Edit } from "lucide-react";
 import { z } from "zod/v4";
 import { useForm } from "@mantine/form";
 import { zod4Resolver } from "mantine-form-zod-resolver";
@@ -136,7 +136,7 @@ export default function EmbedView(props: NodeViewProps) {
                   color="gray"
                   aria-label={t("Edit embed")}
                 >
-                  <IconEdit size={18} />
+                  <Edit size={18} />
                 </ActionIcon>
 
                 <Text component="span" size="lg" c="dimmed">

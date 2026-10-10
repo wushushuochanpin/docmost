@@ -1,10 +1,5 @@
 import React, { FC } from "react";
-import {
-  IconAlignCenter,
-  IconAlignLeft,
-  IconAlignRight,
-  IconCheck,
-} from "@tabler/icons-react";
+import { AlignCenter, AlignLeft, AlignRight, Check } from "lucide-react";
 import {
   ActionIcon,
   Button,
@@ -57,21 +52,21 @@ export const TableTextAlignment: FC<TableTextAlignmentProps> = ({ editor }) => {
       value: "left",
       isActive: () => editorState?.isAlignLeft,
       command: () => editor.chain().focus().setTextAlign("left").run(),
-      icon: IconAlignLeft,
+      icon: AlignLeft,
     },
     {
       name: "Align center",
       value: "center",
       isActive: () => editorState?.isAlignCenter,
       command: () => editor.chain().focus().setTextAlign("center").run(),
-      icon: IconAlignCenter,
+      icon: AlignCenter,
     },
     {
       name: "Align right",
       value: "right",
       isActive: () => editorState?.isAlignRight,
       command: () => editor.chain().focus().setTextAlign("right").run(),
-      icon: IconAlignRight,
+      icon: AlignRight,
     },
   ];
 
@@ -106,7 +101,7 @@ export const TableTextAlignment: FC<TableTextAlignmentProps> = ({ editor }) => {
                 key={index}
                 variant="subtle"
                 leftSection={<item.icon size={16} />}
-                rightSection={item.isActive() && <IconCheck size={16} />}
+                rightSection={item.isActive() && <Check size={16} />}
                 justify="left"
                 fullWidth
                 onClick={() => {

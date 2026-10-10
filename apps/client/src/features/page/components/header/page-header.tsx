@@ -2,7 +2,7 @@ import classes from "./page-header.module.css";
 import PageHeaderMenu from "@/features/page/components/header/page-header-menu.tsx";
 import { EditorTopToolbar } from "@/features/editor/components/editor-top-toolbar.tsx";
 import { ActionIcon, Tooltip } from "@mantine/core";
-import { IconList, IconX } from "@tabler/icons-react";
+import { List, X } from "lucide-react";
 import useToggleAside from "@/hooks/use-toggle-aside.tsx";
 import { useAtom, useAtomValue } from "jotai";
 import { asideStateAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
@@ -63,7 +63,7 @@ export default function PageHeader({
                   variant="subtle"
                   onClick={() => toggleAside("toc")}
                 >
-                  <IconList size={18} stroke={1.75} />
+                  <List size={18} strokeWidth={1.75} />
                 </ActionIcon>
               </Tooltip>
 
@@ -74,7 +74,7 @@ export default function PageHeader({
                   withArrow
                 >
                   <ActionIcon variant="subtle" onClick={closeToc}>
-                    <IconX size={18} stroke={1.75} />
+                    <X size={18} strokeWidth={1.75} />
                   </ActionIcon>
                 </Tooltip>
               )}

@@ -1,12 +1,6 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ActionIcon, Menu, Tooltip } from "@mantine/core";
-import {
-  IconDots,
-  IconLinkOff,
-  IconPencil,
-  IconRefresh,
-  IconTrash,
-} from "@tabler/icons-react";
+import { MoreHorizontal, Link2Off, Pencil, RefreshCw, Trash } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -146,7 +140,7 @@ function TransclusionReferenceBody({
               loading={refreshing}
               disabled={!sourcePageId || !transclusionId}
             >
-              <IconRefresh size={14} />
+              <RefreshCw size={14} />
             </ActionIcon>
           </Tooltip>
           {sourcePageHref && (
@@ -162,19 +156,19 @@ function TransclusionReferenceBody({
                   borderBottom: "none",
                 }}
               >
-                <IconPencil size={14} />
+                <Pencil size={14} />
               </ActionIcon>
             </Tooltip>
           )}
           <Menu position="bottom-end" withinPortal onChange={trackOpen}>
             <Menu.Target>
               <ActionIcon variant="subtle" color="gray" size="sm">
-                <IconDots size={14} />
+                <MoreHorizontal size={14} />
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item
-                leftSection={<IconLinkOff size={14} />}
+                leftSection={<Link2Off size={14} />}
                 onClick={handleUnsync}
                 disabled={
                   unsyncMutation.isPending ||
@@ -187,7 +181,7 @@ function TransclusionReferenceBody({
               </Menu.Item>
               <Menu.Item
                 color="red"
-                leftSection={<IconTrash size={14} />}
+                leftSection={<Trash size={14} />}
                 onClick={() => deleteNode()}
               >
                 {t("Remove from page")}

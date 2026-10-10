@@ -12,12 +12,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
-import {
-  IconExternalLink,
-  IconWorld,
-  IconLock,
-  IconCopy,
-} from "@tabler/icons-react";
+import { ExternalLink, Globe, Lock, Copy } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   useCreateShareMutation,
@@ -311,7 +306,7 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
       {isCloud() && isTrial ? (
         <>
           <Group justify="center" mb="sm">
-            <IconLock size={20} stroke={1.5} />
+            <Lock size={20} strokeWidth={1.5} />
           </Group>
           <Text size="sm" ta="center" fw={500} mb="xs">
             {t("Upgrade to share pages")}
@@ -332,7 +327,7 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
       ) : sharingDisabled ? (
         <>
           <Group justify="center" mb="sm">
-            <IconLock size={20} stroke={1.5} />
+            <Lock size={20} strokeWidth={1.5} />
           </Group>
           <Text size="sm" ta="center" fw={500} mb="xs">
             {t("Public sharing is disabled")}
@@ -387,7 +382,7 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
                   href={shareLink}
                   size="sm"
                 >
-                  <IconExternalLink size={16} />
+                  <ExternalLink size={16} />
                 </ActionIcon>
               </Group>
               {share?.accessMode !== "password_expiring" && (
@@ -531,7 +526,7 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
                   href={shareLink}
                   size="sm"
                 >
-                  <IconExternalLink size={16} />
+                  <ExternalLink size={16} />
                 </ActionIcon>
               </Group>
               {share?.accessMode !== "password_expiring" && (
@@ -577,7 +572,7 @@ function ShareSettingsPanel({ readOnly, opened = true }: ShareContentProps) {
                   {({ copied, copy }) => (
                     <Button
                       variant="light"
-                      leftSection={<IconCopy size={14} />}
+                      leftSection={<Copy size={14} />}
                       onClick={copy}
                       mb="xs"
                     >
@@ -653,7 +648,7 @@ export default function ShareModal({ readOnly }: ShareModalProps) {
       <Popover.Target>
         <Button
           size="compact-sm"
-          leftSection={<IconWorld size={20} stroke={1.5} />}
+          leftSection={<Globe size={20} strokeWidth={1.5} />}
           variant="subtle"
           rightSection={
             isPagePublic ? (

@@ -17,7 +17,7 @@ import {
 } from "@/features/page-history/atoms/history-atoms";
 import HistoryView from "@/features/page-history/components/history-view";
 import { useRef } from "react";
-import { IconChevronUp, IconChevronDown } from "@tabler/icons-react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useDiffNavigation,
@@ -91,14 +91,14 @@ export default function HistoryModalBody({ pageId }: Props) {
                     size="sm"
                     onClick={handlePrevChange}
                   >
-                    <IconChevronUp size={16} />
+                    <ChevronUp size={16} />
                   </ActionIcon>
                   <ActionIcon
                     variant="subtle"
                     size="sm"
                     onClick={handleNextChange}
                   >
-                    <IconChevronDown size={16} />
+                    <ChevronDown size={16} />
                   </ActionIcon>
                 </Group>
               )}

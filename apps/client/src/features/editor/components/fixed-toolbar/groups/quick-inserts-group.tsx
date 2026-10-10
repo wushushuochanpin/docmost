@@ -1,13 +1,7 @@
 import { FC } from "react";
 import type { Editor } from "@tiptap/react";
 import { ActionIcon, Menu, Tooltip } from "@mantine/core";
-import {
-  IconAt,
-  IconColumns2,
-  IconColumns3,
-  IconMoodSmile,
-  IconTable,
-} from "@tabler/icons-react";
+import { AtSign, Columns2, Columns3, Smile, Table } from "lucide-react";
 import { IconColumns4 } from "@/components/icons/icon-columns-4";
 import { IconColumns5 } from "@/components/icons/icon-columns-5";
 import { useTranslation } from "react-i18next";
@@ -29,7 +23,7 @@ export const QuickInsertsGroup: FC<Props> = ({ editor }) => {
           aria-label={t("Mention")}
           onClick={() => editor.chain().focus().insertContent("@").run()}
         >
-          <IconAt size={16} />
+          <AtSign size={16} />
         </ActionIcon>
       </Tooltip>
       <Tooltip label={t("Emoji")} withArrow>
@@ -40,7 +34,7 @@ export const QuickInsertsGroup: FC<Props> = ({ editor }) => {
           aria-label={t("Emoji")}
           onClick={() => editor.chain().focus().insertContent(":").run()}
         >
-          <IconMoodSmile size={16} />
+          <Smile size={16} />
         </ActionIcon>
       </Tooltip>
       <Menu shadow="md" position="bottom-start" withArrow={false}>
@@ -52,13 +46,13 @@ export const QuickInsertsGroup: FC<Props> = ({ editor }) => {
               size="md"
               aria-label={t("Columns")}
             >
-              <IconColumns2 size={16} />
+              <Columns2 size={16} />
             </ActionIcon>
           </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
-            leftSection={<IconColumns2 size={16} />}
+            leftSection={<Columns2 size={16} />}
             onClick={() =>
               editor.chain().focus().insertColumns({ layout: "two_equal" }).run()
             }
@@ -66,7 +60,7 @@ export const QuickInsertsGroup: FC<Props> = ({ editor }) => {
             {t("{{count}} Columns", { count: 2 })}
           </Menu.Item>
           <Menu.Item
-            leftSection={<IconColumns3 size={16} />}
+            leftSection={<Columns3 size={16} />}
             onClick={() =>
               editor
                 .chain()
@@ -109,7 +103,7 @@ export const QuickInsertsGroup: FC<Props> = ({ editor }) => {
               .run()
           }
         >
-          <IconTable size={16} />
+          <Table size={16} />
         </ActionIcon>
       </Tooltip>
     </ActionIcon.Group>

@@ -12,7 +12,7 @@ import {
 } from "@mantine/core";
 import { Helmet } from "react-helmet-async";
 import { useTranslation } from "react-i18next";
-import { IconSettings } from "@tabler/icons-react";
+import { Settings } from "lucide-react";
 import SettingsTitle from "@/components/settings/settings-title";
 import { getAppName } from "@/lib/config";
 import Paginate from "@/components/common/paginate";
@@ -137,7 +137,7 @@ export default function AuditLogs() {
           <Popover.Target>
             <Tooltip label={t("Audit settings")}>
               <ActionIcon variant="default" size="input-sm" ml="auto" onClick={() => setSettingsOpen((o) => !o)}>
-                <IconSettings size={16} />
+                <Settings size={16} />
               </ActionIcon>
             </Tooltip>
           </Popover.Target>

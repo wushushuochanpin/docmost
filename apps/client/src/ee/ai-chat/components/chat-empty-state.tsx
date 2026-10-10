@@ -1,10 +1,4 @@
-import {
-  IconSparkles,
-  IconSearch,
-  IconFilePlus,
-  IconEdit,
-  IconFileText,
-} from "@tabler/icons-react";
+import { Sparkles, Search, FilePlus, Edit, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import ChatInput from "./chat-input";
 import type { ChatAttachment, PageMention } from "../types/ai-chat.types";
@@ -18,22 +12,22 @@ type Suggestion = {
 
 const SUGGESTIONS: Suggestion[] = [
   {
-    icon: <IconSearch size={16} />,
+    icon: <Search size={16} />,
     text: "Search across all pages",
     prompt: "Search for pages about ",
   },
   {
-    icon: <IconFilePlus size={16} />,
+    icon: <FilePlus size={16} />,
     text: "Create a new page",
     prompt: "Create a new page titled ",
   },
   {
-    icon: <IconFileText size={16} />,
+    icon: <FileText size={16} />,
     text: "Summarize a page",
     prompt: "Summarize the page @",
   },
   {
-    icon: <IconEdit size={16} />,
+    icon: <Edit size={16} />,
     text: "Update page content",
     prompt: "Update the page @",
   },
@@ -54,7 +48,7 @@ export default function ChatEmptyState({ isStreaming, onSend, onStop }: Props) {
 
   return (
     <div className={classes.emptyState}>
-      <IconSparkles size={48} stroke={1.5} className={classes.emptyStateIcon} />
+      <Sparkles size={48} strokeWidth={1.5} className={classes.emptyStateIcon} />
       <div className={classes.emptyStateBrand}>{t("Docmost AI")}</div>
       <h1 className={classes.emptyStateTitle}>
         {t("What can I help you with?")}

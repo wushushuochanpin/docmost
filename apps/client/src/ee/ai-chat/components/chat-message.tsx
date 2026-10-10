@@ -3,13 +3,7 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
 import { ActionIcon, Tooltip } from "@mantine/core";
-import {
-  IconCheck,
-  IconCopy,
-  IconFile,
-  IconLoader2,
-  IconPhoto,
-} from "@tabler/icons-react";
+import { Check, Copy, File, LoaderCircle, Image } from "lucide-react";
 import { markdownToHtml } from "@docmost/editor-ext";
 import { CopyButton } from "@/components/common/copy-button";
 import type { AiChatMessage, AiChatToolCall } from "../types/ai-chat.types";
@@ -91,9 +85,9 @@ export default function ChatMessage({
               {attachments.map((a) => (
                 <span key={a.id} className={classes.messageAttachmentChip}>
                   {IMAGE_EXTENSIONS.includes(a.fileExt) ? (
-                    <IconPhoto size={13} />
+                    <Image size={13} />
                   ) : (
-                    <IconFile size={13} />
+                    <File size={13} />
                   )}
                   {a.fileName}
                 </span>
@@ -135,7 +129,7 @@ export default function ChatMessage({
           <>
             {!content && (
               <span className={classes.processingIndicator}>
-                <IconLoader2 size={16} className={classes.processingSpinner} />
+                <LoaderCircle size={16} className={classes.processingSpinner} />
                 Thinking
               </span>
             )}

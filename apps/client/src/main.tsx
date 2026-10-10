@@ -2,6 +2,7 @@ import "@mantine/core/styles.css";
 import "@mantine/spotlight/styles.css";
 import "@mantine/notifications/styles.css";
 import '@mantine/dates/styles.css';
+import "@/styles/fonts.css";
 import "@/styles/a11y-overrides.css";
 import { retryDynamicImport } from "@/lib/lazy-import.ts";
 import { initGlobalErrorReporting } from "@/lib/frontend-error-log.ts";

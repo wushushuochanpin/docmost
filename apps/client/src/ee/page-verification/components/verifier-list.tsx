@@ -1,5 +1,5 @@
 import { ActionIcon, Group, Text, Tooltip } from "@mantine/core";
-import { IconX } from "@tabler/icons-react";
+import { X } from "lucide-react";
 import { CustomAvatar } from "@/components/ui/custom-avatar";
 import { IVerifier } from "@/ee/page-verification/types/page-verification.types";
 import { useTranslation } from "react-i18next";
@@ -59,7 +59,7 @@ export function VerifierList({
                 size="sm"
                 onClick={() => onRemove(verifier.id)}
               >
-                <IconX size={14} />
+                <X size={14} />
               </ActionIcon>
             </Tooltip>
           )}

@@ -20,17 +20,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { CopyButton } from "@/components/common/copy-button";
-import {
-  IconQrcode,
-  IconShieldCheck,
-  IconKey,
-  IconCopy,
-  IconCheck,
-  IconAlertCircle,
-  IconChevronDown,
-  IconChevronRight,
-  IconPrinter,
-} from "@tabler/icons-react";
+import { QrCode, ShieldCheck, Key, Copy, Check, AlertCircle, ChevronDown, ChevronRight, Printer } from "lucide-react";
 import { useForm } from "@mantine/form";
 import { useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
@@ -153,7 +143,7 @@ export function MfaSetupModal({
         <Stepper.Step
           label={t("Setup & Verify")}
           description={t("Add to authenticator")}
-          icon={<IconQrcode size={18} />}
+          icon={<QrCode size={18} />}
         >
           <form onSubmit={form.onSubmit(handleVerify)}>
             <Stack gap="md" mt="xl">
@@ -183,9 +173,9 @@ export function MfaSetupModal({
                   >
                     <Group gap="xs">
                       {manualEntryOpen ? (
-                        <IconChevronDown size={16} />
+                        <ChevronDown size={16} />
                       ) : (
-                        <IconChevronRight size={16} />
+                        <ChevronRight size={16} />
                       )}
                       <Text size="sm" c="dimmed">
                         {t("Can't scan the code?")}
@@ -195,7 +185,7 @@ export function MfaSetupModal({
 
                   <Collapse in={manualEntryOpen}>
                     <Alert
-                      icon={<IconAlertCircle size={20} />}
+                      icon={<AlertCircle size={20} />}
                       color="gray"
                       variant="light"
                     >
@@ -214,9 +204,9 @@ export function MfaSetupModal({
                                 onClick={copy}
                               >
                                 {copied ? (
-                                  <IconCheck size={16} />
+                                  <Check size={16} />
                                 ) : (
-                                  <IconCopy size={16} />
+                                  <Copy size={16} />
                                 )}
                               </ActionIcon>
                             </Tooltip>
@@ -256,7 +246,7 @@ export function MfaSetupModal({
                     type="submit"
                     fullWidth
                     loading={enableMutation.isPending}
-                    leftSection={<IconShieldCheck size={18} />}
+                    leftSection={<ShieldCheck size={18} />}
                   >
                     {t("Verify and enable")}
                   </Button>
@@ -275,11 +265,11 @@ export function MfaSetupModal({
         <Stepper.Step
           label={t("Backup")}
           description={t("Save codes")}
-          icon={<IconKey size={18} />}
+          icon={<Key size={18} />}
         >
           <Stack gap="md" mt="xl">
             <Alert
-              icon={<IconAlertCircle size={20} />}
+              icon={<AlertCircle size={20} />}
               title={t("Save your backup codes")}
               color="yellow"
             >
@@ -304,9 +294,9 @@ export function MfaSetupModal({
                         onClick={copy}
                         leftSection={
                           copied ? (
-                            <IconCheck size={14} />
+                            <Check size={14} />
                           ) : (
-                            <IconCopy size={14} />
+                            <Copy size={14} />
                           )
                         }
                       >
@@ -318,7 +308,7 @@ export function MfaSetupModal({
                     size="xs"
                     variant="subtle"
                     onClick={handlePrintBackupCodes}
-                    leftSection={<IconPrinter size={14} />}
+                    leftSection={<Printer size={14} />}
                   >
                     {t("Print")}
                   </Button>
@@ -336,7 +326,7 @@ export function MfaSetupModal({
             <Button
               fullWidth
               onClick={handleClose}
-              leftSection={<IconCheck size={18} />}
+              leftSection={<Check size={18} />}
             >
               {t("I've saved my backup codes")}
             </Button>

@@ -9,14 +9,7 @@ import {
 } from "@mantine/core";
 import { Spotlight } from "@mantine/spotlight";
 import { Link } from "react-router-dom";
-import {
-  IconBuilding,
-  IconChevronRight,
-  IconDownload,
-  IconFile,
-  IconFileDescription,
-  IconFolder,
-} from "@tabler/icons-react";
+import { Building, ChevronRight, Download, File, FileText, Folder } from "lucide-react";
 import { buildPageUrl } from "@/features/page/page.utils";
 import { getPageIcon } from "@/lib";
 import {
@@ -36,10 +29,10 @@ interface SearchResultItemProps {
 
 function PageNodeIcon({ nodeType }: { nodeType?: "file" | "folder" }) {
   if (nodeType === "folder") {
-    return <IconFolder size={13} stroke={1.8} />;
+    return <Folder size={13} strokeWidth={1.8} />;
   }
 
-  return <IconFileDescription size={13} stroke={1.8} />;
+  return <FileText size={13} strokeWidth={1.8} />;
 }
 
 function PageResultIcon({ page }: { page: IPageSearch }) {
@@ -48,7 +41,7 @@ function PageResultIcon({ page }: { page: IPageSearch }) {
   }
 
   if (page.nodeType === "folder") {
-    return <IconFolder size={18} stroke={1.75} />;
+    return <Folder size={18} strokeWidth={1.75} />;
   }
 
   return <>{getPageIcon(page.icon)}</>;
@@ -93,9 +86,9 @@ function SearchResultPath({
       {segments.map((segment, index) => (
         <React.Fragment key={`${segment.kind}-${segment.id}-${index}`}>
           {index > 0 && (
-            <IconChevronRight
+            <ChevronRight
               size={11}
-              stroke={2}
+              strokeWidth={2}
               className={classes.pathSeparator}
             />
           )}
@@ -103,7 +96,7 @@ function SearchResultPath({
           <span className={classes.pathSegment} title={segment.title || ""}>
             <span className={classes.pathIcon}>
               {segment.kind === "space" ? (
-                <IconBuilding size={13} stroke={1.8} />
+                <Building size={13} strokeWidth={1.8} />
               ) : (
                 <PageNodeIcon nodeType={segment.nodeType} />
               )}
@@ -146,7 +139,7 @@ export function SearchResultItem({
       >
         <Group wrap="nowrap" w="100%">
           <Center>
-            <IconFile size={16} />
+            <File size={16} />
           </Center>
 
           <div className={classes.resultContent}>
@@ -178,7 +171,7 @@ export function SearchResultItem({
             withArrow
           >
             <ActionIcon variant="subtle" color="gray" onClick={handleDownload}>
-              <IconDownload size={18} />
+              <Download size={18} />
             </ActionIcon>
           </Tooltip>
         </Group>

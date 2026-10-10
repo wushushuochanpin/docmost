@@ -12,16 +12,7 @@ import {
   Menu,
   ThemeIcon,
 } from "@mantine/core";
-import {
-  IconPlayerPlay,
-  IconDownload,
-  IconRefresh,
-  IconDots,
-  IconTrash,
-  IconInfoCircle,
-  IconDeviceFloppy,
-  IconCloud,
-} from "@tabler/icons-react";
+import { Play, Download, RefreshCw, MoreHorizontal, Trash, Info, Save, Cloud } from "lucide-react";
 import SettingsTitle from "@/components/settings/settings-title";
 import { useTranslation } from "react-i18next";
 import { getAppName, isBackupS3Enabled } from "@/lib/config";
@@ -193,7 +184,7 @@ export default function BackupPage() {
         mb="md"
         color={backupS3Enabled ? "blue" : "gray"}
         variant="light"
-        icon={<IconInfoCircle size={16} />}
+        icon={<Info size={16} />}
       >
         <Text size="sm">
           {backupS3Enabled
@@ -210,7 +201,7 @@ export default function BackupPage() {
         </Text>
         <Group gap="sm">
           <Button
-            leftSection={<IconPlayerPlay size={16} />}
+            leftSection={<Play size={16} />}
             loading={runMutation.isPending}
             disabled={hasActiveBackup}
             title={
@@ -224,7 +215,7 @@ export default function BackupPage() {
           </Button>
           <Button
             variant="light"
-            leftSection={<IconRefresh size={16} />}
+            leftSection={<RefreshCw size={16} />}
             loading={cleanupMutation.isPending}
             onClick={() => cleanupMutation.mutate()}
           >
@@ -233,7 +224,7 @@ export default function BackupPage() {
           <Button
             variant="light"
             color="red"
-            leftSection={<IconTrash size={16} />}
+            leftSection={<Trash size={16} />}
             loading={clearFailedMutation.isPending}
             onClick={openClearFailedModal}
           >
@@ -304,7 +295,7 @@ export default function BackupPage() {
                               copyAvailability.hasLocalCopy ? "teal" : "gray"
                             }
                           >
-                            <IconDeviceFloppy size={14} stroke={1.8} />
+                            <Save size={14} strokeWidth={1.8} />
                           </ThemeIcon>
                         </Tooltip>
                         <Tooltip
@@ -322,7 +313,7 @@ export default function BackupPage() {
                             }
                             color={copyAvailability.hasS3Copy ? "blue" : "gray"}
                           >
-                            <IconCloud size={14} stroke={1.8} />
+                            <Cloud size={14} strokeWidth={1.8} />
                           </ThemeIcon>
                         </Tooltip>
                       </Group>
@@ -352,7 +343,7 @@ export default function BackupPage() {
                         <Button
                           variant="subtle"
                           size="compact-sm"
-                          leftSection={<IconRefresh size={14} />}
+                          leftSection={<RefreshCw size={14} />}
                           loading={isFetching}
                           onClick={() => refetch()}
                           title={t("Refresh status")}
@@ -366,7 +357,7 @@ export default function BackupPage() {
                             <Button
                               variant="subtle"
                               size="compact-sm"
-                              leftSection={<IconDownload size={14} />}
+                              leftSection={<Download size={14} />}
                               onClick={() => handleDownload(job.id)}
                             >
                               {t("Download")}
@@ -382,7 +373,7 @@ export default function BackupPage() {
                             >
                               <Menu.Target>
                                 <ActionIcon variant="subtle" color="gray">
-                                  <IconDots size={16} stroke={1.75} />
+                                  <MoreHorizontal size={16} strokeWidth={1.75} />
                                 </ActionIcon>
                               </Menu.Target>
                               <Menu.Dropdown>
@@ -390,7 +381,7 @@ export default function BackupPage() {
                                   c="red"
                                   onClick={() => openDeleteModal(job)}
                                   leftSection={
-                                    <IconTrash size={14} stroke={1.75} />
+                                    <Trash size={14} strokeWidth={1.75} />
                                   }
                                   disabled={deleteArtifactMutation.isPending}
                                 >

@@ -1,14 +1,6 @@
 import { useEffect, useState } from "react";
 import { ScrollArea, Text, Divider, Modal, UnstyledButton, Tooltip } from "@mantine/core";
-import {
-  IconHome,
-  IconClock,
-  IconStar,
-  IconLayoutGrid,
-  IconSettings,
-  IconUserPlus,
-  IconTemplate,
-} from "@tabler/icons-react";
+import { Home, Clock, Star, LayoutGrid, Settings, UserPlus, LayoutTemplate } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import classes from "./global-sidebar.module.css";
 import { useTranslation } from "react-i18next";
@@ -34,12 +26,12 @@ export default function GlobalSidebar() {
   const hasTemplates = useHasFeature(Feature.TEMPLATES);
   const upgradeLabel = useUpgradeLabel();
   const mainNavItems = [
-    { label: "Home", icon: IconHome, path: "/home" },
-    { label: "Favorites", icon: IconStar, path: "/favorites" },
-    { label: "Spaces", icon: IconLayoutGrid, path: "/spaces" },
+    { label: "Home", icon: Home, path: "/home" },
+    { label: "Favorites", icon: Star, path: "/favorites" },
+    { label: "Spaces", icon: LayoutGrid, path: "/spaces" },
     {
       label: "Templates",
-      icon: IconTemplate,
+      icon: LayoutTemplate,
       path: "/templates",
       disabled: !hasTemplates,
     },
@@ -83,7 +75,7 @@ export default function GlobalSidebar() {
                   aria-disabled="true"
                   tabIndex={-1}
                 >
-                  <item.icon className={classes.linkIcon} stroke={2} />
+                  <item.icon className={classes.linkIcon} strokeWidth={2} />
                   <span>{t(item.label)}</span>
                 </UnstyledButton>
               </Tooltip>
@@ -96,7 +88,7 @@ export default function GlobalSidebar() {
                 to={item.path}
                 onClick={handleNavClick}
               >
-                <item.icon className={classes.linkIcon} stroke={2} />
+                <item.icon className={classes.linkIcon} strokeWidth={2} />
                 <span>{t(item.label)}</span>
               </Link>
             ),
@@ -154,7 +146,7 @@ export default function GlobalSidebar() {
           className={classes.link}
           onClick={openInvite}
         >
-          <IconUserPlus className={classes.linkIcon} stroke={2} />
+          <UserPlus className={classes.linkIcon} strokeWidth={2} />
           <span>{t("Invite People")}</span>
         </UnstyledButton>
         <Link
@@ -164,7 +156,7 @@ export default function GlobalSidebar() {
           to="/settings/account/profile"
           onClick={handleNavClick}
         >
-          <IconSettings className={classes.linkIcon} stroke={2} />
+          <Settings className={classes.linkIcon} strokeWidth={2} />
           <span>{t("Settings")}</span>
         </Link>
       </div>

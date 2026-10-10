@@ -1,7 +1,7 @@
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ActionIcon, Group, Select, Tooltip } from "@mantine/core";
 import { useEffect, useState } from "react";
-import { IconCode, IconEye, IconTrash } from "@tabler/icons-react";
+import { Code, Eye, Trash } from "lucide-react";
 import classes from "./code-block.module.css";
 import React from "react";
 import { Suspense } from "react";
@@ -117,7 +117,7 @@ export default function CodeBlockView(props: NodeViewProps) {
               variant="subtle"
               onClick={() => setShowHtmlSource((value) => !value)}
             >
-              {showHtmlSource ? <IconEye size={16} /> : <IconCode size={16} />}
+              {showHtmlSource ? <Eye size={16} /> : <Code size={16} />}
             </ActionIcon>
           </Tooltip>
         )}
@@ -127,7 +127,7 @@ export default function CodeBlockView(props: NodeViewProps) {
         {editor.isEditable && (
           <Tooltip label={t("Delete block")} withArrow position="right">
             <ActionIcon color="red" variant="subtle" onClick={deleteBlock}>
-              <IconTrash size={16} />
+              <Trash size={16} />
             </ActionIcon>
           </Tooltip>
         )}

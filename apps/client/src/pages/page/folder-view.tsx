@@ -9,11 +9,7 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import {
-  IconFileText,
-  IconFolder,
-  IconPin,
-} from "@tabler/icons-react";
+import { FileText, Folder, Pin } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { notifications } from "@mantine/notifications";
@@ -136,7 +132,7 @@ export default function FolderView({
             <Group gap="xs" className={classes.createActions}>
               <Button
                 size="xs"
-                leftSection={<IconFileText size={15} stroke={1.75} />}
+                leftSection={<FileText size={15} strokeWidth={1.75} />}
                 loading={creatingNodeType === "file"}
                 onClick={() => handleCreateChild("file")}
               >
@@ -145,7 +141,7 @@ export default function FolderView({
               <Button
                 size="xs"
                 variant="default"
-                leftSection={<IconFolder size={15} stroke={1.75} />}
+                leftSection={<Folder size={15} strokeWidth={1.75} />}
                 loading={creatingNodeType === "folder"}
                 onClick={() => handleCreateChild("folder")}
               >
@@ -187,9 +183,9 @@ export default function FolderView({
                       ) : (
                         <span className={classes.systemIcon}>
                           {item.nodeType === "folder" ? (
-                            <IconFolder size={15} stroke={1.75} />
+                            <Folder size={15} strokeWidth={1.75} />
                           ) : (
-                            <IconFileText size={15} stroke={1.75} />
+                            <FileText size={15} strokeWidth={1.75} />
                           )}
                         </span>
                       )}
@@ -200,7 +196,7 @@ export default function FolderView({
 
                     <span className={classes.itemMeta}>
                       {item.isPinned ? (
-                        <IconPin size={13} stroke={1.75} className={classes.pinIcon} />
+                        <Pin size={13} strokeWidth={1.75} className={classes.pinIcon} />
                       ) : null}
                     </span>
                   </Group>

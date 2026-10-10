@@ -1,0 +1,10 @@
+/* Inter Variable — latin 子集（中文回退系统字体栈）。
+   仅加载 latin woff2（~48KB），避免全子集 ~200KB 冗余。 */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2")
+    format("woff2-variations");
+}

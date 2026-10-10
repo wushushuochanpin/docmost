@@ -15,7 +15,7 @@ import {
   prefetchPage,
   useRecentChangesQuery,
 } from "@/features/page/queries/page-query.ts";
-import { IconFileDescription, IconFiles } from "@tabler/icons-react";
+import { FileText, Files } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { getSpaceUrl } from "@/lib/config.ts";
 import { useTranslation } from "react-i18next";
@@ -66,7 +66,7 @@ export default function RecentChanges({ spaceId }: Props) {
                     <Group wrap="nowrap">
                       {page.icon || (
                         <ThemeIcon variant="transparent" color="gray" size={18}>
-                          <IconFileDescription size={18} />
+                          <FileText size={18} />
                         </ThemeIcon>
                       )}
 
@@ -119,7 +119,7 @@ export default function RecentChanges({ spaceId }: Props) {
     </>
   ) : (
     <EmptyState
-      icon={IconFiles}
+      icon={Files}
       title={t("No pages yet")}
       description={t("Pages you create will show up here.")}
     />

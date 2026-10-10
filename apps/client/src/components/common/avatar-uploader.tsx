@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { Menu, Box, Loader } from "@mantine/core";
 import { useTranslation } from "react-i18next";
-import { IconTrash, IconUpload } from "@tabler/icons-react";
+import { Trash, Upload } from "lucide-react";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
 import { AvatarIconType } from "@/features/attachments/types/attachment.types.ts";
 import { notifications } from "@mantine/notifications";
@@ -159,7 +159,7 @@ export default function AvatarUploader({
 
         <Menu.Dropdown>
           <Menu.Item
-            leftSection={<IconUpload size={16} />}
+            leftSection={<Upload size={16} />}
             disabled={isLoading || disabled}
             onClick={handleUploadClick}
           >
@@ -168,7 +168,7 @@ export default function AvatarUploader({
 
           {currentImageUrl && (
             <Menu.Item
-              leftSection={<IconTrash size={16} />}
+              leftSection={<Trash size={16} />}
               color="red"
               onClick={handleRemove}
               disabled={isLoading || disabled}

@@ -12,7 +12,7 @@ import {
   Card,
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
-import { IconPlus } from "@tabler/icons-react";
+import { Plus } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -107,7 +107,7 @@ export default function TemplateList() {
           <Title order={3}>{t("Templates")}</Title>
           {isWorkspaceAdmin && (
             <Button
-              leftSection={<IconPlus size={16} />}
+              leftSection={<Plus size={16} />}
               onClick={openCreateModal}
             >
               {t("New template")}

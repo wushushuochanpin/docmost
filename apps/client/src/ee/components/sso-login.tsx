@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useWorkspacePublicDataQuery } from "@/features/workspace/queries/workspace-query.ts";
 import { Button, Divider, Stack } from "@mantine/core";
-import { IconLock, IconServer } from "@tabler/icons-react";
+import { Lock, Server } from "lucide-react";
 import { IAuthProvider } from "@/ee/security/types/security.types.ts";
 import { buildSsoLoginUrl } from "@/ee/security/sso.utils.ts";
 import { SSO_PROVIDER } from "@/ee/security/contants.ts";
@@ -95,9 +95,9 @@ export default function SsoLogin() {
     if (provider.type === SSO_PROVIDER.GOOGLE) {
       return <GoogleIcon size={16} />;
     } else if (provider.type === SSO_PROVIDER.LDAP) {
-      return <IconServer size={16} />;
+      return <Server size={16} />;
     } else {
-      return <IconLock size={16} />;
+      return <Lock size={16} />;
     }
   };
 

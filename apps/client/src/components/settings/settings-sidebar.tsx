@@ -1,22 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Group, Text, ScrollArea, ActionIcon, Tooltip } from "@mantine/core";
-import {
-  IconUser,
-  IconSettings,
-  IconUsers,
-  IconArrowLeft,
-  IconUsersGroup,
-  IconSpaces,
-  IconBrush,
-  IconCoin,
-  IconLock,
-  IconKey,
-  IconWorld,
-  IconSparkles,
-  IconDatabaseExport,
-  IconHistory,
-  IconShieldCheck,
-} from "@tabler/icons-react";
+import { User, Settings, Users, ArrowLeft, UsersRound, Boxes, Brush, Coins, Lock, Key, Globe, Sparkles, Database, History, ShieldCheck } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import classes from "./settings.module.css";
 import { useTranslation } from "react-i18next";
@@ -72,15 +56,15 @@ const groupedData: DataGroup[] = [
   {
     heading: "Account",
     items: [
-      { label: "Profile", icon: IconUser, path: "/settings/account/profile" },
+      { label: "Profile", icon: User, path: "/settings/account/profile" },
       {
         label: "Preferences",
-        icon: IconBrush,
+        icon: Brush,
         path: "/settings/account/preferences",
       },
       {
         label: "API keys",
-        icon: IconKey,
+        icon: Key,
         path: "/settings/account/api-keys",
         isCloud: true,
         isEnterprise: true,
@@ -92,18 +76,18 @@ const groupedData: DataGroup[] = [
   {
     heading: "Workspace",
     items: [
-      { label: "General", icon: IconSettings, path: "/settings/workspace" },
-      { label: "Members", icon: IconUsers, path: "/settings/members" },
+      { label: "General", icon: Settings, path: "/settings/workspace" },
+      { label: "Members", icon: Users, path: "/settings/members" },
       {
         label: "Billing",
-        icon: IconCoin,
+        icon: Coins,
         path: "/settings/billing",
         isCloud: true,
         isAdmin: true,
       },
       {
         label: "Security & SSO",
-        icon: IconLock,
+        icon: Lock,
         path: "/settings/security",
         isCloud: true,
         isEnterprise: true,
@@ -111,18 +95,18 @@ const groupedData: DataGroup[] = [
         showDisabledInNonEE: true,
         capabilityKey: "securityPolicies",
       },
-      { label: "Groups", icon: IconUsersGroup, path: "/settings/groups" },
-      { label: "Spaces", icon: IconSpaces, path: "/settings/spaces" },
-      { label: "Public sharing", icon: IconWorld, path: "/settings/sharing" },
+      { label: "Groups", icon: UsersRound, path: "/settings/groups" },
+      { label: "Spaces", icon: Boxes, path: "/settings/spaces" },
+      { label: "Public sharing", icon: Globe, path: "/settings/sharing" },
       {
         label: "Verified pages",
-        icon: IconShieldCheck,
+        icon: ShieldCheck,
         path: "/settings/verifications",
         feature: Feature.PAGE_VERIFICATION,
       },
       {
         label: "API management",
-        icon: IconKey,
+        icon: Key,
         path: "/settings/api-keys",
         isCloud: true,
         isEnterprise: true,
@@ -132,13 +116,13 @@ const groupedData: DataGroup[] = [
       },
       {
         label: "AI settings",
-        icon: IconSparkles,
+        icon: Sparkles,
         path: "/settings/ai",
         isAdmin: true,
       },
       {
         label: "Audit log",
-        icon: IconHistory,
+        icon: History,
         path: "/settings/audit",
         isEnterprise: true,
         isOwner: true,
@@ -153,14 +137,14 @@ const groupedData: DataGroup[] = [
     items: [
       {
         label: "Backup & Restore",
-        icon: IconDatabaseExport,
+        icon: Database,
         path: "/settings/backup",
         isSelfhosted: true,
         isAdmin: true,
       },
       {
         label: "License & Edition",
-        icon: IconKey,
+        icon: Key,
         path: "/settings/license",
       },
     ],
@@ -335,7 +319,7 @@ export default function SettingsSidebar() {
                     cursor: "not-allowed",
                   }}
                 >
-                  <item.icon className={classes.linkIcon} stroke={1.75} />
+                  <item.icon className={classes.linkIcon} strokeWidth={1.75} />
                   <span>{t(item.label)}</span>
                 </span>
               </Tooltip>
@@ -355,7 +339,7 @@ export default function SettingsSidebar() {
                 }
               }}
             >
-              <item.icon className={classes.linkIcon} stroke={1.75} />
+              <item.icon className={classes.linkIcon} strokeWidth={1.75} />
               <span>{t(item.label)}</span>
             </Link>
           );
@@ -378,7 +362,7 @@ export default function SettingsSidebar() {
           c="gray"
           aria-label={t("Back")}
         >
-          <IconArrowLeft size={16} stroke={1.75} />
+          <ArrowLeft size={16} strokeWidth={1.75} />
         </ActionIcon>
         <Text fw={500}>{t("Settings")}</Text>
       </Group>

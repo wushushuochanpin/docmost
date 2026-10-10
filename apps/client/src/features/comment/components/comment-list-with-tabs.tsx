@@ -26,7 +26,7 @@ import { IPagination } from "@/lib/types.ts";
 import { extractPageSlugId } from "@/lib";
 import { useTranslation } from "react-i18next";
 import { useGetSpaceBySlugQuery } from "@/features/space/queries/space-query.ts";
-import { IconArrowUp, IconMessageOff } from "@tabler/icons-react";
+import { ArrowUp, MessageSquareOff } from "lucide-react";
 import { useAtom } from "jotai";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
@@ -227,9 +227,9 @@ function CommentListWithTabs() {
               {activeComments.length === 0 ? (
                 <Center py="xl">
                   <Stack align="center" gap="xs">
-                    <IconMessageOff
+                    <MessageSquareOff
                       size={32}
-                      stroke={1.5}
+                      strokeWidth={1.5}
                       color="var(--mantine-color-dimmed)"
                     />
                     <Text size="sm" c="dimmed">
@@ -246,9 +246,9 @@ function CommentListWithTabs() {
               {resolvedComments.length === 0 ? (
                 <Center py="xl">
                   <Stack align="center" gap="xs">
-                    <IconMessageOff
+                    <MessageSquareOff
                       size={32}
-                      stroke={1.5}
+                      strokeWidth={1.5}
                       color="var(--mantine-color-dimmed)"
                     />
                     <Text size="sm" c="dimmed">
@@ -398,7 +398,7 @@ const PageCommentInput = ({ onSave, isLoading }) => {
           loading={isLoading}
           style={{ position: "absolute", right: 8, bottom: 30 }}
         >
-          <IconArrowUp size={16} />
+          <ArrowUp size={16} />
         </ActionIcon>
       )}
     </div>

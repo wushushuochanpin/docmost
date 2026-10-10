@@ -11,7 +11,7 @@ import {
   Text,
   Tooltip,
 } from "@mantine/core";
-import { IconCornerDownRightDouble, IconDots } from "@tabler/icons-react";
+import { CornerDownRight, MoreHorizontal } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import classes from "./breadcrumb.module.css";
 import { SpaceTreeNode } from "@/features/page/tree/types.ts";
@@ -168,7 +168,7 @@ export default function Breadcrumb() {
               size={20}
               aria-label={t("Show hidden breadcrumbs")}
             >
-              <IconDots size={16} stroke={1.75} />
+              <MoreHorizontal size={16} strokeWidth={1.75} />
             </ActionIcon>
           </Popover.Target>
           <Popover.Dropdown>
@@ -206,7 +206,7 @@ export default function Breadcrumb() {
                 size={20}
                 aria-label={t("Breadcrumbs")}
               >
-                <IconCornerDownRightDouble size={16} stroke={1.75} />
+                <CornerDownRight size={16} strokeWidth={1.75} />
               </ActionIcon>
             </Tooltip>
           </Popover.Target>

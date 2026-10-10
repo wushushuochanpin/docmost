@@ -10,12 +10,7 @@ import {
   Stack,
   Menu,
 } from "@mantine/core";
-import {
-  IconDots,
-  IconRestore,
-  IconTrash,
-  IconFileDescription,
-} from "@tabler/icons-react";
+import { MoreHorizontal, RotateCcw, Trash as TrashIcon, FileText } from "lucide-react";
 import { TrashBanner } from "@/features/page/trash/components/trash-banner.tsx";
 import {
   useDeletedPagesQuery,
@@ -124,7 +119,7 @@ export default function Trash() {
                             color="gray"
                             size={18}
                           >
-                            <IconFileDescription size={18} />
+                            <FileText size={18} />
                           </ActionIcon>
                         )}
                         <div>
@@ -155,12 +150,12 @@ export default function Trash() {
                             color="gray"
                             aria-label={t("Page actions")}
                           >
-                            <IconDots size={20} stroke={1.5} />
+                            <MoreHorizontal size={20} strokeWidth={1.5} />
                           </ActionIcon>
                         </Menu.Target>
                         <Menu.Dropdown>
                           <Menu.Item
-                            leftSection={<IconRestore size={16} />}
+                            leftSection={<RotateCcw size={16} />}
                             onClick={() =>
                               openRestoreModal({
                                 title: page.title,
@@ -172,7 +167,7 @@ export default function Trash() {
                           </Menu.Item>
                           <Menu.Item
                             color="red"
-                            leftSection={<IconTrash size={16} />}
+                            leftSection={<TrashIcon size={16} />}
                             onClick={() => openDeleteModal(page.id, page.title)}
                           >
                             {t("Delete")}

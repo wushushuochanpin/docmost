@@ -10,12 +10,7 @@ import {
   ActionIcon,
   Text,
 } from "@mantine/core";
-import {
-  IconArrowLeft,
-  IconSettings,
-  IconMoodSmile,
-  IconCheck,
-} from "@tabler/icons-react";
+import { ArrowLeft, Settings, Smile, Check } from "lucide-react";
 import EmojiPicker from "@/components/ui/emoji-picker";
 import TemplateMeta from "@/ee/template/components/template-meta";
 import { useTranslation } from "react-i18next";
@@ -242,7 +237,7 @@ export default function TemplateEditor() {
         <Container size={900} h="100%" px={0}>
         <Group justify="space-between" h="100%" wrap="nowrap">
           <Link to="/templates" className={classes.backLink}>
-            <IconArrowLeft size={16} />
+            <ArrowLeft size={16} />
             {t("Templates")}
           </Link>
 
@@ -254,7 +249,7 @@ export default function TemplateEditor() {
             )}
             {saveStatus === "saved" && (
               <Group gap={4} wrap="nowrap">
-                <IconCheck size={14} color="var(--mantine-color-green-6)" />
+                <Check size={14} color="var(--mantine-color-green-6)" />
                 <Text size="xs" c="dimmed">
                   {t("Saved")}
                 </Text>
@@ -289,7 +284,7 @@ export default function TemplateEditor() {
                     openSettings();
                   }}
                 >
-                  <IconSettings size={18} />
+                  <Settings size={18} />
                 </ActionIcon>
               </Popover.Target>
               <Popover.Dropdown>
@@ -349,7 +344,7 @@ export default function TemplateEditor() {
                 icon ? (
                   <span className={classes.emojiIcon}>{icon}</span>
                 ) : (
-                  <IconMoodSmile size={20} stroke={1.5} />
+                  <Smile size={20} strokeWidth={1.5} />
                 )
               }
               removeEmojiAction={() =>

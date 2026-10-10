@@ -1,6 +1,6 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ActionIcon, Anchor, Text } from "@mantine/core";
-import { IconFileDescription, IconFolder } from "@tabler/icons-react";
+import { FileText, Folder } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   buildPageUrl,
@@ -72,9 +72,9 @@ export default function ReadonlyMentionView(props: NodeViewProps) {
             style={{ verticalAlign: "text-bottom" }}
           >
             {nodeType === "folder" ? (
-              <IconFolder size={18} />
+              <Folder size={18} />
             ) : (
-              <IconFileDescription size={18} />
+              <FileText size={18} />
             )}
           </ActionIcon>
 

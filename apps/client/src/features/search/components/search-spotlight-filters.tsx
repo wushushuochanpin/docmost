@@ -8,12 +8,7 @@ import {
   Switch,
   getDefaultZIndex,
 } from "@mantine/core";
-import {
-  IconChevronDown,
-  IconBuilding,
-  IconFileDescription,
-  IconCheck,
-} from "@tabler/icons-react";
+import { ChevronDown, Building, FileText, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useGetSpacesQuery } from "@/features/space/queries/space-query";
 import { SpaceFilterMenu } from "@/features/space/components/space-filter-menu";
@@ -139,8 +134,8 @@ export function SearchSpotlightFilters({
           variant="subtle"
           color="gray"
           size="sm"
-          rightSection={<IconChevronDown size={14} stroke={1.75} />}
-          leftSection={<IconBuilding size={16} stroke={1.75} />}
+          rightSection={<ChevronDown size={14} strokeWidth={1.75} />}
+          leftSection={<Building size={16} strokeWidth={1.75} />}
           className={classes.filterButton}
           fw={500}
         >
@@ -161,8 +156,8 @@ export function SearchSpotlightFilters({
             variant="subtle"
             color="gray"
             size="sm"
-            rightSection={<IconChevronDown size={14} stroke={1.75} />}
-            leftSection={<IconFileDescription size={16} stroke={1.75} />}
+            rightSection={<ChevronDown size={14} strokeWidth={1.75} />}
+            leftSection={<FileText size={16} strokeWidth={1.75} />}
             className={classes.filterButton}
             fw={500}
           >
@@ -202,7 +197,7 @@ export function SearchSpotlightFilters({
                       </Text>
                     )}
                 </div>
-                {contentType === option.value && <IconCheck size={20} aria-hidden />}
+                {contentType === option.value && <Check size={20} aria-hidden />}
               </Group>
             </Menu.Item>
           ))}

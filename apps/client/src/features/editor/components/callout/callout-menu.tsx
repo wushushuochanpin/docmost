@@ -8,14 +8,7 @@ import {
 } from "@/features/editor/components/table/types/types.ts";
 import { ActionIcon, Tooltip } from "@mantine/core";
 import clsx from "clsx";
-import {
-  IconAlertTriangleFilled,
-  IconCircleCheckFilled,
-  IconCircleXFilled,
-  IconInfoCircleFilled,
-  IconMoodSmile,
-  IconNotes,
-} from "@tabler/icons-react";
+import { TriangleAlert, CircleCheck, CircleX, Info, Smile, StickyNote } from "lucide-react";
 import { CalloutType, isEditorReady, isTextSelected } from "@docmost/editor-ext";
 import { useTranslation } from "react-i18next";
 import EmojiPicker from "@/components/ui/emoji-picker.tsx";
@@ -140,7 +133,7 @@ export function CalloutMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isInfo })}
           >
-            <IconInfoCircleFilled
+            <Info
               size={18}
               color="var(--mantine-color-blue-5)"
             />
@@ -155,7 +148,7 @@ export function CalloutMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isNote })}
           >
-            <IconNotes size={18} color="var(--mantine-color-grape-5)" />
+            <StickyNote size={18} color="var(--mantine-color-grape-5)" />
           </ActionIcon>
         </Tooltip>
 
@@ -167,7 +160,7 @@ export function CalloutMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isSuccess })}
           >
-            <IconCircleCheckFilled
+            <CircleCheck
               size={18}
               color="var(--mantine-color-green-5)"
             />
@@ -182,7 +175,7 @@ export function CalloutMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isWarning })}
           >
-            <IconAlertTriangleFilled
+            <TriangleAlert
               size={18}
               color="var(--mantine-color-orange-5)"
             />
@@ -197,7 +190,7 @@ export function CalloutMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isDanger })}
           >
-            <IconCircleXFilled size={18} color="var(--mantine-color-red-5)" />
+            <CircleX size={18} color="var(--mantine-color-red-5)" />
           </ActionIcon>
         </Tooltip>
 
@@ -205,7 +198,7 @@ export function CalloutMenu({ editor }: EditorMenuProps) {
           onEmojiSelect={setCalloutIcon}
           removeEmojiAction={removeCalloutIcon}
           readOnly={false}
-          icon={currentIcon || <IconMoodSmile size={18} />}
+          icon={currentIcon || <Smile size={18} />}
           actionIconProps={{
             size: "lg",
             variant: "subtle",

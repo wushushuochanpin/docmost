@@ -17,14 +17,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import clsx from "clsx";
-import {
-  IconLayoutAlignCenter,
-  IconLayoutAlignLeft,
-  IconLayoutAlignRight,
-  IconDownload,
-  IconEdit,
-  IconTrash,
-} from "@tabler/icons-react";
+import { AlignCenterHorizontal, AlignStartHorizontal, AlignEndHorizontal, Download, Edit, Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   getDrawioUrl,
@@ -320,7 +313,7 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
               variant="subtle"
               className={clsx({ [classes.active]: editorState?.isAlignLeft })}
             >
-              <IconLayoutAlignLeft size={18} />
+              <AlignStartHorizontal size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -336,7 +329,7 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
               variant="subtle"
               className={clsx({ [classes.active]: editorState?.isAlignCenter })}
             >
-              <IconLayoutAlignCenter size={18} />
+              <AlignCenterHorizontal size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -348,7 +341,7 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
               variant="subtle"
               className={clsx({ [classes.active]: editorState?.isAlignRight })}
             >
-              <IconLayoutAlignRight size={18} />
+              <AlignEndHorizontal size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -366,7 +359,7 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
               variant="subtle"
               loading={isLoading}
             >
-              <IconEdit size={18} />
+              <Edit size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -377,7 +370,7 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
               aria-label={t("Download")}
               variant="subtle"
             >
-              <IconDownload size={18} />
+              <Download size={18} />
             </ActionIcon>
           </Tooltip>
 
@@ -388,7 +381,7 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
               aria-label={t("Delete")}
               variant="subtle"
             >
-              <IconTrash size={18} />
+              <Trash size={18} />
             </ActionIcon>
           </Tooltip>
           </div>

@@ -7,7 +7,7 @@ import {
   PasswordInput,
   Alert,
 } from "@mantine/core";
-import { IconShieldOff, IconAlertTriangle } from "@tabler/icons-react";
+import { ShieldOff, AlertTriangle } from "lucide-react";
 import { useForm } from "@mantine/form";
 import { zod4Resolver } from "mantine-form-zod-resolver";
 import { useMutation } from "@tanstack/react-query";
@@ -84,7 +84,7 @@ export function MfaDisableModal({
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <Alert
-            icon={<IconAlertTriangle size={20} />}
+            icon={<AlertTriangle size={20} />}
             title={t("Warning")}
             color="red"
             variant="light"
@@ -125,7 +125,7 @@ export function MfaDisableModal({
               fullWidth
               color="red"
               loading={disableMutation.isPending}
-              leftSection={<IconShieldOff size={18} />}
+              leftSection={<ShieldOff size={18} />}
             >
               {t("Disable two-factor authentication")}
             </Button>

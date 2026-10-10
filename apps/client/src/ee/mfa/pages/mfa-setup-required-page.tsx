@@ -11,7 +11,7 @@ import {
   Center,
   ThemeIcon,
 } from "@mantine/core";
-import { IconShieldCheck, IconAlertCircle } from "@tabler/icons-react";
+import { ShieldCheck, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import APP_ROUTE from "@/lib/app-route";
 import { MfaSetupModal } from "@/ee/mfa/components/mfa-setup-modal";
@@ -52,7 +52,7 @@ export function MfaSetupRequiredPage() {
         <Stack align="center" gap="xl">
           <Center>
             <ThemeIcon size={80} radius="xl" variant="light" color="blue">
-              <IconShieldCheck size={40} stroke={1.5} />
+              <ShieldCheck size={40} strokeWidth={1.5} />
             </ThemeIcon>
           </Center>
 
@@ -68,7 +68,7 @@ export function MfaSetupRequiredPage() {
           </Stack>
 
           <Alert
-            icon={<IconAlertCircle size={20} />}
+            icon={<AlertCircle size={20} />}
             color="blue"
             variant="light"
             w="100%"
@@ -85,7 +85,7 @@ export function MfaSetupRequiredPage() {
               fullWidth
               size="md"
               onClick={() => setSetupModalOpen(true)}
-              leftSection={<IconShieldCheck size={18} />}
+              leftSection={<ShieldCheck size={18} />}
             >
               {t("Set up two-factor authentication")}
             </Button>

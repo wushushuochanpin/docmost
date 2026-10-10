@@ -10,11 +10,7 @@ import {
   TextInput,
   useComputedColorScheme,
 } from "@mantine/core";
-import {
-  IconChevronDown,
-  IconLabel,
-  IconSearch,
-} from "@tabler/icons-react";
+import { ChevronDown, Tag, Search } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Helmet } from "react-helmet-async";
@@ -117,7 +113,7 @@ export default function LabelPage() {
           <Group gap="sm" wrap="nowrap" align="center">
             <TextInput
               placeholder={t("Search by title")}
-              leftSection={<IconSearch size={16} />}
+              leftSection={<Search size={16} />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               size="sm"
@@ -127,7 +123,7 @@ export default function LabelPage() {
               <Button
                 variant="default"
                 size="sm"
-                rightSection={<IconChevronDown size={14} />}
+                rightSection={<ChevronDown size={14} />}
               >
                 {selectedSpaceName}
               </Button>
@@ -160,7 +156,7 @@ export default function LabelPage() {
             </div>
           ) : (
             <EmptyState
-              icon={IconLabel}
+              icon={Tag}
               title={
                 debouncedSearch
                   ? t("No matches")

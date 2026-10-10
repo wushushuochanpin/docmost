@@ -7,7 +7,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "@mantine/core";
-import { IconCheck, IconFileText, IconFolder } from "@tabler/icons-react";
+import { Check, FileText, Folder } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { MoveTargetPage } from "@/features/page/hooks/use-move-to.ts";
 
@@ -31,9 +31,9 @@ export default function MoveTargetItem({
       {page.icon}
     </Text>
   ) : page.nodeType === "folder" ? (
-    <IconFolder size={16} />
+    <Folder size={16} />
   ) : (
-    <IconFileText size={16} />
+    <FileText size={16} />
   );
 
   const item = (
@@ -78,7 +78,7 @@ export default function MoveTargetItem({
 
         {isSelected ? (
           <ThemeIcon variant="filled" color="blue" size={22} radius="xl">
-            <IconCheck size={14} stroke={2.4} />
+            <Check size={14} strokeWidth={2.4} />
           </ThemeIcon>
         ) : (
           <Badge variant="light" color="gray" size="sm" maw={112}>

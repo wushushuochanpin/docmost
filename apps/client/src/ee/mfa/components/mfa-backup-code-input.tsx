@@ -6,7 +6,7 @@ import {
   Text,
   Alert,
 } from "@mantine/core";
-import { IconKey, IconAlertCircle } from "@tabler/icons-react";
+import { Key, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface MfaBackupCodeInputProps {
@@ -30,7 +30,7 @@ export function MfaBackupCodeInput({
 
   return (
     <Stack>
-      <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
+      <Alert icon={<AlertCircle size={16} />} color="blue" variant="light">
         <Text size="sm">
           {t(
             "Enter one of your backup codes. Each backup code can only be used once.",
@@ -62,7 +62,7 @@ export function MfaBackupCodeInput({
           size="md"
           loading={isLoading}
           onClick={onSubmit}
-          leftSection={<IconKey size={18} />}
+          leftSection={<Key size={18} />}
         >
           {t("Verify backup code")}
         </Button>

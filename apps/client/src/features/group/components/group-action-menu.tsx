@@ -5,7 +5,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { Menu, ActionIcon, Text } from "@mantine/core";
 import React from "react";
-import { IconDots, IconTrash } from "@tabler/icons-react";
+import { MoreHorizontal, Trash } from "lucide-react";
 import { useDisclosure } from "@mantine/hooks";
 import EditGroupModal from "@/features/group/components/edit-group-modal.tsx";
 import { modals } from "@mantine/modals";
@@ -68,7 +68,7 @@ export default function GroupActionMenu(props: GroupActionMenuProps = {}) {
                 color="gray"
                 aria-label={t("Group actions for {{name}}", { name: group.name })}
               >
-                <IconDots size={18} stroke={1.75} />
+                <MoreHorizontal size={18} strokeWidth={1.75} />
               </ActionIcon>
             </Menu.Target>
 
@@ -81,7 +81,7 @@ export default function GroupActionMenu(props: GroupActionMenuProps = {}) {
                 c="red"
                 onClick={openDeleteModal}
                 disabled={group.isDefault}
-                leftSection={<IconTrash size={16} stroke={1.75} />}
+                leftSection={<Trash size={16} strokeWidth={1.75} />}
               >
                 {t("Delete group")}
               </Menu.Item>

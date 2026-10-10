@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { reportFrontendError } from "@/lib/frontend-error-log.ts";
 import React, { Suspense, useCallback, useEffect, useMemo } from "react";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
-import { IconAlertTriangle, IconFileOff } from "@tabler/icons-react";
+import { AlertTriangle, FileX } from "lucide-react";
 import { Button, Center, Loader } from "@mantine/core";
 import { Link } from "react-router-dom";
 import { ErrorBoundary } from "react-error-boundary";
@@ -69,7 +69,7 @@ export default function Page() {
         reportFrontendError("page-error-boundary", error);
         return (
           <EmptyState
-            icon={IconAlertTriangle}
+            icon={AlertTriangle}
             title={t("Failed to load page. An error occurred.")}
             action={
               <Button
@@ -270,7 +270,7 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
     if ([401, 403, 404].includes(error?.["status"])) {
       return (
         <EmptyState
-          icon={IconFileOff}
+          icon={FileX}
           title={t("Page not found")}
           description={t(
             "This page may have been deleted, moved, or you may not have access.",
@@ -290,7 +290,7 @@ function PageContent({ pageSlug }: { pageSlug: string | undefined }) {
       );
     }
     return (
-      <EmptyState icon={IconFileOff} title={t("Error fetching page data.")} />
+      <EmptyState icon={FileX} title={t("Error fetching page data.")} />
     );
   }
 

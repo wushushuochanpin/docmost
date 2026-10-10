@@ -3,7 +3,7 @@ import { Group, MultiSelect, Select, Space, TextInput } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { Helmet } from "react-helmet-async";
 import { useTranslation } from "react-i18next";
-import { IconSearch } from "@tabler/icons-react";
+import { Search } from "lucide-react";
 import SettingsTitle from "@/components/settings/settings-title";
 import { getAppName } from "@/lib/config";
 import Paginate from "@/components/common/paginate";
@@ -79,7 +79,7 @@ export default function VerifiedPages() {
       <Group mb="md" gap="sm">
         <TextInput
           placeholder={t("Search by title")}
-          leftSection={<IconSearch size={16} />}
+          leftSection={<Search size={16} />}
           value={searchValue}
           onChange={handleSearchChange}
           size="sm"

@@ -7,11 +7,7 @@ import clsx from "clsx";
 import classes from "./pdf-view.module.css";
 import { useTranslation } from "react-i18next";
 import { isInternalFileUrl } from "@docmost/editor-ext";
-import {
-  IconFileTypePdf,
-  IconPaperclip,
-  IconTrash,
-} from "@tabler/icons-react";
+import { FileText, Paperclip, Trash } from "lucide-react";
 
 export default function PdfView(props: NodeViewProps) {
   const { t } = useTranslation();
@@ -106,7 +102,7 @@ export default function PdfView(props: NodeViewProps) {
           tabIndex={0}
           aria-label={t("Failed to load PDF")}
         >
-          <IconFileTypePdf size={32} stroke={1.5} />
+          <FileText size={32} strokeWidth={1.5} />
           <Text size="sm" c="dimmed">
             {t("Failed to load PDF")}
           </Text>
@@ -160,7 +156,7 @@ export default function PdfView(props: NodeViewProps) {
                   onClick={handleConvertToAttachment}
                   aria-label={t("Convert to attachment")}
                 >
-                  <IconPaperclip size={14} />
+                  <Paperclip size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip position="top" label={t("Delete")} withinPortal>
@@ -171,7 +167,7 @@ export default function PdfView(props: NodeViewProps) {
                   onClick={handleDelete}
                   aria-label={t("Delete")}
                 >
-                  <IconTrash size={14} />
+                  <Trash size={14} />
                 </ActionIcon>
               </Tooltip>
             </div>

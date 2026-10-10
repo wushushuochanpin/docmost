@@ -4,20 +4,7 @@ import { useParams } from "react-router-dom";
 import { ActionIcon, Menu, rem } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import {
-  IconArrowRight,
-  IconCategory2,
-  IconCheck,
-  IconCopy,
-  IconDotsVertical,
-  IconFileExport,
-  IconLink,
-  IconPin,
-  IconPinnedOff,
-  IconStar,
-  IconStarFilled,
-  IconTrash,
-} from "@tabler/icons-react";
+import { ArrowRight, Layers2, Check, Copy, MoreVertical, FileDown, Link, Pin, PinOff, Star, Trash } from "lucide-react";
 
 import ExportModal from "@/components/common/export-modal";
 import MovePageModal from "@/features/page/components/move-page-modal.tsx";
@@ -193,16 +180,16 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
               e.stopPropagation();
             }}
           >
-            <IconDotsVertical
+            <MoreVertical
               style={{ width: rem(20), height: rem(20) }}
-              stroke={2}
+              strokeWidth={2}
             />
           </ActionIcon>
         </Menu.Target>
 
         <Menu.Dropdown>
           <Menu.Item
-            leftSection={<IconLink size={16} />}
+            leftSection={<Link size={16} />}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -214,7 +201,7 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
 
           <Menu.Item
             leftSection={
-              isFavorited ? <IconStarFilled size={16} /> : <IconStar size={16} />
+              isFavorited ? <Star size={16} /> : <Star size={16} />
             }
             onClick={(e) => {
               e.preventDefault();
@@ -231,7 +218,7 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
 
           {!node.parentPageId && (
             <Menu.Item
-              leftSection={node.isPinned ? <IconPinnedOff size={16} /> : <IconPin size={16} />}
+              leftSection={node.isPinned ? <PinOff size={16} /> : <Pin size={16} />}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -245,14 +232,14 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
           {!node.parentPageId && sidebarCategories.length > 0 && (
             <Menu.Sub>
               <Menu.Sub.Target>
-                <Menu.Item leftSection={<IconCategory2 size={16} />}>
+                <Menu.Item leftSection={<Layers2 size={16} />}>
                   {t("Category")}
                 </Menu.Item>
               </Menu.Sub.Target>
               <Menu.Sub.Dropdown>
                 <Menu.Item
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAssignCategory(null); }}
-                  rightSection={!node.sidebarCategoryId ? <IconCheck size={14} stroke={1.8} /> : null}
+                  rightSection={!node.sidebarCategoryId ? <Check size={14} strokeWidth={1.8} /> : null}
                 >
                   {t("None")}
                 </Menu.Item>
@@ -260,7 +247,7 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
                   <Menu.Item
                     key={category.id}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAssignCategory(category.id); }}
-                    rightSection={node.sidebarCategoryId === category.id ? <IconCheck size={14} stroke={1.8} /> : null}
+                    rightSection={node.sidebarCategoryId === category.id ? <Check size={14} strokeWidth={1.8} /> : null}
                   >
                     {category.name}
                   </Menu.Item>
@@ -274,7 +261,7 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
           )}
 
           <Menu.Item
-            leftSection={<IconFileExport size={16} />}
+            leftSection={<FileDown size={16} />}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -287,7 +274,7 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
           {canEdit && (
             <>
               <Menu.Item
-                leftSection={<IconCopy size={16} />}
+                leftSection={<Copy size={16} />}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -298,7 +285,7 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
               </Menu.Item>
 
               <Menu.Item
-                leftSection={<IconArrowRight size={16} />}
+                leftSection={<ArrowRight size={16} />}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -309,7 +296,7 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
               </Menu.Item>
 
               <Menu.Item
-                leftSection={<IconCopy size={16} />}
+                leftSection={<Copy size={16} />}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -322,7 +309,7 @@ export function NodeMenu({ node, canEdit }: NodeMenuProps) {
               <Menu.Divider />
               <Menu.Item
                 c="red"
-                leftSection={<IconTrash size={16} />}
+                leftSection={<Trash size={16} />}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();

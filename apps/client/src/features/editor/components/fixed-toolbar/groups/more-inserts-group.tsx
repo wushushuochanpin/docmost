@@ -1,18 +1,7 @@
 import { FC } from "react";
 import type { Editor } from "@tiptap/react";
 import { ActionIcon, Menu, Tooltip } from "@mantine/core";
-import {
-  IconAppWindow,
-  IconCalendar,
-  IconCaretRightFilled,
-  IconChevronDown,
-  IconInfoCircle,
-  IconMath,
-  IconMathFunction,
-  IconRotate2,
-  IconSitemap,
-  IconTag,
-} from "@tabler/icons-react";
+import { AppWindow, Calendar, ChevronRight, ChevronDown, Info, Sigma, FunctionSquare, RotateCw, Network, Tag } from "lucide-react";
 import IconExcalidraw from "@/components/icons/icon-excalidraw";
 import IconMermaid from "@/components/icons/icon-mermaid";
 import IconDrawio from "@/components/icons/icon-drawio";
@@ -59,26 +48,26 @@ export const MoreInsertsGroup: FC<Props> = ({ editor }) => {
             size="md"
             aria-label={t("More inserts")}
           >
-            <IconChevronDown size={16} />
+            <ChevronDown size={16} />
           </ActionIcon>
         </Tooltip>
       </Menu.Target>
       <Menu.Dropdown mah={400} style={{ overflowY: "auto" }}>
         <Menu.Label>{t("Advanced")}</Menu.Label>
         <Menu.Item
-          leftSection={<IconInfoCircle size={16} />}
+          leftSection={<Info size={16} />}
           onClick={() => editor.chain().focus().toggleCallout().run()}
         >
           {t("Callout")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconCaretRightFilled size={16} />}
+          leftSection={<ChevronRight size={16} />}
           onClick={() => editor.chain().focus().setDetails().run()}
         >
           {t("Toggle block")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconTag size={16} />}
+          leftSection={<Tag size={16} />}
           onClick={() =>
             editor.chain().focus().setStatus({ text: "", color: "gray" }).run()
           }
@@ -86,13 +75,13 @@ export const MoreInsertsGroup: FC<Props> = ({ editor }) => {
           {t("Status")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconSitemap size={16} />}
+          leftSection={<Network size={16} />}
           onClick={() => editor.chain().focus().insertSubpages().run()}
         >
           {t("Subpages")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconRotate2 size={16} />}
+          leftSection={<RotateCw size={16} />}
           onClick={() =>
             editor.chain().focus().insertTransclusionSource().run()
           }
@@ -131,7 +120,7 @@ export const MoreInsertsGroup: FC<Props> = ({ editor }) => {
         <Menu.Divider />
         <Menu.Label>{t("Embeds")}</Menu.Label>
         <Menu.Item
-          leftSection={<IconAppWindow size={16} />}
+          leftSection={<AppWindow size={16} />}
           onClick={() => setEmbed("iframe")}
         >
           Iframe
@@ -194,19 +183,19 @@ export const MoreInsertsGroup: FC<Props> = ({ editor }) => {
         <Menu.Divider />
         <Menu.Label>{t("Utility")}</Menu.Label>
         <Menu.Item
-          leftSection={<IconCalendar size={16} />}
+          leftSection={<Calendar size={16} />}
           onClick={insertDate}
         >
           {t("Date")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconMathFunction size={16} />}
+          leftSection={<FunctionSquare size={16} />}
           onClick={() => editor.chain().focus().setMathInline().run()}
         >
           {t("Math inline")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<IconMath size={16} />}
+          leftSection={<Sigma size={16} />}
           onClick={() => editor.chain().focus().setMathBlock().run()}
         >
           {t("Math block")}

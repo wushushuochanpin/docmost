@@ -1,6 +1,6 @@
 import { KeyboardEvent, useState } from "react";
 import { ActionIcon, Tooltip } from "@mantine/core";
-import { IconChevronRight, IconLock } from "@tabler/icons-react";
+import { ChevronRight, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ISpace } from "@/features/space/types/space.types";
 import { IPage } from "@/features/page/types/page.types";
@@ -77,7 +77,7 @@ export function SpaceRow({
             setExpanded(!expanded);
           }}
         >
-          <IconChevronRight size={14} />
+          <ChevronRight size={14} />
         </ActionIcon>
       ) : (
         <div style={{ width: 20, flexShrink: 0 }} />
@@ -93,7 +93,7 @@ export function SpaceRow({
       <div className={classes.pageTitle}>{space.name}</div>
 
       {!writable && (
-        <IconLock
+        <Lock
           size={14}
           color="var(--mantine-color-gray-5)"
         />

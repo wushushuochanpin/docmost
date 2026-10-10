@@ -9,14 +9,7 @@ import {
 } from "@/features/editor/components/table/types/types.ts";
 import { ActionIcon, Tooltip } from "@mantine/core";
 import clsx from "clsx";
-import {
-  IconLayoutAlignCenter,
-  IconLayoutAlignLeft,
-  IconLayoutAlignRight,
-  IconDownload,
-  IconRefresh,
-  IconTrash,
-} from "@tabler/icons-react";
+import { AlignCenterHorizontal, AlignStartHorizontal, AlignEndHorizontal, Download, RefreshCw, Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getFileUrl } from "@/lib/config.ts";
 import { uploadImageAction } from "@/features/editor/components/image/upload-image-action.tsx";
@@ -173,7 +166,7 @@ export function ImageMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isAlignLeft })}
           >
-            <IconLayoutAlignLeft size={18} />
+            <AlignStartHorizontal size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -185,7 +178,7 @@ export function ImageMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isAlignCenter })}
           >
-            <IconLayoutAlignCenter size={18} />
+            <AlignCenterHorizontal size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -197,7 +190,7 @@ export function ImageMenu({ editor }: EditorMenuProps) {
             variant="subtle"
             className={clsx({ [classes.active]: editorState?.isAlignRight })}
           >
-            <IconLayoutAlignRight size={18} />
+            <AlignEndHorizontal size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -214,7 +207,7 @@ export function ImageMenu({ editor }: EditorMenuProps) {
             aria-label={t("Download")}
             variant="subtle"
           >
-            <IconDownload size={18} />
+            <Download size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -225,7 +218,7 @@ export function ImageMenu({ editor }: EditorMenuProps) {
             aria-label={t("Replace image")}
             variant="subtle"
           >
-            <IconRefresh size={18} />
+            <RefreshCw size={18} />
           </ActionIcon>
         </Tooltip>
 
@@ -236,7 +229,7 @@ export function ImageMenu({ editor }: EditorMenuProps) {
             aria-label={t("Delete")}
             variant="subtle"
           >
-            <IconTrash size={18} />
+            <Trash size={18} />
           </ActionIcon>
         </Tooltip>
         </div>

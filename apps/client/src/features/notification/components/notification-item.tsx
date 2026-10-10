@@ -5,12 +5,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "@mantine/core";
-import {
-  IconBell,
-  IconCheck,
-  IconFileDescription,
-  IconPointFilled,
-} from "@tabler/icons-react";
+import { Bell, Check, FileText, Dot } from "lucide-react";
 import { Avatar } from "@mantine/core";
 import { CustomAvatar } from "@/components/ui/custom-avatar";
 import { INotification } from "../types/notification.types";
@@ -116,7 +111,7 @@ export function NotificationItem({
           />
         ) : (
           <Avatar size="sm" color="gray" radius="xl">
-            <IconBell size={14} />
+            <Bell size={14} />
           </Avatar>
         )}
 
@@ -136,9 +131,9 @@ export function NotificationItem({
                   {notification.page.icon}
                 </Text>
               ) : (
-                <IconFileDescription
+                <FileText
                   size={14}
-                  stroke={1.5}
+                  strokeWidth={1.5}
                   style={{ flexShrink: 0, color: "var(--mantine-color-dimmed)" }}
                 />
               )}
@@ -157,7 +152,7 @@ export function NotificationItem({
                 size="sm"
                 onClick={handleMarkRead}
               >
-                <IconCheck size={14} />
+                <Check size={14} />
               </ActionIcon>
             </Tooltip>
           ) : (
@@ -167,7 +162,7 @@ export function NotificationItem({
           )}
 
           {isUnread && (
-            <IconPointFilled
+            <Dot
               size={12}
               color="var(--mantine-color-blue-filled)"
               style={{ flexShrink: 0 }}

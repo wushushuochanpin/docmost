@@ -1,7 +1,7 @@
 import { FC } from "react";
 import type { Editor } from "@tiptap/react";
 import { ActionIcon, Tooltip } from "@mantine/core";
-import { IconArrowBackUp, IconArrowForwardUp } from "@tabler/icons-react";
+import { Undo2, Redo2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ToolbarState } from "../use-toolbar-state";
 
@@ -24,7 +24,7 @@ export const HistoryGroup: FC<Props> = ({ editor, state }) => {
           disabled={!state.canUndo}
           onClick={() => editor.chain().focus().undo().run()}
         >
-          <IconArrowBackUp size={16} />
+          <Undo2 size={16} />
         </ActionIcon>
       </Tooltip>
       <Tooltip label={t("Redo")} withArrow>
@@ -36,7 +36,7 @@ export const HistoryGroup: FC<Props> = ({ editor, state }) => {
           disabled={!state.canRedo}
           onClick={() => editor.chain().focus().redo().run()}
         >
-          <IconArrowForwardUp size={16} />
+          <Redo2 size={16} />
         </ActionIcon>
       </Tooltip>
     </ActionIcon.Group>

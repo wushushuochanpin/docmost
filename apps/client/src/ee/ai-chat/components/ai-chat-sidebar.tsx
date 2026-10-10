@@ -10,7 +10,7 @@ import {
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconPlus, IconSearch, IconMessageCircle2 } from "@tabler/icons-react";
+import { Plus, Search, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useChatsQuery,
@@ -130,7 +130,7 @@ export default function AiChatSidebar() {
             onClick={handleNewChat}
             aria-label={t("New chat")}
           >
-            <IconPlus size={18} />
+            <Plus size={18} />
           </ActionIcon>
         </Tooltip>
       </div>
@@ -139,7 +139,7 @@ export default function AiChatSidebar() {
         className={classes.searchInput}
         placeholder={t("Search chats...")}
         aria-label={t("Search chats")}
-        leftSection={<IconSearch size={14} />}
+        leftSection={<Search size={14} />}
         size="xs"
         value={search}
         onChange={(e) => setSearch(e.currentTarget.value)}
@@ -149,9 +149,9 @@ export default function AiChatSidebar() {
         {isLoading && <Loader size="xs" mx="auto" mt="md" />}
         {!isLoading && chats.length === 0 && (
           <div className={classes.chatListEmpty}>
-            <IconMessageCircle2
+            <MessageCircle
               size={28}
-              stroke={1.5}
+              strokeWidth={1.5}
               className={classes.chatListEmptyIcon}
             />
             <div className={classes.chatListEmptyTitle}>

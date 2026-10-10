@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button, Group, Image, Text } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconBrandWechat, IconCopy } from "@tabler/icons-react";
+import { MessageCircle, Copy } from "lucide-react";
 import { CopyButton } from "@/components/common/copy-button";
 import classes from "@/features/share/components/share.module.css";
 import { useTranslation } from "react-i18next";
@@ -75,7 +75,7 @@ export default function ShareWechatPanel({
     return (
       <section className={classes.shareWechatPanel}>
         <Group gap={8} mb={8} wrap="nowrap">
-          <IconBrandWechat size={18} />
+          <MessageCircle size={18} />
         <Text size="sm" fw={600}>
           {t("Share with WeChat")}
         </Text>
@@ -93,7 +93,7 @@ export default function ShareWechatPanel({
     return (
       <section className={classes.shareWechatPanel}>
         <Group gap={8} mb={8} wrap="nowrap">
-          <IconBrandWechat size={18} />
+          <MessageCircle size={18} />
           <Text size="sm" fw={600}>
             {t("Share with WeChat")}
           </Text>
@@ -107,7 +107,7 @@ export default function ShareWechatPanel({
           {({ copied, copy }) => (
             <Button
               variant="light"
-              leftSection={<IconCopy size={14} />}
+              leftSection={<Copy size={14} />}
               onClick={copy}
             >
               {copied ? t("Copied") : t("Copy for WeChat")}
@@ -121,7 +121,7 @@ export default function ShareWechatPanel({
   return (
     <section className={classes.shareWechatPanel}>
       <Group gap={8} mb={8} wrap="nowrap">
-        <IconBrandWechat size={18} />
+        <MessageCircle size={18} />
         <Text size="sm" fw={600}>
           {t("Share with WeChat")}
         </Text>

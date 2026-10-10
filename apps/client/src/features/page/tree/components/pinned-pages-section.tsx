@@ -3,14 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 import { ActionIcon, Text, Tooltip } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import {
-  IconChevronDown,
-  IconChevronRight,
-  IconFileDescription,
-  IconFolder,
-  IconInfoCircle,
-  IconPinned,
-} from "@tabler/icons-react";
+import { ChevronDown, ChevronRight, FileText, Folder, Info, Pin } from "lucide-react";
 import clsx from "clsx";
 
 import { treeModel } from "@/features/page/tree/model/tree-model";
@@ -257,13 +250,13 @@ export function PinnedPagesSection({
             onClick={() => setCollapsed((value) => !value)}
           >
             {collapsed ? (
-              <IconChevronRight size={16} stroke={2} />
+              <ChevronRight size={16} strokeWidth={2} />
             ) : (
-              <IconChevronDown size={16} stroke={2} />
+              <ChevronDown size={16} strokeWidth={2} />
             )}
           </ActionIcon>
 
-          <IconPinned size={14} stroke={1.8} className={classes.pinIcon} />
+          <Pin size={14} strokeWidth={1.8} className={classes.pinIcon} />
 
           <Text size="xs" fw={500} c="dimmed">
             {t("Pinned pages")}
@@ -280,7 +273,7 @@ export function PinnedPagesSection({
               w={220}
             >
               <span className={classes.hintIcon}>
-                <IconInfoCircle size={14} stroke={1.8} />
+                <Info size={14} strokeWidth={1.8} />
               </span>
             </Tooltip>
           )}
@@ -375,9 +368,9 @@ function PinnedChip({
       {node.icon ? (
         <span className={classes.chipIcon}>{node.icon}</span>
       ) : node.nodeType === "folder" ? (
-        <IconFolder size={14} className={classes.chipIcon} />
+        <Folder size={14} className={classes.chipIcon} />
       ) : (
-        <IconFileDescription size={14} className={classes.chipIcon} />
+        <FileText size={14} className={classes.chipIcon} />
       )}
       <span className={classes.chipLabel}>{node.name || t("untitled")}</span>
     </Link>

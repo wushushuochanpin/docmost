@@ -12,7 +12,7 @@ import {
 } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
-import { IconArrowRight, IconLock, IconShieldLock } from "@tabler/icons-react";
+import { ArrowRight, Lock, ShieldLock } from "lucide-react";
 import { MultiMemberSelect } from "@/features/space/components/multi-member-select";
 import {
   IPageRestrictionInfo,
@@ -95,7 +95,7 @@ export function PagePermissionTab({
               variant="light"
               color="orange"
             >
-              <IconShieldLock size={18} stroke={1.5} />
+              <ShieldLock size={18} strokeWidth={1.5} />
             </ThemeIcon>
             <Box style={{ flex: 1 }}>
               <Text size="sm" fw={500}>
@@ -118,7 +118,7 @@ export function PagePermissionTab({
                       <Text size="xs" fw={500} c="blue">
                         {restrictionInfo.inheritedFrom.title || t("Untitled")}
                       </Text>
-                      <IconArrowRight size={12} color="var(--mantine-color-blue-6)" />
+                      <ArrowRight size={12} color="var(--mantine-color-blue-6)" />
                     </Group>
                   </Link>
                 )}

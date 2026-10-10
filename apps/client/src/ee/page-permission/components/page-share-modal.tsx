@@ -10,7 +10,7 @@ import {
   Center,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconWorld, IconLock } from "@tabler/icons-react";
+import { Globe, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { extractPageSlugId } from "@/lib";
@@ -62,11 +62,11 @@ export function PageShareModal({ readOnly }: PageShareModalProps) {
         leftSection={
           isRestricted ? (
             <Indicator color="red" offset={5} withBorder>
-              <IconLock size={20} stroke={1.5} />
+              <Lock size={20} strokeWidth={1.5} />
             </Indicator>
           ) : isPubliclyShared ? (
             <Indicator color="green" offset={5} withBorder>
-              <IconWorld size={20} stroke={1.5} />
+              <Globe size={20} strokeWidth={1.5} />
             </Indicator>
           ) : null
         }
@@ -104,7 +104,7 @@ export function PageShareModal({ readOnly }: PageShareModalProps) {
           <Tabs.Panel value="access">
             {!hasPagePermissions ? (
               <Stack align="center" py="md">
-                <IconLock size={20} stroke={1.5} />
+                <Lock size={20} strokeWidth={1.5} />
                 <Text size="sm" ta="center" fw={500}>
                   {t("Page permissions")}
                 </Text>

@@ -8,10 +8,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import {
-  IconRosetteDiscountCheckFilled,
-  IconShieldCheck,
-} from "@tabler/icons-react";
+import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { extractPageSlugId } from "@/lib";
@@ -49,9 +46,9 @@ export function PageVerificationModal({
       aria-label={status === "none" ? t("Set up verification") : t("Verify page")}
       title={
         <Group gap="xs">
-          <IconShieldCheck
+          <ShieldCheck
             size={20}
-            stroke={1.5}
+            strokeWidth={1.5}
             color={
               status === "verified" || status === "approved"
                 ? "var(--mantine-color-blue-6)"
@@ -130,7 +127,7 @@ export function PageVerificationBadge({
               cursor: "pointer",
             }}
           >
-            <IconRosetteDiscountCheckFilled
+            <BadgeCheck
               size={18}
               color={`var(--mantine-color-${getStatusColor(status).replace(".", "-")})`}
               aria-hidden="true"
@@ -148,7 +145,7 @@ export function PageVerificationBadge({
             aria-label={t("Set up verification")}
             onClick={open}
           >
-            <IconShieldCheck size={20} stroke={1.5} />
+            <ShieldCheck size={20} strokeWidth={1.5} />
           </ActionIcon>
         </Tooltip>
       ) : null}
@@ -184,7 +181,7 @@ export function PageVerificationMenuItem({
   const menuItem = (
     <Menu.Item
       disabled={!hasVerificationFeature}
-      leftSection={<IconShieldCheck size={16} />}
+      leftSection={<ShieldCheck size={16} />}
       onClick={hasVerificationFeature ? onClick : undefined}
     >
       {label}

@@ -1,11 +1,6 @@
 import { Menu, ActionIcon, Text } from "@mantine/core";
 import React from "react";
-import {
-  IconCopy,
-  IconDots,
-  IconFileDescription,
-  IconTrash,
-} from "@tabler/icons-react";
+import { Copy, MoreHorizontal, FileText, Trash } from "lucide-react";
 import { modals } from "@mantine/modals";
 import { useTranslation } from "react-i18next";
 import { ISharedItem } from "@/features/share/types/share.types.ts";
@@ -79,28 +74,28 @@ export default function ShareActionMenu({ share }: Props) {
       >
         <Menu.Target>
           <ActionIcon variant="subtle" c="gray" aria-label={t("More options")}>
-            <IconDots size={18} stroke={1.75} />
+            <MoreHorizontal size={18} strokeWidth={1.75} />
           </ActionIcon>
         </Menu.Target>
 
         <Menu.Dropdown>
           <Menu.Item
             onClick={copyLink}
-            leftSection={<IconCopy size={16} stroke={1.75} />}
+            leftSection={<Copy size={16} strokeWidth={1.75} />}
           >
             {t("Copy link")}
           </Menu.Item>
 
           <Menu.Item
             onClick={openPage}
-            leftSection={<IconFileDescription size={16} stroke={1.75} />}
+            leftSection={<FileText size={16} strokeWidth={1.75} />}
           >
             {t("Open page")}
           </Menu.Item>
           <Menu.Item
             c="red"
             onClick={openDeleteModal}
-            leftSection={<IconTrash size={16} stroke={1.75} />}
+            leftSection={<Trash size={16} strokeWidth={1.75} />}
             disabled={share.space?.userRole === "reader"}
           >
             {t("Delete share")}
