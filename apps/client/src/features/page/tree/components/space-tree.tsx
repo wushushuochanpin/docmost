@@ -23,13 +23,19 @@ import {
 } from "@/features/page/tree/utils/utils.ts";
 import { SpaceTreeNode } from "@/features/page/tree/types.ts";
 import { treeModel } from "@/features/page/tree/model/tree-model";
+import type { DropOp } from "@/features/page/tree/model/tree-model.types";
 import { getPageBreadcrumbs } from "@/features/page/services/page-service.ts";
-import { IPage, SidebarViewMode } from "@/features/page/types/page.types.ts";
+import {
+  IPage,
+  SidebarLayoutMode,
+  SidebarViewMode,
+} from "@/features/page/types/page.types.ts";
 import { extractPageSlugId } from "@/lib";
 import { DocTree } from "./doc-tree";
 import { SpaceTreeRow } from "./space-tree-row";
 import { PinnedPagesSection } from "./pinned-pages-section";
-import { SpaceGridView } from "./space-grid-view";
+import { SidebarNodeCard } from "./sidebar-node-card";
+import { usePinnedReorder } from "@/features/page/tree/hooks/use-pinned-reorder.ts";
 
 interface SpaceTreeProps {
   spaceId: string;
@@ -42,11 +48,13 @@ interface SpaceTreeProps {
    */
   viewMode?: SidebarViewMode;
   /**
-   * How the "all" view renders its root nodes: a tree list or a flat card
-   * grid. Ignored in the "pinned" view (always a chip list).
+   * How the view renders its root nodes: tree list, card list (grid), or
+   * pills (chips, pinned view only).
    */
-  layoutMode?: "list" | "grid";
+  layoutMode?: SidebarLayoutMode;
 }
+
+const EMPTY_OPEN_IDS: ReadonlySet<string> = new Set();
 
 export default function SpaceTree({
   spaceId,
@@ -271,12 +279,25 @@ export default function SpaceTree({
 
   const showPinnedOnly = viewMode === "pinned";
 
+  // Pinned ordering shared by list/grid pinned views (chips go through
+  // PinnedPagesSection, which owns its own instance).
+  const {
+    orderedNodes: orderedPinned,
+    handleMove: handlePinnedMove,
+  } = usePinnedReorder(pinnedRoots, spaceId);
+
   // Stable callbacks for DocTree. Without these, every parent render recreates
   // the props and tears down every row's draggable/dropTarget subscription,
   // defeating memo(DocTreeRow).
-  const renderRow = useCallback(
+  const renderListRow = useCallback(
     (rowProps: Parameters<typeof SpaceTreeRow>[0]) => (
       <SpaceTreeRow {...rowProps} readOnly={readOnly} />
+    ),
+    [readOnly],
+  );
+  const renderGridRow = useCallback(
+    (rowProps: Parameters<typeof SidebarNodeCard>[0]) => (
+      <SidebarNodeCard {...rowProps} readOnly={readOnly} />
     ),
     [readOnly],
   );
@@ -289,6 +310,48 @@ export default function SpaceTree({
     [t],
   );
 
+  const renderTree = (
+    data: SpaceTreeNode[],
+    onMove: (sourceId: string, op: DropOp) => void | Promise<void>,
+  ) => {
+    if (layoutMode === "grid") {
+      // Grid: flat card list rendered by the same DocTree engine — virtual
+      // scrolling, keyboard nav and drag sorting for free. openIds is empty so
+      // only root nodes are shown; make-child drops are blocked.
+      return (
+        <DocTree<SpaceTreeNode>
+          data={data}
+          openIds={EMPTY_OPEN_IDS}
+          selectedId={currentPage?.id}
+          renderRow={renderGridRow}
+          onMove={onMove}
+          onToggle={handleToggle}
+          readOnly={readOnly}
+          disableDrag={disableDragDrop}
+          disableDrop={disableDragDrop}
+          blockMakeChild
+          getDragLabel={getDragLabel}
+          aria-label={t("Pages")}
+        />
+      );
+    }
+    return (
+      <DocTree<SpaceTreeNode>
+        data={data}
+        openIds={openIds}
+        selectedId={currentPage?.id}
+        renderRow={renderListRow}
+        onMove={onMove}
+        onToggle={handleToggle}
+        readOnly={readOnly}
+        disableDrag={disableDragDrop}
+        disableDrop={disableDragDrop}
+        getDragLabel={getDragLabel}
+        aria-label={t("Pages")}
+      />
+    );
+  };
+
   return (
     <div className={classes.treeStack}>
       {showPinnedOnly ? (
@@ -298,17 +361,20 @@ export default function SpaceTree({
               {t("No pinned pages yet")}
             </Text>
           )}
-          {pinnedRoots.length > 0 && (
-            <PinnedPagesSection
-              spaceId={spaceId}
-              readOnly={readOnly}
-              pages={pinnedRoots}
-              openIds={openIds}
-              selectedId={currentPage?.id}
-              onToggle={handleToggle}
-              showHeader={false}
-            />
-          )}
+          {pinnedRoots.length > 0 &&
+            (layoutMode === "chips" ? (
+              <PinnedPagesSection
+                spaceId={spaceId}
+                readOnly={readOnly}
+                pages={pinnedRoots}
+                openIds={openIds}
+                selectedId={currentPage?.id}
+                onToggle={handleToggle}
+                showHeader={false}
+              />
+            ) : (
+              renderTree(orderedPinned, handlePinnedMove)
+            ))}
         </div>
       ) : (
         <div className={classes.treeFill}>
@@ -318,23 +384,7 @@ export default function SpaceTree({
             </Text>
           )}
           {isDataLoaded && filteredData.length > 0 &&
-            (layoutMode === "grid" ? (
-              <SpaceGridView nodes={filteredData} />
-            ) : (
-              <DocTree<SpaceTreeNode>
-                data={filteredData}
-                openIds={openIds}
-                selectedId={currentPage?.id}
-                renderRow={renderRow}
-                onMove={handleMove}
-                onToggle={handleToggle}
-                readOnly={readOnly}
-                disableDrag={disableDragDrop}
-                disableDrop={disableDragDrop}
-                getDragLabel={getDragLabel}
-                aria-label={t("Pages")}
-              />
-            ))}
+            renderTree(filteredData, handleMove)}
         </div>
       )}
     </div>

@@ -141,6 +141,10 @@ export interface SidebarPagesParams {
 
 export type SidebarViewMode = "all" | "pinned" | "category";
 
+/** How a sidebar view renders its root nodes: tree list, card list, or pills.
+    "chips" only applies to the pinned view; the all view supports list/grid. */
+export type SidebarLayoutMode = "list" | "grid" | "chips";
+
 export interface ISidebarCategoryAssignment {
   pageId: string;
   categoryId?: string | null;

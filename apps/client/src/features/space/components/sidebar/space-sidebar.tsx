@@ -1,5 +1,5 @@
 import { ActionIcon, Group, Menu, Tooltip } from "@mantine/core";
-import { ArrowDown, MoreHorizontal, FileDown, Folder, LayoutGrid, List, Settings, Star, LayoutTemplate, Trash } from "lucide-react";
+import { ArrowDown, MoreHorizontal, FileDown, Folder, LayoutGrid, List, Settings, Star, Shapes, LayoutTemplate, Trash } from "lucide-react";
 import classes from "./space-sidebar.module.css";
 import React, { useCallback, useState } from "react";
 import { useAtom } from "jotai";
@@ -13,7 +13,10 @@ import SpaceTree from "@/features/page/tree/components/space-tree.tsx";
 import { SidebarViewTabs } from "@/features/page/tree/components/sidebar-view-tabs";
 import { RecentVisitsRail } from "@/features/page/tree/components/recent-visits-rail";
 import type { SidebarViewSelection } from "@/features/page/tree/components/sidebar-view-tabs";
-import type { SidebarViewMode } from "@/features/page/types/page.types";
+import type {
+  SidebarLayoutMode,
+  SidebarViewMode,
+} from "@/features/page/types/page.types";
 import { useSpaceAbility } from "@/features/space/permissions/use-space-ability.ts";
 import {
   SpaceCaslAction,
@@ -40,7 +43,13 @@ import { ErrorBoundary } from "react-error-boundary";
 const SIDEBAR_VIEW_STORAGE_PREFIX = "docmost:sidebar-view:";
 const SIDEBAR_LAYOUT_STORAGE_PREFIX = "docmost:sidebar-layout:";
 
-type SidebarLayoutMode = "list" | "grid";
+/** Layout cycle per view. "all" keeps the classic list/grid pair; the pinned
+    view additionally offers chips (pill labels, its historical default). */
+const LAYOUT_CYCLE: Record<SidebarViewMode, SidebarLayoutMode[]> = {
+  all: ["list", "grid"],
+  pinned: ["list", "grid", "chips"],
+  category: ["list", "grid"],
+};
 
 function readStoredSidebarView(spaceId: string): SidebarViewMode {
   try {
@@ -51,12 +60,20 @@ function readStoredSidebarView(spaceId: string): SidebarViewMode {
   }
 }
 
-function readStoredSidebarLayout(spaceId: string): SidebarLayoutMode {
+function readStoredSidebarLayout(
+  spaceId: string,
+  viewMode: SidebarViewMode,
+  fallback: SidebarLayoutMode,
+): SidebarLayoutMode {
   try {
-    const stored = localStorage.getItem(SIDEBAR_LAYOUT_STORAGE_PREFIX + spaceId);
-    return stored === "grid" ? "grid" : "list";
+    const stored = localStorage.getItem(
+      SIDEBAR_LAYOUT_STORAGE_PREFIX + spaceId + ":" + viewMode,
+    );
+    return stored === "list" || stored === "grid" || stored === "chips"
+      ? stored
+      : fallback;
   } catch {
-    return "list";
+    return fallback;
   }
 }
 
@@ -76,9 +93,15 @@ export function SpaceSidebar() {
   const [sidebarView, setSidebarView] = useState<SidebarViewMode>(() =>
     space?.id ? readStoredSidebarView(space.id) : "all",
   );
-  const [sidebarLayout, setSidebarLayout] = useState<SidebarLayoutMode>(() =>
-    space?.id ? readStoredSidebarLayout(space.id) : "list",
-  );
+  const [sidebarLayout, setSidebarLayout] = useState<SidebarLayoutMode>(() => {
+    if (!space?.id) return "list";
+    const view = readStoredSidebarView(space.id);
+    return readStoredSidebarLayout(
+      space.id,
+      view,
+      view === "pinned" ? "chips" : "list",
+    );
+  });
 
   // When switching spaces, adopt the stored view for that space (or default
   // back to "all"). The lazy initializer above only runs on first mount, so
@@ -86,17 +109,25 @@ export function SpaceSidebar() {
   React.useEffect(() => {
     if (space?.id) {
       setSidebarView(readStoredSidebarView(space.id));
-      setSidebarLayout(readStoredSidebarLayout(space.id));
+      const view = readStoredSidebarView(space.id);
+      setSidebarLayout(
+        readStoredSidebarLayout(
+          space.id,
+          view,
+          view === "pinned" ? "chips" : "list",
+        ),
+      );
     }
   }, [space?.id]);
 
   const toggleLayout = useCallback(() => {
     setSidebarLayout((prev) => {
-      const next: SidebarLayoutMode = prev === "grid" ? "list" : "grid";
+      const cycle = LAYOUT_CYCLE[sidebarView] ?? ["list", "grid"];
+      const next = cycle[(cycle.indexOf(prev) + 1) % cycle.length];
       if (space?.id) {
         try {
           localStorage.setItem(
-            SIDEBAR_LAYOUT_STORAGE_PREFIX + space.id,
+            SIDEBAR_LAYOUT_STORAGE_PREFIX + space.id + ":" + sidebarView,
             next,
           );
         } catch {
@@ -105,7 +136,7 @@ export function SpaceSidebar() {
       }
       return next;
     });
-  }, [space?.id]);
+  }, [space?.id, sidebarView]);
 
   const handleViewChange = useCallback(
     (selection: SidebarViewSelection) => {
@@ -122,6 +153,14 @@ export function SpaceSidebar() {
         } catch {
           // localStorage unavailable — view resets on reload, which is fine.
         }
+        // Restore that view's remembered layout (chips is the pinned default).
+        setSidebarLayout(
+          readStoredSidebarLayout(
+            space.id,
+            next,
+            next === "pinned" ? "chips" : "list",
+          ),
+        );
       }
     },
     [space?.id],
@@ -171,30 +210,32 @@ export function SpaceSidebar() {
 
             {canManagePages && (
               <Group gap="xs" className={classes.headerActions}>
-                {sidebarView === "all" && (
-                  <Tooltip
-                    label={
-                      sidebarLayout === "grid"
+                <Tooltip
+                  label={
+                    sidebarLayout === "chips"
+                      ? t("Switch to grid")
+                      : sidebarLayout === "grid"
                         ? t("Switch to list")
                         : t("Switch to grid")
-                    }
-                    withArrow
-                    position="top"
+                  }
+                  withArrow
+                  position="top"
+                >
+                  <ActionIcon
+                    variant="subtle"
+                    size={20}
+                    onClick={toggleLayout}
+                    aria-label={t("Toggle layout")}
                   >
-                    <ActionIcon
-                      variant="subtle"
-                      size={20}
-                      onClick={toggleLayout}
-                      aria-label={t("Toggle layout")}
-                    >
-                      {sidebarLayout === "grid" ? (
-                        <List size={16} strokeWidth={1.75} />
-                      ) : (
-                        <LayoutGrid size={16} strokeWidth={1.75} />
-                      )}
-                    </ActionIcon>
-                  </Tooltip>
-                )}
+                    {sidebarLayout === "chips" ? (
+                      <Shapes size={16} strokeWidth={1.75} />
+                    ) : sidebarLayout === "grid" ? (
+                      <List size={16} strokeWidth={1.75} />
+                    ) : (
+                      <LayoutGrid size={16} strokeWidth={1.75} />
+                    )}
+                  </ActionIcon>
+                </Tooltip>
 
                 <SpaceMenu
                   spaceId={space.id}
