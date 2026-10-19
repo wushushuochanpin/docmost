@@ -2,18 +2,19 @@
 file: docs/operations/github-runner/README.md
 description: Self-hosted Linux CI routing, isolation and branch inheritance.
 created_at: 2026-09-14 14:10:00 Asia/Shanghai
-updated_at: 2026-09-14 14:10:00 Asia/Shanghai
+updated_at: 2026-10-19 15:00:00 Asia/Shanghai
 timezone: Asia/Shanghai
-source_of_truth: .github/workflows, GitHub repository runner registration, superchat-dev systemd services
+source_of_truth: .github/workflows, GitHub runner registration, live arc-systems/docmost-runner
 applies_to: [operations, ci]
 disclaimer: This document is for reference and may change. Current code and live configuration take precedence.
 ---
 
 # GitHub Actions Runner
 
-Linux jobs use `docmost-linux-checks`, registered to this repository as
-`superchat-dev-docmost-01` on `superchat-dev` (43.134.45.185).
-Xcode / iOS Simulator jobs keep their explicit macOS labels.
+Linux jobs use `docmost-linux-checks`. The live deployment verified on 2026-10-19
+is `arc-systems/docmost-runner` on `xenzify-dev`, scoped to this repository with
+`ephemeral: true`. Runner names are `docmost-runner-*`, not the retired
+`superchat-dev-docmost-01` systemd runner. Xcode/iOS keeps explicit macOS routing.
 
 The workflow files travel with Git. Pull the current main branch at home or on a new
 computer; no local hook, runner installation or registration is needed. New branches
@@ -27,18 +28,16 @@ requests are skipped; there is no paid Linux fallback if this runner is offline.
 Workflows retain their release/manual triggers. Changing runner routing does not
 publish images or deploy the application by itself.
 
-Each repository has a separate unprivileged Linux account, a private home directory,
-and (where required) a private rootless Docker daemon. Jobs cannot access the host
-production Docker socket. Test containers bind published ports to loopback and use
-ports distinct from the business databases. All newly added project runners share
-one build capacity slot and a systemd slice capped at 2 CPUs / 5 GiB memory / 1 GiB
-swap. Jobs wait for that slot; workflow duration includes capacity waits. Below
-10 GiB free disk, new work fails closed. Cleanup removes only this CI account's
-build outputs, temporary credentials and Docker artifacts.
+The current ARC pods run jobs as UID 1001 with a separate Docker sidecar.
+The socket and work directory are per-pod emptyDir volumes; the inspected pod has
+no hostPath volumes and does not mount the business host Docker socket. The Docker
+sidecar is privileged, so this is pod-scoped Docker isolation, **not rootless Docker**
+or proof of a hostile-code security sandbox. Same-repository trust restrictions remain.
+The workflow verifies a non-root job, self-hosted environment, expected ephemeral
+runner name/hostname, matching Docker daemon name, build/run and ARM64 emulation.
 
-Server owner: `/opt/project-actions`. Provisioning source is maintained in
-DriveAcademy `config/github-runner/fleet/`. Runner accounts use `ci-docmost`;
-the user service is `actions-runner.service`. Registration uses short-lived GitHub
-registration tokens passed on stdin; never store a PAT in the repository or service.
-To pause CI, stop this user service; do not switch routes back to paid Linux runners.
-Mac execution and GitHub artifact/cache storage may still incur charges.
+This update reconciles stale host-runner checks with the existing ARC architecture;
+it does not change cluster privileges, capacity, runner image, or host services.
+The older fleet provisioning files in DriveAcademy are historical and must not be
+used to restart an obsolete systemd service. Recheck live pod volumes and repository
+scope when the ARC topology changes; labels alone do not prove isolation.
