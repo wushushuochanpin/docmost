@@ -1,0 +1,123 @@
+{
+  "baseline": "38d26266",
+  "candidate_commit": null,
+  "captured_at": "2026-10-18 18:15:11 Asia/Shanghai",
+  "files": [
+    {
+      "path": "apps/server/package.json",
+      "sha256": "e5b73d1d40f28ee632296591f9a39abb5cde24a3d917a0e3938e8d8f99284f48"
+    },
+    {
+      "path": "apps/server/src/collaboration/collaboration.gateway.ts",
+      "sha256": "97eb5adebefcd12a1a7bd112ebced035641299055ccc2c73da71f64cb0557d40"
+    },
+    {
+      "path": "apps/server/src/collaboration/collaboration.handler.ts",
+      "sha256": "6fe815b56c413e6fdcdd3cbce316100018c40da3c988c109828428d9a325e853"
+    },
+    {
+      "path": "apps/server/src/collaboration/collaboration.module.ts",
+      "sha256": "f2306280cfce8ee9565e72d639e23b6b2ef96568e03ed7628020ef9b5b8871e3"
+    },
+    {
+      "path": "apps/server/src/collaboration/extensions/authentication.extension.ts",
+      "sha256": "663b620c196f5dc0012dc8364a18060d18541dd0d6f0abcac87bcda65ce4a8da"
+    },
+    {
+      "path": "apps/server/src/collaboration/extensions/durable-document.extension.ts",
+      "sha256": "82265d922070f31d8510f97c72500576f12a33f5edd5e38204f597dcc018ab70"
+    },
+    {
+      "path": "apps/server/src/collaboration/extensions/persistence.extension.ts",
+      "sha256": "0f788e821cbf5155c53a8e5855f1e701392caf85e0246ea7bc3b743990a753a2"
+    },
+    {
+      "path": "apps/server/src/core/document-command/document-candidate.ts",
+      "sha256": "0b6a16283e18e9610c163b4f65e9dd6276bc3e1000076a44666245c492a581e6"
+    },
+    {
+      "path": "apps/server/src/core/document-command/document-command.module.ts",
+      "sha256": "8b472868381571fcf8e1e4122493cc2e04f7cd72e4a9e352a82ecb9fd655b36c"
+    },
+    {
+      "path": "apps/server/src/core/document-command/document-command.service.ts",
+      "sha256": "abd875339babb934f33ec5195a9f1f6d8f1d81da1c28f0688773f8d767f169f3"
+    },
+    {
+      "path": "apps/server/src/core/page/page.module.ts",
+      "sha256": "fa36e42d532bceb7f5e1e2698c7ed3f866ccb06fdf13d78282323e4f543ed7a6"
+    },
+    {
+      "path": "apps/server/src/core/page/services/page.service.spec.ts",
+      "sha256": "194f998e7e33cb7933cac1e8ffd17f0d8854f20bf8addd7d5de1039abf764ba2"
+    },
+    {
+      "path": "apps/server/src/core/page/services/page.service.ts",
+      "sha256": "1c16b27c5e96438fff700baf813352cde5b29eb2798a33eb5ea9004cecb60ab9"
+    },
+    {
+      "path": "apps/server/src/database/migrations/20261018T180000-document-command-boundary.ts",
+      "sha256": "5832a5d9e87725c694aa845a9af518d30830fdcb1b794458c239590812542e27"
+    },
+    {
+      "path": "apps/server/src/database/repos/page/page-permission.repo.ts",
+      "sha256": "26bf301ede2949fd45baa4df343c66ac301eb2492daa4857742f113c72370c99"
+    },
+    {
+      "path": "apps/server/src/database/repos/space/space-member.repo.ts",
+      "sha256": "c635ddaa54ea7a59f9e9dd89413f3b60667442f85109dc14a0adcfcb19e73aa4"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/business-schema.sql",
+      "sha256": "008ea43c27565e1e9ae291fa45dc0d53ba9afa5105941df847902e6598ecf16f"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/business.spec.ts",
+      "sha256": "e2f4a9227766d42d7f55eafc5ec2bc4638c198c28b41f049a905e6b6c1c2a17f"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/candidate.spec.ts",
+      "sha256": "0d0926d11287c0b0241176008f2d6c55ba16ccb93a11fc915198c95e97454438"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/hocuspocus.spec.ts",
+      "sha256": "a1d3d95bef054c7f51c3a313ada6641e3ebd8fc92f41d8cbd04148d0da0f0232"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/jest.config.cjs",
+      "sha256": "2f392024b182bb29bccbea157fa9ee5d521164cf64dc855097cb1cea84170a91"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/oauth-probe.ts",
+      "sha256": "0c956549d12eb5d482c3ece771dfe2c75956fab6d9e1e1546fa4a2b8f599652d"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/oauth.spec.ts",
+      "sha256": "11e9701473cb9ab3ec353ff7972095c2797d4158a2d0c005ab0fa4647454a8b2"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/run.mjs",
+      "sha256": "7810e71a299921551862c66bfc0723c09a16aee0b31240775fd92f7571f1cdea"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/schema.sql",
+      "sha256": "08e1e6a07b01480e213efa5e49c746faa3ee4d65271567932cb4169654cc01ab"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/store.ts",
+      "sha256": "c911dbefc5d53fbfa3f058460f4d5bf3e5467f749b4736498611abc94cddc72c"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/toolchain.json",
+      "sha256": "1b4bbb41ca5d619896bd73d621c4093e97368136ae2297e7e49650e86142d03c"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/transactions.spec.ts",
+      "sha256": "46cdbd3269caa8e82121c01f795109621026767ae2098d1d33cdceedcc38ce04"
+    },
+    {
+      "path": "apps/server/test/agent-mcp-p0/worker.ts",
+      "sha256": "ca0ea11f7bc63c3508a3d74453f7db662ddf3112b868a07b10a4b40c2f789b38"
+    }
+  ]
+}

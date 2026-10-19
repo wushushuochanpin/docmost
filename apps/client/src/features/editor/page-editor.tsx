@@ -1,4 +1,7 @@
 import "@/features/editor/styles/index.css";
+import api from "@/lib/api-client";
+import { DurableProvider, type DurableState } from "./durable/durable-provider";
+import { readDurableDraft, type DraftScope } from "./durable/recovery-store";
 import React, {
   useCallback,
   useEffect,
@@ -132,11 +135,11 @@ function isSameEditSession(
 ) {
   return Boolean(
     left &&
-      right &&
-      left.sessionId === right.sessionId &&
-      left.clientId === right.clientId &&
-      left.leaseId === right.leaseId &&
-      left.token === right.token,
+    right &&
+    left.sessionId === right.sessionId &&
+    left.clientId === right.clientId &&
+    left.leaseId === right.leaseId &&
+    left.token === right.token,
   );
 }
 
@@ -228,7 +231,10 @@ function EditorSessionOverlay({
               {title}
             </Text>
             {!isPending && (
-              <CloseButton onClick={onReadonly} aria-label={t("editorSessionOverlay.readonly")} />
+              <CloseButton
+                onClick={onReadonly}
+                aria-label={t("editorSessionOverlay.readonly")}
+              />
             )}
           </Group>
           <Stack gap="md">
@@ -429,6 +435,10 @@ function CollaborativePageEditor({
         (
           editor.storage as { pageId?: string; editSession?: EditSession }
         ).pageId = pageId;
+        (editor.storage as any).durableProvider =
+          remoteProvider instanceof DurableProvider
+            ? remoteProvider
+            : undefined;
         (editor.storage as { editSession?: EditSession }).editSession =
           collabEditSession;
         handleScrollTo(editor);
@@ -448,6 +458,8 @@ function CollaborativePageEditor({
   useEffect(() => {
     if (!editor) return;
 
+    // Tiptap owns mutable extension storage; this does not mutate React state.
+    // eslint-disable-next-line react-hooks/immutability
     (editor.storage as { editSession?: EditSession }).editSession =
       collabEditSession;
   }, [collabEditSession, editor]);
@@ -891,24 +903,99 @@ export default function PageEditor({
   });
   const pageLeaseWritable =
     !shouldAcquirePageLease || pageLease.status === "active";
-  const effectiveEditable = editable && pageLeaseWritable;
+  const [documentRuntime, setDocumentRuntime] = useState<{
+    managed: boolean;
+  } | null>(null);
+  const [runtimeError, setRuntimeError] = useState(false);
+  const [runtimeRetry, setRuntimeRetry] = useState(0);
+  const [recoveryNonce, setRecoveryNonce] = useState(0);
+  const [durableState, setDurableState] = useState<DurableState>({
+    permitted: false,
+    pending: 0,
+    recovery: false,
+    storageError: false,
+  });
+  const [recoveryText, setRecoveryText] = useState<string | null>(null);
+  const draftScope = useMemo<DraftScope>(
+    () => ({
+      workspaceId: currentUser?.user?.workspaceId ?? "",
+      userId: currentUser?.user?.id ?? "",
+      pageId,
+    }),
+    [currentUser?.user?.workspaceId, currentUser?.user?.id, pageId],
+  );
+  useEffect(() => {
+    const abort = new AbortController();
+    // Clear the previous external runtime before starting a new identity-bound request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDocumentRuntime(null);
+    setRuntimeError(false);
+    setRecoveryText(null);
+    if (!collaborationEnabled) return;
+    api
+      .get<{ managed: boolean }>(`/document-runtime/${pageId}`, {
+        signal: abort.signal,
+      })
+      .then(({ data }) => {
+        if (!abort.signal.aborted) setDocumentRuntime(data);
+      })
+      .catch(() => {
+        if (!abort.signal.aborted) setRuntimeError(true);
+      });
+    return () => abort.abort();
+  }, [
+    pageId,
+    draftScope.userId,
+    draftScope.workspaceId,
+    collaborationEnabled,
+    runtimeRetry,
+  ]);
+  useEffect(() => {
+    if (!durableState.pending) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [durableState.pending]);
+  const managedDocument = documentRuntime?.managed === true;
+  const effectiveEditable =
+    editable &&
+    pageLeaseWritable &&
+    (!collaborationEnabled ||
+      (documentRuntime !== null &&
+        (!managedDocument || (durableState.permitted && isRemoteSynced))));
   const collabEditSession = shouldAcquirePageLease
     ? pageLease.editSession
     : undefined;
   const canStartCollabProvider =
     collaborationEnabled &&
+    documentRuntime !== null &&
     collabQuery?.enabled !== false &&
     Boolean(collabQuery?.token) &&
     (!shouldAcquirePageLease ||
       (pageLease.status === "active" && Boolean(collabEditSession)));
   const collaborationURLWithSession = useMemo(() => {
     const encodedEditSession = encodeEditSessionForUrl(collabEditSession);
-    if (!encodedEditSession) return collaborationURL;
-
     const url = new URL(collaborationURL);
-    url.searchParams.set("editSession", encodedEditSession);
+    if (encodedEditSession)
+      url.searchParams.set("editSession", encodedEditSession);
+    if (managedDocument) {
+      url.searchParams.set("documentProtocol", "1");
+      url.searchParams.set(
+        "documentEdit",
+        editable && userPageEditMode === PageEditMode.Edit ? "1" : "0",
+      );
+    }
     return url.toString();
-  }, [collabEditSession, collaborationURL]);
+  }, [
+    collabEditSession,
+    collaborationURL,
+    managedDocument,
+    editable,
+    userPageEditMode,
+  ]);
   const normalizedContent = useMemo(
     () => normalizeProsemirrorContent(content),
     [content],
@@ -1008,6 +1095,8 @@ export default function PageEditor({
 
   useEffect(() => {
     if (pageLease.status === "active" || !shouldAcquirePageLease) {
+      // Synchronize the dismissed overlay with the external lease lifecycle.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDismissedOverlayKey(null);
       setIsContinueHerePending(false);
     }
@@ -1035,7 +1124,7 @@ export default function PageEditor({
   ]);
 
   const providersRef = useRef<{
-    local: IndexeddbPersistence;
+    local: IndexeddbPersistence | null;
     remote: HocuspocusProvider;
     socket: HocuspocusProviderWebsocket;
   } | null>(null);
@@ -1043,9 +1132,8 @@ export default function PageEditor({
   // Track the live provider instance so provider recreation (e.g. after a lease
   // re-acquire) re-runs the attach effect. Without this, a recreated provider
   // stays detached and never sends/receives collab messages.
-  const [remoteProvider, setRemoteProvider] = useState<HocuspocusProvider | null>(
-    null,
-  );
+  const [remoteProvider, setRemoteProvider] =
+    useState<HocuspocusProvider | null>(null);
   const leaseActiveRef = useRef(false);
   useEffect(() => {
     leaseActiveRef.current =
@@ -1066,7 +1154,10 @@ export default function PageEditor({
     if (!leaseActiveRef.current) return;
 
     const now = Date.now();
-    if (now - lastCollabConflictRecoveryAtRef.current < COLLAB_CONFLICT_REACQUIRE_COOLDOWN_MS) {
+    if (
+      now - lastCollabConflictRecoveryAtRef.current <
+      COLLAB_CONFLICT_REACQUIRE_COOLDOWN_MS
+    ) {
       return;
     }
     lastCollabConflictRecoveryAtRef.current = now;
@@ -1074,6 +1165,15 @@ export default function PageEditor({
   }, []);
 
   useEffect(() => {
+    let disposed = false;
+    // A new provider lifecycle starts without a durable write permit.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDurableState({
+      permitted: false,
+      pending: 0,
+      recovery: false,
+      storageError: false,
+    });
     if (!canStartCollabProvider) {
       setProvidersReady(false);
       setRemoteProvider(null);
@@ -1089,7 +1189,10 @@ export default function PageEditor({
       setHasLocalDocumentContent(false);
       const documentName = `page.${pageId}`;
       const ydoc = new Y.Doc();
-      const local = new IndexeddbPersistence(documentName, ydoc);
+      // Never hydrate a managed authoritative document from a cached/offline Y.Doc.
+      const local = managedDocument
+        ? null
+        : new IndexeddbPersistence(documentName, ydoc);
       const socket = new HocuspocusProviderWebsocket({
         url: collaborationURLWithSession,
       });
@@ -1099,6 +1202,9 @@ export default function PageEditor({
         setIsLocalSynced(true);
       };
       const onStatusHandler = (event: onStatusParameters) => {
+        if (disposed) return;
+        if (managedDocument && event.status !== WebSocketStatus.Connected)
+          setDurableState((state) => ({ ...state, permitted: false }));
         setYjsConnectionStatus(event.status);
       };
       const onSyncedHandler = (event: onSyncedParameters) => {
@@ -1128,6 +1234,7 @@ export default function PageEditor({
         if (!shouldRefreshToken) return;
 
         refetchCollabToken().then((result) => {
+          if (disposed) return;
           if (!result.data?.token) {
             socket.disconnect();
             return;
@@ -1138,12 +1245,15 @@ export default function PageEditor({
 
           socket.disconnect();
           setTimeout(() => {
+            if (disposed || providersRef.current?.remote !== remoteProvider)
+              return;
             remoteProvider.configuration.token = result.data.token;
             socket.connect();
           }, 100);
         });
       };
-      const remote = new HocuspocusProvider({
+      const Provider = managedDocument ? DurableProvider : HocuspocusProvider;
+      const remote = new Provider({
         websocketProvider: socket,
         name: documentName,
         document: ydoc,
@@ -1151,10 +1261,19 @@ export default function PageEditor({
         onAuthenticationFailed: onAuthenticationFailedHandler,
         onStatus: onStatusHandler,
         onSynced: onSyncedHandler,
-        onClose: handleCollabClose,
+        onClose: managedDocument
+          ? () => setDurableState((state) => ({ ...state, permitted: false }))
+          : handleCollabClose,
       });
 
-      local.on("synced", onLocalSyncedHandler);
+      if (remote instanceof DurableProvider) {
+        remote.scope = draftScope;
+        remote.onDurableState = (state) => {
+          if (!disposed) setDurableState(state);
+        };
+      }
+      if (local) local.on("synced", onLocalSyncedHandler);
+      else setIsLocalSynced(true);
       providersRef.current = { socket, local, remote };
       setRemoteProvider(remote);
       setProvidersReady(true);
@@ -1163,14 +1282,18 @@ export default function PageEditor({
     }
 
     return () => {
+      disposed = true;
       providersRef.current?.socket.destroy();
       providersRef.current?.remote.destroy();
-      providersRef.current?.local.destroy();
+      providersRef.current?.local?.destroy();
       providersRef.current = null;
     };
   }, [
     canStartCollabProvider,
     collaborationURLWithSession,
+    managedDocument,
+    recoveryNonce,
+    draftScope,
     editorSessionFeatureEnabled,
     pageId,
   ]);
@@ -1265,7 +1388,10 @@ export default function PageEditor({
     collaborationEnabled &&
     yjsConnectionStatus === WebSocketStatus.Connected &&
     isSynced &&
-    pageLeaseWritable;
+    pageLeaseWritable &&
+    (!managedDocument ||
+      !editable ||
+      (durableState.permitted && isRemoteSynced));
   const canRenderCollaborativeEditor =
     collaborationEnabled &&
     providersReady &&
@@ -1273,6 +1399,7 @@ export default function PageEditor({
     pageLeaseWritable &&
     (isRemoteSynced || hasLocalDocumentContent);
   const canUseLocalFallback =
+    (!collaborationEnabled || (documentRuntime !== null && !managedDocument)) &&
     editable &&
     userPageEditMode === PageEditMode.Edit &&
     (!shouldAcquirePageLease || pageLease.status === "active");
@@ -1304,6 +1431,8 @@ export default function PageEditor({
     markEditorBootstrapStage(pageId, "yjs-synced");
 
     if (runtimeMode === "preview") {
+      // Promote the existing editor only after external Yjs synchronization.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRuntimeMode("collab");
     }
   }, [collabReady, pageId, runtimeMode]);
@@ -1314,6 +1443,8 @@ export default function PageEditor({
     }
 
     if (runtimeMode === "preview") {
+      // Promote the existing editor when its collaboration provider becomes available.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRuntimeMode("collab");
     }
   }, [canRenderCollaborativeEditor, runtimeMode]);
@@ -1325,6 +1456,8 @@ export default function PageEditor({
 
     if (!canUseLocalFallback) {
       if (runtimeMode !== "preview" && runtimeMode !== "collab") {
+        // Disable local fallback when the external collaboration policy requires it.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setRuntimeMode("preview");
       }
       return;
@@ -1359,6 +1492,8 @@ export default function PageEditor({
     // so it is always null while in local mode. Use lastSavedLocalContentRef instead:
     // if there are no unsaved/pending changes (already guarded above), switching to
     // collab is safe regardless of the content comparison.
+    // Switch after external synchronization confirms no local changes are pending.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRuntimeMode("collab");
   }, [collabReady, isLocalSavePending, localHasUnsavedChanges, runtimeMode]);
 
@@ -1408,6 +1543,91 @@ export default function PageEditor({
   ].includes(pageLease.status)
     ? pageLease.status
     : null;
+  const draftIdentityRef = useRef<typeof draftScope | null>(draftScope);
+  useEffect(() => {
+    draftIdentityRef.current = draftScope;
+    return () => {
+      draftIdentityRef.current = null;
+    };
+  }, [draftScope]);
+  const showRecoveryText = (value: string) => {
+    if (draftIdentityRef.current === draftScope) setRecoveryText(value);
+  };
+  const documentNotice =
+    collaborationEnabled && (managedDocument || runtimeError) ? (
+      <Paper withBorder p="sm" mb="sm">
+        <Stack gap="xs">
+          <Text size="sm" role="status">
+            {runtimeError
+              ? "无法确认文档编辑状态，请重试。"
+              : durableState.storageError
+                ? "本机草稿保存失败，已暂停编辑。请复制当前内容后再恢复连接。"
+                : durableState.recovery
+                  ? "文档已由其他会话更新。未确认保存的内容已隔离，请核对恢复草稿。"
+                  : !durableState.permitted
+                    ? "正在连接或文档被占用，暂时无法编辑。"
+                    : durableState.pending
+                      ? "正在保存，请勿关闭页面。"
+                      : "修改已可靠保存"}
+          </Text>
+          <Group>
+            <Button
+              size="xs"
+              variant="default"
+              onClick={() => {
+                void readDurableDraft(draftScope)
+                  .then((draft) =>
+                    showRecoveryText(draft?.text ?? "没有待恢复的本机草稿。"),
+                  )
+                  .catch(() =>
+                    showRecoveryText("无法读取本机草稿，请保留当前页面内容。"),
+                  );
+              }}
+            >
+              查看恢复草稿
+            </Button>
+            <Button
+              size="xs"
+              variant="default"
+              disabled={durableState.storageError}
+              onClick={() => {
+                void readDurableDraft(draftScope)
+                  .then((draft) => {
+                    if (draftIdentityRef.current !== draftScope) return;
+                    if (durableState.pending && !draft) {
+                      showRecoveryText("草稿尚未保存，请保留当前页面内容。");
+                      return;
+                    }
+                    setRuntimeRetry((x) => x + 1);
+                    setRecoveryNonce((x) => x + 1);
+                  })
+                  .catch(() =>
+                    showRecoveryText(
+                      "无法确认草稿已保存，请保留当前页面内容。",
+                    ),
+                  );
+              }}
+            >
+              重试编辑
+            </Button>
+          </Group>
+          {recoveryText !== null && (
+            <>
+              <Text size="sm">
+                请核对最新文档后手动复制需要的内容；不会自动覆盖文档。
+              </Text>
+              <textarea
+                aria-label="本机恢复草稿"
+                readOnly
+                value={recoveryText}
+                rows={6}
+                style={{ width: "100%" }}
+              />
+            </>
+          )}
+        </Stack>
+      </Paper>
+    ) : null;
   const overlayKey = `${pageId}:${pageLease.status}:${pageLease.takeoverId ?? ""}:${pageLease.activeClientId ?? ""}:${pageLease.pendingClientId ?? ""}`;
   const showEditorSessionOverlay = Boolean(
     shouldAcquirePageLease &&
@@ -1443,6 +1663,7 @@ export default function PageEditor({
   if (runtimeMode === "local") {
     return (
       <TransclusionLookupProvider>
+        {documentNotice}
         {editorSessionOverlay}
         <LocalFallbackPageEditor
           pageId={pageId}
@@ -1467,6 +1688,7 @@ export default function PageEditor({
   if (runtimeMode === "preview") {
     return (
       <TransclusionLookupProvider>
+        {documentNotice}
         {editorSessionOverlay}
         <StaticPageEditorPreview content={normalizedContent} pageId={pageId} />
       </TransclusionLookupProvider>
@@ -1475,6 +1697,7 @@ export default function PageEditor({
 
   return (
     <TransclusionLookupProvider>
+      {documentNotice}
       {editorSessionOverlay}
       <CollaborativePageEditor
         pageId={pageId}
@@ -1483,7 +1706,7 @@ export default function PageEditor({
         effectiveEditable={effectiveEditable}
         currentUserId={currentUserId}
         currentUserName={currentUserName}
-        remoteProvider={providersRef.current?.remote}
+        remoteProvider={remoteProvider ?? undefined}
         collabEditSession={collabEditSession}
         handleScrollTo={handleScrollTo}
         editorRef={editorRef}

@@ -1,0 +1,41 @@
+{
+  "status": "approved",
+  "requirements": [
+    "AUTH-01",
+    "TOOL-01",
+    "WRITE-01",
+    "LOCK-01",
+    "UI-01",
+    "ERROR-01",
+    "OPS-01"
+  ],
+  "scopes": [
+    "knowledge.read",
+    "pages.create",
+    "folders.create",
+    "pages.edit"
+  ],
+  "tools": [
+    "search",
+    "fetch",
+    "get_page",
+    "list_pages",
+    "list_spaces",
+    "get_edit_context",
+    "create_folder",
+    "create_page",
+    "update_page_metadata",
+    "edit_page",
+    "get_operation"
+  ],
+  "non_goals": [
+    "anonymous_write",
+    "concurrent_human_agent_edit",
+    "full_document_replace",
+    "delete",
+    "move",
+    "share",
+    "attachment_upload"
+  ],
+  "source": "../prd/PRD.md"
+}

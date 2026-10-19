@@ -1,0 +1,31 @@
+{
+  "node_major": 22,
+  "postgres_major": 16,
+  "repository_package_manager": "pnpm@10.4.0",
+  "external_tools": [
+    {
+      "name": "@node-oauth/oauth2-server",
+      "version": "5.3.1",
+      "license": "MIT",
+      "purpose": "isolated P0 tool only; not a production dependency"
+    },
+    {
+      "name": "@embedded-postgres/darwin-arm64",
+      "version": "16.14.0-beta.17",
+      "license": "MIT",
+      "purpose": "isolated P0 tool only; not a production dependency"
+    },
+    {
+      "name": "node-bin-darwin-arm64",
+      "version": "22.23.3",
+      "license": "MIT",
+      "purpose": "isolated P0 tool only; not a production dependency"
+    }
+  ],
+  "existing_dependencies": {
+    "jest": "30.3.0",
+    "postgres": "3.4.8",
+    "hocuspocus": "4.0.0",
+    "yjs": "13.6.30"
+  }
+}

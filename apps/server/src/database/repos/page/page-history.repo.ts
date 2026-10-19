@@ -19,6 +19,7 @@ export class PageHistoryRepo {
 
   private baseFields: Array<keyof PageHistory> = [
     'id',
+    'agentSource',
     'pageId',
     'slugId',
     'title',

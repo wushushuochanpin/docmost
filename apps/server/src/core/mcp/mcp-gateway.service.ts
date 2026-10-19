@@ -1,3 +1,6 @@
+import { toolError } from './tool-result';
+import { DocumentToolsService } from './document-tools.service';
+import { AgentOAuthService } from '../agent-oauth/agent-oauth.service';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as z from 'zod/v4';
@@ -16,6 +19,8 @@ const READ_ONLY_ANNOTATIONS = {
 export class McpGatewayService {
   constructor(
     private readonly knowledgeRetrievalService: KnowledgeRetrievalService,
+    private readonly oauth: AgentOAuthService,
+    private readonly documents: DocumentToolsService,
   ) {}
 
   assertMcpEnabled(workspace: Workspace) {
@@ -25,7 +30,16 @@ export class McpGatewayService {
     }
   }
 
-  assertKnowledgeReadScope(context: McpToolContext) {
+  async assertKnowledgeReadScope(context: McpToolContext) {
+    if (context.agent) {
+      context.agent = await this.oauth.authenticateHash(
+        context.agent.tokenHash,
+      );
+      if (!context.agent.scopes.includes('knowledge.read'))
+        throw new ForbiddenException('SCOPE_DENIED');
+      await this.documents.readQuota(context);
+      return;
+    }
     const scopes = Array.isArray(context.apiToken?.scopeJson)
       ? context.apiToken.scopeJson
       : [];
@@ -44,6 +58,9 @@ export class McpGatewayService {
     throw new ForbiddenException('MCP_SCOPE_DENIED');
   }
 
+  async entranceQuota(actor: NonNullable<McpToolContext['agent']>) {
+    return this.documents.entranceQuota(actor);
+  }
   createServer(context: McpToolContext) {
     const server = new McpServer(
       {
@@ -108,21 +125,26 @@ export class McpGatewayService {
         annotations: READ_ONLY_ANNOTATIONS,
       },
       async (input) => {
-        this.assertKnowledgeReadScope(context);
-        const result = await this.knowledgeRetrievalService.search(
-          input,
-          context,
-        );
+        try {
+          await this.assertKnowledgeReadScope(context);
+          const result = await this.knowledgeRetrievalService.search(
+            input,
+            context,
+          );
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-          structuredContent: result,
-        };
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+            structuredContent: result,
+          };
+        } catch (error) {
+          if (context.agent) return toolError(error);
+          throw error;
+        }
       },
     );
 
@@ -185,8 +207,13 @@ export class McpGatewayService {
         annotations: READ_ONLY_ANNOTATIONS,
       },
       async (input) => {
-        this.assertKnowledgeReadScope(context);
-        return this.knowledgeRetrievalService.getPage(input, context);
+        try {
+          await this.assertKnowledgeReadScope(context);
+          return await this.knowledgeRetrievalService.getPage(input, context);
+        } catch (error) {
+          if (context.agent) return toolError(error);
+          throw error;
+        }
       },
     );
 
@@ -245,8 +272,13 @@ export class McpGatewayService {
         annotations: READ_ONLY_ANNOTATIONS,
       },
       async (input) => {
-        this.assertKnowledgeReadScope(context);
-        return this.knowledgeRetrievalService.fetch(input, context);
+        try {
+          await this.assertKnowledgeReadScope(context);
+          return await this.knowledgeRetrievalService.fetch(input, context);
+        } catch (error) {
+          if (context.agent) return toolError(error);
+          throw error;
+        }
       },
     );
 
@@ -257,6 +289,7 @@ export class McpGatewayService {
         description:
           'List pages in a space or under a parent page. Returns page metadata (title, slug, URL, node type) without content. Use to explore the document tree before fetching specific pages.',
         inputSchema: {
+          cursor: z.string().max(8192).optional(),
           space_id: z
             .string()
             .optional()
@@ -289,24 +322,30 @@ export class McpGatewayService {
         annotations: READ_ONLY_ANNOTATIONS,
       },
       async (input) => {
-        this.assertKnowledgeReadScope(context);
-        const result = await this.knowledgeRetrievalService.listPages(
-          input,
-          context,
-        );
+        try {
+          await this.assertKnowledgeReadScope(context);
+          const result = await this.knowledgeRetrievalService.listPages(
+            input,
+            context,
+          );
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-          structuredContent: result,
-        };
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+            structuredContent: result,
+          };
+        } catch (error) {
+          if (context.agent) return toolError(error);
+          throw error;
+        }
       },
     );
 
+    this.documents.register(server, context);
     return server;
   }
 }

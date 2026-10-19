@@ -5,6 +5,7 @@ interface IPageHistoryUser {
 }
 
 export interface IPageHistory {
+  agentSource?: {operationId:string;side:"before"|"after";application:string};
   id: string;
   pageId: string;
   title: string;

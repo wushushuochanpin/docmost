@@ -4,6 +4,7 @@ import { historyAtoms } from "@/features/page-history/atoms/history-atoms";
 import HistoryModalBody from "@/features/page-history/components/history-modal-body";
 import HistoryModalMobile from "@/features/page-history/components/history-modal-mobile";
 import { useTranslation } from "react-i18next";
+import { useHistoryReset } from "@/features/page-history/hooks/use-history-reset";
 import { useMediaQuery } from "@mantine/hooks";
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 export default function HistoryModal({ pageId, pageTitle }: Props) {
   const { t } = useTranslation();
   const [isModalOpen, setModalOpen] = useAtom(historyAtoms);
+  useHistoryReset(pageId, isModalOpen);
   const isMobile = useMediaQuery("(max-width: 800px)");
 
   if (!isModalOpen) {
@@ -23,6 +25,7 @@ export default function HistoryModal({ pageId, pageTitle }: Props) {
   if (isMobile) {
     return (
       <Modal.Root
+        zIndex={350}
         opened={isModalOpen}
         onClose={() => setModalOpen(false)}
         fullScreen
@@ -51,6 +54,7 @@ export default function HistoryModal({ pageId, pageTitle }: Props) {
 
   return (
     <Modal.Root
+      zIndex={350}
       size={1400}
       opened={isModalOpen}
       onClose={() => setModalOpen(false)}

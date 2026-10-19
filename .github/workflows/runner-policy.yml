@@ -19,12 +19,18 @@ jobs:
       - name: Verify execution identity
         run: |
           test "$(id -u)" != 0
-          test "$RUNNER_NAME" = "superchat-dev-docmost-01"
+          test "$RUNNER_ENVIRONMENT" = "self-hosted"
+          [[ "$RUNNER_NAME" == docmost-runner-* ]]
+          test "$RUNNER_NAME" = "$(hostname)"
           echo "Self-hosted runner identity verified"
       - name: Verify isolated Docker runtime
         run: |
-          docker info --format '{{json .SecurityOptions}}' | grep -q rootless
-          test ! -w /var/run/docker.sock
+          # Live ARC uses a per-pod Docker sidecar and an emptyDir socket volume.
+          # The daemon must belong to this ephemeral runner, never the business host.
+          test "$(id -u)" != 0
+          test -S /var/run/docker.sock
+          test -w /var/run/docker.sock
+          test "$(docker info --format '{{.Name}}')" = "$RUNNER_NAME"
           printf '%s\n' 'FROM busybox:1.37' 'RUN echo runner-build-ok > /proof' 'CMD ["cat", "/proof"]' > "$RUNNER_TEMP/Dockerfile.smoke"
           docker build -t runner-policy-smoke -f "$RUNNER_TEMP/Dockerfile.smoke" "$RUNNER_TEMP"
           test "$(docker run --rm runner-policy-smoke)" = runner-build-ok

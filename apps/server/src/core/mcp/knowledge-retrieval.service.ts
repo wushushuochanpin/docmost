@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { openCursor, sealCursor } from '../document-command/agent-cursor';
 import {
   ForbiddenException,
   Injectable,
@@ -76,6 +78,111 @@ export class KnowledgeRetrievalService {
     private readonly spaceMemberRepo: SpaceMemberRepo,
   ) {}
 
+  private async agentCanRead(
+    pageId: string,
+    spaceId: string,
+    context: McpToolContext,
+  ) {
+    if (!context.agent) return true;
+    if (!context.agent.spaceIds.includes(spaceId)) return false;
+    return this.db.transaction().execute(async (trx) => {
+      await sql`select set_config('app.workspace_id',${context.workspace.id},true),pg_advisory_xact_lock_shared(20261018,1)`.execute(
+        trx,
+      );
+      const grant =
+        await sql`select 1 from document_agent_grants g join users u on u.id=g.user_id and u.workspace_id=g.workspace_id join agent_oauth_families f on f.grant_id=g.id join agent_oauth_tokens t on t.family_id=f.id join agent_oauth_clients c on c.id=f.client_id where g.id=${context.agent.grantId}::uuid and g.user_id=${context.user.id}::uuid and g.client_id=${context.agent.clientId} and g.revoked_at is null and g.expires_at>clock_timestamp() and ${spaceId}::uuid=any(g.space_ids) and 'knowledge.read'=any(g.scopes) and not f.revoked and c.active and 'knowledge.read'=any(c.scopes) and t.access_hash=${context.agent.tokenHash} and t.access_expires_at>clock_timestamp() and t.metadata->'scope' @> '["knowledge.read"]'::jsonb and u.deleted_at is null and u.deactivated_at is null`.execute(
+          trx,
+        );
+      if (!grant.rows.length) return false;
+      const page = await trx
+        .selectFrom('pages')
+        .select('id')
+        .where('id', '=', pageId)
+        .where('spaceId', '=', spaceId)
+        .where('workspaceId', '=', context.workspace.id)
+        .where('deletedAt', 'is', null)
+        .executeTakeFirst();
+      if (
+        !page ||
+        !(
+          await this.spaceMemberRepo.getUserSpaceRoles(
+            context.user.id,
+            spaceId,
+            trx,
+          )
+        )?.length
+      )
+        return false;
+      return (
+        await this.pagePermissionRepo.canUserEditPage(
+          context.user.id,
+          pageId,
+          trx,
+        )
+      ).canAccess;
+    });
+  }
+  private async agentSearch(
+    input: McpSearchInput,
+    context: McpToolContext,
+    topK: number,
+  ) {
+    const spaces = input.space_id
+      ? [await this.resolveSpaceId(input.space_id, context)]
+      : context.agent.spaceIds;
+    if (spaces.some((id) => !context.agent.spaceIds.includes(id)))
+      throw new ForbiddenException('RESOURCE_NOT_FOUND_OR_FORBIDDEN');
+    if (!spaces.length) return { items: [] };
+    const scoped = await this.getScopedPageIds(input, context);
+    const rows = await this.db
+      .selectFrom('pages as p')
+      .innerJoin('spaces as s', 's.id', 'p.spaceId')
+      .select([
+        'p.id',
+        'p.title',
+        'p.slugId',
+        'p.textContent',
+        'p.updatedAt',
+        'p.spaceId',
+        's.slug as spaceSlug',
+        's.name as spaceName',
+      ])
+      .where('p.workspaceId', '=', context.workspace.id)
+      .where('p.spaceId', 'in', spaces)
+      .where('p.deletedAt', 'is', null)
+      .where(
+        sql<boolean>`to_tsvector('simple',coalesce(p.title,'') || ' ' || coalesce(p.text_content,'')) @@ plainto_tsquery('simple',${input.query})`,
+      )
+      .$if(!!scoped, (q) =>
+        q.where(
+          'p.id',
+          'in',
+          scoped?.length ? scoped : ['00000000-0000-0000-0000-000000000000'],
+        ),
+      )
+      .orderBy('p.updatedAt', 'desc')
+      .orderBy('p.id')
+      .limit(100)
+      .execute();
+    const items = [];
+    for (const row of rows) {
+      if (await this.agentCanRead(row.id, row.spaceId, context))
+        items.push({
+          id: this.toMcpPageId(row.id),
+          page_id: row.id,
+          title: getPageTitle(row.title),
+          snippet: (row.textContent ?? '').slice(0, 500),
+          space_id: row.spaceId,
+          space_name: row.spaceName,
+          score: 1,
+          updated_at: row.updatedAt,
+          url: this.buildPageUrl(context.baseUrl, row.spaceSlug, row.slugId),
+        });
+      if (items.length === topK) break;
+    }
+    return { items };
+  }
+
   async search(input: McpSearchInput, context: McpToolContext) {
     const topK = this.clampNumber(
       input.top_k,
@@ -89,6 +196,7 @@ export class KnowledgeRetrievalService {
       return { items: [] };
     }
 
+    if (context.agent) return this.agentSearch(input, context, topK);
     const scopedPageIds = await this.getScopedPageIds(input, context);
     const candidateLimit = scopedPageIds
       ? Math.min(MAX_SEARCH_CANDIDATES, Math.max(topK * 5, 25))
@@ -162,6 +270,16 @@ export class KnowledgeRetrievalService {
       structuredContent: {
         id: this.toMcpPageId(rootPage.id),
         page_id: rootPage.id,
+        snapshot_revision: createHash('sha256')
+          .update(
+            JSON.stringify([
+              rootPage.id,
+              rootPage.updatedAt,
+              rootPage.title,
+              rootPage.content,
+            ]),
+          )
+          .digest('hex'),
         title: getPageTitle(rootPage.title),
         content: content.text,
         format: input.format ?? 'markdown',
@@ -209,6 +327,21 @@ export class KnowledgeRetrievalService {
     const maxResults = this.clampNumber(input.max_results, 50, 1, 100);
     const maxDepth = this.clampNumber(input.max_depth, 2, 0, 5);
 
+    const binding = {
+      tool: 'list_pages',
+      grant: context.agent?.grantId,
+      spaces: context.agent?.spaceIds,
+      space: input.space_id,
+      parent: input.parent_page_id,
+      depth: maxDepth,
+      size: maxResults,
+    };
+    const position = input.cursor
+      ? JSON.parse(String(openCursor(input.cursor, binding)))
+      : null;
+    const window = context.agent
+      ? { after: position, limit: maxResults + 1 }
+      : undefined;
     let rows: PageListRow[] = [];
 
     if (input.parent_page_id) {
@@ -218,10 +351,16 @@ export class KnowledgeRetrievalService {
         parentPage.id,
         context,
         maxDepth,
+        window,
       );
     } else if (input.space_id) {
       const spaceId = await this.resolveSpaceId(input.space_id, context);
-      rows = await this.getPageListRowsFromSpace(spaceId, context, maxDepth);
+      rows = await this.getPageListRowsFromSpace(
+        spaceId,
+        context,
+        maxDepth,
+        window,
+      );
     } else {
       return { items: [] };
     }
@@ -230,17 +369,30 @@ export class KnowledgeRetrievalService {
       return { items: [] };
     }
 
-    const spaceId = rows[0]?.spaceId;
-    const allIds = rows.map((r) => r.id);
-    const accessibleIds = await this.pagePermissionRepo.filterAccessiblePageIds(
-      {
-        pageIds: allIds,
-        userId: context.user.id,
-        spaceId,
-      },
-    );
-    const accessibleSet = new Set(accessibleIds);
-
+    const more = !!context.agent && rows.length > maxResults;
+    const last = rows[maxResults - 1];
+    const next_cursor = more
+      ? sealCursor(binding, JSON.stringify([last.depth, last.slugId, last.id]))
+      : null;
+    if (context.agent) rows = rows.slice(0, maxResults);
+    let accessibleSet: Set<string>;
+    if (context.agent) {
+      const allowed = [];
+      for (const row of rows) {
+        if (await this.agentCanRead(row.id, row.spaceId, context))
+          allowed.push(row);
+      }
+      rows = allowed;
+      accessibleSet = new Set(rows.map((row) => row.id));
+    } else {
+      accessibleSet = new Set(
+        await this.pagePermissionRepo.filterAccessiblePageIds({
+          pageIds: rows.map((row) => row.id),
+          userId: context.user.id,
+          spaceId: rows[0]?.spaceId,
+        }),
+      );
+    }
     const items = rows
       .filter((r) => accessibleSet.has(r.id))
       .slice(0, maxResults)
@@ -249,15 +401,21 @@ export class KnowledgeRetrievalService {
         title: getPageTitle(r.title),
         slug_id: r.slugId,
         page_id: r.id,
-        parent_page_id: r.parentPageId ? this.toMcpPageId(r.parentPageId) : null,
+        parent_page_id: r.parentPageId
+          ? this.toMcpPageId(r.parentPageId)
+          : null,
         space_id: r.spaceId,
         node_type: r.nodeType ?? 'file',
         depth: r.depth,
         updated_at: r.updatedAt?.toISOString?.() ?? r.updatedAt ?? null,
-        url: this.buildPageUrl(context.baseUrl, r.spaceSlug ?? undefined, r.slugId),
+        url: this.buildPageUrl(
+          context.baseUrl,
+          r.spaceSlug ?? undefined,
+          r.slugId,
+        ),
       }));
 
-    return { items };
+    return { items, ...(context.agent ? { next_cursor } : {}) };
   }
 
   private resolvePageIdFromGetPageInput(input: McpGetPageInput): string | null {
@@ -322,11 +480,13 @@ export class KnowledgeRetrievalService {
     rootPageId: string,
     context: McpToolContext,
     maxDepth: number,
+    window?: { after: any; limit: number },
   ): Promise<PageListRow[]> {
     return this.queryPageListRows(
       { rootPageId },
       context.workspace.id,
       maxDepth,
+      window,
     );
   }
 
@@ -334,11 +494,13 @@ export class KnowledgeRetrievalService {
     spaceId: string,
     context: McpToolContext,
     maxDepth: number,
+    window?: { after: any; limit: number },
   ): Promise<PageListRow[]> {
     return this.queryPageListRows(
       { spaceId },
       context.workspace.id,
       maxDepth,
+      window,
     );
   }
 
@@ -346,6 +508,7 @@ export class KnowledgeRetrievalService {
     scope: { rootPageId?: string; spaceId?: string },
     workspaceId: string,
     maxDepth: number,
+    window?: { after: any; limit: number },
   ): Promise<PageListRow[]> {
     const anchorCondition = scope.rootPageId
       ? sql`p.id = ${scope.rootPageId} AND p.workspace_id = ${workspaceId} AND p.deleted_at IS NULL`
@@ -387,7 +550,9 @@ export class KnowledgeRetrievalService {
       SELECT ph.*, s.slug AS "spaceSlug"
       FROM page_hierarchy ph
       LEFT JOIN spaces s ON s.id = ph."spaceId"
-      ORDER BY ph.depth ASC, ph."slugId" ASC
+      ${window?.after ? sql`WHERE (ph.depth,ph."slugId",ph.id)>(${window.after[0]}::int,${window.after[1]},${window.after[2]}::uuid)` : sql``}
+      ORDER BY ph.depth ASC, ph."slugId" ASC, ph.id ASC
+      ${window ? sql`LIMIT ${window.limit}` : sql``}
     `.execute(this.db);
 
     return result.rows;
@@ -427,11 +592,20 @@ export class KnowledgeRetrievalService {
       },
     );
 
+    if (context.agent && (!page || page.deletedAt))
+      throw new ForbiddenException('RESOURCE_NOT_FOUND_OR_FORBIDDEN');
     if (!page || page.deletedAt) {
       throw new NotFoundException('MCP_DOCUMENT_NOT_FOUND');
     }
 
-    await this.pageAccessService.validateCanView(page, context.user);
+    if (
+      context.agent &&
+      !(await this.agentCanRead(page.id, page.spaceId, context))
+    )
+      throw new ForbiddenException('RESOURCE_NOT_FOUND_OR_FORBIDDEN');
+    // OAuth reads already checked current membership and inherited ACL in one transaction.
+    if (!context.agent)
+      await this.pageAccessService.validateCanView(page, context.user);
     return page as FetchPage;
   }
 

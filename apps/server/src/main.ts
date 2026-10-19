@@ -44,6 +44,11 @@ async function bootstrap() {
       'share/:shareId/p/:pageSlug',
       'share/p/:pageSlug',
       'mcp',
+      '.well-known/oauth-protected-resource/mcp',
+      '.well-known/oauth-authorization-server',
+      'oauth/authorize',
+      'oauth/token',
+      'oauth/revoke',
     ],
   });
 

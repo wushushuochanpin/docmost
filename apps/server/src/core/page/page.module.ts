@@ -1,3 +1,4 @@
+import { DocumentCommandModule } from '../document-command/document-command.module';
 import { Module } from '@nestjs/common';
 import { PageService } from './services/page.service';
 import { PageController } from './page.controller';
@@ -22,6 +23,7 @@ import { LabelModule } from '../label/label.module';
   ],
   exports: [PageService, PageHistoryService],
   imports: [
+    DocumentCommandModule,
     StorageModule,
     CollaborationModule,
     WatcherModule,

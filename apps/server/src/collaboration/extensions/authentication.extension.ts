@@ -154,6 +154,7 @@ export class AuthenticationExtension implements Extension {
     return {
       user,
       editSession,
+      sessionId: jwtPayload.sessionId,
     };
   }
 

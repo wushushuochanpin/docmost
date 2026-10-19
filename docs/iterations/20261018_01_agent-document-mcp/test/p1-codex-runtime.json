@@ -1,0 +1,12 @@
+{
+  "node": "v22.23.3",
+  "postgres": "postgres (PostgreSQL) 16.14",
+  "redis": "Redis server v=7.4.4 sha=00000000:1 malloc=libc bits=64 build=cc2716b3b0be5394",
+  "oauth": "5.3.1",
+  "hocuspocus": "4.0.0",
+  "database": "fresh disposable loopback cluster",
+  "fsync": true,
+  "synchronous_commit": "on",
+  "executed_at": "2026-10-19T03:56:09.420Z",
+  "exitCode": 0
+}

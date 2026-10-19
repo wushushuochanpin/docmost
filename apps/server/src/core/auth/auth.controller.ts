@@ -74,7 +74,7 @@ export class AuthController {
       mfaLoadError = err instanceof Error ? err : new Error(String(err));
       this.logger.error(
         `MFA module failed to load: ${mfaLoadError.message}. ` +
-        `MFA enforcement may be bypassed if workspace.enforceMfa is set.`,
+          `MFA enforcement may be bypassed if workspace.enforceMfa is set.`,
       );
       isMfaModuleReady = false;
     }
@@ -199,7 +199,9 @@ export class AuthController {
     return this.authService.verifyUserToken(verifyUserTokenDto, workspace.id);
   }
 
-  @SkipThrottle({ [AUTH_THROTTLER]: true })
+  // Token renewal is authenticated collaboration traffic, not password recovery.
+  @SkipThrottle({ [FORGOT_PASSWORD_THROTTLER]: true })
+  @Throttle({ [AUTH_THROTTLER]: { ttl: 60_000, limit: 60 } })
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('collab-token')

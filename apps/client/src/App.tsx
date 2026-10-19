@@ -29,6 +29,10 @@ const SetupWorkspace = lazyWithRetry(
 const LoginPage = lazyWithRetry(() => import("@/pages/auth/login"));
 const Home = lazyWithRetry(() => import("@/pages/dashboard/home"));
 const Page = lazyWithRetry(() => import("@/pages/page/page"));
+const AgentConnections = lazyWithRetry(() => import('@/features/agent-connections/connections-page'));
+const AgentConnectionDetail = lazyWithRetry(() => import('@/features/agent-connections/detail-page'));
+const AgentPolicy = lazyWithRetry(() => import('@/features/agent-connections/policy-page'));
+const AgentActivity = lazyWithRetry(() => import('@/features/agent-connections/activity-page'));
 const AccountSettings = lazyWithRetry(
   () => import("@/pages/settings/account/account-settings"),
 );
@@ -123,6 +127,10 @@ const MfaSetupRequiredPage = lazyWithRetry(() =>
   })),
 );
 const LabelPage = lazyWithRetry(() => import("@/pages/label/label-page"));
+
+const AgentConsentPage = lazyWithRetry(
+  () => import("@/features/agent-oauth/consent-page"),
+);
 
 export default function App() {
   const shareLegacyRouteMode = getShareLegacyRouteMode();
@@ -223,6 +231,7 @@ export default function App() {
 
           <Route element={<Layout />}>
             <Route path={"/home"} element={<Home />} />
+            <Route path="/oauth/consent" element={<AgentConsentPage />} />
             <Route path={"/ai"} element={<AiChat />} />
             <Route path={"/ai/chat/:chatId"} element={<AiChat />} />
             <Route path={"/spaces"} element={<SpacesPage />} />
@@ -238,6 +247,11 @@ export default function App() {
             <Route path={"/s/:spaceSlug/p/:pageSlug"} element={<Page />} />
 
             <Route path={"/settings"}>
+              <Route path="account/agent-connections" element={<AgentConnections/>}/>
+              <Route path="account/agent-connections/:connectionId" element={<AgentConnectionDetail/>}/>
+              <Route path="account/agent-connections/:connectionId/activity" element={<AgentActivity/>}/>
+              <Route path="agent-policy" element={<AgentPolicy/>}/>
+              <Route path="agent-audit" element={<AgentActivity/>}/>
               <Route path={"account/profile"} element={<AccountSettings />} />
               <Route
                 path={"account/preferences"}

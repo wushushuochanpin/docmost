@@ -1,3 +1,5 @@
+import { DocumentCommandModule } from '../core/document-command/document-command.module';
+import { DurableDocumentExtension } from './extensions/durable-document.extension';
 import { Logger, Module, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { AuthenticationExtension } from './extensions/authentication.extension';
 import { PersistenceExtension } from './extensions/persistence.extension';
@@ -21,6 +23,7 @@ import { EnvironmentModule } from '../integrations/environment/environment.modul
 @Module({
   providers: [
     CollaborationGateway,
+    DurableDocumentExtension,
     AuthenticationExtension,
     PersistenceExtension,
     LoggerExtension,
@@ -32,6 +35,7 @@ import { EnvironmentModule } from '../integrations/environment/environment.modul
   exports: [CollaborationGateway],
   imports: [
     TokenModule,
+    DocumentCommandModule,
     WatcherModule,
     EditorSessionModule,
     StorageModule.forRootAsync({

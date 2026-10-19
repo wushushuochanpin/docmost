@@ -1,3 +1,4 @@
+import { DocumentCommandService } from '../../document-command/document-command.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -21,6 +22,10 @@ describe('PageService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        {
+          provide: DocumentCommandService,
+          useValue: { isManaged: jest.fn().mockResolvedValue(false) },
+        },
         PageService,
         { provide: PageRepo, useValue: {} },
         { provide: PageNodeMetaRepo, useValue: {} },

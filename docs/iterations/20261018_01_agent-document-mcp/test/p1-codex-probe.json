@@ -1,0 +1,30 @@
+{
+  "client": "codex-cli 0.163.0-alpha.10.2",
+  "executed_at": "2026-10-19T03:56:09.078Z",
+  "registration": "pre-registered public client, exact loopback callback; temporary Codex runtime config, no persistent desktop connection",
+  "oauth": "real Codex PKCE + browser consent + Codex token exchange",
+  "transport": "Codex app-server mcpServer/tool/call (no model inference)",
+  "tools": [
+    "edit_page",
+    "search",
+    "list_spaces",
+    "fetch",
+    "get_operation",
+    "get_page",
+    "get_edit_context",
+    "list_pages",
+    "update_page_metadata"
+  ],
+  "checks": [
+    "discovery",
+    "OAuth",
+    "get_page",
+    "get_edit_context",
+    "edit_page committed",
+    "idempotent replay",
+    "fetch read-after-write",
+    "get_operation"
+  ],
+  "status": "passed",
+  "deployment": "none"
+}

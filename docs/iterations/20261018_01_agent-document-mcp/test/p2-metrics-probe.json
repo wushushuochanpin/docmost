@@ -1,0 +1,158 @@
+{
+  "status": "passed",
+  "metrics": {
+    "started_at": "2026-10-19T06:49:55.796Z",
+    "instance_id": "0fb872eb-f074-4d84-a6da-f9c71783dfe9",
+    "observed_at": "2026-10-19T06:50:01.926Z",
+    "scope": "process",
+    "counters": {
+      "document_transaction:attempt": 94,
+      "document_transaction:success": 93,
+      "recovery:attempt": 1,
+      "recovery:success": 1,
+      "oauth_authorize:attempt": 2,
+      "oauth_authorize:success": 2,
+      "oauth_token:attempt": 4,
+      "oauth_token:success": 2,
+      "oauth_authenticate:attempt": 30,
+      "oauth_authenticate:success": 28,
+      "mcp_tool:attempt": 17,
+      "mcp_tool:success": 16,
+      "document_transaction:error:MCP_DISABLED": 1,
+      "mcp_tool:error:MCP_DISABLED": 1,
+      "oauth_authenticate:error:AUTH_REJECTED": 2,
+      "oauth_token:error:invalid_grant": 2
+    },
+    "latency_bounds_ms": [
+      10,
+      50,
+      100,
+      200,
+      500,
+      1000,
+      2000,
+      5000,
+      15000,
+      "+Inf"
+    ],
+    "latency": {
+      "document_transaction": {
+        "count": 94,
+        "sumMs": 450.7845019999968,
+        "maxMs": 25.921291999999994,
+        "buckets": [
+          81,
+          13,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "recovery": {
+        "count": 1,
+        "sumMs": 2.313666000000012,
+        "maxMs": 2.313666000000012,
+        "buckets": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "oauth_authorize": {
+        "count": 2,
+        "sumMs": 3.7189159999998083,
+        "maxMs": 1.91924999999992,
+        "buckets": [
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "oauth_token": {
+        "count": 4,
+        "sumMs": 13.320582999999715,
+        "maxMs": 7.082666000000245,
+        "buckets": [
+          4,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "oauth_authenticate": {
+        "count": 30,
+        "sumMs": 57.72616900000048,
+        "maxMs": 3.4920419999998558,
+        "buckets": [
+          30,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "mcp_tool": {
+        "count": 17,
+        "sumMs": 352.7377480000014,
+        "maxMs": 64.8432499999999,
+        "buckets": [
+          6,
+          10,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "event_loop": {
+      "p95_ms": 21.708799,
+      "p99_ms": 26.820607,
+      "max_ms": 41.123839
+    }
+  },
+  "checks": [
+    "real OAuth and MCP instrumentation",
+    "DB transaction histogram",
+    "event-loop sampling",
+    "instance allowlist and admin guard",
+    "anonymous 401",
+    "member 403",
+    "no-store",
+    "no content or credentials"
+  ]
+}

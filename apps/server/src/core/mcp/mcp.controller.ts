@@ -1,3 +1,7 @@
+import { AgentRateLimitError } from '../document-command/agent-quota';
+import { toolError } from './tool-result';
+import { AgentMcpAuthGuard } from '../agent-oauth/agent-mcp-auth.guard';
+import { AgentOAuthService } from '../agent-oauth/agent-oauth.service';
 import {
   Controller,
   Delete,
@@ -19,12 +23,13 @@ import { User, Workspace } from '@docmost/db/types/entity.types';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 import { McpGatewayService } from './mcp-gateway.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(AgentMcpAuthGuard)
 @Controller('mcp')
 export class McpController {
   constructor(
     private readonly mcpGatewayService: McpGatewayService,
     private readonly environmentService: EnvironmentService,
+    private readonly oauth: AgentOAuthService,
   ) {}
 
   @SkipTransform()
@@ -37,11 +42,26 @@ export class McpController {
     @AuthWorkspace() workspace: Workspace,
   ) {
     this.mcpGatewayService.assertMcpEnabled(workspace);
+    if ((req as any).user?.agent) {
+      try {
+        await this.mcpGatewayService.entranceQuota((req as any).user.agent);
+      } catch (error) {
+        if (error instanceof AgentRateLimitError)
+          return res
+            .status(429)
+            .header('Retry-After', String(Math.ceil(error.retryAfterMs / 1000)))
+            .send(toolError(error).structuredContent);
+        throw error;
+      }
+    }
 
     const server = this.mcpGatewayService.createServer({
       user,
       workspace,
-      baseUrl: this.getBaseUrl(req),
+      baseUrl: (req as any).user?.agent
+        ? this.oauth.origin
+        : this.getBaseUrl(req),
+      agent: (req as any).user?.agent,
       apiToken: (req as any).user?.apiToken,
     });
     const transport = new StreamableHTTPServerTransport({

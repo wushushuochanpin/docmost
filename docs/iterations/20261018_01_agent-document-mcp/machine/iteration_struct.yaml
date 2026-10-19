@@ -1,0 +1,294 @@
+{
+  "iteration_id": "20261018_01_agent-document-mcp",
+  "iteration_mode": "existing_system_iteration",
+  "status": "in_progress",
+  "phase": "implementation",
+  "lifecycle": "long_term",
+  "confirmed_constraints": [
+    "user_delegated_third_party_agents",
+    "no_concurrent_human_agent_editing_v1",
+    "independent_implementation_no_commercial_mcp"
+  ],
+  "downstream_status": "p2_local_preparation_completed_public_release_blocked",
+  "prd": "prd/PRD.md",
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "phase": "P0",
+      "title": "OAuth授权",
+      "requirement_id": "AUTH-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-02",
+      "phase": "P0",
+      "title": "资源隔离",
+      "requirement_id": "AUTH-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-03",
+      "phase": "P0",
+      "title": "人工互斥",
+      "requirement_id": "LOCK-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-04",
+      "phase": "P0",
+      "title": "版本冲突",
+      "requirement_id": "LOCK-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-05",
+      "phase": "P0",
+      "title": "幂等重试",
+      "requirement_id": "WRITE-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-06",
+      "phase": "P0",
+      "title": "可靠提交",
+      "requirement_id": "WRITE-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-07",
+      "phase": "P0",
+      "title": "超时恢复",
+      "requirement_id": "WRITE-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-08",
+      "phase": "P0",
+      "title": "复杂内容保护",
+      "requirement_id": "TOOL-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-09",
+      "phase": "P1",
+      "title": "目录创建",
+      "requirement_id": "TOOL-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-10",
+      "phase": "P1",
+      "title": "工具完整性",
+      "requirement_id": "TOOL-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-11",
+      "phase": "P1",
+      "title": "预览",
+      "requirement_id": "TOOL-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-12",
+      "phase": "P1",
+      "title": "编辑分页",
+      "requirement_id": "TOOL-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-13",
+      "phase": "P1",
+      "title": "连接管理",
+      "requirement_id": "UI-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-14",
+      "phase": "P1",
+      "title": "菜单权限",
+      "requirement_id": "UI-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-15",
+      "phase": "P1",
+      "title": "即时撤销",
+      "requirement_id": "AUTH-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-16",
+      "phase": "P1",
+      "title": "审计归因",
+      "requirement_id": "OPS-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-17",
+      "phase": "P1",
+      "title": "限额边界",
+      "requirement_id": "OPS-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-18",
+      "phase": "P0",
+      "title": "恢复基线",
+      "requirement_id": "LOCK-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-19",
+      "phase": "P1",
+      "title": "旧客户端与租约失效",
+      "requirement_id": "LOCK-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-20",
+      "phase": "P1",
+      "title": "容量性能",
+      "requirement_id": "OPS-01",
+      "status": "passed_locally"
+    },
+    {
+      "id": "AC-21",
+      "phase": "P2",
+      "title": "客户端兼容",
+      "requirement_id": "AUTH-01",
+      "status": "partial_local_verification"
+    },
+    {
+      "id": "AC-22",
+      "phase": "P2",
+      "title": "开发者接入",
+      "requirement_id": "TOOL-01",
+      "status": "partial_local_verification"
+    },
+    {
+      "id": "AC-23",
+      "phase": "P2",
+      "title": "停用与运维",
+      "requirement_id": "OPS-01",
+      "status": "partial_local_verification"
+    },
+    {
+      "id": "AC-24",
+      "phase": "P2",
+      "title": "公开放行",
+      "requirement_id": "OPS-01",
+      "status": "not_executed"
+    }
+  ],
+  "phases": {
+    "P0": [
+      "AC-01",
+      "AC-02",
+      "AC-03",
+      "AC-04",
+      "AC-05",
+      "AC-06",
+      "AC-07",
+      "AC-08",
+      "AC-18"
+    ],
+    "P1": [
+      "AC-01",
+      "AC-02",
+      "AC-03",
+      "AC-04",
+      "AC-05",
+      "AC-06",
+      "AC-07",
+      "AC-08",
+      "AC-09",
+      "AC-10",
+      "AC-11",
+      "AC-12",
+      "AC-13",
+      "AC-14",
+      "AC-15",
+      "AC-16",
+      "AC-17",
+      "AC-18",
+      "AC-19",
+      "AC-20"
+    ],
+    "P2": [
+      "AC-01",
+      "AC-02",
+      "AC-03",
+      "AC-04",
+      "AC-05",
+      "AC-06",
+      "AC-07",
+      "AC-08",
+      "AC-09",
+      "AC-10",
+      "AC-11",
+      "AC-12",
+      "AC-13",
+      "AC-14",
+      "AC-15",
+      "AC-16",
+      "AC-17",
+      "AC-18",
+      "AC-19",
+      "AC-20",
+      "AC-21",
+      "AC-22",
+      "AC-23",
+      "AC-24"
+    ]
+  },
+  "prd_status": "approved",
+  "sdd": "sdd/SDD.md",
+  "acceptance_document": "prd/acceptance-criteria.md",
+  "implementation_status": "p2_predeployment_retention_observability_verified_locally",
+  "sdd_status": "approved",
+  "p0_evidence": "test/p0-technical-validation.md",
+  "deployment_status": "not_authorized",
+  "p0_business_evidence": "test/p0-business-integration.md",
+  "p0_acceptance": {
+    "passed": [
+      "AC-01",
+      "AC-02",
+      "AC-03",
+      "AC-04",
+      "AC-05",
+      "AC-06",
+      "AC-07",
+      "AC-08",
+      "AC-18"
+    ],
+    "evidence": "test/p0-business-integration.md",
+    "permission_matrix": "test/p0-read-permission-matrix.md",
+    "suites": 8,
+    "tests": 99,
+    "deployment": "not_deployed"
+  },
+  "p1_evidence": "test/p1-business-integration.md",
+  "p1_acceptance": {
+    "suites": 9,
+    "tests": 118,
+    "snapshots": 1,
+    "deployment": "not_deployed"
+  },
+  "p2_evidence": "test/p2-readiness.md",
+  "p2_acceptance": {
+    "status": "partial_local_verification",
+    "suites": 10,
+    "tests": 131,
+    "public_release": "not_approved",
+    "deployment": "not_deployed",
+    "independent_developer": "not_executed",
+    "observation_14_days": "not_started",
+    "snapshots": 1,
+    "client_results": "test/p2-retention-clients-jest-results.json",
+    "ui_results": "test/p2-retention-jest-results.json",
+    "metrics_evaluator_tests": 2,
+    "retention_enabled_by_default": false
+  },
+  "p2_retention_evidence": "test/p2-retention-observability.md"
+}
