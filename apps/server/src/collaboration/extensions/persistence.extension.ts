@@ -1,3 +1,4 @@
+import { DocumentCommandService } from '../../core/document-command/document-command.service';
 import {
   afterUnloadDocumentPayload,
   Extension,
@@ -45,16 +46,75 @@ export class PersistenceExtension implements Extension {
 
   constructor(
     private readonly pageRepo: PageRepo,
+    private readonly documentCommands: DocumentCommandService,
     @InjectKysely() private readonly db: KyselyDB,
     @InjectQueue(QueueName.AI_QUEUE) private aiQueue: Queue,
     @InjectQueue(QueueName.HISTORY_QUEUE) private historyQueue: Queue,
     @InjectQueue(QueueName.NOTIFICATION_QUEUE) private notificationQueue: Queue,
     private readonly collabHistory: CollabHistoryService,
     private readonly transclusionService: TransclusionService,
+    @InjectQueue(QueueName.SEARCH_QUEUE) private readonly searchQueue: Queue,
   ) {}
+
+  onModuleInit() {
+    this.documentCommands.setEffectConsumer(async (id, payload) => {
+      const { pageId, workspaceId, userId, content, oldContent } = payload;
+      const page = await this.pageRepo.findById(pageId, {
+        workspaceId,
+        includeContent: true,
+      });
+      if (!page) return;
+      // Rebuild projections from the newest durable snapshot, never an old queued snapshot.
+      await this.transclusionService.syncPageTransclusions(
+        pageId,
+        workspaceId,
+        page.content,
+      );
+      await this.transclusionService.syncPageReferences(
+        pageId,
+        workspaceId,
+        page.content,
+      );
+      await this.collabHistory.addContributors(pageId, [userId]);
+      const mentions = extractUserMentions(extractMentions(content));
+      if (mentions.length)
+        await this.notificationQueue.add(
+          QueueJob.PAGE_MENTION_NOTIFICATION,
+          {
+            userMentions: mentions.map((m) => ({
+              userId: m.entityId,
+              mentionId: m.id,
+              creatorId: m.creatorId,
+            })),
+            oldMentionedUserIds: extractUserMentions(
+              extractMentions(oldContent ?? {}),
+            ).map((m) => m.entityId),
+            pageId,
+            spaceId: page.spaceId,
+            workspaceId,
+          } as IPageMentionNotificationJob,
+          { jobId: `document-mention-${id}` },
+        );
+      await this.searchQueue.add(
+        QueueJob.PAGE_UPDATED,
+        { pageIds: [pageId] },
+        { jobId: `document-search-${id}` },
+      );
+      await this.aiQueue.add(
+        QueueJob.PAGE_CONTENT_UPDATED,
+        { pageIds: [pageId], workspaceId },
+        { jobId: `document-content-${id}` },
+      );
+      await this.enqueuePageHistory(page);
+    });
+  }
+  onModuleDestroy() {
+    this.documentCommands.setEffectConsumer(undefined);
+  }
 
   async onLoadDocument(data: onLoadDocumentPayload) {
     const { documentName, document } = data;
+    if (data.context?.durableDocument) return;
     const pageId = getPageId(documentName);
     const workspaceId = data.context?.user?.workspaceId as string | undefined;
 
@@ -112,6 +172,13 @@ export class PersistenceExtension implements Extension {
     const pageId = getPageId(documentName);
     const workspaceId = lastContext?.user?.workspaceId as string | undefined;
 
+    // Managed documents are checkpointed before sync acknowledgement. Never replay a debounced snapshot.
+    if (
+      workspaceId &&
+      (await this.documentCommands.isManaged({ workspaceId, pageId }))
+    )
+      return;
+
     const tiptapJson = TiptapTransformer.fromYdoc(document, 'default');
     const ydocState = Buffer.from(Y.encodeStateAsUpdate(document));
 
@@ -137,7 +204,9 @@ export class PersistenceExtension implements Extension {
     const editingUserIds = this.captureContributors(documentName);
 
     if (!workspaceId) {
-      this.logger.warn(`Missing workspace in collab store context for ${pageId}`);
+      this.logger.warn(
+        `Missing workspace in collab store context for ${pageId}`,
+      );
       return;
     }
 
@@ -266,7 +335,10 @@ export class PersistenceExtension implements Extension {
     // an onChange in over CONTRIBUTOR_STALE_MS.
     const now = Date.now();
     const lastSeen = this.contributorLastSeen.get(documentName);
-    if (lastSeen !== undefined && now - lastSeen > PersistenceExtension.CONTRIBUTOR_STALE_MS) {
+    if (
+      lastSeen !== undefined &&
+      now - lastSeen > PersistenceExtension.CONTRIBUTOR_STALE_MS
+    ) {
       this.contributors.delete(documentName);
       this.contributorLastSeen.delete(documentName);
       return [];

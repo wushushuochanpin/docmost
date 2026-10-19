@@ -326,6 +326,7 @@ export interface PageTransclusions {
 }
 
 export interface PageHistory {
+  agentSource: Generated<Json | null>;
   content: Json | null;
   contributorIds: Generated<string[] | null>;
   coverPhoto: string | null;

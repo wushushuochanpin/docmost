@@ -19,10 +19,7 @@ import HistoryView from "@/features/page-history/components/history-view";
 import { useRef } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  useDiffNavigation,
-  useHistoryReset,
-} from "@/features/page-history/hooks";
+import { useDiffNavigation } from "@/features/page-history/hooks";
 
 interface Props {
   pageId: string;
@@ -37,7 +34,6 @@ export default function HistoryModalBody({ pageId }: Props) {
   const [highlightChanges, setHighlightChanges] = useAtom(highlightChangesAtom);
   const diffCounts = useAtomValue(diffCountsAtom);
 
-  useHistoryReset(pageId);
   const { currentChangeIndex, handlePrevChange, handleNextChange } =
     useDiffNavigation(scrollViewportRef);
 

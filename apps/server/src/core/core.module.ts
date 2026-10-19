@@ -1,3 +1,4 @@
+import { AgentOAuthModule } from './agent-oauth/agent-oauth.module';
 import {
   Global,
   MiddlewareConsumer,
@@ -55,6 +56,7 @@ import { EditorSessionModule } from './editor-session/editor-session.module';
     IntegrationTokenModule,
     AuditLogModule,
     McpModule,
+    AgentOAuthModule,
     EditorSessionModule,
   ],
   providers: [

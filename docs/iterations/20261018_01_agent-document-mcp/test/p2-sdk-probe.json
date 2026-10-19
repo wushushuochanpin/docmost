@@ -1,0 +1,37 @@
+{
+  "event": "result",
+  "status": "passed",
+  "sdk": "1.29.0",
+  "protocol": "2025-11-25",
+  "tools": [
+    "create_folder",
+    "create_page",
+    "edit_page",
+    "fetch",
+    "get_edit_context",
+    "get_operation",
+    "get_page",
+    "list_pages",
+    "list_spaces",
+    "search",
+    "update_page_metadata"
+  ],
+  "checks": [
+    "discovery",
+    "OAuth PKCE resource binding",
+    "tools/list",
+    "create_folder",
+    "create_page",
+    "preview",
+    "edit_page",
+    "idempotent create/edit",
+    "read-after-write",
+    "get_operation",
+    "revoke",
+    "old access rejected",
+    "old refresh rejected"
+  ],
+  "writes": true,
+  "executed_at": "2026-10-19T06:50:01.878Z",
+  "environment": "isolated full application, loopback only"
+}

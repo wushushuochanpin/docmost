@@ -1,0 +1,7 @@
+
+Test Suites: 8 passed, 8 total
+Tests:       99 passed, 99 total
+Snapshots:   0 total
+Time:        27.016 s, estimated 28 s
+Ran all test suites.
+Test results written to: ../../docs/iterations/20261018_01_agent-document-mcp/test/p0-jest-results.json

@@ -5,6 +5,15 @@ export type McpToolContext = {
   workspace: Workspace;
   baseUrl: string;
   apiToken?: ScApiToken;
+  agent?: {
+    workspaceId: string;
+    userId: string;
+    clientId: string;
+    grantId: string;
+    tokenHash: string;
+    scopes: string[];
+    spaceIds: string[];
+  };
 };
 
 export type ImageReturnMode = 'none' | 'metadata' | 'url' | 'inline';
@@ -43,6 +52,7 @@ export type McpGetPageInput = {
 };
 
 export type McpListPagesInput = {
+  cursor?: string;
   space_id?: string;
   parent_page_id?: string;
   max_depth?: number;

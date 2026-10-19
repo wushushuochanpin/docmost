@@ -1,0 +1,637 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`OAuth and public MCP across two HTTP nodes session consent on A, token exchange on B, durable MCP edit and replay across A/B, then revoke: P1 complete tool schema 1`] = `
+[
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Search readable Docmost pages by query. Returns concise candidates with snippets and stable IDs; call fetch to read selected content.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "include_children": {
+          "default": false,
+          "description": "When parent_page_id is provided, include child pages. Defaults to false.",
+          "type": "boolean",
+        },
+        "max_depth": {
+          "default": 0,
+          "description": "Maximum child depth when include_children is true.",
+          "maximum": 5,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "parent_page_id": {
+          "description": "Restrict search to a page or page tree. Accepts page:<id> or raw page ID.",
+          "type": "string",
+        },
+        "query": {
+          "description": "Natural language search query.",
+          "minLength": 1,
+          "type": "string",
+        },
+        "source_types": {
+          "description": "Reserved for future source filtering. Phase 1 searches pages.",
+          "items": {
+            "enum": [
+              "page",
+              "attachment",
+              "comment",
+            ],
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "space_id": {
+          "description": "Restrict search to one Docmost space ID.",
+          "type": "string",
+        },
+        "top_k": {
+          "default": 8,
+          "description": "Maximum number of search results.",
+          "maximum": 20,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "search",
+    "title": "Search Docmost knowledge",
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Directly fetch a Docmost page by its URL or slug ID. Use this when you have a page URL or slug — no search step needed. Returns the same content as fetch.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "format": {
+          "default": "markdown",
+          "description": "Content format. Markdown is the default.",
+          "enum": [
+            "markdown",
+            "html",
+          ],
+          "type": "string",
+        },
+        "include_children": {
+          "default": false,
+          "description": "Include child pages.",
+          "type": "boolean",
+        },
+        "include_images": {
+          "default": "metadata",
+          "description": "Image return mode.",
+          "enum": [
+            "none",
+            "metadata",
+            "url",
+            "inline",
+          ],
+          "type": "string",
+        },
+        "max_depth": {
+          "default": 0,
+          "description": "Maximum child depth when include_children is true.",
+          "maximum": 5,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "max_tokens": {
+          "default": 3000,
+          "description": "Approximate maximum output tokens.",
+          "maximum": 12000,
+          "minimum": 200,
+          "type": "integer",
+        },
+        "mode": {
+          "default": "section",
+          "description": "Amount of text to return.",
+          "enum": [
+            "snippet",
+            "section",
+            "full",
+          ],
+          "type": "string",
+        },
+        "slug_id": {
+          "description": "Page slug ID (e.g. untitled-ppWKvRMSRW) or raw page UUID. Use when you have the slug without a full URL.",
+          "type": "string",
+        },
+        "url": {
+          "description": "Full page URL, e.g. https://host/s/general/p/untitled-ppWKvRMSRW. The slug is extracted automatically.",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "get_page",
+    "title": "Get Docmost page by URL or slug",
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Fetch readable Docmost page content by ID returned from search. Defaults to bounded section content and image metadata to control token cost.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "format": {
+          "default": "markdown",
+          "description": "Content format. Markdown is the default.",
+          "enum": [
+            "markdown",
+            "html",
+          ],
+          "type": "string",
+        },
+        "id": {
+          "description": "Stable result ID from search, usually page:<pageId>.",
+          "minLength": 1,
+          "type": "string",
+        },
+        "include_children": {
+          "default": false,
+          "description": "Include child pages only when explicitly needed.",
+          "type": "boolean",
+        },
+        "include_images": {
+          "default": "metadata",
+          "description": "Image return mode. Inline uses MCP image blocks for small images only.",
+          "enum": [
+            "none",
+            "metadata",
+            "url",
+            "inline",
+          ],
+          "type": "string",
+        },
+        "max_depth": {
+          "default": 0,
+          "description": "Maximum child depth when include_children is true.",
+          "maximum": 5,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "max_tokens": {
+          "default": 3000,
+          "description": "Approximate maximum output tokens.",
+          "maximum": 12000,
+          "minimum": 200,
+          "type": "integer",
+        },
+        "mode": {
+          "default": "section",
+          "description": "Amount of text to return. Full remains bounded by max_tokens.",
+          "enum": [
+            "snippet",
+            "section",
+            "full",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+    "name": "fetch",
+    "title": "Fetch Docmost page content",
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "List pages in a space or under a parent page. Returns page metadata (title, slug, URL, node type) without content. Use to explore the document tree before fetching specific pages.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "cursor": {
+          "maxLength": 8192,
+          "type": "string",
+        },
+        "max_depth": {
+          "default": 2,
+          "description": "Recursion depth. 0 = top-level only, 1 = one level deep, etc.",
+          "maximum": 5,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "max_results": {
+          "default": 50,
+          "description": "Maximum number of pages to return.",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "parent_page_id": {
+          "description": "Restrict listing to children of this page. Accepts page:<id>, raw UUID, URL, or slug ID.",
+          "type": "string",
+        },
+        "space_id": {
+          "description": "Space UUID or slug to list pages from.",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "list_pages",
+    "title": "List Docmost pages",
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Get paginated revision-bound blocks with protection and truncation flags.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "maxLength": 8192,
+          "type": "string",
+        },
+        "page_id": {
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "type": "string",
+        },
+        "page_size": {
+          "default": 50,
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "page_id",
+      ],
+      "type": "object",
+    },
+    "name": "get_edit_context",
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+    },
+    "description": "Atomically apply safe Markdown block edits. Unsupported Markdown is rejected, never silently flattened. Success means database commit.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "idempotency_key": {
+          "pattern": "^[\\x21-\\x7e]{1,128}$",
+          "type": "string",
+        },
+        "ops": {
+          "items": {
+            "oneOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "markdown": {
+                    "maxLength": 262144,
+                    "type": "string",
+                  },
+                  "type": {
+                    "const": "append",
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "type",
+                  "markdown",
+                ],
+                "type": "object",
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "markdown": {
+                    "maxLength": 262144,
+                    "type": "string",
+                  },
+                  "type": {
+                    "const": "prepend",
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "type",
+                  "markdown",
+                ],
+                "type": "object",
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "block_ref": {
+                    "maxLength": 4096,
+                    "type": "string",
+                  },
+                  "markdown": {
+                    "maxLength": 262144,
+                    "type": "string",
+                  },
+                  "type": {
+                    "const": "replace_block",
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "type",
+                  "block_ref",
+                  "markdown",
+                ],
+                "type": "object",
+              },
+            ],
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "type": "array",
+        },
+        "page_id": {
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "type": "string",
+        },
+        "preview": {
+          "default": false,
+          "type": "boolean",
+        },
+        "version_token": {
+          "maxLength": 4096,
+          "type": "string",
+        },
+      },
+      "required": [
+        "page_id",
+        "version_token",
+        "ops",
+        "idempotency_key",
+      ],
+      "type": "object",
+    },
+    "name": "edit_page",
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+    },
+    "description": "Change only the title using the current revision and an idempotency key.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "idempotency_key": {
+          "pattern": "^[\\x21-\\x7e]{1,128}$",
+          "type": "string",
+        },
+        "page_id": {
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "type": "string",
+        },
+        "preview": {
+          "default": false,
+          "type": "boolean",
+        },
+        "title": {
+          "type": "string",
+        },
+        "version_token": {
+          "maxLength": 4096,
+          "type": "string",
+        },
+      },
+      "required": [
+        "page_id",
+        "title",
+        "version_token",
+        "idempotency_key",
+      ],
+      "type": "object",
+    },
+    "name": "update_page_metadata",
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+    },
+    "description": "Create a safe Markdown document inside a folder.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "idempotency_key": {
+          "pattern": "^[\\x21-\\x7e]{1,128}$",
+          "type": "string",
+        },
+        "markdown": {
+          "maxLength": 262144,
+          "type": "string",
+        },
+        "parent_id": {
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "type": "string",
+        },
+        "preview": {
+          "default": false,
+          "type": "boolean",
+        },
+        "space_id": {
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "type": "string",
+        },
+        "title": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "space_id",
+        "parent_id",
+        "title",
+        "markdown",
+        "idempotency_key",
+      ],
+      "type": "object",
+    },
+    "name": "create_page",
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+    },
+    "description": "Create a folder at the root or inside another folder.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "idempotency_key": {
+          "pattern": "^[\\x21-\\x7e]{1,128}$",
+          "type": "string",
+        },
+        "markdown": {
+          "not": {},
+        },
+        "parent_id": {
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "type": "string",
+        },
+        "preview": {
+          "default": false,
+          "type": "boolean",
+        },
+        "space_id": {
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "type": "string",
+        },
+        "title": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "space_id",
+        "title",
+        "idempotency_key",
+      ],
+      "type": "object",
+    },
+    "name": "create_folder",
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "List currently accessible spaces within this grant.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "maxLength": 8192,
+          "type": "string",
+        },
+        "page_size": {
+          "default": 50,
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "list_spaces",
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Retrieve an operation belonging to this user, application and grant.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "idempotency_key": {
+          "pattern": "^[\\x21-\\x7e]{1,128}$",
+          "type": "string",
+        },
+        "operation_id": {
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "type": "string",
+        },
+        "tool": {
+          "enum": [
+            "edit_page",
+            "update_page_metadata",
+            "create_page",
+            "create_folder",
+          ],
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "get_operation",
+  },
+]
+`;

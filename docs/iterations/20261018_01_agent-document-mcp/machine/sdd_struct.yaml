@@ -1,0 +1,214 @@
+{
+  "status": "approved",
+  "code_baseline": "38d26266",
+  "implementation_status": "p0_acceptance_passed_locally",
+  "prototype_status": "locally_reviewed_partial",
+  "entry": "sdd/SDD.md",
+  "decisions": [
+    "D01",
+    "D02",
+    "D03",
+    "D04",
+    "D05",
+    "D06",
+    "D07",
+    "D08"
+  ],
+  "invariants": [
+    "I01",
+    "I02",
+    "I03",
+    "I04",
+    "I05",
+    "I06",
+    "I07",
+    "I08"
+  ],
+  "documents": [
+    "sdd/README.md",
+    "sdd/SDD.md",
+    "sdd/api-contract.md",
+    "sdd/architecture.md",
+    "sdd/data-model.md",
+    "sdd/design-to-code-contract.md",
+    "sdd/document-consistency.md",
+    "sdd/idempotency-persistence.md",
+    "sdd/migration.md",
+    "sdd/oauth.md",
+    "sdd/performance.md",
+    "sdd/permission-security.md",
+    "sdd/state-machine.md"
+  ],
+  "acceptance_mapping": [
+    {
+      "acceptance_id": "AC-01",
+      "test_id": "TC-01",
+      "design": "sdd/oauth.md",
+      "status": "local_evidence_available_product_gate_open"
+    },
+    {
+      "acceptance_id": "AC-02",
+      "test_id": "TC-02",
+      "design": "sdd/permission-security.md",
+      "status": "local_evidence_available_product_gate_open"
+    },
+    {
+      "acceptance_id": "AC-03",
+      "test_id": "TC-03",
+      "design": "sdd/document-consistency.md",
+      "status": "local_evidence_available_product_gate_open"
+    },
+    {
+      "acceptance_id": "AC-04",
+      "test_id": "TC-04",
+      "design": "sdd/document-consistency.md",
+      "status": "local_evidence_available_product_gate_open"
+    },
+    {
+      "acceptance_id": "AC-05",
+      "test_id": "TC-05",
+      "design": "sdd/idempotency-persistence.md",
+      "status": "local_evidence_available_product_gate_open"
+    },
+    {
+      "acceptance_id": "AC-06",
+      "test_id": "TC-06",
+      "design": "sdd/idempotency-persistence.md",
+      "status": "local_evidence_available_product_gate_open"
+    },
+    {
+      "acceptance_id": "AC-07",
+      "test_id": "TC-07",
+      "design": "sdd/state-machine.md",
+      "status": "local_evidence_available_product_gate_open"
+    },
+    {
+      "acceptance_id": "AC-08",
+      "test_id": "TC-08",
+      "design": "sdd/document-consistency.md",
+      "status": "local_evidence_available_product_gate_open"
+    },
+    {
+      "acceptance_id": "AC-09",
+      "test_id": "TC-09",
+      "design": "sdd/data-model.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-10",
+      "test_id": "TC-10",
+      "design": "sdd/api-contract.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-11",
+      "test_id": "TC-11",
+      "design": "sdd/api-contract.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-12",
+      "test_id": "TC-12",
+      "design": "sdd/document-consistency.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-13",
+      "test_id": "TC-13",
+      "design": "sdd/design-to-code-contract.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-14",
+      "test_id": "TC-14",
+      "design": "sdd/permission-security.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-15",
+      "test_id": "TC-15",
+      "design": "sdd/oauth.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-16",
+      "test_id": "TC-16",
+      "design": "sdd/permission-security.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-17",
+      "test_id": "TC-17",
+      "design": "sdd/performance.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-18",
+      "test_id": "TC-18",
+      "design": "sdd/idempotency-persistence.md",
+      "status": "local_evidence_available_product_gate_open"
+    },
+    {
+      "acceptance_id": "AC-19",
+      "test_id": "TC-19",
+      "design": "sdd/migration.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-20",
+      "test_id": "TC-20",
+      "design": "sdd/performance.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-21",
+      "test_id": "TC-21",
+      "design": "sdd/oauth.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-22",
+      "test_id": "TC-22",
+      "design": "sdd/api-contract.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-23",
+      "test_id": "TC-23",
+      "design": "sdd/migration.md",
+      "status": "not_executed"
+    },
+    {
+      "acceptance_id": "AC-24",
+      "test_id": "TC-24",
+      "design": "sdd/performance.md",
+      "status": "not_executed"
+    }
+  ],
+  "p0_business_evidence": "test/p0-business-integration.md",
+  "p0_acceptance": {
+    "passed": [
+      "AC-01",
+      "AC-02",
+      "AC-03",
+      "AC-04",
+      "AC-05",
+      "AC-06",
+      "AC-07",
+      "AC-08",
+      "AC-18"
+    ],
+    "evidence": "test/p0-business-integration.md",
+    "permission_matrix": "test/p0-read-permission-matrix.md",
+    "suites": 8,
+    "tests": 99,
+    "deployment": "not_deployed"
+  },
+  "p2_retention_observability": {
+    "status": "verified_locally",
+    "evidence": "test/p2-retention-observability.md",
+    "migration": "20261019T150000-agent-retention-observability.ts",
+    "deployment": "not_deployed",
+    "public_release": "not_approved"
+  }
+}

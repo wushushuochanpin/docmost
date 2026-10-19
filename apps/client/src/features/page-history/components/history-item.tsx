@@ -38,6 +38,7 @@ const HistoryItem = memo(function HistoryItem({
 
   return (
     <UnstyledButton
+      aria-pressed={isActive}
       p="xs"
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
@@ -46,20 +47,34 @@ const HistoryItem = memo(function HistoryItem({
     >
       <Text size="sm">{formattedDate(new Date(historyItem.createdAt))}</Text>
 
+      {historyItem.agentSource && (
+        <Text size="xs" c="dimmed">
+          {historyItem.agentSource.application} ·{" "}
+          {historyItem.agentSource.side === "before"
+            ? "应用修改前"
+            : "应用修改后"}
+        </Text>
+      )}
       <Group gap={6} wrap="nowrap" mt={4}>
         {hasContributors ? (
           <>
             <Tooltip.Group openDelay={300} closeDelay={100}>
               <Avatar.Group spacing={8}>
-                {contributors.slice(0, MAX_VISIBLE_AVATARS).map((contributor) => (
-                  <Tooltip key={contributor.id} label={contributor.name} withArrow>
-                    <CustomAvatar
-                      size="sm"
-                      avatarUrl={contributor.avatarUrl}
-                      name={contributor.name}
-                    />
-                  </Tooltip>
-                ))}
+                {contributors
+                  .slice(0, MAX_VISIBLE_AVATARS)
+                  .map((contributor) => (
+                    <Tooltip
+                      key={contributor.id}
+                      label={contributor.name}
+                      withArrow
+                    >
+                      <CustomAvatar
+                        size="sm"
+                        avatarUrl={contributor.avatarUrl}
+                        name={contributor.name}
+                      />
+                    </Tooltip>
+                  ))}
                 {contributors.length > MAX_VISIBLE_AVATARS && (
                   <Tooltip
                     withArrow

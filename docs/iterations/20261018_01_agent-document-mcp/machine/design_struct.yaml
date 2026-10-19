@@ -1,0 +1,37 @@
+{
+  "status": "design_input",
+  "use_cases": [
+    "UC-01",
+    "UC-02",
+    "UC-03",
+    "UC-04",
+    "UC-05"
+  ],
+  "screens": [
+    "AUTH-CONSENT",
+    "AGENT-LIST",
+    "AGENT-DETAIL",
+    "AGENT-ACTIVITY",
+    "AGENT-POLICY",
+    "AGENT-AUDIT",
+    "EDITOR-BUSY"
+  ],
+  "prototype_authority": {
+    "kind": "executable_html",
+    "status": "locally_reviewed_partial",
+    "entry": "design/consent-prototype.html",
+    "evidence": [
+      "test/p0-consent.png",
+      "test/p0-business-integration.md"
+    ]
+  },
+  "interaction_contract": "../design/interaction-contract.md",
+  "p0_application_verification": {
+    "status": "passed_locally",
+    "evidence": "test/p0-business-integration.md",
+    "pending_phases": [
+      "P1",
+      "P2"
+    ]
+  }
+}

@@ -56,6 +56,7 @@ const groupedData: DataGroup[] = [
   {
     heading: "Account",
     items: [
+      { label: "我的 Agent 连接", icon: Key, path: "/settings/account/agent-connections" },
       { label: "Profile", icon: User, path: "/settings/account/profile" },
       {
         label: "Preferences",
@@ -76,6 +77,8 @@ const groupedData: DataGroup[] = [
   {
     heading: "Workspace",
     items: [
+      { label: "Agent 策略", icon: ShieldCheck, path: "/settings/agent-policy", isAdmin: true },
+      { label: "Agent 审计", icon: History, path: "/settings/agent-audit", isAdmin: true },
       { label: "General", icon: Settings, path: "/settings/workspace" },
       { label: "Members", icon: Users, path: "/settings/members" },
       {

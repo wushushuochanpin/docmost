@@ -103,7 +103,8 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
       customEvents,
       customEventTTL,
     } = configuration;
-    this.pub = redis.duplicate();
+    // The gateway supplies a dedicated connection; own and close it with the extension.
+    this.pub = redis;
     this.sub = redis.duplicate();
     this.pack = pack;
     this.unpack = unpack;
@@ -238,7 +239,7 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
     // a lockTTL / 2 guarantees stale reads < lockTTL upon server crash
     setTimeout(() => {
       delete this.lockPromises[documentName];
-    }, this.lockTTL / 2);
+    }, this.lockTTL / 2).unref();
     return lockPromise;
   }
 
@@ -316,20 +317,43 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
   };
 
   async maintainLock(documentName: string) {
+    clearInterval(this.locks[documentName]);
+    const renew = async () => {
+      try {
+        const renewed = await this.pub.eval(
+          "if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('pexpire',KEYS[1],ARGV[2]) else return 0 end",
+          1,
+          this.getKey(documentName),
+          this.serverId,
+          String(this.lockTTL),
+        );
+        if (renewed !== 1) {
+          clearInterval(this.locks[documentName]);
+          delete this.locks[documentName];
+          delete this.lockPromises[documentName];
+          this.instance.closeConnections(documentName);
+        }
+      } catch {
+        // A disconnected owner cannot keep accepting edits on a stale route.
+        this.instance.closeConnections(documentName);
+      }
+    };
     this.locks[documentName] = setInterval(() => {
-      this.pub.set(
-        this.getKey(documentName),
-        this.serverId,
-        'PX',
-        this.lockTTL,
-      );
+      void renew();
     }, this.lockTTL / 2);
+    this.locks[documentName].unref();
   }
 
   async releaseLock(documentName: string) {
     clearInterval(this.locks[documentName]);
     delete this.locks[documentName];
-    return this.pub.del(this.getKey(documentName));
+    delete this.lockPromises[documentName];
+    return this.pub.eval(
+      "if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end",
+      1,
+      this.getKey(documentName),
+      this.serverId,
+    );
   }
 
   private async handleEventLocally<TName extends Extract<keyof TCE, string>>(
@@ -412,7 +436,8 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
   ) {
     const message = new Uint8Array(detachableMsg.slice());
     const decoder = { arr: message, pos: 0 };
-    const documentName = readVarString(decoder);
+    // Hocuspocus 4 may append a provider session after NUL. Route by document, never by browser session.
+    const documentName = readVarString(decoder).split('\0', 1)[0];
     const isDocLoadedOnInstance = this.instance.documents.has(documentName);
 
     if (isDocLoadedOnInstance) {
@@ -455,8 +480,8 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
     delete this.originConnections[socketId];
     const msg: RSAMessageCloseProxy = { type: 'closeProxy', socketId };
     this.pub.publish(this.msgChannel, this.pack(msg)).catch((err) => {
-    console.debug(`Redis publish failed: ${err?.message}`);
-  });
+      console.debug(`Redis publish failed: ${err?.message}`);
+    });
   }
 
   /* Hocuspocus hooks */
@@ -479,6 +504,15 @@ export class RedisSyncExtension<TCE extends CustomEvents> implements Extension {
   }
 
   async onDestroy() {
+    for (const connection of [
+      ...Object.values(this.originConnections),
+      ...Object.values(this.proxyConnections),
+    ])
+      connection.handleClose({ code: 1001, reason: 'Server shutdown' });
+    this.originConnections = {};
+    this.proxyConnections = {};
+    for (const timer of Object.values(this.locks)) clearInterval(timer);
+    this.locks = {};
     this.pub.disconnect(false);
     this.sub.disconnect(false);
   }

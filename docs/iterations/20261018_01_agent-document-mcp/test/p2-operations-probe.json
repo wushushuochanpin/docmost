@@ -1,0 +1,35 @@
+{
+  "executed_at": "2026-10-19T06:50:02.194Z",
+  "status": "passed",
+  "checks": [
+    "healthy exit 0",
+    "alert exit 2",
+    "90-second pending alert",
+    "missing committed result critical",
+    "six-minute outbox alert",
+    "actual recovering state older than five minutes alert",
+    "operation diagnostic",
+    "no body/token/hash output",
+    "no mutation",
+    "foreign workspace operation refused",
+    "superuser refused"
+  ],
+  "alerts": [
+    {
+      "code": "COMMITTED_INTEGRITY_FAILURE",
+      "severity": "critical",
+      "action": "Disable workspace Agent writes; preserve evidence and investigate authoritative data."
+    },
+    {
+      "code": "PENDING_OVER_60S",
+      "severity": "warning",
+      "action": "Inspect operation and automatic recovery."
+    },
+    {
+      "code": "OUTBOX_OVER_5M",
+      "severity": "warning",
+      "action": "Inspect recovery worker and downstream effects; do not replay document writes."
+    }
+  ],
+  "deployment": "none"
+}

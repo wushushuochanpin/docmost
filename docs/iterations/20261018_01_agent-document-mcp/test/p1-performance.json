@@ -1,0 +1,57 @@
+{
+  "executed_at": "2026-10-19T06:42:30.622Z",
+  "node": "v22.23.3",
+  "machine": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M3 Pro",
+    "cores": 11
+  },
+  "database": "disposable PostgreSQL 16, synchronous commit",
+  "transport": [
+    "native Fetch JSON-RPC",
+    "MCP SDK Client StreamableHTTP"
+  ],
+  "concurrent_clients": 10,
+  "users": 3,
+  "applications": 2,
+  "writes": 50,
+  "success_rate": 1,
+  "document_bytes": 99254,
+  "operations_per_write": 5,
+  "metrics_ms": {
+    "read": {
+      "samples": 50,
+      "p50": 111.79324999999517,
+      "p95": 167.56874999999854,
+      "max": 199.093667000001
+    },
+    "preview": {
+      "samples": 50,
+      "p50": 529.0326669999995,
+      "p95": 576.4270000000033,
+      "max": 576.9757079999981
+    },
+    "commit": {
+      "samples": 50,
+      "p50": 764.7805419999931,
+      "p95": 1248.7913750000007,
+      "max": 1254.7962499999994
+    }
+  },
+  "scaling": [
+    {
+      "documents": 1,
+      "ms": 23.934250000005704
+    },
+    {
+      "documents": 10,
+      "ms": 45.704499999999825
+    },
+    {
+      "documents": 50,
+      "ms": 96.57633399999759
+    }
+  ],
+  "scope": "local two HTTP nodes, not public product or 14-day observation"
+}

@@ -25,7 +25,6 @@ import { usePageHistoryListQuery } from "@/features/page-history/queries/page-hi
 import { formattedDate } from "@/lib/time";
 import {
   useDiffNavigation,
-  useHistoryReset,
   useHistoryRestore,
 } from "@/features/page-history/hooks";
 import classes from "./css/history-mobile.module.css";
@@ -70,14 +69,15 @@ export default function HistoryModalMobile({ pageId, pageTitle }: Props) {
           : item.lastUpdatedBy?.name;
         return {
           value: item.id,
-          label: formattedDate(new Date(item.createdAt)),
+          label: item.agentSource
+            ? `${formattedDate(new Date(item.createdAt))} · ${item.agentSource.application} · ${t(item.agentSource.side === "before" ? "应用修改前" : "应用修改后")}`
+            : formattedDate(new Date(item.createdAt)),
           userName: names,
         };
       }),
-    [historyItems],
+    [historyItems, t],
   );
 
-  useHistoryReset(pageId);
   const { canRestore, confirmRestore } = useHistoryRestore();
   const { currentChangeIndex, handlePrevChange, handleNextChange } =
     useDiffNavigation(scrollViewportRef);

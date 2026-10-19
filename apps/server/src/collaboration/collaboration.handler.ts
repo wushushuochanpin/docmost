@@ -1,3 +1,4 @@
+import { DocumentCommandService } from '../core/document-command/document-command.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { Hocuspocus, Document } from '@hocuspocus/server';
 import { TiptapTransformer } from '@hocuspocus/transformer';
@@ -17,7 +18,7 @@ export type CollabEventHandlers = ReturnType<
 export class CollaborationHandler {
   private readonly logger = new Logger(CollaborationHandler.name);
 
-  constructor() {}
+  constructor(private readonly documentCommands: DocumentCommandService) {}
 
   getHandlers(hocuspocus: Hocuspocus) {
     return {
@@ -78,18 +79,25 @@ export class CollaborationHandler {
       updatePageContent: async (
         documentName: string,
         payload: {
+          patch?: {
+            title?: string;
+            icon?: string;
+            themeColor?: string;
+            themePattern?: string;
+          };
           prosemirrorJson: any;
           operation: string;
           user: User;
         },
       ) => {
-        const { prosemirrorJson, operation, user } = payload;
+        const { prosemirrorJson, operation, user, patch } = payload;
         this.logger.debug('Updating page content via yjs', documentName);
         await this.withYdocConnection(
           hocuspocus,
           documentName,
-          { user },
+          { user, patch },
           (doc) => {
+            if (!prosemirrorJson) return;
             const fragment = doc.getXmlFragment('default');
 
             if (operation === 'replace') {
@@ -102,7 +110,11 @@ export class CollaborationHandler {
                 'default',
                 tiptapExtensions,
               );
-              Y.applyUpdate(doc, Y.encodeStateAsUpdate(newDoc));
+              try {
+                Y.applyUpdate(doc, Y.encodeStateAsUpdate(newDoc));
+              } finally {
+                newDoc.destroy();
+              }
             } else {
               const newContent = prosemirrorJson.content || [];
               const yElements = newContent.map(prosemirrorNodeToYElement);
@@ -121,6 +133,20 @@ export class CollaborationHandler {
     context: any = {},
     fn: (doc: Document) => void,
   ): Promise<void> {
+    const actor = {
+      workspaceId: context.user?.workspaceId,
+      userId: context.user?.id,
+      pageId: documentName.split('.')[1],
+    };
+    if (actor.workspaceId && (await this.documentCommands.isManaged(actor))) {
+      await this.documentCommands.mutate(
+        actor,
+        (doc) => fn(doc as Document),
+        (doc) => TiptapTransformer.fromYdoc(doc, 'default'),
+        context.patch,
+      );
+      return;
+    }
     const connection = await hocuspocus.openDirectConnection(
       documentName,
       context,

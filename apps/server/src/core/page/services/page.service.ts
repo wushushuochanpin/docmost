@@ -1,3 +1,5 @@
+import type { AgentCreateRequest } from '../../document-command/document-command.service';
+import { DocumentCommandService } from '../../document-command/document-command.service';
 import {
   BadRequestException,
   Injectable,
@@ -92,6 +94,7 @@ export class PageService {
     private readonly watcherService: WatcherService,
     private readonly editorSessionService: EditorSessionService,
     private readonly transclusionService: TransclusionService,
+    private readonly documentCommands: DocumentCommandService,
   ) {}
 
   async findById(
@@ -155,8 +158,10 @@ export class PageService {
     userId: string,
     workspaceId: string,
     createPageDto: CreatePageDto,
+    agent?: AgentCreateRequest,
   ): Promise<
     Page & {
+      agentOperation?: Record<string,any>;
       nodeType: PageNodeType;
       isPinned: boolean;
       pinnedAt: Date | null;
@@ -212,39 +217,70 @@ export class PageService {
     let title: string | undefined = createPageDto.title;
     if (!hasTitle) {
       const now = new Date();
-      const seq = await this.nextDefaultTitleSeq(
-        createPageDto.spaceId,
-        now,
-      );
+      const seq = await this.nextDefaultTitleSeq(createPageDto.spaceId, now);
       title = this.buildDefaultPageTitle(nodeType, seq, now);
     }
 
-    const createdPage = await this.pageRepo.insertPage({
-      slugId: generateSlugId(),
-      title,
-      position: await this.nextPagePosition(
-        createPageDto.spaceId,
-        parentPageId,
-      ),
-      icon: createPageDto.icon,
-      themeColor: createPageDto.themeColor,
-      themePattern: createPageDto.themePattern,
-      parentPageId: parentPageId,
-      spaceId: createPageDto.spaceId,
-      creatorId: userId,
-      workspaceId: workspaceId,
-      lastUpdatedById: userId,
-      content,
-      textContent,
-      ydoc,
-    });
+    const position = await this.nextPagePosition(
+      createPageDto.spaceId,
+      parentPageId,
+    );
+    const createdPage = await this.documentCommands.createTransaction(
+      { workspaceId, userId, spaceId: createPageDto.spaceId, parentPageId },
+      async (trx) => {
+        if (parentPageId) {
+          const parentMeta = await this.pageNodeMetaRepo.findByPageId(
+            parentPageId,
+            trx,
+          );
+          this.assertParentChildHierarchy({
+            childNodeType: nodeType,
+            parentNodeType: this.normalizeNodeType(parentMeta?.nodeType),
+          });
+        }
+        const createdPage = await trx
+          .insertInto('pages')
+          .values({
+            slugId: generateSlugId(),
+            title,
+            position,
+            icon: createPageDto.icon,
+            themeColor: createPageDto.themeColor,
+            themePattern: createPageDto.themePattern,
+            parentPageId: parentPageId,
+            spaceId: createPageDto.spaceId,
+            creatorId: userId,
+            workspaceId: workspaceId,
+            lastUpdatedById: userId,
+            content,
+            textContent,
+            ydoc:
+              ydoc ??
+              createYdocFromJson({
+                type: 'doc',
+                content: [{ type: 'paragraph' }],
+              }),
+          })
+          .returningAll()
+          .executeTakeFirstOrThrow();
 
-    await this.safeEnsureNodeMeta({
-      pageId: createdPage.id,
-      workspaceId: workspaceId,
-      spaceId: createPageDto.spaceId,
-      nodeType,
-      isPinned: false,
+        await this.pageNodeMetaRepo.ensureMeta(
+          {
+            pageId: createdPage.id,
+            workspaceId: workspaceId,
+            spaceId: createPageDto.spaceId,
+            nodeType,
+            isPinned: false,
+          },
+          trx,
+        );
+        return createdPage;
+      },
+      agent,
+    );
+    if(!agent)this.eventEmitter.emit(EventName.PAGE_CREATED, {
+      pageIds: [createdPage.id],
+      workspaceId,
     });
 
     return {
@@ -335,12 +371,39 @@ export class PageService {
       pagePatch.themePattern = updatePageDto.themePattern;
     }
 
-    await this.pageRepo.updatePage(
-      pagePatch as any,
-      page.id,
-      undefined,
-      page.workspaceId,
-    );
+    const managed = await this.documentCommands.isManaged({
+      workspaceId: page.workspaceId,
+      pageId: page.id,
+    });
+    if (managed) {
+      const prosemirrorJson =
+        updatePageDto.content !== undefined
+          ? await this.parseProsemirrorContent(
+              updatePageDto.content,
+              updatePageDto.format,
+            )
+          : undefined;
+      await this.collaborationGateway.handleYjsEvent(
+        'updatePageContent',
+        `page.${page.id}`,
+        {
+          user,
+          prosemirrorJson,
+          operation: updatePageDto.operation,
+          patch: Object.fromEntries(
+            ['title', 'icon', 'themeColor', 'themePattern']
+              .filter((key) => pagePatch[key] !== undefined)
+              .map((key) => [key, pagePatch[key]]),
+          ),
+        },
+      );
+    } else
+      await this.pageRepo.updatePage(
+        pagePatch as any,
+        page.id,
+        undefined,
+        page.workspaceId,
+      );
 
     this.generalQueue
       .add(QueueJob.ADD_PAGE_WATCHERS, {
@@ -354,6 +417,7 @@ export class PageService {
       );
 
     if (
+      !managed &&
       updatePageDto.content !== undefined &&
       updatePageDto.operation &&
       updatePageDto.format

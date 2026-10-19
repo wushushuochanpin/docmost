@@ -1,3 +1,4 @@
+import { DurableDocumentExtension } from './extensions/durable-document.extension';
 import { Hocuspocus } from '@hocuspocus/server';
 import { IncomingMessage } from 'http';
 import WebSocket from 'ws';
@@ -30,13 +31,13 @@ import {
 export class CollaborationGateway {
   private readonly hocuspocus: Hocuspocus;
   private redisConfig: RedisConfig;
-  private readonly redisSync: RedisSyncExtension<any> | null =
-    null;
+  private readonly redisSync: RedisSyncExtension<any> | null = null;
   private readonly withRedis: boolean;
 
   constructor(
     private authenticationExtension: AuthenticationExtension,
     private persistenceExtension: PersistenceExtension,
+    private durableDocumentExtension: DurableDocumentExtension,
     private loggerExtension: LoggerExtension,
     private environmentService: EnvironmentService,
     private collabEventsService: CollaborationHandler,
@@ -50,6 +51,7 @@ export class CollaborationGateway {
       unloadImmediately: false,
       extensions: [
         this.authenticationExtension,
+        this.durableDocumentExtension,
         this.persistenceExtension,
         this.loggerExtension,
       ],
@@ -69,7 +71,9 @@ export class CollaborationGateway {
         prefix: 'collab',
         pack,
         unpack,
-        customEvents: this.collabEventsService.getHandlers(this.hocuspocus) as any,
+        customEvents: this.collabEventsService.getHandlers(
+          this.hocuspocus,
+        ) as any,
       });
       this.hocuspocus.configuration.extensions.push(this.redisSync);
       (this.redisSync as any).onConfigure({ instance: this.hocuspocus });
@@ -136,7 +140,11 @@ export class CollaborationGateway {
 
       // Forward close events
       client.on('close', (code: number, reason: Buffer) => {
-        this.redisSync!.onSocketClose(socketId, code, reason.buffer as ArrayBuffer);
+        this.redisSync!.onSocketClose(
+          socketId,
+          code,
+          reason.buffer as ArrayBuffer,
+        );
       });
 
       // Forward pong events for keepalive
@@ -177,7 +185,11 @@ export class CollaborationGateway {
     documentName: string,
     payload: Parameters<CollabEventHandlers[TName]>[1],
   ) {
-    return this.redisSync?.handleEvent(eventName, documentName, payload);
+    if (this.redisSync)
+      return this.redisSync.handleEvent(eventName, documentName, payload);
+    return this.collabEventsService
+      .getHandlers(this.hocuspocus)
+      [eventName](documentName, payload as any);
   }
 
   openDirectConnection(documentName: string, context?: any) {
@@ -228,6 +240,7 @@ export class CollaborationGateway {
               (e) => e !== cleanupHandler,
             );
           resolve();
+          return;
         }
 
         // The cleanupHandler will call resolve indirectly via the
@@ -246,8 +259,7 @@ export class CollaborationGateway {
         const origAfterUnload = cleanupHandler.afterUnloadDocument;
         cleanupHandler.afterUnloadDocument = async (args) => {
           await origAfterUnload(args);
-          clearTimeout(safetyTimeout);
-          resolve();
+          if(this.hocuspocus.getDocumentsCount()===0){clearTimeout(safetyTimeout);resolve();}
         };
 
         this.hocuspocus.closeConnections();

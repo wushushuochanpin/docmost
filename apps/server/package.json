@@ -27,7 +27,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config test/jest-e2e.json"
+    "test:e2e": "jest --config test/jest-e2e.json",
+    "test:agent-mcp-p0": "node test/agent-mcp-p0/run.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.52",
@@ -64,6 +65,7 @@
     "@nestjs/terminus": "^11.1.1",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.19",
+    "@node-oauth/oauth2-server": "5.3.1",
     "@node-saml/passport-saml": "^5.1.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "ai": "^6.0.134",
