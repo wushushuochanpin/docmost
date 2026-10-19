@@ -34,7 +34,7 @@ import { extractPageSlugId } from "@/lib";
 import { DocTree } from "./doc-tree";
 import { SpaceTreeRow } from "./space-tree-row";
 import { PinnedPagesSection } from "./pinned-pages-section";
-import { SidebarNodeCard } from "./sidebar-node-card";
+import { SidebarNodeGrid } from "./sidebar-node-grid";
 import { usePinnedReorder } from "@/features/page/tree/hooks/use-pinned-reorder.ts";
 
 interface SpaceTreeProps {
@@ -53,8 +53,6 @@ interface SpaceTreeProps {
    */
   layoutMode?: SidebarLayoutMode;
 }
-
-const EMPTY_OPEN_IDS: ReadonlySet<string> = new Set();
 
 export default function SpaceTree({
   spaceId,
@@ -295,12 +293,6 @@ export default function SpaceTree({
     ),
     [readOnly],
   );
-  const renderGridRow = useCallback(
-    (rowProps: Parameters<typeof SidebarNodeCard>[0]) => (
-      <SidebarNodeCard {...rowProps} readOnly={readOnly} />
-    ),
-    [readOnly],
-  );
   const disableDragDrop = useCallback(
     (n: SpaceTreeNode) => n.canEdit === false,
     [],
@@ -315,23 +307,13 @@ export default function SpaceTree({
     onMove: (sourceId: string, op: DropOp) => void | Promise<void>,
   ) => {
     if (layoutMode === "grid") {
-      // Grid: flat card list rendered by the same DocTree engine — virtual
-      // scrolling, keyboard nav and drag sorting for free. openIds is empty so
-      // only root nodes are shown; make-child drops are blocked.
       return (
-        <DocTree<SpaceTreeNode>
-          data={data}
-          openIds={EMPTY_OPEN_IDS}
+        <SidebarNodeGrid
+          nodes={data}
           selectedId={currentPage?.id}
-          renderRow={renderGridRow}
           onMove={onMove}
-          onToggle={handleToggle}
           readOnly={readOnly}
-          disableDrag={disableDragDrop}
-          disableDrop={disableDragDrop}
-          blockMakeChild
-          getDragLabel={getDragLabel}
-          aria-label={t("Pages")}
+          ariaLabel={t("Pages")}
         />
       );
     }
