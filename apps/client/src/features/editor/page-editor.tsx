@@ -1399,7 +1399,8 @@ export default function PageEditor({
     pageLeaseWritable &&
     (isRemoteSynced || hasLocalDocumentContent);
   const canUseLocalFallback =
-    (!collaborationEnabled || (documentRuntime !== null && !managedDocument)) &&
+    // A connecting Y.Doc must never hand ownership to the JSON snapshot writer.
+    !collaborationEnabled &&
     editable &&
     userPageEditMode === PageEditMode.Edit &&
     (!shouldAcquirePageLease || pageLease.status === "active");
