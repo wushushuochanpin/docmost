@@ -4,30 +4,31 @@ import { FileText, Folder } from "lucide-react";
 import clsx from "clsx";
 
 import type { SpaceTreeNode } from "@/features/page/tree/types.ts";
-import type { RenderRowProps } from "./doc-tree";
 import { NodeMenu } from "./space-tree-node-menu";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import classes from "./sidebar-node-card.module.css";
 
-type SidebarNodeCardProps = RenderRowProps<SpaceTreeNode> & {
+type SidebarNodeCardProps = {
+  node: SpaceTreeNode;
   readOnly: boolean;
+  isSelected?: boolean;
+  isDragging?: boolean;
+  isReceivingDrop?: "before" | "after" | null;
+  cardRef?: React.Ref<HTMLDivElement>;
 };
 
 /**
- * Card variant of the sidebar row, used by the grid layout. Rendered inside
- * the shared DocTree engine, so grid rows get virtual scrolling, roving
- * tabindex keyboard navigation and pragmatic-dnd drag sorting for free —
- * plus the shared NodeMenu (right-click / kebab) actions.
+ * Visual card for a flat sidebar grid. Collection layout, keyboard order and
+ * drag/drop stay in SidebarNodeGrid; this component only owns presentation
+ * and node actions.
  */
 export function SidebarNodeCard({
   node,
-  isSelected,
-  isDragging,
-  isReceivingDrop,
-  rowRef,
-  tabIndex,
-  treeItemProps,
   readOnly,
+  isSelected = false,
+  isDragging = false,
+  isReceivingDrop = null,
+  cardRef,
 }: SidebarNodeCardProps) {
   const { t } = useTranslation();
   const { spaceSlug } = useParams();
@@ -43,23 +44,28 @@ export function SidebarNodeCard({
   );
 
   return (
-    <Link
-      ref={rowRef as React.Ref<HTMLAnchorElement>}
-      to={pageUrl}
+    <div
+      ref={cardRef}
       className={clsx(classes.card, {
         [classes.selected]: isSelected,
         [classes.dragging]: isDragging,
         [classes.dropBefore]: isReceivingDrop === "before",
         [classes.dropAfter]: isReceivingDrop === "after",
       })}
-      tabIndex={tabIndex}
-      {...treeItemProps}
+      data-node-id={node.id}
     >
-      <div className={classes.iconWrap}>{icon}</div>
-      <div className={classes.title}>{title}</div>
+      <Link
+        to={pageUrl}
+        className={classes.link}
+        aria-current={isSelected ? "page" : undefined}
+        aria-label={title}
+      >
+        <div className={classes.iconWrap}>{icon}</div>
+        <div className={classes.title}>{title}</div>
+      </Link>
       <div className={classes.menu}>
         <NodeMenu node={node} canEdit={canEdit} />
       </div>
-    </Link>
+    </div>
   );
 }
