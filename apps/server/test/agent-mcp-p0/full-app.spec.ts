@@ -111,7 +111,8 @@ test('complete application: login, OAuth, collaborative editing, history conflic
           STORAGE_DRIVER: 'local',
           COLLAB_ENABLED: 'true',
           EDITOR_SESSION_ENABLED: 'true',
-          DOCUMENT_COMMAND_ENABLED: 'true',
+          DOCUMENT_COMMAND_ENABLED:
+            process.env.P2_LEGACY === 'true' ? 'false' : 'true',
           DOCUMENT_COMMAND_SIGNING_KEY: Buffer.alloc(32, 9).toString('base64'),
           AGENT_OAUTH_ENABLED: 'true',
           AGENT_OAUTH_ORIGIN: origin,
@@ -174,6 +175,65 @@ test('complete application: login, OAuth, collaborative editing, history conflic
             (await fetch('/api/auth/collab-token', { method: 'POST' })).status,
         ),
       ).toBe(200);
+    if (process.env.P2_LEGACY === 'true') {
+      // Delay the websocket only, after runtime discovery. Loading must never
+      // mount the JSON writer while the authoritative Y.Doc is connecting.
+      await tab.evaluateOnNewDocument(() => {
+        const NativeWebSocket = window.WebSocket;
+        window.WebSocket = class extends NativeWebSocket {
+          constructor(url: string | URL, protocols?: string | string[]) {
+            super(
+              String(url).includes('/collab') &&
+                sessionStorage.getItem('delay-collab') !== 'off'
+                ? 'ws://127.0.0.1:1/collab'
+                : url,
+              protocols,
+            );
+          }
+        };
+      });
+      const contentWrites: string[] = [];
+      tab.on('request', (r: any) => {
+        if (
+          r.url().includes('/pages/update') &&
+          r.postData()?.includes('"content"')
+        )
+          contentWrites.push(r.postData());
+      });
+      await tab.goto(origin + '/s/p0-space/p/p0document');
+      await tab.waitForFunction(() =>
+        document.body.innerText.includes('Existing P0 document'),
+      );
+      await new Promise((r) => setTimeout(r, 2500));
+      // Navigating away also exercises unmount normalization/autosave.
+      await tab.goto(origin + '/home');
+      await new Promise((r) => setTimeout(r, 1500));
+      expect(contentWrites).toEqual([]);
+      const stored = (await pg`SELECT ydoc FROM pages WHERE id=${page}`)[0]
+        .ydoc;
+      expect(Buffer.from(stored)).toEqual(
+        Buffer.from(Y.encodeStateAsUpdate(ydoc)),
+      );
+      await tab.evaluate(() => sessionStorage.setItem('delay-collab', 'off'));
+      for (let i = 0; i < 2; i++) {
+        await tab.goto(origin + '/s/p0-space/p/p0document');
+        await tab.waitForSelector('.ProseMirror[contenteditable="true"]');
+        await new Promise((r) => setTimeout(r, 1500));
+        expect(await tab.evaluate(() => document.body.innerText)).not.toContain(
+          '页面加载失败',
+        );
+        const saved = (await pg`SELECT ydoc FROM pages WHERE id=${page}`)[0]
+          .ydoc;
+        const merged = new Y.Doc();
+        Y.applyUpdate(merged, saved);
+        Y.applyUpdate(merged, Y.encodeStateAsUpdate(ydoc));
+        expect(merged.getXmlFragment('default').length).toBe(1);
+        merged.destroy();
+        await tab.goto(origin + '/home');
+      }
+      expect(contentWrites).toEqual([]);
+      return;
+    }
     await tab.goto(origin + '/s/p0-space/p/p0document');
     await tab.waitForSelector('.ProseMirror[contenteditable="true"]');
     expect(await tab.evaluate(() => document.body.innerText)).not.toContain(

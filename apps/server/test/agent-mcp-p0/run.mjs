@@ -104,17 +104,19 @@ try {
   const report = resolve(
     here,
     '../../../../docs/iterations/20261018_01_agent-document-mcp/test/' +
-      (process.env.P2_RETENTION === 'true'
-        ? process.env.P2_ACCEPTANCE === 'true'
-          ? 'p2-retention-clients-jest-results.json'
-          : 'p2-retention-jest-results.json'
-        : process.env.P2_ACCEPTANCE === 'true'
-          ? 'p2-jest-results.json'
-          : process.env.P1_CODEX_PROBE === 'true'
-            ? 'p1-codex-jest-results.json'
-            : process.env.P1_ACCEPTANCE === 'true'
-              ? 'p1-jest-results.json'
-              : 'p0-jest-results.json'),
+      (process.env.P2_LEGACY === 'true'
+        ? 'p2-legacy-jest-results.json'
+        : process.env.P2_RETENTION === 'true'
+          ? process.env.P2_ACCEPTANCE === 'true'
+            ? 'p2-retention-clients-jest-results.json'
+            : 'p2-retention-jest-results.json'
+          : process.env.P2_ACCEPTANCE === 'true'
+            ? 'p2-jest-results.json'
+            : process.env.P1_CODEX_PROBE === 'true'
+              ? 'p1-codex-jest-results.json'
+              : process.env.P1_ACCEPTANCE === 'true'
+                ? 'p1-jest-results.json'
+                : 'p0-jest-results.json'),
   );
   await rm(report, { force: true });
   const child = spawn(
@@ -126,7 +128,8 @@ try {
       join(here, 'jest.config.cjs'),
       '--runInBand',
       ...(process.env.P1_CODEX_PROBE === 'true' ||
-      process.env.P2_CLIENTS_ONLY === 'true'
+      process.env.P2_CLIENTS_ONLY === 'true' ||
+      process.env.P2_LEGACY === 'true'
         ? ['--runTestsByPath', join(here, 'full-app.spec.ts')]
         : []),
       '--json',
