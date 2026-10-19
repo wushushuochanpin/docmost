@@ -29,7 +29,7 @@ disclaimer: 文档可能更新，仅供参考；当前代码、产品行为与�
 - 恢复 websocket，两次打开文档；验证可编辑、无页面加载失败，已存二进制与原始缓存合并仍只有一份正文。
 - 修改前测试失败，捕获两次无人编辑的 pages/update 正文覆盖。
 - 修改后测试通过；报告见 p2-legacy-jest-results.json 和 p2-legacy-runtime.json。
-- 客户端与服务端构建、ProseMirror 单例及实时部署检查通过。全套 MCP 回归另外运行。
+- 客户端与服务端构建、ProseMirror 单例及实时部署检查通过。全套 MCP 回归首轮 130/131 通过，preview p95=2196ms 超过 2000ms；同代码独立复跑 10 套件 131/131 和 1 快照通过，preview p95=502ms，commit p95=708ms。保留首轮失败证据 p2-release-first-run.json；性能波动不能等同于生产容量验收。
 
 ## 定向修复与边界
 
