@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { type PropsWithChildren, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Outlet, useLocation } from "react-router-dom";
 
@@ -25,12 +25,23 @@ export function RouteLoadingFallback({
   );
 }
 
+export function RouteLoadingBoundary({
+  children,
+  fullPage = false,
+}: PropsWithChildren<{ fullPage?: boolean }>) {
+  return (
+    <Suspense fallback={<RouteLoadingFallback fullPage={fullPage} />}>
+      {children}
+    </Suspense>
+  );
+}
+
 export function RouteContent() {
   const location = useLocation();
 
   return (
-    <Suspense key={location.pathname} fallback={<RouteLoadingFallback />}>
+    <RouteLoadingBoundary key={location.pathname}>
       <Outlet />
-    </Suspense>
+    </RouteLoadingBoundary>
   );
 }
