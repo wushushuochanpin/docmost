@@ -1,19 +1,23 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { lazy } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { RouteLoadingBoundary } from "@/components/layouts/global/route-content.tsx";
+import { preloadableLazyWithRetry } from "@/lib/lazy-import.ts";
 import { SettingsNavigationLink } from "./settings-navigation-link";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const delayedModule = new Promise<{ default: () => JSX.Element }>((resolve) => {
-  setTimeout(() => resolve({ default: () => <h1>AI settings page</h1> }), 100);
+const DelayedRoute = preloadableLazyWithRetry(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  return { default: () => <h1>AI settings page</h1> };
 });
-const DelayedPage = lazy(() => delayedModule);
+
+function CurrentPath() {
+  return <output aria-label="Current path">{useLocation().pathname}</output>;
+}
 
 describe("SettingsNavigationLink", () => {
   it("loads the destination module before committing navigation", async () => {
@@ -21,10 +25,11 @@ describe("SettingsNavigationLink", () => {
       <MemoryRouter initialEntries={["/settings/api-keys"]}>
         <SettingsNavigationLink
           to="/settings/ai"
-          preload={() => delayedModule.then(() => undefined)}
+          preload={() => DelayedRoute.preload().then(() => undefined)}
         >
           AI settings
         </SettingsNavigationLink>
+        <CurrentPath />
         <Routes>
           <Route
             path="/settings/api-keys"
@@ -34,7 +39,7 @@ describe("SettingsNavigationLink", () => {
             path="/settings/ai"
             element={
               <RouteLoadingBoundary>
-                <DelayedPage />
+                <DelayedRoute.Component />
               </RouteLoadingBoundary>
             }
           />
@@ -47,9 +52,15 @@ describe("SettingsNavigationLink", () => {
     expect(
       screen.getByRole("heading", { name: "API management page" }),
     ).toBeTruthy();
+    expect(screen.getByLabelText("Current path").textContent).toBe(
+      "/settings/api-keys",
+    );
     expect(
       await screen.findByRole("heading", { name: "AI settings page" }),
     ).toBeTruthy();
+    expect(screen.getByLabelText("Current path").textContent).toBe(
+      "/settings/ai",
+    );
     expect(
       screen.queryByRole("heading", { name: "API management page" }),
     ).toBeNull();
