@@ -1,0 +1,155 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: docmost
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: docmost-deployer
+  namespace: arc-systems
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: docmost-storage
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: docmost-local
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - vm-0-16-ubuntu
+  hostPath:
+    path: /var/lib/docmost/storage
+    type: Directory
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: docmost-storage
+  namespace: docmost
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: docmost-local
+  volumeName: docmost-storage
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docmost-postgres
+  namespace: docmost
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 15432
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: docmost-postgres
+  namespace: docmost
+  labels:
+    kubernetes.io/service-name: docmost-postgres
+addressType: IPv4
+ports:
+  - name: postgres
+    protocol: TCP
+    port: 15432
+endpoints:
+  - addresses:
+      - 10.3.0.16
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docmost-redis
+  namespace: docmost
+spec:
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 16379
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: docmost-redis
+  namespace: docmost
+  labels:
+    kubernetes.io/service-name: docmost-redis
+addressType: IPv4
+ports:
+  - name: redis
+    protocol: TCP
+    port: 16379
+endpoints:
+  - addresses:
+      - 10.3.0.16
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: docmost-deployer
+  namespace: docmost
+rules:
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+      - services
+      - secrets
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - pods/exec
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: docmost-deployer
+  namespace: docmost
+subjects:
+  - kind: ServiceAccount
+    name: docmost-deployer
+    namespace: arc-systems
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: docmost-deployer

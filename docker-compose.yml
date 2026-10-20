@@ -35,6 +35,9 @@ services:
       POSTGRES_PASSWORD: ${DOCMOST_DB_PASSWORD}
     ports:
       - "127.0.0.1:5432:5432"
+      # K3s workloads reach the existing stateful dependency through the
+      # node's private address. Never set DOCMOST_NODE_IP to a public address.
+      - "${DOCMOST_NODE_IP:-127.0.0.1}:15432:5432"
     restart: unless-stopped
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -42,6 +45,8 @@ services:
   redis:
     image: redis:7.2-alpine
     command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "${DOCMOST_NODE_IP:-127.0.0.1}:16379:6379"
     restart: unless-stopped
     volumes:
       - redis_data:/data
