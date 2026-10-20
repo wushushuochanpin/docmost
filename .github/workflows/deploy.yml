@@ -118,8 +118,6 @@ jobs:
           trap rollback ERR
 
           kubectl apply -f "$manifest"
-          kubectl -n docmost annotate deployment docmost \
-            "docmost.dev/source-sha=${GITHUB_SHA}" --overwrite
           kubectl -n docmost rollout status deployment/docmost --timeout=10m
 
           current_image=$(kubectl -n docmost get deployment docmost \
@@ -127,7 +125,22 @@ jobs:
           test "$current_image" = "$image"
           kubectl -n docmost exec deployment/docmost -- \
             curl -fsS --max-time 15 http://127.0.0.1:3000/api/health >/dev/null
-          curl -fsS --max-time 20 https://book.superchat.help/api/health >/dev/null
+
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --connect-timeout 5 --max-time 20 \
+              https://book.superchat.help/api/health >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 6 ]; then
+              echo "Public health check failed after $attempt attempts" >&2
+              exit 1
+            fi
+            echo "Public health check attempt $attempt failed; retrying in 5 seconds" >&2
+            sleep 5
+          done
+
+          kubectl -n docmost annotate deployment docmost \
+            "docmost.dev/source-sha=${GITHUB_SHA}" --overwrite
           trap - ERR
 
       - name: Record the deployed identity
