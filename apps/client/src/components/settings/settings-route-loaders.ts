@@ -1,32 +1,79 @@
-export const settingsRouteLoaders = {
-  agentConnections: () =>
-    import("@/features/agent-connections/connections-page"),
-  agentConnectionDetail: () =>
-    import("@/features/agent-connections/detail-page"),
-  agentPolicy: () => import("@/features/agent-connections/policy-page"),
-  agentActivity: () => import("@/features/agent-connections/activity-page"),
-  accountProfile: () => import("@/pages/settings/account/account-settings"),
-  accountPreferences: () =>
-    import("@/pages/settings/account/account-preferences.tsx"),
-  accountApiKeys: () =>
-    import("@/features/compliance-admin/api-keys/pages/user-api-keys.tsx"),
-  workspace: () => import("@/pages/settings/workspace/workspace-settings"),
-  members: () => import("@/pages/settings/workspace/workspace-members"),
-  workspaceApiKeys: () =>
-    import("@/features/compliance-admin/api-keys/pages/workspace-api-keys.tsx"),
-  groups: () => import("@/pages/settings/group/groups"),
-  groupInfo: () => import("@/pages/settings/group/group-info"),
-  spaces: () => import("@/pages/settings/space/spaces.tsx"),
-  sharing: () => import("@/pages/settings/shares/shares.tsx"),
-  security: () => import("@/ee/security/pages/security.tsx"),
-  ai: () => import("@/ee/ai/pages/ai-settings.tsx"),
-  audit: () => import("@/features/compliance-admin/audit/pages/audit-logs.tsx"),
-  verifications: () =>
-    import("@/ee/page-verification/pages/verified-pages.tsx"),
-  backup: () => import("@/pages/settings/backup/backup"),
-  license: () => import("@/ee/licence/pages/license.tsx"),
-  billing: () => import("@/ee/billing/pages/billing.tsx"),
+import { preloadableLazyWithRetry } from "@/lib/lazy-import.ts";
+
+export const settingsRouteModules = {
+  agentConnections: preloadableLazyWithRetry(
+    () => import("@/features/agent-connections/connections-page"),
+  ),
+  agentConnectionDetail: preloadableLazyWithRetry(
+    () => import("@/features/agent-connections/detail-page"),
+  ),
+  agentPolicy: preloadableLazyWithRetry(
+    () => import("@/features/agent-connections/policy-page"),
+  ),
+  agentActivity: preloadableLazyWithRetry(
+    () => import("@/features/agent-connections/activity-page"),
+  ),
+  accountProfile: preloadableLazyWithRetry(
+    () => import("@/pages/settings/account/account-settings"),
+  ),
+  accountPreferences: preloadableLazyWithRetry(
+    () => import("@/pages/settings/account/account-preferences.tsx"),
+  ),
+  accountApiKeys: preloadableLazyWithRetry(
+    () =>
+      import("@/features/compliance-admin/api-keys/pages/user-api-keys.tsx"),
+  ),
+  workspace: preloadableLazyWithRetry(
+    () => import("@/pages/settings/workspace/workspace-settings"),
+  ),
+  members: preloadableLazyWithRetry(
+    () => import("@/pages/settings/workspace/workspace-members"),
+  ),
+  workspaceApiKeys: preloadableLazyWithRetry(
+    () =>
+      import("@/features/compliance-admin/api-keys/pages/workspace-api-keys.tsx"),
+  ),
+  groups: preloadableLazyWithRetry(
+    () => import("@/pages/settings/group/groups"),
+  ),
+  groupInfo: preloadableLazyWithRetry(
+    () => import("@/pages/settings/group/group-info"),
+  ),
+  spaces: preloadableLazyWithRetry(
+    () => import("@/pages/settings/space/spaces.tsx"),
+  ),
+  sharing: preloadableLazyWithRetry(
+    () => import("@/pages/settings/shares/shares.tsx"),
+  ),
+  security: preloadableLazyWithRetry(
+    () => import("@/ee/security/pages/security.tsx"),
+  ),
+  ai: preloadableLazyWithRetry(() => import("@/ee/ai/pages/ai-settings.tsx")),
+  audit: preloadableLazyWithRetry(
+    () => import("@/features/compliance-admin/audit/pages/audit-logs.tsx"),
+  ),
+  verifications: preloadableLazyWithRetry(
+    () => import("@/ee/page-verification/pages/verified-pages.tsx"),
+  ),
+  backup: preloadableLazyWithRetry(
+    () => import("@/pages/settings/backup/backup"),
+  ),
+  license: preloadableLazyWithRetry(
+    () => import("@/ee/licence/pages/license.tsx"),
+  ),
+  billing: preloadableLazyWithRetry(
+    () => import("@/ee/billing/pages/billing.tsx"),
+  ),
 } as const;
+
+export const settingsRouteLoaders = Object.fromEntries(
+  Object.entries(settingsRouteModules).map(([key, route]) => [
+    key,
+    route.preload,
+  ]),
+) as {
+  [Key in keyof typeof settingsRouteModules]: (typeof settingsRouteModules)[Key]["preload"];
+};
 
 export type SettingsRouteLoader =
   (typeof settingsRouteLoaders)[keyof typeof settingsRouteLoaders];

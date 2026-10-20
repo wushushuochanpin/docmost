@@ -1,4 +1,9 @@
-import { lazy, type ComponentType } from "react";
+import {
+  createElement,
+  lazy,
+  type ComponentProps,
+  type ComponentType,
+} from "react";
 
 const RETRYABLE_IMPORT_ERRORS = [
   "ChunkLoadError",
@@ -35,8 +40,7 @@ export async function retryDynamicImport<T>(
       return await loader();
     } catch (error) {
       lastError = error;
-      const shouldRetry =
-        attempt < retries && isRetryableImportError(error);
+      const shouldRetry = attempt < retries && isRetryableImportError(error);
 
       if (!shouldRetry) {
         throw error;
@@ -53,4 +57,34 @@ export function lazyWithRetry<T extends ComponentType<any>>(
   loader: () => Promise<{ default: T }>,
 ) {
   return lazy(() => retryDynamicImport(loader));
+}
+
+export function preloadableLazyWithRetry<T extends ComponentType<any>>(
+  loader: () => Promise<{ default: T }>,
+) {
+  let resolvedModule: { default: T } | undefined;
+  let pendingModule: Promise<{ default: T }> | undefined;
+
+  const preload = () => {
+    if (resolvedModule) return Promise.resolve(resolvedModule);
+
+    pendingModule ??= retryDynamicImport(loader).then(
+      (module) => {
+        resolvedModule = module;
+        return module;
+      },
+      (error) => {
+        pendingModule = undefined;
+        throw error;
+      },
+    );
+    return pendingModule;
+  };
+
+  function PreloadableComponent(props: ComponentProps<T>) {
+    if (!resolvedModule) throw preload();
+    return createElement(resolvedModule.default, props);
+  }
+
+  return { Component: PreloadableComponent, preload };
 }

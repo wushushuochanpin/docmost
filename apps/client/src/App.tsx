@@ -25,7 +25,7 @@ import {
   RouteLoadingBoundary,
   RouteLoadingFallback,
 } from "@/components/layouts/global/route-content.tsx";
-import { settingsRouteLoaders } from "@/components/settings/settings-route-loaders.ts";
+import { settingsRouteModules } from "@/components/settings/settings-route-loaders.ts";
 
 const SetupWorkspace = lazyWithRetry(
   () => import("@/pages/auth/setup-workspace.tsx"),
@@ -33,21 +33,18 @@ const SetupWorkspace = lazyWithRetry(
 const LoginPage = lazyWithRetry(() => import("@/pages/auth/login"));
 const Home = lazyWithRetry(() => import("@/pages/dashboard/home"));
 const Page = lazyWithRetry(() => import("@/pages/page/page"));
-const AgentConnections = lazyWithRetry(settingsRouteLoaders.agentConnections);
-const AgentConnectionDetail = lazyWithRetry(
-  settingsRouteLoaders.agentConnectionDetail,
-);
-const AgentPolicy = lazyWithRetry(settingsRouteLoaders.agentPolicy);
-const AgentActivity = lazyWithRetry(settingsRouteLoaders.agentActivity);
-const AccountSettings = lazyWithRetry(settingsRouteLoaders.accountProfile);
-const WorkspaceMembers = lazyWithRetry(settingsRouteLoaders.members);
-const WorkspaceSettings = lazyWithRetry(settingsRouteLoaders.workspace);
-const Groups = lazyWithRetry(settingsRouteLoaders.groups);
-const GroupInfo = lazyWithRetry(settingsRouteLoaders.groupInfo);
-const Spaces = lazyWithRetry(settingsRouteLoaders.spaces);
-const AccountPreferences = lazyWithRetry(
-  settingsRouteLoaders.accountPreferences,
-);
+const AgentConnections = settingsRouteModules.agentConnections.Component;
+const AgentConnectionDetail =
+  settingsRouteModules.agentConnectionDetail.Component;
+const AgentPolicy = settingsRouteModules.agentPolicy.Component;
+const AgentActivity = settingsRouteModules.agentActivity.Component;
+const AccountSettings = settingsRouteModules.accountProfile.Component;
+const WorkspaceMembers = settingsRouteModules.members.Component;
+const WorkspaceSettings = settingsRouteModules.workspace.Component;
+const Groups = settingsRouteModules.groups.Component;
+const GroupInfo = settingsRouteModules.groupInfo.Component;
+const Spaces = settingsRouteModules.spaces.Component;
+const AccountPreferences = settingsRouteModules.accountPreferences.Component;
 const SpaceHome = lazyWithRetry(() => import("@/pages/space/space-home.tsx"));
 const PageRedirect = lazyWithRetry(
   () => import("@/pages/page/page-redirect.tsx"),
@@ -61,15 +58,15 @@ const ForgotPassword = lazyWithRetry(
 const PasswordReset = lazyWithRetry(
   () => import("./pages/auth/password-reset"),
 );
-const Billing = lazyWithRetry(settingsRouteLoaders.billing);
+const Billing = settingsRouteModules.billing.Component;
 const CloudLogin = lazyWithRetry(() => import("@/ee/pages/cloud-login.tsx"));
 const CreateWorkspace = lazyWithRetry(
   () => import("@/ee/pages/create-workspace.tsx"),
 );
-const Security = lazyWithRetry(settingsRouteLoaders.security);
-const License = lazyWithRetry(settingsRouteLoaders.license);
+const Security = settingsRouteModules.security.Component;
+const License = settingsRouteModules.license.Component;
 const SharedPage = lazyWithRetry(() => import("@/pages/share/shared-page.tsx"));
-const Shares = lazyWithRetry(settingsRouteLoaders.sharing);
+const Shares = settingsRouteModules.sharing.Component;
 const ShareLayout = lazyWithRetry(
   () => import("@/features/share/components/share-layout.tsx"),
 );
@@ -81,15 +78,15 @@ const SpaceTrash = lazyWithRetry(() => import("@/pages/space/space-trash.tsx"));
 const PrintPreviewPage = lazyWithRetry(
   () => import("@/pages/page/print-preview.tsx"),
 );
-const UserApiKeys = lazyWithRetry(settingsRouteLoaders.accountApiKeys);
-const WorkspaceApiKeys = lazyWithRetry(settingsRouteLoaders.workspaceApiKeys);
-const AiSettings = lazyWithRetry(settingsRouteLoaders.ai);
-const AuditLogs = lazyWithRetry(settingsRouteLoaders.audit);
-const Backup = lazyWithRetry(settingsRouteLoaders.backup);
+const UserApiKeys = settingsRouteModules.accountApiKeys.Component;
+const WorkspaceApiKeys = settingsRouteModules.workspaceApiKeys.Component;
+const AiSettings = settingsRouteModules.ai.Component;
+const AuditLogs = settingsRouteModules.audit.Component;
+const Backup = settingsRouteModules.backup.Component;
 const PdfRenderPage = lazyWithRetry(
   () => import("@/ee/pdf-export/pdf-render-page.tsx"),
 );
-const VerifiedPages = lazyWithRetry(settingsRouteLoaders.verifications);
+const VerifiedPages = settingsRouteModules.verifications.Component;
 const TemplateList = lazyWithRetry(
   () => import("@/ee/template/pages/template-list"),
 );
