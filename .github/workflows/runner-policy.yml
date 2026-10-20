@@ -16,6 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 scripts/check-ci-runner-policy.py
+      - run: python3 scripts/check-k8s-deployment.py
       - name: Verify execution identity
         run: |
           test "$(id -u)" != 0

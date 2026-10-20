@@ -1,8 +1,8 @@
 name: Deploy to book.superchat.help
 
-# 部署自动化：push 到 main 自动部署；也可手动触发。
-# 经 SSH 到 superchat-dev（43.134.45.185）执行 scripts/deploy-book.sh，
-# 只重建/更新 docmost 应用容器，不动数据库与共享 nginx。部署后带健康检查，失败即任务标红。
+# Build an immutable image on the repository's ARC runner, then roll that
+# exact digest through the in-cluster Kubernetes API. The production host no
+# longer pulls source, builds images, or runs docker compose during releases.
 on:
   push:
     branches:
@@ -10,32 +10,138 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: docmost-book-deploy
+  group: docmost-book-production
   cancel-in-progress: false
 
 permissions:
   contents: read
+  packages: write
+
+env:
+  IMAGE_REPOSITORY: ghcr.io/wushushuochanpin/docmost
+  KUBECTL_VERSION: v1.36.4
 
 jobs:
   deploy:
     runs-on: docmost-linux-checks
-    timeout-minutes: 40
+    timeout-minutes: 45
+    environment: production
     steps:
-      - name: Checkout
+      - name: Checkout the candidate
         uses: actions/checkout@v4
 
-      - name: Deploy on superchat-dev
-        env:
-          DEPLOY_SSH_KEY: ${{ secrets.DOCMOST_SSH_PRIVATE_KEY }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push the immutable application image
+        id: image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE_REPOSITORY }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=docmost-production-amd64
+          cache-to: type=gha,scope=docmost-production-amd64,mode=max
+
+      - name: Install the pinned Kubernetes client
         run: |
           set -euo pipefail
-          mkdir -p ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          cat scripts/deploy-book.sh | ssh -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
-            root@43.134.45.185 'bash -s'
+          arch=$(uname -m)
+          case "$arch" in
+            x86_64) kubectl_arch=amd64 ;;
+            aarch64|arm64) kubectl_arch=arm64 ;;
+            *) echo "unsupported runner architecture: $arch" >&2; exit 1 ;;
+          esac
+          base="https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${kubectl_arch}"
+          curl -fsSLo "$RUNNER_TEMP/kubectl" "$base/kubectl"
+          curl -fsSLo "$RUNNER_TEMP/kubectl.sha256" "$base/kubectl.sha256"
+          echo "$(cat "$RUNNER_TEMP/kubectl.sha256")  $RUNNER_TEMP/kubectl" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/kubectl"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
-      - name: Notify on failure
+      - name: Verify the production deployment boundary
+        run: |
+          set -euo pipefail
+          kubectl -n docmost get service docmost-postgres >/dev/null
+          kubectl -n docmost get service docmost-redis >/dev/null
+          kubectl -n docmost get secret docmost-env >/dev/null
+          kubectl auth can-i patch deployments.apps -n docmost | grep -qx yes
+          kubectl auth can-i create secrets -n docmost | grep -qx yes
+
+      - name: Refresh the registry pull credential
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          kubectl -n docmost create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io \
+            --docker-username="${GITHUB_ACTOR}" \
+            --docker-password="${GHCR_TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply the exact image digest
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          test -n "$IMAGE_DIGEST"
+          image="${IMAGE_REPOSITORY}@${IMAGE_DIGEST}"
+          manifest="$RUNNER_TEMP/docmost-runtime.yaml"
+          sed "s|__DOCMOST_IMAGE__|${image}|g" \
+            deploy/k8s/production/runtime.yaml > "$manifest"
+          ! grep -q '__DOCMOST_IMAGE__' "$manifest"
+          kubectl apply --dry-run=server -f "$manifest" >/dev/null
+
+          previous_image=$(kubectl -n docmost get deployment docmost \
+            -o jsonpath='{.spec.template.spec.containers[?(@.name=="docmost")].image}' \
+            2>/dev/null || true)
+          rollback() {
+            rc=$?
+            if [ -n "$previous_image" ]; then
+              echo "Deployment failed; restoring $previous_image" >&2
+              kubectl -n docmost set image deployment/docmost "docmost=$previous_image" || true
+              kubectl -n docmost rollout status deployment/docmost --timeout=5m || true
+            fi
+            exit "$rc"
+          }
+          trap rollback ERR
+
+          kubectl apply -f "$manifest"
+          kubectl -n docmost annotate deployment docmost \
+            "docmost.dev/source-sha=${GITHUB_SHA}" --overwrite
+          kubectl -n docmost rollout status deployment/docmost --timeout=10m
+
+          current_image=$(kubectl -n docmost get deployment docmost \
+            -o jsonpath='{.spec.template.spec.containers[?(@.name=="docmost")].image}')
+          test "$current_image" = "$image"
+          kubectl -n docmost exec deployment/docmost -- \
+            curl -fsS --max-time 15 http://127.0.0.1:3000/api/health >/dev/null
+          curl -fsS --max-time 20 https://book.superchat.help/api/health >/dev/null
+          trap - ERR
+
+      - name: Record the deployed identity
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          echo "source=${GITHUB_SHA}"
+          echo "image=${IMAGE_REPOSITORY}@${IMAGE_DIGEST}"
+          kubectl -n docmost get deployment docmost -o wide
+          kubectl -n docmost get pods -l app.kubernetes.io/name=docmost
+
+      - name: Preserve Kubernetes diagnostics on failure
         if: failure()
-        run: echo "::error::docmost 部署失败，请检查服务器 /root/coderepository/docmost 与容器状态"
+        run: |
+          kubectl -n docmost describe deployment docmost || true
+          kubectl -n docmost get pods -l app.kubernetes.io/name=docmost -o wide || true
+          kubectl -n docmost logs deployment/docmost --tail=150 || true
