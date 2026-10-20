@@ -17,7 +17,7 @@ import {
   History,
   ShieldCheck,
 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import classes from "./settings.module.css";
 import { useTranslation } from "react-i18next";
 import { isBackupEnabled, isCloud } from "@/lib/config.ts";
@@ -51,6 +51,7 @@ import {
   settingsRouteLoaders,
   type SettingsRouteLoader,
 } from "@/components/settings/settings-route-loaders.ts";
+import { SettingsNavigationLink } from "@/components/settings/settings-navigation-link.tsx";
 
 type CapabilityKey = keyof IWorkspaceCapabilities;
 
@@ -386,9 +387,10 @@ export default function SettingsSidebar() {
           }
 
           return (
-            <Link
+            <SettingsNavigationLink
               onPointerEnter={prefetchHandler}
               onFocus={prefetchHandler}
+              preload={prefetchHandler}
               className={classes.link}
               data-active={active.startsWith(item.path) || undefined}
               key={item.label}
@@ -401,7 +403,7 @@ export default function SettingsSidebar() {
             >
               <item.icon className={classes.linkIcon} strokeWidth={1.75} />
               <span>{t(item.label)}</span>
-            </Link>
+            </SettingsNavigationLink>
           );
         })}
       </div>

@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from "react";
+import { type ReactNode, Suspense, useEffect } from "react";
 import {
   Navigate,
   Route,
@@ -21,7 +21,10 @@ import {
 } from "@/lib/api-client.ts";
 import { lazyWithRetry } from "@/lib/lazy-import.ts";
 import Layout from "@/components/layouts/global/layout.tsx";
-import { RouteLoadingFallback } from "@/components/layouts/global/route-content.tsx";
+import {
+  RouteLoadingBoundary,
+  RouteLoadingFallback,
+} from "@/components/layouts/global/route-content.tsx";
 import { settingsRouteLoaders } from "@/components/settings/settings-route-loaders.ts";
 
 const SetupWorkspace = lazyWithRetry(
@@ -113,6 +116,10 @@ const LabelPage = lazyWithRetry(() => import("@/pages/label/label-page"));
 const AgentConsentPage = lazyWithRetry(
   () => import("@/features/agent-oauth/consent-page"),
 );
+
+function settingsRoute(element: ReactNode) {
+  return <RouteLoadingBoundary>{element}</RouteLoadingBoundary>;
+}
 
 export default function App() {
   const shareLegacyRouteMode = getShareLegacyRouteMode();
@@ -224,47 +231,76 @@ export default function App() {
           <Route path={"/settings"}>
             <Route
               path="account/agent-connections"
-              element={<AgentConnections />}
+              element={settingsRoute(<AgentConnections />)}
             />
             <Route
               path="account/agent-connections/:connectionId"
-              element={<AgentConnectionDetail />}
+              element={settingsRoute(<AgentConnectionDetail />)}
             />
             <Route
               path="account/agent-connections/:connectionId/activity"
-              element={<AgentActivity />}
+              element={settingsRoute(<AgentActivity />)}
             />
-            <Route path="agent-policy" element={<AgentPolicy />} />
-            <Route path="agent-audit" element={<AgentActivity />} />
-            <Route path={"account/profile"} element={<AccountSettings />} />
+            <Route
+              path="agent-policy"
+              element={settingsRoute(<AgentPolicy />)}
+            />
+            <Route
+              path="agent-audit"
+              element={settingsRoute(<AgentActivity />)}
+            />
+            <Route
+              path={"account/profile"}
+              element={settingsRoute(<AccountSettings />)}
+            />
             <Route
               path={"account/preferences"}
-              element={<AccountPreferences />}
+              element={settingsRoute(<AccountPreferences />)}
             />
-            <Route path={"account/api-keys"} element={<UserApiKeys />} />
-            <Route path={"workspace"} element={<WorkspaceSettings />} />
-            <Route path={"members"} element={<WorkspaceMembers />} />
-            <Route path={"api-keys"} element={<WorkspaceApiKeys />} />
-            <Route path={"groups"} element={<Groups />} />
-            <Route path={"groups/:groupId"} element={<GroupInfo />} />
-            <Route path={"spaces"} element={<Spaces />} />
-            <Route path={"sharing"} element={<Shares />} />
-            <Route path={"security"} element={<Security />} />
-            <Route path={"ai"} element={<AiSettings />} />
-            <Route path={"ai/mcp"} element={<AiSettings />} />
-            <Route path={"audit"} element={<AuditLogs />} />
-            <Route path={"verifications"} element={<VerifiedPages />} />
+            <Route
+              path={"account/api-keys"}
+              element={settingsRoute(<UserApiKeys />)}
+            />
+            <Route
+              path={"workspace"}
+              element={settingsRoute(<WorkspaceSettings />)}
+            />
+            <Route
+              path={"members"}
+              element={settingsRoute(<WorkspaceMembers />)}
+            />
+            <Route
+              path={"api-keys"}
+              element={settingsRoute(<WorkspaceApiKeys />)}
+            />
+            <Route path={"groups"} element={settingsRoute(<Groups />)} />
+            <Route
+              path={"groups/:groupId"}
+              element={settingsRoute(<GroupInfo />)}
+            />
+            <Route path={"spaces"} element={settingsRoute(<Spaces />)} />
+            <Route path={"sharing"} element={settingsRoute(<Shares />)} />
+            <Route path={"security"} element={settingsRoute(<Security />)} />
+            <Route path={"ai"} element={settingsRoute(<AiSettings />)} />
+            <Route path={"ai/mcp"} element={settingsRoute(<AiSettings />)} />
+            <Route path={"audit"} element={settingsRoute(<AuditLogs />)} />
+            <Route
+              path={"verifications"}
+              element={settingsRoute(<VerifiedPages />)}
+            />
             {!isCloud() && isBackupEnabled() && (
               <>
-                <Route path={"backup"} element={<Backup />} />
+                <Route path={"backup"} element={settingsRoute(<Backup />)} />
               </>
             )}
             {!isCloud() && (
               <>
-                <Route path={"license"} element={<License />} />
+                <Route path={"license"} element={settingsRoute(<License />)} />
               </>
             )}
-            {isCloud() && <Route path={"billing"} element={<Billing />} />}
+            {isCloud() && (
+              <Route path={"billing"} element={settingsRoute(<Billing />)} />
+            )}
           </Route>
         </Route>
 
