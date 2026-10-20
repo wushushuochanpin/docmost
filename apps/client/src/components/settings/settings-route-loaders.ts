@@ -32,10 +32,13 @@ export type SettingsRouteLoader =
   (typeof settingsRouteLoaders)[keyof typeof settingsRouteLoaders];
 
 export function preloadSettingsRoute(loader?: SettingsRouteLoader) {
-  if (!loader) return;
+  if (!loader) return Promise.resolve();
 
-  void loader().catch(() => {
-    // Navigation uses lazyWithRetry and the app error boundary. A speculative
-    // preload failure must not create an unhandled rejection.
-  });
+  return loader().then(
+    () => undefined,
+    () => {
+      // Navigation uses lazyWithRetry and the app error boundary. A speculative
+      // preload failure must not create an unhandled rejection.
+    },
+  );
 }
