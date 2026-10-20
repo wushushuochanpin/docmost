@@ -21,6 +21,8 @@ required_runtime = [
     "clusterIP: 10.43.30.30",
     "maxUnavailable: 0",
     "automountServiceAccountToken: false",
+    "runAsUser: 1000",
+    "runAsGroup: 1000",
     "claimName: docmost-storage",
 ]
 forbidden = [

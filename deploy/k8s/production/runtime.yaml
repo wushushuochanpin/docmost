@@ -71,6 +71,10 @@ spec:
               drop:
                 - ALL
             runAsNonRoot: true
+            # The image declares USER node. Kubelet needs the numeric identity
+            # to enforce runAsNonRoot before the container starts.
+            runAsUser: 1000
+            runAsGroup: 1000
             seccompProfile:
               type: RuntimeDefault
           startupProbe:
