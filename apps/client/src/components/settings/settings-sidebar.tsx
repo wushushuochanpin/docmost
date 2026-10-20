@@ -1,6 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Group, Text, ScrollArea, ActionIcon, Tooltip } from "@mantine/core";
-import { User, Settings, Users, ArrowLeft, UsersRound, Boxes, Brush, Coins, Lock, Key, Globe, Sparkles, Database, History, ShieldCheck } from "lucide-react";
+import {
+  User,
+  Settings,
+  Users,
+  ArrowLeft,
+  UsersRound,
+  Boxes,
+  Brush,
+  Coins,
+  Lock,
+  Key,
+  Globe,
+  Sparkles,
+  Database,
+  History,
+  ShieldCheck,
+} from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import classes from "./settings.module.css";
 import { useTranslation } from "react-i18next";
@@ -30,6 +46,11 @@ import { mobileSidebarAtom } from "@/components/layouts/global/hooks/atoms/sideb
 import { useToggleSidebar } from "@/components/layouts/global/hooks/hooks/use-toggle-sidebar.ts";
 import { useSettingsNavigation } from "@/hooks/use-settings-navigation";
 import type { IWorkspaceCapabilities } from "@/features/workspace/types/workspace.types.ts";
+import {
+  preloadSettingsRoute,
+  settingsRouteLoaders,
+  type SettingsRouteLoader,
+} from "@/components/settings/settings-route-loaders.ts";
 
 type CapabilityKey = keyof IWorkspaceCapabilities;
 
@@ -45,6 +66,8 @@ interface DataItem {
   showDisabledInNonEE?: boolean;
   capabilityKey?: CapabilityKey;
   feature?: string;
+  loader?: SettingsRouteLoader;
+  prefetchData?: () => void;
 }
 
 interface DataGroup {
@@ -56,12 +79,23 @@ const groupedData: DataGroup[] = [
   {
     heading: "Account",
     items: [
-      { label: "我的 Agent 连接", icon: Key, path: "/settings/account/agent-connections" },
-      { label: "Profile", icon: User, path: "/settings/account/profile" },
+      {
+        label: "我的 Agent 连接",
+        icon: Key,
+        path: "/settings/account/agent-connections",
+        loader: settingsRouteLoaders.agentConnections,
+      },
+      {
+        label: "Profile",
+        icon: User,
+        path: "/settings/account/profile",
+        loader: settingsRouteLoaders.accountProfile,
+      },
       {
         label: "Preferences",
         icon: Brush,
         path: "/settings/account/preferences",
+        loader: settingsRouteLoaders.accountPreferences,
       },
       {
         label: "API keys",
@@ -71,22 +105,49 @@ const groupedData: DataGroup[] = [
         isEnterprise: true,
         showDisabledInNonEE: true,
         capabilityKey: "integrationTokens",
+        loader: settingsRouteLoaders.accountApiKeys,
+        prefetchData: prefetchApiKeys,
       },
     ],
   },
   {
     heading: "Workspace",
     items: [
-      { label: "Agent 策略", icon: ShieldCheck, path: "/settings/agent-policy", isAdmin: true },
-      { label: "Agent 审计", icon: History, path: "/settings/agent-audit", isAdmin: true },
-      { label: "General", icon: Settings, path: "/settings/workspace" },
-      { label: "Members", icon: Users, path: "/settings/members" },
+      {
+        label: "Agent 策略",
+        icon: ShieldCheck,
+        path: "/settings/agent-policy",
+        isAdmin: true,
+        loader: settingsRouteLoaders.agentPolicy,
+      },
+      {
+        label: "Agent 审计",
+        icon: History,
+        path: "/settings/agent-audit",
+        isAdmin: true,
+        loader: settingsRouteLoaders.agentActivity,
+      },
+      {
+        label: "General",
+        icon: Settings,
+        path: "/settings/workspace",
+        loader: settingsRouteLoaders.workspace,
+      },
+      {
+        label: "Members",
+        icon: Users,
+        path: "/settings/members",
+        loader: settingsRouteLoaders.members,
+        prefetchData: prefetchWorkspaceMembers,
+      },
       {
         label: "Billing",
         icon: Coins,
         path: "/settings/billing",
         isCloud: true,
         isAdmin: true,
+        loader: settingsRouteLoaders.billing,
+        prefetchData: prefetchBilling,
       },
       {
         label: "Security & SSO",
@@ -97,15 +158,40 @@ const groupedData: DataGroup[] = [
         isAdmin: true,
         showDisabledInNonEE: true,
         capabilityKey: "securityPolicies",
+        loader: settingsRouteLoaders.security,
+        prefetchData: () => {
+          prefetchSsoProviders();
+          prefetchScimTokens();
+        },
       },
-      { label: "Groups", icon: UsersRound, path: "/settings/groups" },
-      { label: "Spaces", icon: Boxes, path: "/settings/spaces" },
-      { label: "Public sharing", icon: Globe, path: "/settings/sharing" },
+      {
+        label: "Groups",
+        icon: UsersRound,
+        path: "/settings/groups",
+        loader: settingsRouteLoaders.groups,
+        prefetchData: prefetchGroups,
+      },
+      {
+        label: "Spaces",
+        icon: Boxes,
+        path: "/settings/spaces",
+        loader: settingsRouteLoaders.spaces,
+        prefetchData: prefetchSpaces,
+      },
+      {
+        label: "Public sharing",
+        icon: Globe,
+        path: "/settings/sharing",
+        loader: settingsRouteLoaders.sharing,
+        prefetchData: prefetchShares,
+      },
       {
         label: "Verified pages",
         icon: ShieldCheck,
         path: "/settings/verifications",
         feature: Feature.PAGE_VERIFICATION,
+        loader: settingsRouteLoaders.verifications,
+        prefetchData: prefetchVerifiedPages,
       },
       {
         label: "API management",
@@ -116,12 +202,15 @@ const groupedData: DataGroup[] = [
         isAdmin: true,
         showDisabledInNonEE: true,
         capabilityKey: "workspaceTokenManagement",
+        loader: settingsRouteLoaders.workspaceApiKeys,
+        prefetchData: prefetchApiKeyManagement,
       },
       {
         label: "AI settings",
         icon: Sparkles,
         path: "/settings/ai",
         isAdmin: true,
+        loader: settingsRouteLoaders.ai,
       },
       {
         label: "Audit log",
@@ -132,6 +221,8 @@ const groupedData: DataGroup[] = [
         isSelfhosted: true,
         showDisabledInNonEE: true,
         capabilityKey: "auditLogs",
+        loader: settingsRouteLoaders.audit,
+        prefetchData: prefetchAuditLogs,
       },
     ],
   },
@@ -144,11 +235,14 @@ const groupedData: DataGroup[] = [
         path: "/settings/backup",
         isSelfhosted: true,
         isAdmin: true,
+        loader: settingsRouteLoaders.backup,
       },
       {
         label: "License & Edition",
         icon: Key,
         path: "/settings/license",
+        loader: settingsRouteLoaders.license,
+        prefetchData: prefetchLicense,
       },
     ],
   },
@@ -157,7 +251,7 @@ const groupedData: DataGroup[] = [
 export default function SettingsSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
-  const [active, setActive] = useState(location.pathname);
+  const active = location.pathname;
   const { goBack } = useSettingsNavigation();
   const { isAdmin, isOwner } = useUserRole();
   const [workspace] = useAtom(workspaceAtom);
@@ -165,10 +259,6 @@ export default function SettingsSidebar() {
   const upgradeLabel = useUpgradeLabel();
   const [mobileSidebarOpened] = useAtom(mobileSidebarAtom);
   const toggleMobileSidebar = useToggleSidebar(mobileSidebarAtom);
-
-  useEffect(() => {
-    setActive(location.pathname);
-  }, [location.pathname]);
 
   const hasRoleAccess = (item: DataItem) => {
     if (item.isOwner) return isOwner;
@@ -253,49 +343,15 @@ export default function SettingsSidebar() {
             return null;
           }
 
-          let prefetchHandler: (() => void) | undefined;
-          switch (item.label) {
-            case "Members":
-              prefetchHandler = prefetchWorkspaceMembers;
-              break;
-            case "Spaces":
-              prefetchHandler = prefetchSpaces;
-              break;
-            case "Groups":
-              prefetchHandler = prefetchGroups;
-              break;
-            case "Billing":
-              prefetchHandler = prefetchBilling;
-              break;
-            case "License & Edition":
-              if (workspace?.hasLicenseKey) {
-                prefetchHandler = prefetchLicense;
-              }
-              break;
-            case "Security & SSO":
-              prefetchHandler = () => {
-                prefetchSsoProviders();
-                prefetchScimTokens();
-              };
-              break;
-            case "Public sharing":
-              prefetchHandler = prefetchShares;
-              break;
-            case "API keys":
-              prefetchHandler = prefetchApiKeys;
-              break;
-            case "API management":
-              prefetchHandler = prefetchApiKeyManagement;
-              break;
-            case "Audit log":
-              prefetchHandler = prefetchAuditLogs;
-              break;
-            case "Verified pages":
-              prefetchHandler = prefetchVerifiedPages;
-              break;
-            default:
-              break;
-          }
+          const prefetchHandler = () => {
+            preloadSettingsRoute(item.loader);
+            if (
+              item.label !== "License & Edition" ||
+              workspace?.hasLicenseKey
+            ) {
+              item.prefetchData?.();
+            }
+          };
 
           const isDisabled = isItemDisabled(item);
 
@@ -331,7 +387,8 @@ export default function SettingsSidebar() {
 
           return (
             <Link
-              onMouseEnter={prefetchHandler}
+              onPointerEnter={prefetchHandler}
+              onFocus={prefetchHandler}
               className={classes.link}
               data-active={active.startsWith(item.path) || undefined}
               key={item.label}

@@ -14,6 +14,7 @@ import { getApiKeys } from "@/features/compliance-admin/api-keys";
 import { getAuditLogs } from "@/features/compliance-admin/audit";
 import { getVerificationList } from "@/ee/page-verification/services/page-verification-service";
 import { getScimTokens } from "@/ee/scim/services/scim-token-service";
+import type { IVerificationListParams } from "@/ee/page-verification/types/page-verification.types.ts";
 
 export const prefetchWorkspaceMembers = () => {
   const params: QueryParams = { limit: 100, query: "" };
@@ -24,16 +25,18 @@ export const prefetchWorkspaceMembers = () => {
 };
 
 export const prefetchSpaces = () => {
+  const params = { cursor: undefined, query: "" };
   queryClient.prefetchQuery({
-    queryKey: ["spaces", {}],
-    queryFn: () => getSpaces({}),
+    queryKey: ["spaces", params],
+    queryFn: () => getSpaces(params),
   });
 };
 
 export const prefetchGroups = () => {
+  const params = { cursor: undefined, query: "" };
   queryClient.prefetchQuery({
-    queryKey: ["groups", {}],
-    queryFn: () => getGroups({}),
+    queryKey: ["groups", params],
+    queryFn: () => getGroups(params),
   });
 };
 
@@ -71,16 +74,29 @@ export const prefetchShares = () => {
 };
 
 export const prefetchApiKeys = () => {
+  const params = {
+    limit: 20,
+    query: "",
+    cursor: undefined,
+    beforeCursor: undefined,
+  };
   queryClient.prefetchQuery({
-    queryKey: ["api-key-list", {}],
-    queryFn: () => getApiKeys({}),
+    queryKey: ["api-key-list", params],
+    queryFn: () => getApiKeys(params),
   });
 };
 
 export const prefetchApiKeyManagement = () => {
+  const params = {
+    limit: 20,
+    query: "",
+    cursor: undefined,
+    beforeCursor: undefined,
+    adminView: true,
+  };
   queryClient.prefetchQuery({
-    queryKey: ["api-key-list", { adminView: true }],
-    queryFn: () => getApiKeys({ adminView: true }),
+    queryKey: ["api-key-list", params],
+    queryFn: () => getApiKeys(params),
   });
 };
 
@@ -93,10 +109,22 @@ export const prefetchAuditLogs = () => {
 };
 
 export const prefetchVerifiedPages = () => {
-  const params = { limit: 50 };
+  const params: IVerificationListParams = {
+    cursor: undefined,
+    limit: 50,
+    spaceIds: undefined,
+    type: null as IVerificationListParams["type"],
+    query: undefined,
+  };
   queryClient.prefetchQuery({
     queryKey: ["verification-list", params],
     queryFn: () => getVerificationList(params),
+  });
+
+  const spacesParams = { limit: 100 };
+  queryClient.prefetchQuery({
+    queryKey: ["spaces", spacesParams],
+    queryFn: () => getSpaces(spacesParams),
   });
 };
 
