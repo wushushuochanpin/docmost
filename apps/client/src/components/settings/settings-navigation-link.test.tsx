@@ -10,16 +10,19 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const DelayedPage = lazy(async () => {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  return { default: () => <h1>AI settings page</h1> };
+const delayedModule = new Promise<{ default: () => JSX.Element }>((resolve) => {
+  setTimeout(() => resolve({ default: () => <h1>AI settings page</h1> }), 100);
 });
+const DelayedPage = lazy(() => delayedModule);
 
 describe("SettingsNavigationLink", () => {
-  it("commits the destination loading state instead of retaining stale content", async () => {
+  it("loads the destination module before committing navigation", async () => {
     render(
       <MemoryRouter initialEntries={["/settings/api-keys"]}>
-        <SettingsNavigationLink to="/settings/ai">
+        <SettingsNavigationLink
+          to="/settings/ai"
+          preload={() => delayedModule.then(() => undefined)}
+        >
           AI settings
         </SettingsNavigationLink>
         <Routes>
@@ -41,12 +44,14 @@ describe("SettingsNavigationLink", () => {
 
     fireEvent.click(screen.getByRole("link", { name: "AI settings" }));
 
-    expect(screen.getByRole("status", { name: "Loading..." })).toBeTruthy();
     expect(
-      screen.queryByRole("heading", { name: "API management page" }),
-    ).toBeNull();
+      screen.getByRole("heading", { name: "API management page" }),
+    ).toBeTruthy();
     expect(
       await screen.findByRole("heading", { name: "AI settings page" }),
     ).toBeTruthy();
+    expect(
+      screen.queryByRole("heading", { name: "API management page" }),
+    ).toBeNull();
   });
 });

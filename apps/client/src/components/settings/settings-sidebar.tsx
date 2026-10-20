@@ -345,13 +345,14 @@ export default function SettingsSidebar() {
           }
 
           const prefetchHandler = () => {
-            preloadSettingsRoute(item.loader);
+            const routePreload = preloadSettingsRoute(item.loader);
             if (
               item.label !== "License & Edition" ||
               workspace?.hasLicenseKey
             ) {
               item.prefetchData?.();
             }
+            return routePreload;
           };
 
           const isDisabled = isItemDisabled(item);

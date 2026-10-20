@@ -3,7 +3,7 @@ import { Link, type LinkProps, useNavigate } from "react-router-dom";
 
 type SettingsNavigationLinkProps = Omit<LinkProps, "onClick"> & {
   onClick?: MouseEventHandler<HTMLAnchorElement>;
-  preload?: () => void;
+  preload?: () => Promise<void> | void;
 };
 
 export function SettingsNavigationLink({
@@ -14,7 +14,7 @@ export function SettingsNavigationLink({
 }: SettingsNavigationLinkProps) {
   const navigate = useNavigate();
 
-  const handleClick: MouseEventHandler<HTMLAnchorElement> = (event) => {
+  const handleClick: MouseEventHandler<HTMLAnchorElement> = async (event) => {
     onClick?.(event);
     if (event.defaultPrevented) return;
 
@@ -29,8 +29,8 @@ export function SettingsNavigationLink({
     }
 
     event.preventDefault();
-    preload?.();
-    navigate(to, { flushSync: true });
+    await preload?.();
+    navigate(to);
   };
 
   return <Link {...props} to={to} onClick={handleClick} />;
