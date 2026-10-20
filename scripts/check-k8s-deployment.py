@@ -15,6 +15,7 @@ required_workflow = [
     "kubectl apply --dry-run=server",
     "kubectl -n docmost rollout status",
     "previous_image=",
+    "for attempt in 1 2 3 4 5 6",
 ]
 required_runtime = [
     "image: __DOCMOST_IMAGE__",
@@ -42,6 +43,12 @@ for needle in required_runtime:
 for needle in forbidden:
     if needle in WORKFLOW:
         errors.append(f"deploy workflow reintroduced retired host path: {needle}")
+
+public_health = "https://book.superchat.help/api/health"
+source_annotation = '"docmost.dev/source-sha=${GITHUB_SHA}"'
+if public_health in WORKFLOW and source_annotation in WORKFLOW:
+    if WORKFLOW.index(source_annotation) < WORKFLOW.index(public_health):
+        errors.append("deploy identity must only be recorded after public health passes")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)
