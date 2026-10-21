@@ -58,6 +58,9 @@ spec:
           envFrom:
             - secretRef:
                 name: docmost-env
+          env:
+            - name: BACKUP_LOCAL_PATH
+              value: /app/data/storage/backups
           resources:
             requests:
               cpu: 250m

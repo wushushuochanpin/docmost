@@ -125,14 +125,16 @@ export class EnvironmentService {
   }
 
   getBackupLocalPath(): string {
-    return this.configService.get<string>(
-      'BACKUP_LOCAL_PATH',
-      path.join(process.cwd(), 'data', 'backups'),
+    return (
+      this.configService.get<string>('BACKUP_LOCAL_PATH')?.trim() ||
+      path.resolve(__dirname, '../../../../../data/storage/backups')
     );
   }
 
   getBackupDatabaseURL(): string | undefined {
-    return this.configService.get<string>('BACKUP_DATABASE_URL')?.trim() || undefined;
+    return (
+      this.configService.get<string>('BACKUP_DATABASE_URL')?.trim() || undefined
+    );
   }
 
   isBackupEnabled(): boolean {

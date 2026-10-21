@@ -61,7 +61,7 @@ if public_health in WORKFLOW and source_annotation in WORKFLOW:
 
 BACKUP = (ROOT / "deploy/k8s/production/backup-worker.yaml").read_text()
 BACKUP_CI = (ROOT / ".github/workflows/backup-regression.yml").read_text()
-for needle in ["needs: backup-regression", "uses: ./.github/workflows/backup-regression.yml", "docmost-backup-env", "backup-worker.yaml", "backup-smoke.js", "previous_backup_image=", "rollout status deployment/docmost-backup"]:
+for needle in ["needs: backup-regression", "uses: ./.github/workflows/backup-regression.yml", "docmost-backup-env", "backup-worker.yaml", "backup-smoke.js", "previous_backup_image=", "previous_backup_replicas=", "rollout status deployment/docmost-backup"]:
     if needle not in WORKFLOW:
         errors.append(f"backup deployment gate missing: {needle}")
 for needle in ["workflow_call:", "pull_request:", "pnpm run test:backup"]:
@@ -70,6 +70,9 @@ for needle in ["workflow_call:", "pull_request:", "pnpm run test:backup"]:
 for needle in ["docmost-backup-env", "BACKUP_DATABASE_URL", "backup-worker.js", "automountServiceAccountToken: false", "readOnly: true", "subPath: backups", "readinessProbe:"]:
     if needle not in BACKUP:
         errors.append(f"isolated backup worker boundary missing: {needle}")
+for name, manifest in [("application", RUNTIME), ("backup worker", BACKUP)]:
+    if "name: BACKUP_LOCAL_PATH\n              value: /app/data/storage/backups" not in manifest:
+        errors.append(f"{name} must use the same persistent backup directory")
 for needle in ["docmost-backup-env", "BACKUP_DATABASE_URL"]:
     if needle in RUNTIME:
         errors.append("backup credential must never enter application pod")

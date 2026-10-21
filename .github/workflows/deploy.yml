@@ -143,21 +143,25 @@ jobs:
           kubectl apply --dry-run=server -f "$backup_manifest" >/dev/null
           previous_backup_image=$(kubectl -n docmost get deployment docmost-backup \
             -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)
+          previous_backup_replicas=$(kubectl -n docmost get deployment docmost-backup \
+            -o jsonpath='{.spec.replicas}' 2>/dev/null || true)
           previous_image=$(kubectl -n docmost get deployment docmost \
             -o jsonpath='{.spec.template.spec.containers[?(@.name=="docmost")].image}' \
             2>/dev/null || true)
           rollback() {
             rc=$?
+            # Restore worker scale first, including a previously disabled worker.
+            if [ -n "$previous_backup_image" ]; then
+              kubectl -n docmost set image deployment/docmost-backup "backup=$previous_backup_image" || true
+              kubectl -n docmost patch deployment docmost-backup --type=merge \
+                -p "{\"spec\":{\"replicas\":${previous_backup_replicas:-0}}}" || true
+            else
+              kubectl -n docmost patch deployment docmost-backup --type=merge -p '{"spec":{"replicas":0}}' || true
+            fi
             if [ -n "$previous_image" ]; then
               echo "Deployment failed; restoring $previous_image" >&2
               kubectl -n docmost set image deployment/docmost "docmost=$previous_image" || true
-              kubectl -n docmost rollout status deployment/docmost --timeout=5m || true
-            fi
-            if [ -n "$previous_backup_image" ]; then
-              kubectl -n docmost set image deployment/docmost-backup "backup=$previous_backup_image" || true
-              kubectl -n docmost rollout status deployment/docmost-backup --timeout=5m || true
-            else
-              kubectl -n docmost patch deployment docmost-backup --type=merge -p '{"spec":{"replicas":0}}' || true
+              kubectl -n docmost rollout status deployment/docmost --timeout=10m || true
             fi
             exit "$rc"
           }
