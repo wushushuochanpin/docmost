@@ -224,6 +224,8 @@ async function loadYoutubeExtension() {
 }
 
 async function loadImageExtension() {
+  const { ImageFigure, ImageCaption } =
+    await import("@docmost/editor-ext/src/lib/image/figure.ts");
   const { TiptapImage } =
     await import("@docmost/editor-ext/src/lib/image/image.ts");
   const LazyImageView = createLazyNodeView(
@@ -231,6 +233,8 @@ async function loadImageExtension() {
   );
 
   return [
+    ImageFigure,
+    ImageCaption,
     TiptapImage.configure({
       view: LazyImageView,
       allowBase64: false,

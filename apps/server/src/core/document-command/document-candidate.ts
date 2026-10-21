@@ -1,4 +1,9 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import {
+  createHash,
+  createHmac,
+  randomUUID,
+  timingSafeEqual,
+} from 'node:crypto';
 import * as Y from 'yjs';
 
 export interface DocumentVersion {
@@ -145,6 +150,15 @@ export class DocumentCandidate {
           if (!target && command.type === 'prepend')
             prependOffset += nodes.length;
         }
+        // The browser's TrailingNode plugin must not need to mutate the initial
+        // shared state before its durable write permit has been established.
+        const last = root.length ? root.get(root.length - 1) : undefined;
+        if (!(last instanceof Y.XmlElement) || last.nodeName !== 'paragraph') {
+          const trailing = new Y.XmlElement('paragraph');
+          trailing.setAttribute('id', randomUUID());
+          trailing.setAttribute('indent', 0 as any);
+          root.push([trailing]);
+        }
       });
       return root.toString() === originalContent
         ? binary
@@ -182,6 +196,47 @@ export class DocumentCandidate {
   }
 }
 
+const editableAttributes: Record<string, string[]> = {
+  paragraph: ['id', 'indent', 'textAlign'],
+  heading: ['id', 'indent', 'textAlign', 'level'],
+  bulletList: [],
+  orderedList: ['start', 'type'],
+  listItem: [],
+  blockquote: [],
+  codeBlock: ['language', 'htmlHeight'],
+  hardBreak: [],
+  horizontalRule: [],
+  table: [],
+  tableRow: [],
+  tableCell: [
+    'colspan',
+    'rowspan',
+    'colwidth',
+    'backgroundColor',
+    'backgroundColorName',
+  ],
+  tableHeader: [
+    'colspan',
+    'rowspan',
+    'colwidth',
+    'backgroundColor',
+    'backgroundColorName',
+  ],
+  image: [
+    'src',
+    'alt',
+    'width',
+    'height',
+    'align',
+    'attachmentId',
+    'size',
+    'aspectRatio',
+    'placeholder',
+  ],
+  imageFigure: [],
+  imageCaption: [],
+};
+
 /** A protected descendant or mark protects its entire ancestor block. */
 export function isEditableBlock(node: unknown): boolean {
   if (node instanceof Y.XmlText)
@@ -207,7 +262,22 @@ export function isEditableBlock(node: unknown): boolean {
       'blockquote',
       'codeBlock',
       'hardBreak',
+      'horizontalRule',
+      'table',
+      'tableRow',
+      'tableHeader',
+      'tableCell',
+      'image',
+      'imageFigure',
+      'imageCaption',
     ].includes(node.nodeName) &&
+    Object.keys(node.getAttributes()).every((key) =>
+      editableAttributes[node.nodeName]?.includes(key),
+    ) &&
+    (node.nodeName !== 'image' ||
+      (typeof node.getAttribute('attachmentId') === 'string' &&
+        node.getAttribute('src') ===
+          `/files/by-id/${node.getAttribute('attachmentId')}`)) &&
     node.toArray().every(isEditableBlock)
   );
 }

@@ -127,6 +127,7 @@ try {
       '--config',
       join(here, 'jest.config.cjs'),
       '--runInBand',
+      ...process.argv.slice(2),
       ...(process.env.P1_CODEX_PROBE === 'true' ||
       process.env.P2_CLIENTS_ONLY === 'true' ||
       process.env.P2_LEGACY === 'true'

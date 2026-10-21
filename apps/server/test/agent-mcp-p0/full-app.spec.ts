@@ -902,6 +902,7 @@ test('complete application: login, OAuth, collaborative editing, history conflic
       fullPage: false,
       animations: 'disabled',
     });
+    await (await import('./rich-content-ui')).richContentUi(mcp, tab, pg, origin, workspace, space, folder);
     const managementGrant = (
       await pg`SELECT id FROM document_agent_grants WHERE user_id=${user}`
     )[0].id;

@@ -699,7 +699,7 @@ export class KnowledgeRetrievalService {
           ? null
           : Number(attachment.fileSize),
       ...(imageMode === 'url' || imageMode === 'inline'
-        ? { url: `${context.baseUrl}/files/by-id/${attachment.id}` }
+        ? { url: `${context.baseUrl}/api/files/by-id/${attachment.id}` }
         : {}),
     }));
   }

@@ -201,9 +201,12 @@ export default function McpSettings() {
                 <List.Item>
                   编辑：get_edit_context、edit_page、update_page_metadata
                 </List.Item>
+                <List.Item>图片与 GIF 附件：upload_image</List.Item>
                 <List.Item>结果查询：get_operation</List.Item>
               </List>
               <Text size="sm" c="dimmed" mt="xs">
+                支持原生表格、图片/GIF、可编辑图注、分割线和 Mermaid
+                图表。图片需先上传为文档附件；超出支持范围的内容会明确拒绝。
                 实际可用工具取决于本次授权。文档创建在文件夹内；可在「我的 Agent
                 连接」中缩小权限或撤销连接。
               </Text>

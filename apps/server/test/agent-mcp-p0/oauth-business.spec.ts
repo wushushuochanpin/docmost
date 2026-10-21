@@ -437,7 +437,7 @@ describe('OAuth and public MCP across two HTTP nodes', () => {
         expect(response.status).toBe(200);
         expect(body.error).toBeUndefined();
         if (request.method === 'tools/list') {
-          expect(body.result.tools).toHaveLength(11);
+          expect(body.result.tools).toHaveLength(12);
           expect(body.result.tools).toMatchSnapshot('P1 complete tool schema');
           expect(body.result.tools.map((tool: any) => tool.name)).toContain(
             'get_operation',

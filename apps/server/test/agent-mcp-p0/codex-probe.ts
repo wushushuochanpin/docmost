@@ -252,6 +252,57 @@ export async function probeCodex(
       if (created.isError || created.structuredContent.status !== 'committed')
         throw Error('Codex create failed');
       page = created.structuredContent.page_id;
+      const image = await call('upload_image', {
+        page_id: page,
+        file_name: 'Codex original GIF',
+        data_base64: 'R0lGODlhAQABAIAAAAAAAP///yH5BAAAAAAALAAAAAABAAEAAAIBRAA7',
+        idempotency_key: 'codex-rich-image',
+      });
+      if (image.isError)
+        throw Error('Codex image upload failed ' + JSON.stringify(image));
+      const state = await call('get_edit_context', { page_id: page });
+      const rich = await call('edit_page', {
+        page_id: page,
+        version_token: state.structuredContent.version_token,
+        idempotency_key: 'codex-rich-content',
+        ops: [
+          {
+            type: 'append',
+            content: {
+              type: 'doc',
+              content: [
+                {
+                  type: 'imageFigure',
+                  content: [
+                    image.structuredContent.node,
+                    {
+                      type: 'imageCaption',
+                      content: [{ type: 'text', text: 'Codex caption' }],
+                    },
+                  ],
+                },
+                { type: 'horizontalRule' },
+                {
+                  type: 'codeBlock',
+                  attrs: { language: 'mermaid' },
+                  content: [{ type: 'text', text: 'flowchart LR\n A-->B' }],
+                },
+              ],
+            },
+          },
+        ],
+      });
+      if (rich.isError)
+        throw Error('Codex rich content failed ' + JSON.stringify(rich));
+      const readback = await call('get_edit_context', { page_id: page });
+      if (
+        !readback.structuredContent.blocks.some(
+          (b: any) =>
+            b.type === 'imageFigure' &&
+            JSON.stringify(b.content).includes('Codex caption'),
+        )
+      )
+        throw Error('Codex rich readback failed');
     }
     const before = await call('get_page', { slug_id: page });
     if (before.isError)

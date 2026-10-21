@@ -1,3 +1,6 @@
+import { imageReferences } from '../document-command/image-reference';
+import { ImageUploadService } from './image-upload.service';
+import { richContent, RICH_CONTENT_CAPABILITIES } from './rich-content';
 import { agentTelemetry } from '../agent-operations/agent-telemetry';
 import { toolError } from './tool-result';
 import { markdownContent } from './markdown-content';
@@ -23,21 +26,60 @@ const markdown = z
   .string()
   .max(262144)
   .refine((s) => Buffer.byteLength(s) <= 262144);
+const content = z
+  .object({
+    type: z.literal('doc'),
+    content: z.array(z.record(z.string(), z.unknown())).max(10000),
+  })
+  .strict()
+  .describe(
+    'Native Tiptap document. Supported nodes and limits are returned by get_edit_context. Use exactly one of markdown or content.',
+  );
+const body = { markdown: markdown.optional(), content: content.optional() };
 const operation = z.discriminatedUnion('type', [
-  z.strictObject({ type: z.literal('append'), markdown }),
-  z.strictObject({ type: z.literal('prepend'), markdown }),
+  z.strictObject({ type: z.literal('append'), ...body }),
+  z.strictObject({ type: z.literal('prepend'), ...body }),
   z.strictObject({
     type: z.literal('replace_block'),
     block_ref: z.string().max(4096),
-    markdown,
+    ...body,
   }),
 ]);
+const sourceText = (input: { markdown?: string; content?: unknown }) =>
+  input.markdown ?? JSON.stringify(input.content);
+async function parseContent(
+  input: { markdown?: string; content?: any },
+  allowEmpty = false,
+  completeDocument = false,
+) {
+  if ((input.markdown === undefined) === (input.content === undefined))
+    throw new DocumentCommandError('INVALID_ARGUMENT');
+  const parsed =
+    input.content !== undefined
+      ? richContent(input.content, allowEmpty)
+      : await markdownContent(input.markdown!, allowEmpty);
+  if (
+    completeDocument &&
+    parsed.content.content?.[parsed.content.content.length - 1]?.type !==
+      'paragraph'
+  ) {
+    return richContent(
+      {
+        ...parsed.content,
+        content: [...parsed.content.content!, { type: 'paragraph' }],
+      },
+      allowEmpty,
+    );
+  }
+  return parsed;
+}
 @Injectable()
 export class DocumentToolsService {
   constructor(
     private readonly commands: DocumentCommandService,
     private readonly oauth: AgentOAuthService,
     private readonly pages: PageService,
+    private readonly images: ImageUploadService,
   ) {}
   async entranceQuota(actor: NonNullable<McpToolContext['agent']>) {
     return this.commands.entranceQuota(actor);
@@ -118,6 +160,7 @@ export class DocumentToolsService {
                 ? Number(openCursor(input.cursor, binding))
                 : 0;
               const nodes = doc.getXmlFragment('default').toArray();
+              const json = TiptapTransformer.fromYdoc(doc, 'default') as any;
               if (
                 !Number.isSafeInteger(start) ||
                 start < 0 ||
@@ -134,7 +177,12 @@ export class DocumentToolsService {
               ) {
                 const node = nodes[next],
                   text = node.toString();
+                const jsonBlock = json.content[next];
+                const contentTruncated =
+                  Buffer.byteLength(JSON.stringify(jsonBlock)) > 262144;
                 const block = {
+                  content: contentTruncated ? null : jsonBlock,
+                  content_truncated: contentTruncated,
                   block_ref: engine.blockRef(state.version, doc, next),
                   type:
                     node instanceof Y.XmlElement ? node.nodeName : 'protected',
@@ -143,7 +191,7 @@ export class DocumentToolsService {
                   protected: !isEditableBlock(node),
                 };
                 const size = Buffer.byteLength(JSON.stringify(block));
-                if (bytes + size > 52000) break;
+                if (blocks.length && bytes + size > 52000) break;
                 bytes += size;
                 blocks.push(block);
               }
@@ -156,7 +204,8 @@ export class DocumentToolsService {
                 busy: state.busy,
                 editable: !state.busy,
                 supported_operations: ['append', 'prepend', 'replace_block'],
-                content_format: 'safe-markdown-subset',
+                content_format: 'tiptap-json',
+                capabilities: RICH_CONTENT_CAPABILITIES,
               };
             } finally {
               doc.destroy();
@@ -168,7 +217,7 @@ export class DocumentToolsService {
         'edit_page',
         {
           description:
-            'Atomically apply safe Markdown block edits. Unsupported Markdown is rejected, never silently flattened. Success means database commit.',
+            'Atomically apply native rich JSON or Markdown block edits, including tables, attachment images, figures/captions, rules and Mermaid code. Unsupported Markdown is rejected, never silently flattened. Success means database commit.',
           inputSchema: z.strictObject({
             page_id: z.uuid(),
             version_token: z.string().max(4096),
@@ -187,33 +236,37 @@ export class DocumentToolsService {
             const a = await actor(input.page_id);
             if (
               input.ops.reduce(
-                (n, op) => n + Buffer.byteLength(op.markdown),
+                (n, op) => n + Buffer.byteLength(sourceText(op) ?? ''),
                 0,
               ) > 262144
             )
               throw new DocumentCommandError('CONTENT_TOO_LARGE');
             const commands: TextBlockCommand[] = await Promise.all(
               input.ops.map(async (op) => {
-                const parsed = await markdownContent(
-                  op.markdown,
+                const parsed = await parseContent(
+                  op,
                   op.type === 'replace_block',
                 );
                 return op.type === 'replace_block'
                   ? {
                       type: op.type,
-                      text: op.markdown,
+                      text: sourceText(op),
                       blockRef: op.block_ref,
                       fragment: parsed.fragment,
                     }
                   : {
                       type: op.type,
-                      text: op.markdown,
+                      text: sourceText(op),
                       fragment: parsed.fragment,
                     };
               }),
             );
             if (input.preview) {
               await this.commands.requestQuota(a, ['read', 'preview']);
+              await this.commands.previewImageReferences(
+                a,
+                commands.map((c) => c.fragment!),
+              );
               const state = await this.commands.editContext(a);
               if (state.busy) throw new DocumentCommandError('DOCUMENT_BUSY');
               new DocumentCandidate(
@@ -329,6 +382,25 @@ export class DocumentToolsService {
             };
           }),
       );
+    if (has('pages.edit'))
+      server.registerTool(
+        'upload_image',
+        {
+          description:
+            'Upload PNG/GIF/JPEG/WebP original bytes (base64, max 7 MiB) as a page-owned attachment. Requires pages.edit. Repeating the same idempotency key returns the same attachment; different bytes conflict. Does not insert a block: use edit_page with the returned image node, optionally inside imageFigure with imageCaption. No external image URLs.',
+          inputSchema: z.strictObject({
+            page_id: z.uuid(),
+            file_name: z.string().min(1).max(200),
+            data_base64: z.string().min(4).max(9786712),
+            idempotency_key: key,
+          }),
+          annotations: { ...annotations, readOnlyHint: false },
+        },
+        (input) =>
+          run(async () =>
+            this.images.upload(await actor(input.page_id), input),
+          ),
+      );
     for (const tool of ['create_page', 'create_folder'] as const) {
       if (!has(tool === 'create_page' ? 'pages.create' : 'folders.create'))
         continue;
@@ -337,7 +409,7 @@ export class DocumentToolsService {
         {
           description:
             tool === 'create_page'
-              ? 'Create a safe Markdown document inside a folder.'
+              ? 'Create a Markdown or native rich JSON document inside a folder. To import images: create the page, upload_image to it, then edit_page using returned attachment nodes.'
               : 'Create a folder at the root or inside another folder.',
           inputSchema: z.strictObject({
             space_id: z.uuid(),
@@ -347,7 +419,14 @@ export class DocumentToolsService {
               .refine(
                 (s) => s.trim().length > 0 && Array.from(s).length <= 200,
               ),
-            markdown: tool === 'create_page' ? markdown : z.never().optional(),
+            markdown:
+              tool === 'create_page'
+                ? markdown.optional()
+                : z.never().optional(),
+            content:
+              tool === 'create_page'
+                ? content.optional()
+                : z.never().optional(),
             idempotency_key: key,
             preview: z.boolean().default(false),
           }),
@@ -364,10 +443,15 @@ export class DocumentToolsService {
             const a = await actor(undefined, scope);
             if (!a.spaceIds.includes(input.space_id))
               throw new DocumentCommandError('RESOURCE_NOT_FOUND_OR_FORBIDDEN');
-            const { content } = await markdownContent(
-              input.markdown ?? '',
+            const { content } = await parseContent(
+              tool === 'create_folder' ? { markdown: '' } : input,
+              true,
               true,
             );
+            // Attachments belong to an existing page. A newly allocated page cannot
+            // adopt attachments from another page, including in preview mode.
+            if (imageReferences(content).length)
+              throw new DocumentCommandError('RESOURCE_NOT_FOUND_OR_FORBIDDEN');
             const payload = {
               spaceId: input.space_id,
               parentPageId: input.parent_id,
@@ -410,6 +494,7 @@ export class DocumentToolsService {
                   parent_id: input.parent_id,
                   title: input.title,
                   markdown: input.markdown,
+                  content: input.content,
                 },
               },
             );
@@ -479,6 +564,7 @@ export class DocumentToolsService {
                 'update_page_metadata',
                 'create_page',
                 'create_folder',
+                'upload_image',
               ])
               .optional(),
             idempotency_key: key.optional(),

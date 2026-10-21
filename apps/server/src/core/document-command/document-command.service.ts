@@ -1,3 +1,5 @@
+import { imageReferences } from './image-reference';
+import { TiptapTransformer } from '@hocuspocus/transformer';
 import { agentTelemetry } from '../agent-operations/agent-telemetry';
 import {
   chargeEntrance,
@@ -412,6 +414,11 @@ export class DocumentCommandService {
           content: unknown;
         };
         await this.assertGrantScope(trx, agent.principal, actor.spaceId, scope);
+        await this.assertImageReferences(
+          trx,
+          { ...actor, pageId: created.id },
+          created.content,
+        );
         await sql`insert into document_gates(page_id,workspace_id) values(${created.id}::uuid,${actor.workspaceId}::uuid)`.execute(
           trx,
         );
@@ -1090,6 +1097,114 @@ export class DocumentCommandService {
       return result;
     });
   }
+  /** Attachment writes share the same live grant, ACL, quota and idempotency boundary. */
+  async imageAttachmentTransaction(
+    actor: AgentDocumentActor,
+    input: { key: string; payload: unknown },
+    write: (
+      trx: KyselyTransaction,
+      spaceId: string,
+    ) => Promise<Record<string, any>>,
+  ) {
+    if (process.env.DOCUMENT_COMMAND_ENABLED !== 'true')
+      return conflict('MCP_DISABLED');
+    if (!/^[\x21-\x7e]{1,128}$/.test(input.key))
+      return conflict('INVALID_ARGUMENT');
+    return this.transaction(actor.workspaceId, async (trx) => {
+      const page = await this.lockPage(trx, actor);
+      await this.assertGrant(trx, actor, page.spaceId);
+      if (!(await agentPolicy(trx, actor.workspaceId)).enabled)
+        return conflict('MCP_DISABLED');
+      const meta = await trx
+        .selectFrom('pageNodeMeta')
+        .select('nodeType')
+        .where('pageId', '=', actor.pageId)
+        .executeTakeFirst();
+      if (meta?.nodeType !== 'file') return conflict('INVALID_ARGUMENT');
+      const requestHash = digest(JSON.stringify(input.payload));
+      const previous = (
+        await sql<{
+          requestHash: string;
+          resultJson: string;
+          resultExpiredAt: Date | null;
+        }>`select request_hash,result::text as result_json,result_expired_at from document_operations where workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and client_id=${actor.clientId} and grant_id=${actor.grantId}::uuid and tool='upload_image' and idempotency_key=${input.key}`.execute(
+          trx,
+        )
+      ).rows[0];
+      if (previous) {
+        await chargeRate(trx, actor, ['query']);
+        if (previous.requestHash !== requestHash)
+          return conflict('IDEMPOTENCY_KEY_REUSED');
+        if (previous.resultExpiredAt)
+          return conflict('OPERATION_RESULT_EXPIRED');
+        const result = JSON.parse(previous.resultJson);
+        await this.assertImageReferences(trx, actor, {
+          type: 'doc',
+          content: [result.node],
+        });
+        return result;
+      }
+      const id = randomUUID();
+      await sql`insert into document_operations(id,workspace_id,user_id,client_id,grant_id,page_id,tool,idempotency_key,request_hash,status) values(${id}::uuid,${actor.workspaceId}::uuid,${actor.userId}::uuid,${actor.clientId},${actor.grantId}::uuid,${actor.pageId}::uuid,'upload_image',${input.key},${requestHash},'running')`.execute(
+        trx,
+      );
+      await reserveQuota(trx, actor, id, 'edit');
+      const attachment = await write(trx, page.spaceId);
+      await this.assertGrant(trx, actor, page.spaceId);
+      const result = { ...attachment, operation_id: id, status: 'committed' };
+      await sql`update document_operations set status='committed',result=${JSON.stringify(result)}::text::jsonb,committed_at=clock_timestamp() where id=${id}::uuid`.execute(
+        trx,
+      );
+      await settleQuota(trx, id, true);
+      return result;
+    });
+  }
+
+  async previewImageReferences(actor: AgentDocumentActor, fragments: string[]) {
+    return this.transaction(actor.workspaceId, async (trx) => {
+      const page = await this.lockPage(trx, actor);
+      await this.assertGrant(trx, actor, page.spaceId);
+      for (const fragment of fragments) {
+        const doc = new Y.Doc();
+        try {
+          Y.applyUpdate(doc, Buffer.from(fragment, 'base64'));
+          await this.assertImageReferences(
+            trx,
+            actor,
+            TiptapTransformer.fromYdoc(doc, 'default'),
+          );
+        } finally {
+          doc.destroy();
+        }
+      }
+    });
+  }
+
+  private async assertImageReferences(
+    trx: KyselyTransaction,
+    actor: DocumentActor,
+    content: unknown,
+  ) {
+    const ids = imageReferences(content);
+    if (!ids.length) return;
+    const images = await trx
+      .selectFrom('attachments')
+      .select('id')
+      .where('id', 'in', ids)
+      .where('workspaceId', '=', actor.workspaceId)
+      .where('pageId', '=', actor.pageId)
+      .where('deletedAt', 'is', null)
+      .where('mimeType', 'in', [
+        'image/png',
+        'image/jpeg',
+        'image/gif',
+        'image/webp',
+      ])
+      .forShare()
+      .execute();
+    if (images.length !== ids.length) return denied();
+  }
+
   async editContext(actor: AgentDocumentActor) {
     return this.transaction(actor.workspaceId, async (trx) => {
       const page = await this.lockPage(trx, actor);
@@ -1298,6 +1413,23 @@ export class DocumentCommandService {
               return conflict('MCP_DISABLED');
             const page = await this.lockPage(trx, actor);
             await this.assertGrant(trx, actor, page.spaceId);
+            for (const command of input.commands) {
+              if (!command.fragment) continue;
+              const inserted = new Y.Doc();
+              try {
+                Y.applyUpdate(
+                  inserted,
+                  Buffer.from(command.fragment, 'base64'),
+                );
+                await this.assertImageReferences(
+                  trx,
+                  actor,
+                  TiptapTransformer.fromYdoc(inserted, 'default'),
+                );
+              } finally {
+                inserted.destroy();
+              }
+            }
             const gate = await this.gate(trx, actor.pageId);
             if (
               !gate ||
@@ -1444,9 +1576,9 @@ export class DocumentCommandService {
           id: string;
           pageId: string;
           status: string;
-          result: unknown;
+          resultJson: string | null;
           resultExpiredAt: Date | null;
-        }>`select id,page_id,status,result,result_expired_at from document_operations where ${selector} and workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and client_id=${actor.clientId} and grant_id=${actor.grantId}::uuid`.execute(
+        }>`select id,page_id,status,result::text as result_json,result_expired_at from document_operations where ${selector} and workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and client_id=${actor.clientId} and grant_id=${actor.grantId}::uuid`.execute(
           trx,
         )
       ).rows[0];
@@ -1478,7 +1610,7 @@ export class DocumentCommandService {
       if (roles?.length && access.canAccess && row.resultExpiredAt)
         return conflict('OPERATION_RESULT_EXPIRED');
       return roles?.length && access.canAccess
-        ? row
+        ? { ...row, result: row.resultJson ? JSON.parse(row.resultJson) : null }
         : { id: row.id, status: row.status };
     });
   }

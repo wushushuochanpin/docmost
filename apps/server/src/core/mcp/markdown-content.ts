@@ -1,14 +1,7 @@
 import { markdownToHtml } from '@docmost/editor-ext';
-import {
-  htmlToJson,
-  tiptapExtensions,
-} from '../../collaboration/collaboration.util';
-import { TiptapTransformer } from '@hocuspocus/transformer';
-import * as Y from 'yjs';
-import {
-  DocumentCommandError,
-  isEditableBlock,
-} from '../document-command/document-candidate';
+import { htmlToJson } from '../../collaboration/collaboration.util';
+import { richContent } from './rich-content';
+import { DocumentCommandError } from '../document-command/document-candidate';
 
 /** Use the existing parser, rejecting unsupported syntax before it can be normalized away. */
 export async function markdownContent(markdown: string, allowEmpty = false) {
@@ -22,34 +15,29 @@ export async function markdownContent(markdown: string, allowEmpty = false) {
       '',
     )
     .replace(/(`+)[\s\S]*?\1/g, '');
-  if (
-    /<\/?[a-z!]|!\[|\[\^|\$|^\s*---\s*$|^\s*[-*+]\s+\[[ xX]\]|\|/im.test(syntax)
-  )
+  if (/<\/?[a-z!]|\[\^|\$|^\s*[-*+]\s+\[[ xX]\]/im.test(syntax))
     throw new DocumentCommandError('UNSUPPORTED_CONTENT');
   if (/^\s*\[[^\]]+\]:|\]\[[^\]]*\]/m.test(syntax))
     throw new DocumentCommandError('UNSUPPORTED_CONTENT');
   // Validate links before the HTML parser's sanitizer could remove their scheme.
   for (const match of syntax.matchAll(/\]\(([^\s)]+)/g)) {
-    if (!/^(https?:\/\/|mailto:)/i.test(match[1]))
+    if (
+      !/^(https?:\/\/|mailto:|\/files\/by-id\/[0-9a-f-]{36}$)/i.test(match[1])
+    )
       throw new DocumentCommandError('UNSUPPORTED_CONTENT');
   }
   const content = markdown.trim()
-    ? htmlToJson(await markdownToHtml(markdown))
+    ? htmlToJson(await markdownToHtml(markdown, { stripFrontmatter: false }))
     : { type: 'doc', content: [{ type: 'paragraph' }] };
-  const doc = TiptapTransformer.toYdoc(content, 'default', tiptapExtensions);
-  try {
-    if (
-      doc
-        .getXmlFragment('default')
-        .toArray()
-        .some((node) => !isEditableBlock(node))
-    )
-      throw new DocumentCommandError('UNSUPPORTED_CONTENT');
-    return {
-      content,
-      fragment: Buffer.from(Y.encodeStateAsUpdate(doc)).toString('base64'),
-    };
-  } finally {
-    doc.destroy();
-  }
+  const normalize = (node: any) => {
+    if (node.type === 'image') {
+      const match = /^\/files\/by-id\/([0-9a-f-]{36})$/i.exec(
+        node.attrs?.src ?? '',
+      );
+      if (match) node.attrs.attachmentId = match[1];
+    }
+    node.content?.forEach(normalize);
+  };
+  normalize(content);
+  return richContent(content, allowEmpty);
 }
