@@ -42,8 +42,12 @@ export async function gzipProcess(
   const child = spawn(binary, args, {
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: 15 * 60 * 1000,
   });
+  // spawn's built-in timeout can survive ENOENT (which emits no exit event).
+  const timeout = setTimeout(() => child.kill(), 15 * 60 * 1000);
+  timeout.unref();
+  child.once('close', () => clearTimeout(timeout));
+  child.once('error', () => clearTimeout(timeout));
   let stderr = '';
   child.stderr.on('data', (data) => {
     stderr = (stderr + data.toString()).slice(-8000);

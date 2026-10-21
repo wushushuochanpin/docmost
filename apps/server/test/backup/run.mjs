@@ -380,6 +380,14 @@ try {
     ),
     /ENOENT/,
   );
+  execFileSync(
+    process.execPath,
+    [
+      '-e',
+      `require(${JSON.stringify(join(root, 'dist/integrations/backup/backup-process'))}).gzipProcess('/missing-backup-executable', [], ${JSON.stringify(join(dir, 'missing-child.gz'))}, 'TEST').catch(() => {})`,
+    ],
+    { timeout: 3000, stdio: 'pipe' },
+  );
   console.log(
     'PASS stdout EOF before failure, missing executable and output write failure',
   );
