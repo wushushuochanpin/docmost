@@ -52,6 +52,28 @@ describe('EnvironmentService', () => {
     expect(service.isBackupEnabled()).toBe(true);
   });
 
+  it('uses the same persistent backup directory for HTTP, worker and CLI entrypoints', () => {
+    const service = buildService({ BACKUP_LOCAL_PATH: '' });
+    const cwd = jest.spyOn(process, 'cwd');
+    try {
+      cwd.mockReturnValue('/app');
+      const cliPath = service.getBackupLocalPath();
+      cwd.mockReturnValue('/app/apps/server');
+      expect(service.getBackupLocalPath()).toBe(cliPath);
+      expect(cliPath).toMatch(/\/data\/storage\/backups$/);
+    } finally {
+      cwd.mockRestore();
+    }
+  });
+
+  it('preserves an explicitly configured backup directory', () => {
+    expect(
+      buildService({
+        BACKUP_LOCAL_PATH: '/mounted/backups',
+      }).getBackupLocalPath(),
+    ).toBe('/mounted/backups');
+  });
+
   it('allows backup to be disabled explicitly', () => {
     const service = buildService({
       BACKUP_ENABLED: 'false',

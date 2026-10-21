@@ -2,7 +2,7 @@
 file: docs/operations/backup/README.md
 description: Isolated full-database backup roles, regression gates, deployment acceptance and recovery.
 created_at: 2026-10-21 18:30:19 Asia/Shanghai
-updated_at: 2026-10-21 18:30:19 Asia/Shanghai
+updated_at: 2026-10-21 20:13:48 Asia/Shanghai
 timezone: Asia/Shanghai
 source_of_truth: apps/server/src/integrations/backup, deploy/k8s/production/backup-worker.yaml, .github/workflows/deploy.yml
 applies_to: [operations, backup, deployment]
@@ -46,3 +46,5 @@ Keep the previous application and worker image digests. Normal rollback restores
 A complete acceptance record includes commit/digest, successful CI restore, job ID, terminal status, artifact size and matching local/remote SHA-256. Health HTTP 200 alone is insufficient. Existing backup records remain visible; permission-error details can be opened from the settings page.
 
 The worker checks the latest retained successful backup every minute. It emits `BACKUP_OVERDUE` when no success exists or the age exceeds BACKUP_MAX_AGE_HOURS (default 24), and `BACKUP_HEALTHY` on recovery. Events are emitted on state changes only. These are structured log signals; external email/chat alert routing requires the site's monitoring system and is not provisioned by this change. This does not add an automatic backup schedule.
+
+Application, worker and release verification all use `/app/data/storage/backups` on the shared PVC. The application manifest pins this path explicitly; the code default is derived from the installed server location rather than `process.cwd()`. The regression starts separate Node processes in the repository root and server directory and requires identical paths. Rollback restores the worker's prior replica count as well as its image, including a previously disabled worker.

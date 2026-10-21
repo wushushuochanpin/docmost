@@ -293,6 +293,22 @@ try {
   const { BackupError } = require(
     join(root, 'dist/integrations/backup/backup-error'),
   );
+  const pathProbe = `const {EnvironmentService}=require(${JSON.stringify(join(root, 'dist/integrations/environment/environment.service'))});const {ConfigService}=require(${JSON.stringify(require.resolve('@nestjs/config'))});process.stdout.write(new EnvironmentService(new ConfigService()).getBackupLocalPath());`;
+  const appPath = execFileSync(process.execPath, ['-e', pathProbe], {
+    cwd: root,
+    env: { ...process.env, BACKUP_LOCAL_PATH: '' },
+    encoding: 'utf8',
+  });
+  const cliPath = execFileSync(process.execPath, ['-e', pathProbe], {
+    cwd: resolve(root, '../..'),
+    env: { ...process.env, BACKUP_LOCAL_PATH: '' },
+    encoding: 'utf8',
+  });
+  assert.equal(appPath, cliPath);
+  assert.equal(cliPath, resolve(root, '../../data/storage/backups'));
+  console.log(
+    'PASS persistent backup path is identical across application and CLI working directories',
+  );
   runtime = createBackupRuntime();
   await verifyBackupCredential(runtime.environment);
   await admin.unsafe(
