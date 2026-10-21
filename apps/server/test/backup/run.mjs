@@ -268,6 +268,7 @@ try {
   );
   process.chdir(cwd);
   // Set only disposable connection strings. Compiled services do not load .env.
+  delete process.env.npm_package_version;
   process.env.DATABASE_URL = adminUrl
     .replace('backup_test_admin', 'backup_test_runtime')
     .replace('/postgres', '/backup_source');
@@ -456,6 +457,10 @@ try {
   assert.equal(
     JSON.parse(readFileSync(join(unpack, 'manifest.json'))).scope,
     'database',
+  );
+  assert.equal(
+    JSON.parse(readFileSync(join(unpack, 'manifest.json'))).docmostVersion,
+    require(join(root, 'package.json')).version,
   );
   restore(gunzipSync(readFileSync(join(unpack, 'db/docmost.sql.gz'))));
   const restored = postgres(adminUrl.replace('/postgres', '/backup_restored'), {

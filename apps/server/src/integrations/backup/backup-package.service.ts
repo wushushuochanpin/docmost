@@ -3,6 +3,7 @@ import { EnvironmentService } from '../environment/environment.service';
 import { LOCAL_STORAGE_PATH } from '../../common/helpers';
 import * as path from 'path';
 import * as fs from 'fs-extra';
+import { readFileSync } from 'node:fs';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
 import {
@@ -13,7 +14,9 @@ import {
 import { gzipProcess, backupDatabaseEnvironment } from './backup-process';
 import { BackupError } from './backup-error';
 
-const DOCMOST_VERSION = process.env.npm_package_version ?? '0.0.0';
+const DOCMOST_VERSION = JSON.parse(
+  readFileSync(path.join(__dirname, '../../../package.json'), 'utf8'),
+).version as string;
 
 // Prefer full path so backup works in containers where PATH may not include /usr/bin
 const PG_DUMP_BIN = process.env.PG_DUMP_PATH || '/usr/bin/pg_dump';
