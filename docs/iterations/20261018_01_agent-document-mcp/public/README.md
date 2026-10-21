@@ -2,16 +2,16 @@
 file: docs/iterations/20261018_01_agent-document-mcp/public/README.md
 description: 第三方 Agent 接入入口与受支持的授权流程。
 created_at: 2026-10-19 14:18:03 Asia/Shanghai
-updated_at: 2026-10-19 14:27:15 Asia/Shanghai
+updated_at: 2026-10-21 09:43:30 Asia/Shanghai
 timezone: Asia/Shanghai
 source_of_truth: 已确认 PRD/SDD、当前 OAuth/MCP 代码和本地验收结果
 applies_to: [implementation, release]
-disclaimer: 文档可能更新，仅供参考；当前代码、产品与原始验收证据优先。未部署，文中 HOST 为占位地址，不是已开放服务。
+disclaimer: 文档可能更新，仅供参考；当前代码、产品与原始验收证据优先。服务状态以实例设置页和实际 OAuth 发现响应为准。
 ---
 
 # 第三方 Agent 接入
 
-本包用于独立实现的 Docmost MCP，不依赖官方商业 MCP。当前为待发布接入文档，尚无可用公网地址。接入前由实例维护者提供真实 HTTPS 地址、预登记 client_id 和沙箱空间。
+本包用于独立实现的 Docmost MCP，不依赖官方商业 MCP。本实例入口为 `https://book.superchat.help/mcp`。接入前由实例维护者提供预登记 client_id；用户在授权页选择可访问空间和权限。设置页分别展示 MCP 总开关、OAuth 授权服务和文档写入服务，工作区写入策略另行管理。
 
 - [开发者指南](developer-guide.md)：登记、OAuth、工具、示例、错误和保留政策。
 - [客户端兼容矩阵](client-compatibility.md)：精确版本与实测边界。

@@ -17,6 +17,8 @@ required_workflow = [
     "previous_image=",
     "for attempt in 1 2 3 4 5 6",
 ]
+MIGRATION = (ROOT / "deploy/k8s/production/migration.yaml").read_text()
+required_workflow += ["docmost-migration-env", "migration.yaml", "Database migration failed; application rollout was not started"]
 required_runtime = [
     "image: __DOCMOST_IMAGE__",
     "clusterIP: 10.43.30.30",
@@ -40,6 +42,13 @@ for needle in required_workflow:
 for needle in required_runtime:
     if needle not in RUNTIME:
         errors.append(f"runtime manifest missing required boundary: {needle}")
+if "docmost-migration-env" in RUNTIME:
+    errors.append("privileged migration credential must not enter the application pod")
+for needle in ["backoffLimit: 0", "activeDeadlineSeconds: 600", "docmost-migration-env", '"latest"', "image: __DOCMOST_IMAGE__", "automountServiceAccountToken: false"]:
+    if needle not in MIGRATION:
+        errors.append(f"migration job missing required boundary: {needle}")
+if WORKFLOW.index("Apply migrations with the isolated migration credential") > WORKFLOW.index("Apply the exact image digest"):
+    errors.append("migrations must complete before application rollout")
 for needle in forbidden:
     if needle in WORKFLOW:
         errors.append(f"deploy workflow reintroduced retired host path: {needle}")

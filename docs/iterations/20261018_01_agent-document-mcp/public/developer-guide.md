@@ -2,16 +2,21 @@
 file: docs/iterations/20261018_01_agent-document-mcp/public/developer-guide.md
 description: 预登记 OAuth 客户端、文档工具调用及错误恢复说明。
 created_at: 2026-10-19 14:18:03 Asia/Shanghai
-updated_at: 2026-10-19 14:47:53 Asia/Shanghai
+updated_at: 2026-10-21 09:43:30 Asia/Shanghai
 timezone: Asia/Shanghai
 source_of_truth: 已确认 PRD/SDD、当前 OAuth/MCP 代码和本地验收结果
 applies_to: [server, implementation]
-disclaimer: 文档可能更新，仅供参考；当前代码、产品与原始验收证据优先。未部署，文中 HOST 为占位地址，不是已开放服务。
+disclaimer: 文档可能更新，仅供参考；当前代码、产品与原始验收证据优先。服务状态以实例设置页和实际 OAuth 发现响应为准。
 ---
 
 # 开发者指南
 
 ## 1. 申请接入
+
+本实例使用自研服务 `https://book.superchat.help/mcp`。下文 HOST 替换为 `book.superchat.help`。
+「设置 → AI 设置 → MCP」分别展示总开关与服务状态；总开关开启不代表 OAuth 或写入服务已启用。
+API 密钥仅保留读取能力。读写接入还需实例启用 OAuth/文档命令服务、工作区允许 Agent 写入，以及用户实际授权。
+
 
 向实例维护者提交应用名称、public/confidential 类型、精确回调 URI、请求 scope、浏览器 Origin（无浏览器跨域请求填空数组）及维护联系渠道。当前不提供动态客户端注册或 Client ID Metadata Document 自动登记。维护者通过已有登录会话且用户 ID 在 `AGENT_OAUTH_ADMIN_USER_IDS` 白名单内的账号登记；普通工作区管理员身份本身不足以登记。
 
