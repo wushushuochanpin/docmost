@@ -2,7 +2,7 @@
 file: docs/iterations/20261018_01_agent-document-mcp/public/client-compatibility.md
 description: 真实 Codex 与独立 MCP SDK 客户端的支持范围及未验证边界。
 created_at: 2026-10-19 14:23:27 Asia/Shanghai
-updated_at: 2026-10-19 14:27:15 Asia/Shanghai
+updated_at: 2026-10-21 10:45:18 Asia/Shanghai
 timezone: Asia/Shanghai
 source_of_truth: 已确认 PRD/SDD、当前 OAuth/MCP 代码和本地验收结果
 applies_to: [test, server]
@@ -36,3 +36,8 @@ disclaimer: 文档可能更新，仅供参考；当前代码、产品与原始�
 部署后需重跑真实域名和代理路径，再发布对外支持声明。外部客户端版本升级、不同浏览器/操作系统及第二商业客户端仍需单独记录，不能据本机结果推断。
 
 Codex 协议头由完整应用测试的独立 Node preload 观察器记录，只输出版本字符串，不记录请求体、Cookie 或 Authorization；多个阶段出现不同版本，不把最初探测头误写成唯一协商版本。观察器仅由隔离测试进程加载，不进入生产应用。
+
+
+## 2026-10-21 富文档扩展复验
+
+Node 22.16.0、同一 Codex 0.163.0-alpha.10.2 与 SDK 1.29.0 在隔离 PostgreSQL 16/Redis 7.4 上复验通过。工具数量扩展为 12；真实 Codex app-server 额外验证 upload_image 原始 GIF、content JSON 图片/图注/分割线/Mermaid 写入及结构化读回。浏览器单独验证表格和 Mermaid 修改、图注键盘编辑、GIF 原字节下载、刷新后的可编辑性。此条扩展上表的 2026-10-19 基线，生产连接及文章验收另行记录，不把本地通过写成已部署。

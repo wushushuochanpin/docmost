@@ -40,6 +40,16 @@ export class AgentManagementController {
       throw new ForbiddenException('CSRF_REJECTED');
     return actor;
   }
+  @Get('agent-capabilities') capabilities(
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    reply.header('Cache-Control', 'no-store');
+    return {
+      oauth_enabled: process.env.AGENT_OAUTH_ENABLED === 'true',
+      document_commands_enabled:
+        process.env.DOCUMENT_COMMAND_ENABLED === 'true',
+    };
+  }
   @Get('agent-connections') list(
     @Req() req: FastifyRequest,
     @Query() query: any,

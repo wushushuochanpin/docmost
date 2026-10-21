@@ -1,3 +1,4 @@
+import { ImageUploadService } from '../../src/core/mcp/image-upload.service';
 import { KnowledgeRetrievalService } from '../../src/core/mcp/knowledge-retrieval.service';
 import fastifyCookie from '@fastify/cookie';
 import { TransformHttpResponseInterceptor } from '../../src/common/interceptors/http-response.interceptor';
@@ -108,7 +109,7 @@ export async function httpNode(
     null as any,
     commands,
   );
-  const documents = new DocumentToolsService(commands, oauth, pages);
+  const documents = new DocumentToolsService(commands, oauth, pages, new ImageUploadService(commands, storage as any, database));
   // Production JWT strategy verifies signatures and DB-backed sessions. Fixture repositories select the minimal test schema.
   const strategy = new JwtStrategy(
     users as any,

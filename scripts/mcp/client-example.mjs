@@ -128,7 +128,7 @@ try {
   };
   await call("list_spaces", {});
   if (writes) {
-    if (tools.length !== 11) throw Error("Expected all 11 tools");
+    if (tools.length !== 12) throw Error("Expected all 12 tools");
     const folder = await call("create_folder", {
       space_id: value("--space"),
       title: "MCP compatibility exercise",

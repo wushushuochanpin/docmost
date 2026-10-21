@@ -2,16 +2,21 @@
 file: docs/iterations/20261018_01_agent-document-mcp/public/developer-guide.md
 description: 预登记 OAuth 客户端、文档工具调用及错误恢复说明。
 created_at: 2026-10-19 14:18:03 Asia/Shanghai
-updated_at: 2026-10-19 14:47:53 Asia/Shanghai
+updated_at: 2026-10-21 10:45:18 Asia/Shanghai
 timezone: Asia/Shanghai
 source_of_truth: 已确认 PRD/SDD、当前 OAuth/MCP 代码和本地验收结果
 applies_to: [server, implementation]
-disclaimer: 文档可能更新，仅供参考；当前代码、产品与原始验收证据优先。未部署，文中 HOST 为占位地址，不是已开放服务。
+disclaimer: 文档可能更新，仅供参考；当前代码、产品与原始验收证据优先。服务状态以实例设置页和实际 OAuth 发现响应为准。
 ---
 
 # 开发者指南
 
 ## 1. 申请接入
+
+本实例使用自研服务 `https://book.superchat.help/mcp`。下文 HOST 替换为 `book.superchat.help`。
+「设置 → AI 设置 → MCP」分别展示总开关与服务状态；总开关开启不代表 OAuth 或写入服务已启用。
+API 密钥仅保留读取能力。读写接入还需实例启用 OAuth/文档命令服务、工作区允许 Agent 写入，以及用户实际授权。
+
 
 向实例维护者提交应用名称、public/confidential 类型、精确回调 URI、请求 scope、浏览器 Origin（无浏览器跨域请求填空数组）及维护联系渠道。当前不提供动态客户端注册或 Client ID Metadata Document 自动登记。维护者通过已有登录会话且用户 ID 在 `AGENT_OAUTH_ADMIN_USER_IDS` 白名单内的账号登记；普通工作区管理员身份本身不足以登记。
 
@@ -62,10 +67,10 @@ public 客户端不使用 secret；confidential 客户端的 secret 仅在登记
 
 | scope | 可发现工具 |
 |---|---|
-| knowledge.read | search、fetch、get_page、list_pages、list_spaces、get_edit_context、get_operation |
+| knowledge.read | search、fetch、get_page、list_pages、list_spaces、get_operation |
 | pages.create | create_page |
 | folders.create | create_folder |
-| pages.edit | edit_page、update_page_metadata |
+| pages.edit | get_edit_context、edit_page、update_page_metadata、upload_image |
 
 写 scope 与 knowledge.read 组合使用。每次请求重新检查 ACL；工具发现后撤权也会拒绝。已有 API key 继续使用原四个读取工具，不能以 API key 绕过 OAuth 使用新增写工具。
 
@@ -87,9 +92,15 @@ public 客户端不使用 secret；confidential 客户端的 secret 仅在登记
 
 预览后使用同一业务载荷和幂等键、去掉 preview 或设为 false 正式提交。期间版本变化必须重新读取并规划，不强制覆盖。修改同一请求的正文/标题不能继续复用已提交的幂等键。响应丢失时用原请求原键重试；已知 operation_id 则查 get_operation，不能换键盲写。
 
-根节点只能建文件夹，文档必须置于文件夹。标题最多 200 个 Unicode 码点；Markdown 总量最多 256KiB。支持普通段落、标题、列表、引用、代码、链接及基础文字标记，表格、附件、数学、原始 HTML 等复杂内容不支持修改，明确拒绝而不静默丢弃。具体 ops 类型/限制以 tools/list 为准。
+根节点只能建文件夹，文档必须置于文件夹。标题最多 200 个 Unicode 码点；Markdown 总量最多 256KiB。支持普通段落、标题、列表、引用、代码（含 Mermaid）、链接、基础文字标记、原生表格、分割线及本页附件图片。`content` 接受原生 Tiptap JSON，与 `markdown` 二选一；图注使用 `imageFigure`（包含一个 `image` 及可选 `imageCaption`）保存，图注可直接在页面内编辑。数学、绘图源文件、原始 HTML 等未开放节点仍明确拒绝，受保护后代会保护整个祖先块。具体 ops 类型/限制以 tools/list 为准。
 
-编辑上下文每页最多 100 块，默认 50；大块可能截断并标记保护。游标绑定授权、过滤条件和编辑版本，不能跨文档/授权使用；收到下一游标继续读取，短页不等于结束。不能修改不可编辑/截断区块。
+编辑上下文每页最多 100 块，默认 50；`content` 返回基于权威 Y.Doc 的完整块 JSON，另附 `capabilities`。旧 `text` 字段超过 8000 字符时会截断，结构化块超过 256KiB 时 `content` 为 null 且 `content_truncated=true`，不能据此重建或覆盖该块。常规响应按约 52KiB 分页；首块较大时单独返回，避免游标停滞。游标绑定授权、过滤条件和编辑版本，不能跨文档/授权使用；收到下一游标继续读取，短页不等于结束。不能修改不可编辑/截断区块。
+
+图片导入顺序：先 `create_page` → 每个资源调用 `upload_image` → `get_edit_context` → `edit_page` 写入返回的图片节点。`upload_image` 需要 pages.edit，接受 `page_id`、`file_name`、`data_base64`、`idempotency_key`；支持 PNG/GIF/JPEG/WebP，单文件最多 7MiB（含本次文章约 6.76MiB 的 GIF），HTTP 请求整体仍受 10MiB 上限约束。服务端检查文件头与尺寸，不转换原始字节，返回 SHA-256、尺寸、MIME、内部地址和原生 image 节点。上传本身不改变文档内容，随后写入需使用最新版本令牌。图片只允许引用当前页面的有效附件；跨页/工作区引用、外链、SVG、data URL 均拒绝。下载由客户端完成，服务端不访问任意外部 URL。
+
+同键重试返回同一附件，不重复计费；同键不同文件名或内容报冲突。上传使用页面实时权限、额度及操作记录，普通失败回滚附件记录并清理对象；数据库提交结果不明时先查询确认，避免误删已提交资源。导入中断后按原键继续，已成功附件仍绑定页面。运行时崩溃或存储/数据库同时不可用时可能留下需运维核查的孤立存储对象，不宣称跨数据库与对象存储的分布式原子事务。`get_operation` 支持 `upload_image` 的结果查询。
+
+原生表格可通过结构化块替换保留表头、单元格、合并属性与列宽；输入需通过表格结构校验。Mermaid 以 `codeBlock`、`language: "mermaid"` 和原始源码保存，浏览器负责渲染与语法错误提示。写入 committed 代表保存成功，不代表 Mermaid 语法正确，需查看页面图形或错误提示。
 
 committed 表示数据库已持久化，通知/检索索引可能稍后同步。超过 15 秒可能返回 pending；按 retry_after_ms 查询同一操作，核对期间不提交替代操作。
 

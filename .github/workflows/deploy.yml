@@ -76,6 +76,8 @@ jobs:
           kubectl -n docmost get service docmost-postgres >/dev/null
           kubectl -n docmost get service docmost-redis >/dev/null
           kubectl -n docmost get secret docmost-env >/dev/null
+          kubectl -n docmost get secret docmost-migration-env >/dev/null
+          kubectl auth can-i create jobs.batch -n docmost | grep -qx yes
           kubectl auth can-i patch deployments.apps -n docmost | grep -qx yes
           kubectl auth can-i create secrets -n docmost | grep -qx yes
 
@@ -89,6 +91,34 @@ jobs:
             --docker-username="${GITHUB_ACTOR}" \
             --docker-password="${GHCR_TOKEN}" \
             --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply migrations with the isolated migration credential
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          job="docmost-migrate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          manifest="$RUNNER_TEMP/docmost-migration.yaml"
+          sed -e "s|__DOCMOST_IMAGE__|${IMAGE_REPOSITORY}@${IMAGE_DIGEST}|g" \
+              -e "s|__MIGRATION_JOB__|${job}|g" \
+            deploy/k8s/production/migration.yaml > "$manifest"
+          kubectl apply --dry-run=server -f "$manifest" >/dev/null
+          kubectl apply -f "$manifest"
+          # Stop promptly on failure instead of waiting for the full deadline.
+          for attempt in $(seq 1 120); do
+            succeeded=$(kubectl -n docmost get job "$job" -o jsonpath='{.status.succeeded}')
+            failed=$(kubectl -n docmost get job "$job" -o jsonpath='{.status.failed}')
+            if [ "${succeeded:-0}" -ge 1 ]; then
+              kubectl -n docmost logs "job/$job"
+              break
+            fi
+            if [ "${failed:-0}" -ge 1 ] || [ "$attempt" -eq 120 ]; then
+              kubectl -n docmost logs "job/$job" || true
+              echo "Database migration failed; application rollout was not started" >&2
+              exit 1
+            fi
+            sleep 5
+          done
 
       - name: Apply the exact image digest
         env:

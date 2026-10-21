@@ -1,23 +1,23 @@
-import { marked } from "marked";
-import { calloutExtension } from "./callout.marked";
-import { mathBlockExtension } from "./math-block.marked";
-import { mathInlineExtension } from "./math-inline.marked";
+import { marked } from 'marked';
+import { calloutExtension } from './callout.marked';
+import { mathBlockExtension } from './math-block.marked';
+import { mathInlineExtension } from './math-inline.marked';
 
 marked.use({
   renderer: {
     list({ ordered, start, items }) {
-      let body = "";
+      let body = '';
       for (const item of items) {
         body += this.listitem(item);
       }
 
       if (ordered) {
-        const startAttr = start !== 1 ? ` start="${start}"` : "";
+        const startAttr = start !== 1 ? ` start="${start}"` : '';
         return `<ol${startAttr}>\n${body}</ol>\n`;
       }
 
       const isTaskList = items.some((item) => item.task);
-      const dataType = isTaskList ? ' data-type="taskList"' : "";
+      const dataType = isTaskList ? ' data-type="taskList"' : '';
       return `<ul${dataType}>\n${body}</ul>\n`;
     },
     listitem({ tokens, task: isTask, checked: isChecked }) {
@@ -41,13 +41,15 @@ marked.setOptions({ breaks: true });
 
 export function markdownToHtml(
   markdownInput: string,
-  options?: { breaks?: boolean },
+  options?: { breaks?: boolean; stripFrontmatter?: boolean },
 ): string | Promise<string> {
   const YAML_FONT_MATTER_REGEX = /^\s*---[\s\S]*?---\s*/;
 
-  const markdown = markdownInput
-    .replace(YAML_FONT_MATTER_REGEX, "")
-    .trimStart();
+  const markdown = (
+    options?.stripFrontmatter === false
+      ? markdownInput
+      : markdownInput.replace(YAML_FONT_MATTER_REGEX, '')
+  ).trimStart();
 
-  return marked.parse(markdown, options ?? {}).toString();
+  return marked.parse(markdown, { breaks: options?.breaks ?? true }).toString();
 }

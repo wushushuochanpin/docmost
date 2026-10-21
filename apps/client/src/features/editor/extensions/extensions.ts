@@ -31,6 +31,8 @@ import {
   CustomTable,
   TrailingNode,
   TiptapImage,
+  ImageFigure,
+  ImageCaption,
   Callout,
   TiptapVideo,
   LinkExtension,
@@ -248,6 +250,8 @@ export const mainExtensions = [
     controls: true,
     nocookie: true,
   }),
+  ImageFigure,
+  ImageCaption,
   TiptapImage.configure({
     view: ImageView,
     allowBase64: false,

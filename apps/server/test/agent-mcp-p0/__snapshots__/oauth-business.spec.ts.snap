@@ -314,7 +314,7 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
       "openWorldHint": false,
       "readOnlyHint": false,
     },
-    "description": "Atomically apply safe Markdown block edits. Unsupported Markdown is rejected, never silently flattened. Success means database commit.",
+    "description": "Atomically apply native rich JSON or Markdown block edits, including tables, attachment images, figures/captions, rules and Mermaid code. Unsupported Markdown is rejected, never silently flattened. Success means database commit.",
     "execution": {
       "taskSupport": "forbidden",
     },
@@ -332,6 +332,32 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
               {
                 "additionalProperties": false,
                 "properties": {
+                  "content": {
+                    "additionalProperties": false,
+                    "description": "Native Tiptap document. Supported nodes and limits are returned by get_edit_context. Use exactly one of markdown or content.",
+                    "properties": {
+                      "content": {
+                        "items": {
+                          "additionalProperties": {},
+                          "propertyNames": {
+                            "type": "string",
+                          },
+                          "type": "object",
+                        },
+                        "maxItems": 10000,
+                        "type": "array",
+                      },
+                      "type": {
+                        "const": "doc",
+                        "type": "string",
+                      },
+                    },
+                    "required": [
+                      "type",
+                      "content",
+                    ],
+                    "type": "object",
+                  },
                   "markdown": {
                     "maxLength": 262144,
                     "type": "string",
@@ -343,13 +369,38 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
                 },
                 "required": [
                   "type",
-                  "markdown",
                 ],
                 "type": "object",
               },
               {
                 "additionalProperties": false,
                 "properties": {
+                  "content": {
+                    "additionalProperties": false,
+                    "description": "Native Tiptap document. Supported nodes and limits are returned by get_edit_context. Use exactly one of markdown or content.",
+                    "properties": {
+                      "content": {
+                        "items": {
+                          "additionalProperties": {},
+                          "propertyNames": {
+                            "type": "string",
+                          },
+                          "type": "object",
+                        },
+                        "maxItems": 10000,
+                        "type": "array",
+                      },
+                      "type": {
+                        "const": "doc",
+                        "type": "string",
+                      },
+                    },
+                    "required": [
+                      "type",
+                      "content",
+                    ],
+                    "type": "object",
+                  },
                   "markdown": {
                     "maxLength": 262144,
                     "type": "string",
@@ -361,7 +412,6 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
                 },
                 "required": [
                   "type",
-                  "markdown",
                 ],
                 "type": "object",
               },
@@ -371,6 +421,32 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
                   "block_ref": {
                     "maxLength": 4096,
                     "type": "string",
+                  },
+                  "content": {
+                    "additionalProperties": false,
+                    "description": "Native Tiptap document. Supported nodes and limits are returned by get_edit_context. Use exactly one of markdown or content.",
+                    "properties": {
+                      "content": {
+                        "items": {
+                          "additionalProperties": {},
+                          "propertyNames": {
+                            "type": "string",
+                          },
+                          "type": "object",
+                        },
+                        "maxItems": 10000,
+                        "type": "array",
+                      },
+                      "type": {
+                        "const": "doc",
+                        "type": "string",
+                      },
+                    },
+                    "required": [
+                      "type",
+                      "content",
+                    ],
+                    "type": "object",
                   },
                   "markdown": {
                     "maxLength": 262144,
@@ -384,7 +460,6 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
                 "required": [
                   "type",
                   "block_ref",
-                  "markdown",
                 ],
                 "type": "object",
               },
@@ -471,7 +546,7 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
       "openWorldHint": false,
       "readOnlyHint": false,
     },
-    "description": "Create a safe Markdown document inside a folder.",
+    "description": "Upload PNG/GIF/JPEG/WebP original bytes (base64, max 7 MiB) as a page-owned attachment. Requires pages.edit. Repeating the same idempotency key returns the same attachment; different bytes conflict. Does not insert a block: use edit_page with the returned image node, optionally inside imageFigure with imageCaption. No external image URLs.",
     "execution": {
       "taskSupport": "forbidden",
     },
@@ -479,6 +554,77 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
       "$schema": "http://json-schema.org/draft-07/schema#",
       "additionalProperties": false,
       "properties": {
+        "data_base64": {
+          "maxLength": 9786712,
+          "minLength": 4,
+          "type": "string",
+        },
+        "file_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string",
+        },
+        "idempotency_key": {
+          "pattern": "^[\\x21-\\x7e]{1,128}$",
+          "type": "string",
+        },
+        "page_id": {
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "type": "string",
+        },
+      },
+      "required": [
+        "page_id",
+        "file_name",
+        "data_base64",
+        "idempotency_key",
+      ],
+      "type": "object",
+    },
+    "name": "upload_image",
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+    },
+    "description": "Create a Markdown or native rich JSON document inside a folder. To import images: create the page, upload_image to it, then edit_page using returned attachment nodes.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "additionalProperties": false,
+          "description": "Native Tiptap document. Supported nodes and limits are returned by get_edit_context. Use exactly one of markdown or content.",
+          "properties": {
+            "content": {
+              "items": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string",
+                },
+                "type": "object",
+              },
+              "maxItems": 10000,
+              "type": "array",
+            },
+            "type": {
+              "const": "doc",
+              "type": "string",
+            },
+          },
+          "required": [
+            "type",
+            "content",
+          ],
+          "type": "object",
+        },
         "idempotency_key": {
           "pattern": "^[\\x21-\\x7e]{1,128}$",
           "type": "string",
@@ -509,7 +655,6 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
         "space_id",
         "parent_id",
         "title",
-        "markdown",
         "idempotency_key",
       ],
       "type": "object",
@@ -531,6 +676,9 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
       "$schema": "http://json-schema.org/draft-07/schema#",
       "additionalProperties": false,
       "properties": {
+        "content": {
+          "not": {},
+        },
         "idempotency_key": {
           "pattern": "^[\\x21-\\x7e]{1,128}$",
           "type": "string",
@@ -625,6 +773,7 @@ exports[`OAuth and public MCP across two HTTP nodes session consent on A, token 
             "update_page_metadata",
             "create_page",
             "create_folder",
+            "upload_image",
           ],
           "type": "string",
         },

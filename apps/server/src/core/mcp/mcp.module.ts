@@ -1,3 +1,4 @@
+import { ImageUploadService } from './image-upload.service';
 import { DocumentCommandModule } from '../document-command/document-command.module';
 import { DocumentToolsService } from './document-tools.service';
 import { AgentOAuthModule } from '../agent-oauth/agent-oauth.module';
@@ -14,6 +15,7 @@ import { KnowledgeRetrievalService } from './knowledge-retrieval.service';
   controllers: [McpController],
   providers: [
     DocumentToolsService,
+    ImageUploadService,
     AgentMcpAuthGuard,
     McpGatewayService,
     KnowledgeRetrievalService,
