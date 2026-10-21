@@ -2,7 +2,7 @@
 file: docs/operations/kubernetes-deployment/README.md
 description: Docmost production Kubernetes architecture, delivery boundary, initial cutover, verification, and recovery runbook.
 created_at: 2026-10-20 08:46:35 Asia/Shanghai
-updated_at: 2026-10-21 09:43:30 Asia/Shanghai
+updated_at: 2026-10-21 18:30:19 Asia/Shanghai
 timezone: Asia/Shanghai
 source_of_truth: .github/workflows/deploy.yml, deploy/k8s/production, and the live xenzify-dev K3s cluster
 applies_to:
@@ -102,3 +102,7 @@ scripts/cutover-docmost-k8s.sh
 可在 Agent 策略中停用新增写入，保留已保存内容和读取。已产生文档 journal/gate 后，
 不要通过恢复超级用户连接、关闭文档命令协议或切换到不兼容版本回退。
 本次启用前备份位于 `/root/backups/docmost_mcp_oauth_20261021`，不纳入清理范围。
+
+## Isolated backups
+
+The HTTP application no longer consumes backup jobs. `docmost-backup` runs the same release image with a SELECT-only backup credential from `docmost-backup-env`; this Secret must never enter the application Pod. Provisioning, regression/restore tests, release smoke and recovery are described in [Backup operations](../backup/README.md). Deployment now waits for the reusable backup regression job and verifies a real queued backup plus matching local/COS checksums before recording the accepted source SHA.

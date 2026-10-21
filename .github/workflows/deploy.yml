@@ -22,7 +22,11 @@ env:
   KUBECTL_VERSION: v1.36.4
 
 jobs:
+  backup-regression:
+    uses: ./.github/workflows/backup-regression.yml
+
   deploy:
+    needs: backup-regression
     runs-on: docmost-linux-checks
     timeout-minutes: 45
     environment: production
@@ -77,6 +81,7 @@ jobs:
           kubectl -n docmost get service docmost-redis >/dev/null
           kubectl -n docmost get secret docmost-env >/dev/null
           kubectl -n docmost get secret docmost-migration-env >/dev/null
+          kubectl -n docmost get secret docmost-backup-env >/dev/null
           kubectl auth can-i create jobs.batch -n docmost | grep -qx yes
           kubectl auth can-i patch deployments.apps -n docmost | grep -qx yes
           kubectl auth can-i create secrets -n docmost | grep -qx yes
@@ -133,6 +138,11 @@ jobs:
           ! grep -q '__DOCMOST_IMAGE__' "$manifest"
           kubectl apply --dry-run=server -f "$manifest" >/dev/null
 
+          backup_manifest="$RUNNER_TEMP/docmost-backup.yaml"
+          sed "s|__DOCMOST_IMAGE__|${image}|g" deploy/k8s/production/backup-worker.yaml > "$backup_manifest"
+          kubectl apply --dry-run=server -f "$backup_manifest" >/dev/null
+          previous_backup_image=$(kubectl -n docmost get deployment docmost-backup \
+            -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)
           previous_image=$(kubectl -n docmost get deployment docmost \
             -o jsonpath='{.spec.template.spec.containers[?(@.name=="docmost")].image}' \
             2>/dev/null || true)
@@ -143,12 +153,23 @@ jobs:
               kubectl -n docmost set image deployment/docmost "docmost=$previous_image" || true
               kubectl -n docmost rollout status deployment/docmost --timeout=5m || true
             fi
+            if [ -n "$previous_backup_image" ]; then
+              kubectl -n docmost set image deployment/docmost-backup "backup=$previous_backup_image" || true
+              kubectl -n docmost rollout status deployment/docmost-backup --timeout=5m || true
+            else
+              kubectl -n docmost patch deployment docmost-backup --type=merge -p '{"spec":{"replicas":0}}' || true
+            fi
             exit "$rc"
           }
           trap rollback ERR
 
           kubectl apply -f "$manifest"
           kubectl -n docmost rollout status deployment/docmost --timeout=10m
+
+          # Old application consumers must be drained before the dedicated worker starts.
+          kubectl apply -f "$backup_manifest"
+          kubectl -n docmost rollout status deployment/docmost-backup --timeout=10m
+          test "$(kubectl -n docmost get deployment docmost-backup -o jsonpath='{.spec.template.spec.containers[0].image}')" = "$image"
 
           current_image=$(kubectl -n docmost get deployment docmost \
             -o jsonpath='{.spec.template.spec.containers[?(@.name=="docmost")].image}')
@@ -169,6 +190,10 @@ jobs:
             sleep 5
           done
 
+          # A healthy HTTP server alone cannot prove backup compatibility.
+          kubectl -n docmost exec deployment/docmost -- \
+            node apps/server/dist/integrations/backup/backup-smoke.js
+
           kubectl -n docmost annotate deployment docmost \
             "docmost.dev/source-sha=${GITHUB_SHA}" --overwrite
           trap - ERR
@@ -188,3 +213,4 @@ jobs:
           kubectl -n docmost describe deployment docmost || true
           kubectl -n docmost get pods -l app.kubernetes.io/name=docmost -o wide || true
           kubectl -n docmost logs deployment/docmost --tail=150 || true
+          kubectl -n docmost logs deployment/docmost-backup --tail=100 || true

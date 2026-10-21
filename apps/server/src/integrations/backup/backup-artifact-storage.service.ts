@@ -3,6 +3,7 @@ import { createReadStream } from 'fs';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { Readable } from 'stream';
+import { createHash } from 'node:crypto';
 import { EnvironmentService } from '../environment/environment.service';
 import { S3Driver } from '../storage/drivers';
 import { S3StorageConfig } from '../storage/interfaces';
@@ -40,6 +41,39 @@ export class BackupArtifactStorageService {
   private readonly logger = new Logger(BackupArtifactStorageService.name);
 
   constructor(private readonly environmentService: EnvironmentService) {}
+
+  async verifyCopies(
+    localArtifactPath: string,
+    metadata: unknown,
+  ): Promise<{ sha256: string; sizeBytes: number; remoteVerified: boolean }> {
+    const digest = async (stream: Readable) => {
+      const hash = createHash('sha256');
+      let sizeBytes = 0;
+      for await (const chunk of stream) {
+        hash.update(chunk);
+        sizeBytes += chunk.length;
+      }
+      return { sha256: hash.digest('hex'), sizeBytes };
+    };
+    const local = await digest(
+      createReadStream(this.getLocalArtifactAbsolutePath(localArtifactPath)),
+    );
+    if (!local.sizeBytes) throw new Error('Backup artifact is empty');
+    const copy = this.getS3Copy(metadata);
+    if (this.environmentService.isBackupS3Enabled() && !copy)
+      throw new Error('Required backup replica is missing');
+    if (copy) {
+      const driver = this.getS3Driver(true);
+      if (!driver) throw new Error('Backup replica storage is unavailable');
+      const remote = await digest(await driver.readStream(copy.key));
+      if (
+        local.sha256 !== remote.sha256 ||
+        local.sizeBytes !== remote.sizeBytes
+      )
+        throw new Error('Backup replica checksum mismatch');
+    }
+    return { ...local, remoteVerified: !!copy };
+  }
 
   createMetadata(
     localArtifactPath: string,

@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
+import { Job, UnrecoverableError } from 'bullmq';
+import { BackupError, redactBackupError } from '../backup-error';
 import { QueueJob, QueueName } from '../../queue/constants';
 import { BackupJobService } from '../backup-job.service';
 import { BackupPackageService } from '../backup-package.service';
@@ -54,24 +55,30 @@ export class BackupProcessor extends WorkerHost {
     } catch (err) {
       const attempts = this.getAttempts(job);
       const attemptNumber = job.attemptsMade + 1;
-      const willRetry = attemptNumber < attempts;
+      const permanent = err instanceof BackupError && !err.retryable;
+      const willRetry = !permanent && attemptNumber < attempts;
+      const message = redactBackupError(
+        err instanceof Error ? err.message : String(err),
+        process.env.BACKUP_DATABASE_URL,
+      );
       this.logger.warn(
         `Backup job ${jobId} attempt ${attemptNumber}/${attempts} failed${
           willRetry ? ' and will retry' : ''
-        }: ${err}`,
+        }: ${message}`,
       );
 
       if (willRetry) {
         await this.backupJobService.updateJobStatus(jobId, 'pending');
-        throw err;
+        throw new Error(message);
       }
 
       await this.backupJobService.updateJobStatus(jobId, 'failed', {
         endedAt: new Date(),
-        errorCode: 'BACKUP_FAILED',
-        errorMessage: err instanceof Error ? err.message : String(err),
+        errorCode: err instanceof BackupError ? err.code : 'BACKUP_FAILED',
+        errorMessage: message,
       });
-      throw err;
+      if (permanent) throw new UnrecoverableError(message);
+      throw new Error(message);
     }
   }
 }
