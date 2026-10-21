@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docmost-backup
+  namespace: docmost
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  progressDeadlineSeconds: 600
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: docmost-backup
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: docmost-backup
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: vm-0-16-ubuntu
+      imagePullSecrets:
+        - name: ghcr-pull
+      terminationGracePeriodSeconds: 900
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: backup
+          image: __DOCMOST_IMAGE__
+          workingDir: /app/apps/server
+          command: ["node", "dist/integrations/backup/backup-worker.js"]
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: BACKUP_LOCAL_PATH
+              value: /app/data/storage/backups
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: DATABASE_URL }
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: REDIS_URL }
+            - name: BACKUP_DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: docmost-backup-env, key: BACKUP_DATABASE_URL }
+            - name: STORAGE_DRIVER
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: STORAGE_DRIVER, optional: true }
+            - name: BACKUP_S3_ENABLED
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: BACKUP_S3_ENABLED, optional: true }
+            - name: BACKUP_S3_PREFIX
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: BACKUP_S3_PREFIX, optional: true }
+            - name: AWS_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: AWS_S3_ACCESS_KEY_ID, optional: true }
+            - name: AWS_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: AWS_S3_SECRET_ACCESS_KEY, optional: true }
+            - name: AWS_S3_REGION
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: AWS_S3_REGION, optional: true }
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: AWS_S3_BUCKET, optional: true }
+            - name: AWS_S3_ENDPOINT
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: AWS_S3_ENDPOINT, optional: true }
+            - name: AWS_S3_FORCE_PATH_STYLE
+              valueFrom:
+                secretKeyRef: { name: docmost-env, key: AWS_S3_FORCE_PATH_STYLE, optional: true }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities: { drop: [ALL] }
+            seccompProfile: { type: RuntimeDefault }
+          readinessProbe:
+            exec:
+              command: ["node", "-e", "const fs=require('fs');process.exit(Date.now()-Number(fs.readFileSync('/tmp/docmost-backup-worker-ready','utf8'))<45000?0:1)"]
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          volumeMounts:
+            - name: storage
+              mountPath: /app/data/storage
+              readOnly: true
+            - name: storage
+              mountPath: /app/data/storage/backups
+              subPath: backups
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: docmost-storage

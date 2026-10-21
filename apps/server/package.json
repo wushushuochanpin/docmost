@@ -28,7 +28,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config test/jest-e2e.json",
-    "test:agent-mcp-p0": "node test/agent-mcp-p0/run.mjs"
+    "test:agent-mcp-p0": "node test/agent-mcp-p0/run.mjs",
+    "backup:worker": "node dist/integrations/backup/backup-worker.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.52",

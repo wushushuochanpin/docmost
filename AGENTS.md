@@ -43,3 +43,11 @@
 - New migration filenames must start with a unique sortable `YYYYMMDDTHHMMSS-` key and be later than the latest migration on the base branch.
 - Do not rename, delete, or edit an already-merged migration; create a follow-up migration instead.
 - Run `pnpm run security:migration-order` when adding or touching database migrations.
+
+## Backup Release Guardrails
+
+- The HTTP application must never receive `BACKUP_DATABASE_URL`, the backup Secret, or migration credentials. Only the isolated backup worker consumes backup jobs.
+- Keep the runtime database role restricted. Full database backups use a distinct non-superuser, SELECT-only BYPASSRLS role; never skip RLS tables or enable partial row-security dumps to make backups pass.
+- Changes to database roles, RLS, migrations, backup code or deployment configuration require `pnpm run test:backup` against disposable PostgreSQL 16 and Redis. Verify a restore, both workspaces and Y.Doc binary data.
+- Keep the reusable backup regression job as a dependency of production deployment. After rollout, the real queued backup and local/COS checksum verification must pass before accepting the deployed identity.
+- Do not change merged migrations to repair backup grants. Provision the dedicated role and its default privileges through the documented operations procedure.

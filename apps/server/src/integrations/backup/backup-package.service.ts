@@ -3,15 +3,15 @@ import { EnvironmentService } from '../environment/environment.service';
 import { LOCAL_STORAGE_PATH } from '../../common/helpers';
 import * as path from 'path';
 import * as fs from 'fs-extra';
-import { spawn } from 'child_process';
-import { createWriteStream } from 'fs';
-import { createGzip } from 'zlib';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
 import {
   BackupArtifactJobMetadata,
   BackupArtifactStorageService,
 } from './backup-artifact-storage.service';
+
+import { gzipProcess, backupDatabaseEnvironment } from './backup-process';
+import { BackupError } from './backup-error';
 
 const DOCMOST_VERSION = process.env.npm_package_version ?? '0.0.0';
 
@@ -36,11 +36,14 @@ export class BackupPackageService {
 
   async runBackup(workspaceId: string, jobId: string): Promise<BackupResult> {
     const backupRoot = this.environmentService.getBackupLocalPath();
-    const databaseUrl = this.environmentService.getDatabaseURL();
+    const databaseUrl = this.environmentService.getBackupDatabaseURL();
     const storageDriver = this.environmentService.getStorageDriver();
 
     if (!databaseUrl) {
-      throw new Error('DATABASE_URL is not set');
+      throw new BackupError(
+        'BACKUP_CONFIGURATION',
+        'Backup worker requires a dedicated BACKUP_DATABASE_URL',
+      );
     }
 
     const tmpId = randomBytes(8).toString('hex');
@@ -77,6 +80,7 @@ export class BackupPackageService {
         workspaceId,
         storageDriver,
         schemaVersion: 1,
+        scope: 'database',
       };
       await fs.writeJson(path.join(workDir, 'manifest.json'), manifest, {
         spaces: 2,
@@ -88,7 +92,7 @@ export class BackupPackageService {
         .toISOString()
         .replace(/[:.]/g, '-')
         .slice(0, 19);
-      const artifactName = `backup-${workspaceId}-${timestamp}.tar.gz`;
+      const artifactName = `backup-${workspaceId}-${timestamp}-${jobId}.tar.gz`;
       const artifactPath = path.join(outDir, artifactName);
       const artifactRelativePath = path.join(workspaceId, artifactName);
       artifactPathToCleanup = artifactPath;
@@ -133,92 +137,17 @@ export class BackupPackageService {
     }
   }
 
-  private parseDatabaseUrl(databaseUrl: string): {
-    host: string;
-    port: string;
-    db: string;
-    user: string;
-    password: string;
-  } {
-    const m = databaseUrl.match(
-      /^postgres(?:ql)?:\/\/([^@]+)@([^/]+)\/([^?]*)/,
-    );
-    if (!m) throw new Error('Invalid DATABASE_URL');
-    const [, userPass, hostPort, db] = m;
-    const colonIndex = userPass.indexOf(':');
-    const user =
-      colonIndex === -1
-        ? decodeURIComponent(userPass)
-        : decodeURIComponent(userPass.slice(0, colonIndex));
-    const password =
-      colonIndex === -1
-        ? ''
-        : decodeURIComponent(userPass.slice(colonIndex + 1));
-    const [host, port = '5432'] = hostPort.split(':');
-    return {
-      host,
-      port,
-      db: db || 'postgres',
-      user,
-      password,
-    };
-  }
-
   private async dumpDatabase(
     databaseUrl: string,
     outPath: string,
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      let parsed: {
-        host: string;
-        port: string;
-        db: string;
-        user: string;
-        password: string;
-      };
-      try {
-        parsed = this.parseDatabaseUrl(databaseUrl);
-      } catch (e) {
-        reject(e);
-        return;
-      }
-
-      const { host, port, db, user, password } = parsed;
-
-      const pgDump = spawn(
-        PG_DUMP_BIN,
-        ['-h', host, '-p', port, '-U', user, '-d', db, '-F', 'p', '-f', '-'],
-        {
-          env: { ...process.env, PGPASSWORD: password },
-          stdio: ['ignore', 'pipe', 'pipe'],
-        },
-      );
-
-      const gzip = createGzip();
-      const out = createWriteStream(outPath);
-
-      pgDump.stdout!.pipe(gzip).pipe(out);
-
-      let stderr = '';
-      pgDump.stderr?.on('data', (c) => {
-        stderr += c.toString();
-      });
-
-      pgDump.on('error', (err) => {
-        reject(
-          new Error(`pg_dump failed: ${err.message}. Is pg_dump installed?`),
-        );
-      });
-
-      out.on('finish', () => resolve());
-      out.on('error', reject);
-      gzip.on('error', reject);
-      pgDump.on('close', (code) => {
-        if (code !== 0) {
-          reject(new Error(`pg_dump exited ${code}: ${stderr}`));
-        }
-      });
-    });
+    await gzipProcess(
+      PG_DUMP_BIN,
+      ['--format=plain', '--no-owner', '--no-privileges'],
+      outPath,
+      'BACKUP_DATABASE_EXPORT',
+      backupDatabaseEnvironment(databaseUrl),
+    );
   }
 
   private async copyLocalStorage(sourceDir: string, destDir: string) {
@@ -238,62 +167,11 @@ export class BackupPackageService {
   }
 
   private async createTarGz(sourceDir: string, outPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const tar = spawn(TAR_BIN, ['-cf', '-', '-C', sourceDir, '.'], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-      const gzip = createGzip();
-      const out = createWriteStream(outPath);
-
-      let stderr = '';
-      let tarClosed = false;
-      let outFinished = false;
-      let rejected = false;
-
-      const rejectOnce = (err: Error) => {
-        if (rejected) return;
-        rejected = true;
-        tar.kill();
-        gzip.destroy();
-        out.destroy();
-        reject(err);
-      };
-
-      const resolveIfDone = () => {
-        if (!rejected && tarClosed && outFinished) {
-          resolve();
-        }
-      };
-
-      tar.stdout?.pipe(gzip).pipe(out);
-
-      tar.stderr?.on('data', (chunk) => {
-        stderr += chunk.toString();
-      });
-
-      tar.on('error', (err) => {
-        rejectOnce(new Error(`tar failed: ${err.message}. Is tar installed?`));
-      });
-      gzip.on('error', rejectOnce);
-      out.on('error', rejectOnce);
-      out.on('finish', () => {
-        outFinished = true;
-        resolveIfDone();
-      });
-
-      tar.on('close', (code) => {
-        if (code === 0) {
-          tarClosed = true;
-          resolveIfDone();
-          return;
-        }
-
-        rejectOnce(
-          new Error(
-            `tar exited ${code}: ${stderr.trim() || 'no stderr output'}`,
-          ),
-        );
-      });
-    });
+    await gzipProcess(
+      TAR_BIN,
+      ['-cf', '-', '-C', sourceDir, '.'],
+      outPath,
+      'BACKUP_ARCHIVE',
+    );
   }
 }

@@ -328,11 +328,21 @@ export default function BackupPage() {
                         </Badge>
                       )}
                       {job.status === "failed" && job.errorMessage && (
-                        <Tooltip label={job.errorMessage}>
+                        <>
                           <Text fz="xs" c="red" mt={4} lineClamp={1}>
                             {job.errorMessage}
                           </Text>
-                        </Tooltip>
+                          <Button
+                            variant="subtle"
+                            size="compact-xs"
+                            onClick={() => modals.open({
+                              title: t("Backup error details"),
+                              children: <Text size="sm" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{job.errorMessage}</Text>,
+                            })}
+                          >
+                            {t("View error details")}
+                          </Button>
+                        </>
                       )}
                     </Table.Td>
                     <Table.Td>

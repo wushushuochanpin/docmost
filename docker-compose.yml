@@ -27,6 +27,25 @@ services:
     volumes:
       - docmost:/app/data/storage
 
+  backup:
+    image: docmost:local
+    working_dir: /app/apps/server
+    command: ["node", "dist/integrations/backup/backup-worker.js"]
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+      - path: .env.backup
+        required: false
+    environment:
+      DATABASE_URL: 'postgresql://docmost:${DOCMOST_DB_PASSWORD}@db:5432/docmost'
+      REDIS_URL: 'redis://redis:6379'
+      BACKUP_LOCAL_PATH: '/app/data/storage/backups'
+    restart: unless-stopped
+    volumes:
+      - docmost:/app/data/storage
+
   db:
     image: postgres:16-alpine
     environment:

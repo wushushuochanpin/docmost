@@ -1,0 +1,27 @@
+name: Backup regression
+on:
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  backup-restore:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: docmost-linux-checks
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: python3 scripts/check-k8s-deployment.py
+      - run: pnpm run guard:realtime-deployment
+      - run: pnpm --filter @docmost/editor-ext build
+      - run: pnpm --filter server build
+      - name: Restore real backups with PostgreSQL 16, RLS and isolated Redis
+        run: pnpm run test:backup

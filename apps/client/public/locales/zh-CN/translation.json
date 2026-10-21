@@ -1605,5 +1605,7 @@
   "Group created successfully": "群组创建成功",
   "Failed to compress image": "图片压缩失败",
   "Toggle Color Scheme": "切换颜色主题",
-  "Toggle color scheme": "切换颜色主题"
+  "Toggle color scheme": "切换颜色主题",
+  "Backup error details": "备份失败详情",
+  "View error details": "查看失败详情"
 }

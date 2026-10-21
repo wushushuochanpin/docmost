@@ -131,6 +131,10 @@ export class EnvironmentService {
     );
   }
 
+  getBackupDatabaseURL(): string | undefined {
+    return this.configService.get<string>('BACKUP_DATABASE_URL')?.trim() || undefined;
+  }
+
   isBackupEnabled(): boolean {
     const raw = this.configService.get<string>('BACKUP_ENABLED', 'true');
     return raw === 'true' || raw === '1';

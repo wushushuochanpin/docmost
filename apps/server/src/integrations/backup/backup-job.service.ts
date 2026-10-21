@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB } from '@docmost/db/types/kysely.types';
@@ -183,8 +184,14 @@ export class BackupJobService {
 
   async createManualJob(
     workspaceId: string,
-    userId: string,
+    userId: string | null,
+    triggerType: BackupTriggerType = 'manual',
   ): Promise<BackupJobRow> {
+    if (!(await this.backupQueue.getWorkers()).length) {
+      throw new ServiceUnavailableException(
+        'Backup worker is unavailable. Please check the backup service.',
+      );
+    }
     await this.cleanupStaleJobsByWorkspace(workspaceId);
 
     const activeJob = await this.db
@@ -205,7 +212,7 @@ export class BackupJobService {
       .values({
         workspaceId,
         policyId: null,
-        triggerType: 'manual',
+        triggerType,
         triggeredByUserId: userId,
         status: 'pending',
       })
