@@ -104,13 +104,13 @@ export class IdentityController {
         req.cookies.authToken,
       );
       res.header('Cache-Control', 'no-store');
-      return res.redirect(started.url);
+      return res.code(302).redirect(started.url);
     } catch (error) {
       const code =
         error instanceof Error && errors.has(error.message)
           ? error.message
           : 'invalid_transaction';
-      return res.redirect(`/login?identity_error=${code}`);
+      return res.code(302).redirect(`/login?identity_error=${code}`);
     }
   }
 
@@ -159,7 +159,7 @@ export class IdentityController {
         req.cookies[IDENTITY_BROWSER_COOKIE],
         req.cookies.authToken,
       );
-      return res.redirect(result.returnTo);
+      return res.code(302).redirect(result.returnTo);
     } catch (error) {
       const code =
         error instanceof Error && errors.has(error.message)
@@ -174,7 +174,7 @@ export class IdentityController {
       const returnTo = (error as { identityReturnTo?: string })
         ?.identityReturnTo;
       if (path === '/login' && returnTo) query.set('redirect', returnTo);
-      return res.redirect(`${path}?${query.toString()}`);
+      return res.code(302).redirect(`${path}?${query.toString()}`);
     }
   }
 

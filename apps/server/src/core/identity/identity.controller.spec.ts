@@ -1,21 +1,73 @@
 jest.mock('./identity.service', () => ({ IdentityService: class {} }));
 import { IdentityController } from './identity.controller';
+import Fastify from 'fastify';
 
 function response() {
   const res: any = {
     header: jest.fn(),
     setCookie: jest.fn(),
     redirect: jest.fn(),
+    code: jest.fn(),
   };
   res.header.mockReturnValue(res);
   res.setCookie.mockReturnValue(res);
   res.redirect.mockReturnValue(res);
+  res.code.mockReturnValue(res);
   return res;
 }
 describe('Identity HTTP contract', () => {
   const config = {
     get: () => ({ callback: 'https://book.test/api/identity/callback' }),
   };
+  it.each(['start', 'callback'] as const)(
+    'sends an actual 302 for %s even when Nest preselects 200',
+    async (method) => {
+      for (const rejected of [false, true]) {
+        const service = {
+          start: rejected
+            ? jest.fn().mockRejectedValue(new Error('center_unavailable'))
+            : jest
+                .fn()
+                .mockResolvedValue({ url: 'https://center.test/login/t/one' }),
+          callback: rejected
+            ? jest.fn().mockRejectedValue(new Error('invalid_transaction'))
+            : jest.fn().mockResolvedValue({ returnTo: '/home' }),
+        };
+        const controller = new IdentityController(
+          service as any,
+          config as any,
+        );
+        const app = Fastify();
+        app.get('/probe', async (req, reply) => {
+          reply.code(200);
+          const request = Object.assign(req, { cookies: {} });
+          return method === 'start'
+            ? controller.start(
+                { id: 'workspace' } as any,
+                '/home',
+                request,
+                reply,
+              )
+            : controller.callback({ id: 'workspace' } as any, request, reply);
+        });
+        try {
+          const reply = await app.inject('/probe');
+          expect(reply.statusCode).toBe(302);
+          expect(reply.headers.location).toBe(
+            method === 'start'
+              ? rejected
+                ? '/login?identity_error=center_unavailable'
+                : 'https://center.test/login/t/one'
+              : rejected
+                ? '/login?identity_error=invalid_transaction'
+                : '/home',
+          );
+        } finally {
+          await app.close();
+        }
+      }
+    },
+  );
   it('never sets an authentication cookie on successful callback', async () => {
     const identity = {
       callback: jest
