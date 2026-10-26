@@ -56,7 +56,8 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=docmost-production-amd64
-          cache-to: type=gha,scope=docmost-production-amd64,mode=max
+          # Cache is optional; keep upload bounded after the immutable image is pushed.
+          cache-to: type=gha,scope=docmost-production-amd64,mode=min,timeout=2m,ignore-error=true
 
       - name: Install the pinned Kubernetes client
         run: |
