@@ -1,3 +1,4 @@
+import { SessionService } from '../session/session.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '@nestjs-labs/nestjs-ioredis';
 import type { Redis } from 'ioredis';
@@ -68,6 +69,7 @@ export class EditorSessionService {
     private readonly pageAccessService: PageAccessService,
     private readonly environmentService: EnvironmentService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly sessions: SessionService,
   ) {
     this.redis = this.redisService.getOrThrow();
   }
@@ -698,6 +700,12 @@ export class EditorSessionService {
     if (!opts.editSession) {
       throw new EditorSessionConflictException('Missing editor session');
     }
+
+    await this.sessions.assertActiveSession(
+      opts.editSession.sessionId,
+      opts.userId,
+      opts.workspaceId,
+    );
 
     if (opts.writeIntent === 'handoff_flush') {
       await this.consumeHandoffFlush(opts);

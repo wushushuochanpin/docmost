@@ -1,0 +1,9 @@
+iteration_mode: existing_system_iteration
+status: local_verified_pending_external_acceptance
+approved_by: user_2026_10_26
+construction_plan:
+  - {id: S1, depends_on: [], acceptance_gate: protocol_and_pg_tests, stop_before_next_if: contract_unknown}
+  - {id: S2, depends_on: [], acceptance_gate: session_tests, stop_before_next_if: auth_bypass}
+  - {id: S3, depends_on: [S1], acceptance_gate: client_tests_build, stop_before_next_if: contract_drift}
+  - {id: S4, depends_on: [S1, S2, S3], acceptance_gate: integration_backup_restore, stop_before_next_if: regression}
+  - {id: S5, depends_on: [S4], acceptance_gate: real_provider_and_arc_evidence, stop_before_next_if: external_registration_missing}

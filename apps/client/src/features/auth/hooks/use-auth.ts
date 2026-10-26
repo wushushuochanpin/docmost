@@ -3,14 +3,12 @@ import {
   forgotPassword,
   login,
   logout,
+  isLogoutPending,
   passwordReset,
   setupWorkspace,
   verifyUserToken,
 } from "@/features/auth/services/auth-service";
 import { useNavigate } from "react-router-dom";
-import { useAtom } from "jotai";
-import { currentUserAtom } from "@/features/user/atoms/current-user-atom";
-import { clearRecentPages } from "@/features/page/hooks/use-recent-pages.ts";
 import {
   IForgotPassword,
   ILogin,
@@ -25,19 +23,19 @@ import {
   createWorkspace,
 } from "@/features/workspace/services/workspace-service.ts";
 import APP_ROUTE, { getPostLoginRedirect } from "@/lib/app-route.ts";
-import { RESET } from "jotai/utils";
 import { useTranslation } from "react-i18next";
 import { isCloud } from "@/lib/config.ts";
 import { exchangeTokenRedirectUrl, getHostnameUrl } from "@/ee/utils.ts";
+import { beginAuthAttempt, establishAuthSession, invalidateAuthSession } from "@/features/auth/session-lifecycle";
 
 export default function useAuth() {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const [, setCurrentUser] = useAtom(currentUserAtom);
 
   const handleSignIn = async (data: ILogin) => {
     setIsLoading(true);
+    beginAuthAttempt();
 
     try {
       const response = await login(data);
@@ -49,6 +47,7 @@ export default function useAuth() {
       } else if (response?.requiresMfaSetup) {
         navigate(APP_ROUTE.AUTH.MFA_SETUP_REQUIRED + window.location.search);
       } else {
+        establishAuthSession();
         navigate(getPostLoginRedirect());
       }
     } catch (err) {
@@ -72,6 +71,7 @@ export default function useAuth() {
 
   const handleInvitationSignUp = async (data: IAcceptInvite) => {
     setIsLoading(true);
+    beginAuthAttempt();
 
     try {
       const response = await acceptInvitation(data);
@@ -85,6 +85,7 @@ export default function useAuth() {
         });
         navigate(APP_ROUTE.AUTH.LOGIN);
       } else {
+        establishAuthSession();
         navigate(APP_ROUTE.HOME);
       }
     } catch (err) {
@@ -98,6 +99,7 @@ export default function useAuth() {
 
   const handleSetupWorkspace = async (data: ISetupWorkspace) => {
     setIsLoading(true);
+    beginAuthAttempt();
 
     try {
       if (isCloud()) {
@@ -124,6 +126,7 @@ export default function useAuth() {
       } else {
         const res = await setupWorkspace(data);
         setIsLoading(false);
+        establishAuthSession();
         navigate(APP_ROUTE.HOME);
       }
     } catch (err) {
@@ -137,6 +140,7 @@ export default function useAuth() {
 
   const handlePasswordReset = async (data: IPasswordReset) => {
     setIsLoading(true);
+    beginAuthAttempt();
 
     try {
       const response = await passwordReset(data);
@@ -150,6 +154,7 @@ export default function useAuth() {
         });
         navigate(APP_ROUTE.AUTH.LOGIN);
       } else {
+        establishAuthSession();
         navigate(APP_ROUTE.HOME);
         notifications.show({
           message: t("Password reset was successful"),
@@ -165,10 +170,21 @@ export default function useAuth() {
   };
 
   const handleLogout = async () => {
-    setCurrentUser(RESET);
-    clearRecentPages();
-    await logout();
-    window.location.replace(`${APP_ROUTE.AUTH.LOGIN}?logout=1`);
+    if (isLogoutPending()) return;
+    // Quarantine private state and outstanding callbacks before the network wait.
+    invalidateAuthSession("logout");
+    setIsLoading(true);
+    try {
+      await logout();
+      window.location.replace(`${APP_ROUTE.AUTH.LOGIN}?logout=1`);
+    } catch {
+      notifications.show({
+        message: t("Sign-out could not be confirmed. Your local view is locked. Please retry sign-out."),
+        color: "red",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleForgotPassword = async (data: IForgotPassword) => {

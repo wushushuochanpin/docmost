@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as bcrypt from 'bcrypt';
-import sanitize = require('sanitize-filename');
+import sanitize from 'sanitize-filename';
 import { FastifyRequest } from 'fastify';
 import { Readable, Transform } from 'stream';
 
@@ -178,7 +178,7 @@ export function isUserDisabled(user: {
   return !!(user.deactivatedAt || user.deletedAt);
 }
 
-const SENSITIVE_URL_PREFIXES = ['/api/sso/'];
+const SENSITIVE_URL_PREFIXES = ['/api/sso/', '/api/identity/'];
 
 export function redactSensitiveUrl(url: string): string {
   if (url && SENSITIVE_URL_PREFIXES.some((prefix) => url.includes(prefix))) {

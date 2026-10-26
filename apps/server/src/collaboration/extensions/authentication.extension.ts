@@ -1,5 +1,6 @@
 import {
   beforeHandleMessagePayload,
+  connectedPayload,
   Extension,
   onAuthenticatePayload,
 } from '@hocuspocus/server';
@@ -22,6 +23,8 @@ import { getPageId } from '../collaboration.util';
 import { JwtCollabPayload, JwtType } from '../../core/auth/dto/jwt-payload';
 import { EditorSessionService } from '../../core/editor-session/editor-session.service';
 import type { EditorSessionRef } from '../../core/editor-session/editor-session.types';
+import { SessionService } from '../../core/session/session.service';
+import { SessionConnectionsService } from '../../core/session/session-connections.service';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 
 @Injectable()
@@ -37,6 +40,8 @@ export class AuthenticationExtension implements Extension {
     private readonly workspaceRepo: WorkspaceRepo,
     private readonly editorSessionService: EditorSessionService,
     private readonly environmentService: EnvironmentService,
+    private readonly sessionService: SessionService,
+    private readonly sessionConnections: SessionConnectionsService,
   ) {}
 
   async onAuthenticate(data: onAuthenticatePayload) {
@@ -57,6 +62,12 @@ export class AuthenticationExtension implements Extension {
 
     const userId = jwtPayload.sub;
     const workspaceId = jwtPayload.workspaceId;
+    await this.sessionService.assertActiveSession(
+      jwtPayload.sessionId,
+      userId,
+      workspaceId,
+      true,
+    );
     const workspace = await this.workspaceRepo.findById(workspaceId);
 
     if (!workspace || !this.isWorkspaceCollaborationEnabled(workspace)) {
@@ -158,7 +169,42 @@ export class AuthenticationExtension implements Extension {
     };
   }
 
+  async connected(data: connectedPayload) {
+    const { sessionId, user } = data.context;
+    // Recheck after async document loading, before allowing a retained connection.
+    await this.sessionService.assertActiveSession(
+      sessionId,
+      user?.id,
+      user?.workspaceId,
+    );
+    this.sessionConnections.register(data.connection, sessionId, () => {
+      data.connection.close({ code: 4401, reason: 'Session ended' });
+      if (data.context.editSession) {
+        void this.editorSessionService
+          .release({
+            workspaceId: user.workspaceId,
+            userId: user.id,
+            resourceType: 'page',
+            resourceId: getPageId(data.documentName),
+            editSession: data.context.editSession,
+            reason: 'manual',
+          })
+          .catch(() =>
+            this.logger.warn('Revoked session lease cleanup failed'),
+          );
+      }
+    });
+    data.connection.onClose(() =>
+      this.sessionConnections.unregister(data.connection),
+    );
+  }
+
   async beforeHandleMessage(data: beforeHandleMessagePayload) {
+    await this.sessionService.assertActiveSession(
+      data.context?.sessionId,
+      data.context?.user?.id,
+      data.context?.user?.workspaceId,
+    );
     if (data.connection.readOnly) {
       return;
     }

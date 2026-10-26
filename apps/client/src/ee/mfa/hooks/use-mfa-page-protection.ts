@@ -1,3 +1,4 @@
+import { establishAuthSession } from "@/features/auth/session-lifecycle";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import APP_ROUTE, { getPostLoginRedirect } from "@/lib/app-route";
@@ -38,6 +39,7 @@ export function useMfaPageProtection() {
         navigate(APP_ROUTE.AUTH.MFA_CHALLENGE + search);
       } else if (!result.isTransferToken) {
         // User has a regular auth token, shouldn't be on MFA pages
+        establishAuthSession();
         navigate(getPostLoginRedirect());
       } else {
         setIsValid(true);

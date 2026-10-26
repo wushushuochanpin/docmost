@@ -1,4 +1,5 @@
 import api from "@/lib/api-client";
+import { withAuthCookieLock } from "@/features/auth/auth-cookie-lock";
 import {
   MfaBackupCodesResponse,
   MfaDisableRequest,
@@ -25,7 +26,7 @@ export async function setupMfa(
 export async function enableMfa(
   data: MfaEnableRequest,
 ): Promise<MfaEnableResponse> {
-  const req = await api.post<MfaEnableResponse>("/mfa/enable", data);
+  const req = await withAuthCookieLock(() => api.post<MfaEnableResponse>("/mfa/enable", data));
   return req.data;
 }
 
@@ -47,7 +48,7 @@ export async function regenerateBackupCodes(data: {
 }
 
 export async function verifyMfa(code: string): Promise<any> {
-  const req = await api.post("/mfa/verify", { code });
+  const req = await withAuthCookieLock(() => api.post("/mfa/verify", { code }));
   return req.data;
 }
 

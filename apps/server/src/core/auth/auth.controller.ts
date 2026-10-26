@@ -10,6 +10,7 @@ import {
   Res,
   UseGuards,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { SkipThrottle, Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
@@ -34,6 +35,8 @@ import { VerifyUserTokenDto } from './dto/verify-user-token.dto';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { validateSsoEnforcement } from './auth.util';
 import { ModuleRef } from '@nestjs/core';
+import { IdentityService } from '../identity/identity.service';
+import { IDENTITY_BROWSER_COOKIE } from '../identity/identity.security';
 import { AuditEvent, AuditResource } from '../../common/events/audit-events';
 import {
   AUDIT_SERVICE,
@@ -52,6 +55,7 @@ export class AuthController {
     private environmentService: EnvironmentService,
     private moduleRef: ModuleRef,
     @Inject(AUDIT_SERVICE) private readonly auditService: IAuditService,
+    private readonly identityService: IdentityService,
   ) {}
 
   @HttpCode(HttpStatus.OK)
@@ -60,6 +64,7 @@ export class AuthController {
     @AuthWorkspace() workspace: Workspace,
     @Res({ passthrough: true }) res: FastifyReply,
     @Body() loginInput: LoginDto,
+    @Req() req: FastifyRequest,
   ) {
     validateSsoEnforcement(workspace);
 
@@ -111,6 +116,9 @@ export class AuthController {
           };
         } else if (mfaResult.authToken) {
           // User doesn't have MFA and workspace doesn't require it
+          await this.identityService.cancelBrowserTransactions(
+            req.cookies?.[IDENTITY_BROWSER_COOKIE],
+          );
           this.setAuthCookie(res, mfaResult.authToken);
           return;
         }
@@ -118,6 +126,9 @@ export class AuthController {
     }
 
     const authToken = await this.authService.login(loginInput, workspace.id);
+    await this.identityService.cancelBrowserTransactions(
+      req.cookies?.[IDENTITY_BROWSER_COOKIE],
+    );
     this.setAuthCookie(res, authToken);
   }
 
@@ -218,33 +229,74 @@ export class AuthController {
   }
 
   @SkipThrottle({ [AUTH_THROTTLER]: true })
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('logout')
   async logout(
-    @AuthUser() user: User,
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
-    const sessionId = (req.raw as any).sessionId;
-    if (sessionId) {
+    // Logout must work when the identity centre is unavailable, or when a
+    // login is still pending and there is no authenticated local session yet.
+    const origin = req.headers.origin;
+    if (
+      origin !== `${req.protocol}://${req.headers.host}` ||
+      req.headers['sec-fetch-site'] === 'cross-site'
+    ) {
+      throw new ForbiddenException('Same-origin request required');
+    }
+    let actor:
+      | Awaited<ReturnType<SessionService['authenticateBrowserCredential']>>
+      | undefined;
+    if (req.cookies?.authToken) {
+      try {
+        actor = await this.sessionService.authenticateBrowserCredential(
+          req.cookies.authToken,
+          (req.raw as any).workspaceId,
+          { checkIdentity: false },
+        );
+      } catch (error) {
+        if (
+          !(error instanceof UnauthorizedException) &&
+          !(
+            error instanceof Error &&
+            [
+              'JsonWebTokenError',
+              'TokenExpiredError',
+              'NotBeforeError',
+            ].includes(error.name)
+          )
+        )
+          throw error;
+      }
+    }
+    if (actor) {
       await this.sessionService.revokeSession(
-        sessionId,
-        user.id,
-        user.workspaceId,
+        actor.sessionId,
+        actor.user.id,
+        actor.user.workspaceId,
       );
     }
+    // Preserve the verified actor and close its live connections before browser
+    // cancellation marks that same session revoked in the database.
+    await this.identityService.cancelBrowserTransactions(
+      req.cookies?.[IDENTITY_BROWSER_COOKIE],
+    );
 
     res.clearCookie('authToken', {
       path: '/',
       sameSite: 'lax',
     });
+    res.clearCookie(IDENTITY_BROWSER_COOKIE, { path: '/', sameSite: 'lax' });
 
-    this.auditService.log({
-      event: AuditEvent.USER_LOGOUT,
-      resourceType: AuditResource.USER,
-      resourceId: user.id,
-    });
+    if (actor)
+      this.auditService.logWithContext(
+        {
+          event: AuditEvent.USER_LOGOUT,
+          resourceType: AuditResource.USER,
+          resourceId: actor.user.id,
+        },
+        { workspaceId: actor.user.workspaceId, actorId: actor.user.id },
+      );
   }
 
   setAuthCookie(res: FastifyReply, token: string) {

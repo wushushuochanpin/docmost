@@ -34,6 +34,63 @@ export class UserSessionRepo {
       .executeTakeFirst();
   }
 
+  async findActiveByCredentialHash(
+    hash: string,
+  ): Promise<UserSession | undefined> {
+    return this.db
+      .selectFrom('userSessions')
+      .selectAll()
+      .where('credentialHash', '=', hash)
+      .where('expiresAt', '>', new Date())
+      .where('revokedAt', 'is', null)
+      .executeTakeFirst();
+  }
+
+  async findActiveSessionIds(ids: string[]): Promise<string[]> {
+    if (!ids.length) return [];
+    const rows = await this.db
+      .selectFrom('userSessions as s')
+      .innerJoin('users as u', (join) =>
+        join
+          .onRef('u.id', '=', 's.userId')
+          .onRef('u.workspaceId', '=', 's.workspaceId'),
+      )
+      .innerJoin('workspaces as w', 'w.id', 's.workspaceId')
+      .select('s.id')
+      .where('s.id', 'in', ids)
+      .where('s.expiresAt', '>', new Date())
+      .where('s.revokedAt', 'is', null)
+      .where('u.deletedAt', 'is', null)
+      .where('u.deactivatedAt', 'is', null)
+      .execute();
+    return rows.map((row) => row.id);
+  }
+
+  async revokeIdentitySessions(identity: {
+    issuer: string;
+    subject?: string;
+    sid?: string;
+  }): Promise<void> {
+    let query = this.db
+      .updateTable('userSessions')
+      .set({ revokedAt: new Date() })
+      .where(sql<string>`metadata->'identity'->>'issuer'`, '=', identity.issuer)
+      .where('revokedAt', 'is', null);
+    if (identity.subject)
+      query = query.where(
+        sql<string>`metadata->'identity'->>'subject'`,
+        '=',
+        identity.subject,
+      );
+    if (identity.sid)
+      query = query.where(
+        sql<string>`metadata->'identity'->>'sid'`,
+        '=',
+        identity.sid,
+      );
+    await query.execute();
+  }
+
   async findActiveByUser(
     userId: string,
     workspaceId: string,
@@ -61,15 +118,17 @@ export class UserSessionRepo {
     id: string,
     userId: string,
     workspaceId: string,
-  ): Promise<void> {
-    await this.db
+  ): Promise<boolean> {
+    const revoked = await this.db
       .updateTable('userSessions')
       .set({ revokedAt: new Date() })
       .where('id', '=', id)
       .where('userId', '=', userId)
       .where('workspaceId', '=', workspaceId)
       .where('revokedAt', 'is', null)
-      .execute();
+      .returning('id')
+      .executeTakeFirst();
+    return !!revoked;
   }
 
   async revokeAllExceptCurrent(
@@ -102,10 +161,7 @@ export class UserSessionRepo {
       .execute();
   }
 
-  async deleteByUserId(
-    userId: string,
-    workspaceId: string,
-  ): Promise<void> {
+  async deleteByUserId(userId: string, workspaceId: string): Promise<void> {
     await this.db
       .deleteFrom('userSessions')
       .where('userId', '=', userId)
@@ -131,10 +187,7 @@ export class UserSessionRepo {
     await this.db
       .deleteFrom('userSessions')
       .where((eb) =>
-        eb.or([
-          eb('revokedAt', '<', cutoff),
-          eb('expiresAt', '<', cutoff),
-        ]),
+        eb.or([eb('revokedAt', '<', cutoff), eb('expiresAt', '<', cutoff)]),
       )
       .execute();
   }

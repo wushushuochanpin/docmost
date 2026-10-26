@@ -6,9 +6,15 @@ import { WorkspaceModule } from '../workspace/workspace.module';
 import { SignupService } from './services/signup.service';
 import { TokenModule } from './token.module';
 import { IntegrationTokenModule } from '../integration-token/integration-token.module';
+import { IdentityModule } from '../identity/identity.module';
 
 @Module({
-  imports: [TokenModule, WorkspaceModule, IntegrationTokenModule],
+  imports: [
+    TokenModule,
+    WorkspaceModule,
+    IntegrationTokenModule,
+    IdentityModule,
+  ],
   controllers: [AuthController],
   providers: [AuthService, SignupService, JwtStrategy],
   exports: [SignupService],

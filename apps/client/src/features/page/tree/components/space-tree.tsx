@@ -1,4 +1,5 @@
 import { useAtom } from "jotai";
+import { settleSessionBackgroundWork } from "@/features/auth/session-background-work";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -189,37 +190,38 @@ export default function SpaceTree({
           fetchAndUpdateChildren(ancestor),
         );
 
-        Promise.all(fetchPromises).then(() => {
-          if (cancelled || spaceIdRef.current !== effectSpaceId) return;
+        await Promise.all(fetchPromises);
+        if (cancelled || spaceIdRef.current !== effectSpaceId) return;
 
-          // build tree with children
-          const ancestorsTree = buildTreeWithChildren(flatTreeItems);
-          // child of root page we're attaching the built ancestors to
-          const rootChild = ancestorsTree[0];
-          if (!rootChild) return;
+        // build tree with children
+        const ancestorsTree = buildTreeWithChildren(flatTreeItems);
+        // child of root page we're attaching the built ancestors to
+        const rootChild = ancestorsTree[0];
+        if (!rootChild) return;
 
-          // attach built ancestors to tree using functional updater
-          setData((currentData) =>
-            treeModel.appendChildren(
-              currentData,
-              rootChild.id,
-              rootChild.children ?? [],
-            ),
-          );
+        // attach built ancestors to tree using functional updater
+        setData((currentData) =>
+          treeModel.appendChildren(
+            currentData,
+            rootChild.id,
+            rootChild.children ?? [],
+          ),
+        );
 
-          // open all ancestors of the current page. DocTree picks up the
-          // selectedId change and scrolls the row into view on its own once
-          // flat contains it.
-          openAncestorNodes(
-            ancestors
-              .filter((ancestor) => ancestor.id !== currentPage.id)
-              .map((ancestor) => ancestor.id),
-          );
-        });
+        // open all ancestors of the current page. DocTree picks up the
+        // selectedId change and scrolls the row into view on its own once
+        // flat contains it.
+        openAncestorNodes(
+          ancestors
+            .filter((ancestor) => ancestor.id !== currentPage.id)
+            .map((ancestor) => ancestor.id),
+        );
       }
     };
 
-    fetchData();
+    void settleSessionBackgroundWork(fetchData(), (error) => {
+      console.warn("Unable to reveal the current page in the sidebar", error);
+    });
     return () => {
       cancelled = true;
     };
