@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { getCollabToken, verifyUserToken } from "../services/auth-service";
 import { ICollabToken, IVerifyUserToken } from "../types/auth.types";
-import { isAxiosError } from "axios";
+import { isAxiosError, isCancel } from "axios";
 import { isEditorSessionEnabled } from "@/lib/config";
 import { queryClient } from "@/query-client";
 
@@ -44,7 +44,8 @@ export function collabTokenQueryOptions(
     staleTime: editorSessionEnabled ? COLLAB_TOKEN_CACHE_MS : 20 * 60 * 60 * 1000, //20hrs
     refetchOnMount: editorSessionEnabled ? false : true,
     retry: (failureCount: number, error: unknown) => {
-      if (isAxiosError(error) && error.response.status === 404) {
+      if (isCancel(error)) return false;
+      if (isAxiosError(error) && [401, 403, 404].includes(error.response?.status)) {
         return false;
       }
       // Retry up to 10 times with exponential backoff (see retryDelay below).

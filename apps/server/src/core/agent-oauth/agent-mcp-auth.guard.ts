@@ -6,6 +6,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
+import { SessionService } from '../session/session.service';
 import { AgentOAuthService } from './agent-oauth.service';
 import { UserRepo } from '../../database/repos/user/user.repo';
 import { WorkspaceRepo } from '../../database/repos/workspace/workspace.repo';
@@ -18,8 +19,9 @@ export class AgentMcpAuthGuard extends JwtAuthGuard {
     private readonly oauth: AgentOAuthService,
     private readonly users: UserRepo,
     private readonly workspaces: WorkspaceRepo,
+    sessions: SessionService,
   ) {
-    super(reflector, environment);
+    super(reflector, environment, sessions);
   }
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();

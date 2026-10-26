@@ -1,5 +1,8 @@
 import "@/features/editor/styles/index.css";
 import api from "@/lib/api-client";
+import { AUTH_INVALIDATED_EVENT, captureAuthGeneration, isAuthInvalidated, isCurrentAuthGeneration } from "@/features/auth/session-lifecycle";
+import { handleCollaborationSessionEnd } from "@/features/auth/realtime-session-boundary";
+import { settleSessionBackgroundWork } from "@/features/auth/session-background-work";
 import { DurableProvider, type DurableState } from "./durable/durable-provider";
 import { readDurableDraft, type DraftScope } from "./durable/recovery-store";
 import React, {
@@ -1128,6 +1131,14 @@ export default function PageEditor({
     remote: HocuspocusProvider;
     socket: HocuspocusProviderWebsocket;
   } | null>(null);
+  // Stop live traffic immediately on session invalidation, before route unmount.
+  useEffect(() => {
+    const stop = () => {
+      providersRef.current?.socket.disconnect();
+    };
+    window.addEventListener(AUTH_INVALIDATED_EVENT, stop);
+    return () => window.removeEventListener(AUTH_INVALIDATED_EVENT, stop);
+  }, []);
   const [providersReady, setProvidersReady] = useState(false);
   // Track the live provider instance so provider recreation (e.g. after a lease
   // re-acquire) re-runs the attach effect. Without this, a recreated provider
@@ -1184,6 +1195,7 @@ export default function PageEditor({
     }
 
     if (!providersRef.current) {
+      const providerGeneration = captureAuthGeneration();
       setIsLocalSynced(false);
       setIsRemoteSynced(false);
       setHasLocalDocumentContent(false);
@@ -1233,8 +1245,8 @@ export default function PageEditor({
 
         if (!shouldRefreshToken) return;
 
-        refetchCollabToken().then((result) => {
-          if (disposed) return;
+        void settleSessionBackgroundWork(refetchCollabToken().then((result) => {
+          if (disposed || isAuthInvalidated()) return;
           if (!result.data?.token) {
             socket.disconnect();
             return;
@@ -1245,11 +1257,14 @@ export default function PageEditor({
 
           socket.disconnect();
           setTimeout(() => {
-            if (disposed || providersRef.current?.remote !== remoteProvider)
+            if (disposed || isAuthInvalidated() || providersRef.current?.remote !== remoteProvider)
               return;
             remoteProvider.configuration.token = result.data.token;
             socket.connect();
           }, 100);
+        }), (error) => {
+          socket.disconnect();
+          console.warn("Unable to refresh the collaboration connection", error);
         });
       };
       const Provider = managedDocument ? DurableProvider : HocuspocusProvider;
@@ -1261,9 +1276,19 @@ export default function PageEditor({
         onAuthenticationFailed: onAuthenticationFailedHandler,
         onStatus: onStatusHandler,
         onSynced: onSyncedHandler,
-        onClose: managedDocument
-          ? () => setDurableState((state) => ({ ...state, permitted: false }))
-          : handleCollabClose,
+        onClose: (parameters) => {
+          if (disposed || !isCurrentAuthGeneration(providerGeneration)) return;
+          if (handleCollaborationSessionEnd(parameters.event, providerGeneration)) return;
+          // Generic Unauthorized also covers invalid document messages/token sync.
+          // Re-check through HTTP; only its authenticated 401 may end the session.
+          if (parameters.event.code === 4401) {
+            void settleSessionBackgroundWork(refetchCollabToken(), (error) => {
+              console.warn("Unable to recheck the collaboration session", error);
+            });
+          }
+          if (managedDocument) setDurableState((state) => ({ ...state, permitted: false }));
+          else handleCollabClose(parameters);
+        },
       });
 
       if (remote instanceof DurableProvider) {

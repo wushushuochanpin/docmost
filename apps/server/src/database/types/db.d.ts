@@ -744,6 +744,7 @@ export interface AiChatMessages {
 }
 
 export interface UserSessions {
+  credentialHash: string | null;
   id: Generated<string>;
   userId: string;
   workspaceId: string;

@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { ClsModule } from 'nestjs-cls';
+import { ScheduleModule } from '@nestjs/schedule';
+import { SessionRuntimeModule } from '../../core/session/session-runtime.module';
+import { IdentityVerificationModule } from '../../core/identity/identity-verification.module';
 import { AppController } from '../../app.controller';
 import { AppService } from '../../app.service';
 import { EnvironmentModule } from '../../integrations/environment/environment.module';
@@ -18,6 +22,10 @@ import KeyvRedis from '@keyv/redis';
 
 @Module({
   imports: [
+    ClsModule.forRoot({ global: true }),
+    ScheduleModule.forRoot(),
+    SessionRuntimeModule,
+    IdentityVerificationModule,
     LoggerModule,
     DatabaseModule,
     EnvironmentModule,

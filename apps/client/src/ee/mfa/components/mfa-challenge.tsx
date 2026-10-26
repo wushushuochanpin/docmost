@@ -1,3 +1,4 @@
+import { establishAuthSession } from "@/features/auth/session-lifecycle";
 import React, { useState } from "react";
 import {
   Container,
@@ -54,6 +55,7 @@ export function MfaChallenge() {
     setIsLoading(true);
     try {
       await verifyMfa(values.code);
+      establishAuthSession();
       navigate(getPostLoginRedirect());
     } catch (error: any) {
       setIsLoading(false);

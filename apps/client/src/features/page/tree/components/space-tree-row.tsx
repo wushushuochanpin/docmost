@@ -1,4 +1,6 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
+import { settleSessionBackgroundWork } from "@/features/auth/session-background-work";
+import { captureAuthGeneration, isCurrentAuthGeneration } from "@/features/auth/session-lifecycle";
 import { Link, useParams } from "react-router-dom";
 import { useAtom } from "jotai";
 import { useTranslation } from "react-i18next";
@@ -46,6 +48,7 @@ export function SpaceTreeRow({
   const [, setTreeData] = useAtom(treeDataAtom);
   const emit = useQueryEmit();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
   const [mobileSidebarOpened] = useAtom(mobileSidebarAtom);
   const toggleMobileSidebar = useToggleSidebar(mobileSidebarAtom);
 
@@ -53,15 +56,18 @@ export function SpaceTreeRow({
   const pageUrl = buildPageUrl(spaceSlug, node.slugId, node.name);
 
   const prefetchPage = () => {
-    timerRef.current = setTimeout(async () => {
-      const page = await queryClient.fetchQuery({
+    const generation = captureAuthGeneration();
+    timerRef.current = setTimeout(() => {
+      if (!isCurrentAuthGeneration(generation)) return;
+      void settleSessionBackgroundWork(queryClient.fetchQuery({
         queryKey: ["pages", node.id],
         queryFn: () => getPageById({ pageId: node.id }),
         staleTime: 5 * 60 * 1000,
-      });
-      if (page?.slugId) {
-        queryClient.setQueryData(["pages", page.slugId], page);
-      }
+      }).then((page) => {
+        if (isCurrentAuthGeneration(generation) && page?.slugId) {
+          queryClient.setQueryData(["pages", page.slugId], page);
+        }
+      }), (error) => console.warn("Unable to prefetch sidebar page", error));
     }, 150);
   };
 

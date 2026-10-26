@@ -1,4 +1,5 @@
 import api from "@/lib/api-client";
+import { withAuthCookieLock } from "@/features/auth/auth-cookie-lock";
 import {
   IChangePassword,
   ICollabToken,
@@ -12,12 +13,21 @@ import {
 import { IWorkspace } from "@/features/workspace/types/workspace.types.ts";
 
 export async function login(data: ILogin): Promise<ILoginResponse> {
-  const response = await api.post<ILoginResponse>("/auth/login", data);
+  const response = await withAuthCookieLock(() => api.post<ILoginResponse>("/auth/login", data));
   return response.data;
 }
 
-export async function logout(): Promise<void> {
-  await api.post<void>("/auth/logout");
+let logoutRequest: Promise<void> | null = null;
+
+export function isLogoutPending(): boolean { return logoutRequest !== null; }
+
+export function logout(): Promise<void> {
+  if (!logoutRequest) {
+    logoutRequest = withAuthCookieLock(() => api.post<void>("/auth/logout"))
+      .then(() => undefined)
+      .finally(() => { logoutRequest = null; });
+  }
+  return logoutRequest;
 }
 
 export async function changePassword(
@@ -30,7 +40,7 @@ export async function changePassword(
 export async function setupWorkspace(
   data: ISetupWorkspace,
 ): Promise<IWorkspace> {
-  const req = await api.post<IWorkspace>("/auth/setup", data);
+  const req = await withAuthCookieLock(() => api.post<IWorkspace>("/auth/setup", data));
   return req.data;
 }
 
@@ -39,7 +49,7 @@ export async function forgotPassword(data: IForgotPassword): Promise<void> {
 }
 
 export async function passwordReset(data: IPasswordReset): Promise<{ requiresLogin?: boolean; }> {
-  const req = await api.post("/auth/password-reset", data);
+  const req = await withAuthCookieLock(() => api.post("/auth/password-reset", data));
   return req.data;
 }
 

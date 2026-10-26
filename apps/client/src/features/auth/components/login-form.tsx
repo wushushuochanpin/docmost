@@ -22,6 +22,7 @@ import { useWorkspacePublicDataQuery } from "@/features/workspace/queries/worksp
 import { Error404 } from "@/components/ui/error-404.tsx";
 import React from "react";
 import { AuthLayout } from "./auth-layout.tsx";
+import { IdentityLogin } from "@/features/identity/identity-login";
 
 const formSchema = z.object({
   email: z.email().min(1, { message: "email is required" }),
@@ -75,6 +76,7 @@ export function LoginForm() {
             {t("Login")}
           </Title>
 
+          <IdentityLogin />
           <SsoLogin />
 
           {!data?.enforceSso && (

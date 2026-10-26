@@ -8,6 +8,7 @@ import { AuthService } from './services/auth.service';
 import { SessionService } from '../session/session.service';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 import { AUDIT_SERVICE } from '../../integrations/audit/audit.service';
+import { IdentityService } from '../identity/identity.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -21,6 +22,7 @@ describe('AuthController', () => {
         { provide: EnvironmentService, useValue: {} },
         { provide: ModuleRef, useValue: {} },
         { provide: AUDIT_SERVICE, useValue: {} },
+        { provide: IdentityService, useValue: {} },
       ],
     })
       .overrideGuard(ThrottlerGuard)

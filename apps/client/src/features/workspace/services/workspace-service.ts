@@ -1,4 +1,5 @@
 import api from "@/lib/api-client";
+import { withAuthCookieLock } from "@/features/auth/auth-cookie-lock";
 import { IUser } from "@/features/user/types/user.types";
 import {
   ICreateInvite,
@@ -81,7 +82,7 @@ export async function createInvitation(data: ICreateInvite) {
 export async function acceptInvitation(
   data: IAcceptInvite,
 ): Promise<{ requiresLogin?: boolean }> {
-  const req = await api.post("/workspace/invites/accept", data);
+  const req = await withAuthCookieLock(() => api.post("/workspace/invites/accept", data));
   return req.data;
 }
 

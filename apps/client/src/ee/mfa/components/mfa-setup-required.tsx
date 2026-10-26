@@ -1,3 +1,4 @@
+import { establishAuthSession } from "@/features/auth/session-lifecycle";
 import React from "react";
 import { Container, Paper, Title, Text, Alert, Stack } from "@mantine/core";
 import { AlertCircle } from "lucide-react";
@@ -12,6 +13,7 @@ export default function MfaSetupRequired() {
   const navigate = useNavigate();
 
   const handleSetupComplete = () => {
+    establishAuthSession();
     navigate(getPostLoginRedirect());
   };
 
