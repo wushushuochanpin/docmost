@@ -57,6 +57,7 @@ export function identityReturnTo(raw?: string): string {
     url.pathname === '/home' ||
     url.pathname === '/' ||
     url.pathname === '/settings/account/profile' ||
+    /^\/s\/[a-zA-Z0-9_-]+$/.test(url.pathname) ||
     /^\/s\/[a-zA-Z0-9_-]+\/p\/[a-zA-Z0-9_-]+$/.test(url.pathname) ||
     (url.pathname === '/oauth/consent' &&
       /^[0-9a-f-]{36}$/i.test(url.searchParams.get('request_id') ?? '') &&

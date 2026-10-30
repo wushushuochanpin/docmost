@@ -7,6 +7,7 @@ import {
 
 describe("identity navigation contract", () => {
   it("keeps document and consent return destinations", () => {
+    expect(identityReturnPath("/s/general")).toBe("/s/general");
     expect(identityReturnPath("/s/general/p/example?view=edit#section")).toBe(
       "/s/general/p/example?view=edit#section",
     );
@@ -24,6 +25,7 @@ describe("identity navigation contract", () => {
     "//evil.example",
     "/\\evil.example",
     "/api/auth/logout",
+    "/s/general/trash",
     "/oauth/consent?request_id=bad",
     "/oauth/consent?request_id=019a0000-1111-7111-8111-111111111111&redirect=https://evil.example",
   ])("rejects unsafe or unsupported destination %s", (path) => {

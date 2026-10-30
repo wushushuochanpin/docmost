@@ -8,7 +8,7 @@ export function identityReturnPath(candidate: unknown): string {
   if (
     url.pathname === "/home" ||
     url.pathname === "/settings/account/profile" ||
-    url.pathname.startsWith("/s/")
+    /^\/s\/[a-zA-Z0-9_-]+(?:\/p\/[a-zA-Z0-9_-]+)?$/.test(url.pathname)
   )
     return path;
   if (

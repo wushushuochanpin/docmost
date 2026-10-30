@@ -35,6 +35,7 @@ describe('Identity transaction security', () => {
   it.each([
     '/home',
     '/settings/account/profile',
+    '/s/general',
     '/s/general/p/document-abc',
     '/oauth/consent?request_id=12345678-1234-1234-1234-123456789012',
   ])('accepts known product destination %s', (value) => {
