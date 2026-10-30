@@ -95,6 +95,7 @@ export class IdentityController {
     @Req() req: FastifyRequest,
     @Res() res: FastifyReply,
   ) {
+    res.header('Cache-Control', 'no-store');
     try {
       const started = await this.identity.start(
         workspace,
@@ -103,13 +104,15 @@ export class IdentityController {
         undefined,
         req.cookies.authToken,
       );
-      res.header('Cache-Control', 'no-store');
       return res.code(302).redirect(started.url);
     } catch (error) {
       const code =
         error instanceof Error && errors.has(error.message)
           ? error.message
           : 'invalid_transaction';
+      this.logger.warn(
+        `Identity start rejected: ${code}; errorType=${error instanceof Error ? error.constructor.name : 'unknown'}; browserCookie=${Boolean(req.cookies[IDENTITY_BROWSER_COOKIE])}; authCookie=${Boolean(req.cookies.authToken)}`,
+      );
       return res.code(302).redirect(`/login?identity_error=${code}`);
     }
   }
