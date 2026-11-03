@@ -37,6 +37,8 @@ export function identityErrorMessage(code: string | null): string | null {
       "This sign-in request expired or was already used. Please start again.",
     center_unavailable:
       "The identity center is unavailable. Please try again later or use your existing local account.",
+    identity_unavailable:
+      "The identity center could not confirm this sign-in. Please try again shortly.",
     identity_invalid: "We could not verify this sign-in. Please start again.",
     identity_not_linked:
       "This identity is not linked to a Docmost account. Sign in with your existing account, then link it in My Profile. New members must first accept an invitation.",

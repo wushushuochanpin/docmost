@@ -60,4 +60,54 @@ describe('collaboration session boundary', () => {
     connection.onClose.mock.calls[0][0]();
     expect(registry.unregister).toHaveBeenCalledWith(connection);
   });
+  it('uses a retryable close when authorization cannot be confirmed and releases the lease', async () => {
+    const { extension, registry, leases } = harness();
+    const connection = { close: jest.fn(), onClose: jest.fn() };
+    const editSession = { sessionId: 's' };
+    await extension.connected({
+      connection,
+      documentName: 'page.p',
+      context: {
+        sessionId: 's',
+        user: { id: 'u', workspaceId: 'w' },
+        editSession,
+      },
+    } as any);
+    registry.register.mock.calls[0][2]('unavailable');
+    expect(connection.close).toHaveBeenCalledWith({
+      code: 1013,
+      reason: 'Session verification unavailable',
+    });
+    expect(leases.release).toHaveBeenCalledWith(
+      expect.objectContaining({ editSession, userId: 'u', workspaceId: 'w' }),
+    );
+  });
+  it('suspends writes immediately while authorization is unconfirmed and restores them on recovery', async () => {
+    const { extension, registry } = harness();
+    const connection = {
+      close: jest.fn(),
+      onClose: jest.fn(),
+      readOnly: false,
+      sendStateless: jest.fn(),
+    };
+    await extension.connected({
+      connection,
+      documentName: 'page.p',
+      context: {
+        sessionId: 's',
+        user: { id: 'u', workspaceId: 'w' },
+      },
+    } as any);
+    const setPending = registry.register.mock.calls[0][3];
+    setPending(true);
+    expect(connection.readOnly).toBe(true);
+    expect(connection.sendStateless).toHaveBeenCalledWith(
+      JSON.stringify({ type: 'session_verification_pending' }),
+    );
+    setPending(false);
+    expect(connection.readOnly).toBe(false);
+    expect(connection.sendStateless).toHaveBeenCalledWith(
+      JSON.stringify({ type: 'session_verification_recovered' }),
+    );
+  });
 });

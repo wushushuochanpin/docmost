@@ -1113,7 +1113,6 @@
   "Reordering pinned pages failed. Please try again.": "Reordering pinned pages failed. Please try again.",
   "Pinned pages limit hint": "Too many pinned pages make them harder to scan. Keep only the pages you use most.",
   "Pinned pages over limit hint": "{{count}} pages pinned. Too many pins make pages harder to find — keep only the ones you use most.",
-
   "Small": "Small",
   "ThemeLightSoft": "Light (Soft)",
   "ThemeDarkGray": "Dark (Gray)",
@@ -1272,7 +1271,6 @@
   "Failed to reorder categories": "Failed to reorder categories",
   "Set category": "Set category",
   "No pages in this category yet": "No pages in this category yet",
-  "No pinned pages yet": "No pinned pages yet",
   "Move filtered pages here": "Move filtered pages here",
   "Move selected here ({{count}})": "Move selected here ({{count}})",
   "Move all matched pages in this space to the selected folder.": "Move all matched pages in this space to the selected folder.",
@@ -1340,6 +1338,10 @@
   "Identity center sign-in could not be started. Please try again or use your existing local account.": "Identity center sign-in could not be started. Please try again or use your existing local account.",
   "This view is locked while sign-out completes. If it does not finish, retry sign-out.": "This view is locked while sign-out completes. If it does not finish, retry sign-out.",
   "Your sign-in state changed. Open sign-in again to verify the current account.": "Your sign-in state changed. Open sign-in again to verify the current account.",
+  "Your session expired. Sign in again to continue.": "Your session expired. Sign in again to continue.",
+  "The identity center is temporarily unavailable. Your sign-in is still valid; retrying.": "The identity center is temporarily unavailable. Your sign-in is still valid; retrying.",
+  "The identity center is temporarily unavailable. Your sign-in is still valid. Please retry shortly.": "The identity center is temporarily unavailable. Your sign-in is still valid. Please retry shortly.",
   "Retry sign-out": "Retry sign-out",
-  "Go to sign-in": "Go to sign-in"
+  "Go to sign-in": "Go to sign-in",
+  "The identity center could not confirm this sign-in. Please try again shortly.": "The identity center could not confirm this sign-in. Please try again shortly."
 }

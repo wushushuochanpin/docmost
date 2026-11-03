@@ -16,6 +16,13 @@ import {
   DocumentPermit,
 } from '../../core/document-command/document-command.service';
 
+// Loading a durable document must not trigger the generic persistence hook:
+// its authoritative state is already in document_updates/page.ydoc.
+const DURABLE_LOAD_ORIGIN = {
+  source: 'local' as const,
+  skipStoreHooks: true,
+};
+
 @Injectable()
 export class DurableDocumentExtension implements Extension {
   private readonly logger = new Logger(DurableDocumentExtension.name);
@@ -42,7 +49,7 @@ export class DurableDocumentExtension implements Extension {
         throw error;
       });
     if (bytes) {
-      Y.applyUpdate(data.document, bytes, 'durable-load');
+      Y.applyUpdate(data.document, bytes, DURABLE_LOAD_ORIGIN);
       data.context.durableDocument = true;
     }
   }
@@ -75,6 +82,14 @@ export class DurableDocumentExtension implements Extension {
       { workspaceId: user.workspaceId, userId: user.id, pageId },
       data.context.sessionId,
     );
+    if (!permit) {
+      data.connection.readOnly = true;
+      data.connection.close({
+        code: 4409,
+        reason: 'DOCUMENT_PERMIT_UNAVAILABLE',
+      });
+      return;
+    }
     data.context.documentPermit = permit;
     data.connection.sendStateless(
       JSON.stringify({
@@ -83,21 +98,39 @@ export class DurableDocumentExtension implements Extension {
         ownerEpoch: permit.ownerEpoch,
       }),
     );
-    const timer = setInterval(() => {
-      this.commands.heartbeat(permit).catch((error) => {
-        clearInterval(timer);
-        this.heartbeats.delete(data.socketId);
-        data.connection.readOnly = true;
-        data.connection.close({
-          code: 4409,
-          reason: 'DOCUMENT_PERMIT_EXPIRED',
-        });
-        this.logger.warn(
-          { pageId, code: 'DOCUMENT_PERMIT_EXPIRED' },
-          'Document permit renewal failed',
-        );
+    let renewing = false;
+    const renew = async () => {
+      if (renewing || data.connection.readOnly) return;
+      renewing = true;
+      try {
+        await this.commands.heartbeat(permit);
+        return;
+      } catch {
+        // A single database blip must not discard a valid 30s permit. Retry
+        // once inside the remaining lifetime before ending the edit lease.
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 1_000));
+          await this.commands.heartbeat(permit);
+          return;
+        } catch {
+          // fall through to the single close path below
+        }
+      } finally {
+        renewing = false;
+      }
+      clearInterval(timer);
+      this.heartbeats.delete(data.socketId);
+      data.connection.readOnly = true;
+      data.connection.close({
+        code: 4409,
+        reason: 'DOCUMENT_PERMIT_EXPIRED',
       });
-    }, 10000);
+      this.logger.warn(
+        { pageId, code: 'DOCUMENT_PERMIT_EXPIRED' },
+        'Document permit renewal failed',
+      );
+    };
+    const timer = setInterval(() => void renew(), 10000);
     timer.unref();
     this.heartbeats.set(data.socketId, timer);
   }
@@ -125,7 +158,10 @@ export class DurableDocumentExtension implements Extension {
       | DocumentPermit
       | undefined;
     if (!permit || data.connection.readOnly) return;
-    if (data.payload.length > 1500000) throw new Error('CONTENT_TOO_LARGE');
+    if (data.payload.length > 1500000) {
+      this.rejectUpdate(data, undefined, 'CONTENT_TOO_LARGE');
+      return;
+    }
     let message: {
       type?: string;
       historyId?: string;
@@ -137,7 +173,8 @@ export class DurableDocumentExtension implements Extension {
     try {
       message = JSON.parse(data.payload);
     } catch {
-      throw new Error('INVALID_DOCUMENT_ENVELOPE');
+      this.rejectUpdate(data, undefined, 'INVALID_DOCUMENT_ENVELOPE');
+      return;
     }
     if (message.type === 'document_restore') {
       if (
@@ -147,8 +184,16 @@ export class DurableDocumentExtension implements Extension {
         typeof message.versionToken !== 'string' ||
         message.versionToken.length > 4096 ||
         message.editEpoch !== permit.editEpoch
-      )
-        throw new Error('INVALID_DOCUMENT_ENVELOPE');
+      ) {
+        data.connection.sendStateless(
+          JSON.stringify({
+            type: 'document_restore_result',
+            updateId: message.updateId,
+            error: 'INVALID_DOCUMENT_ENVELOPE',
+          }),
+        );
+        return;
+      }
       try {
         const result = await this.commands.restoreHistory(
           permit,
@@ -194,14 +239,32 @@ export class DurableDocumentExtension implements Extension {
       !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
         message.update,
       )
-    )
-      throw new Error('INVALID_DOCUMENT_ENVELOPE');
-    const revision = await this.commands.ingest(
-      permit,
-      Buffer.from(message.update, 'base64'),
-      (doc) => TiptapTransformer.fromYdoc(doc, 'default'),
-      message.updateId,
-    );
+    ) {
+      this.rejectUpdate(data, message.updateId, 'INVALID_DOCUMENT_ENVELOPE');
+      return;
+    }
+    let revision: string;
+    try {
+      revision = await this.commands.ingest(
+        permit,
+        Buffer.from(message.update, 'base64'),
+        (doc) => TiptapTransformer.fromYdoc(doc, 'default'),
+        message.updateId,
+      );
+    } catch (error) {
+      const code =
+        error instanceof Error &&
+        [
+          'REVISION_CONFLICT',
+          'DOCUMENT_BUSY',
+          'DOCUMENT_PERMIT_EXPIRED',
+          'DOCUMENT_OWNER_CHANGED',
+        ].includes(error.message)
+          ? error.message
+          : 'DOCUMENT_UPDATE_REJECTED';
+      this.rejectUpdate(data, message.updateId, code);
+      return;
+    }
     data.connection.sendStateless(
       JSON.stringify({
         type: 'durable_ack',
@@ -210,6 +273,24 @@ export class DurableDocumentExtension implements Extension {
         editEpoch: permit.editEpoch,
       }),
     );
+  }
+
+  /** Rejecting an update is normal backpressure, not an unhandled rejection.
+   * The client keeps its local draft and must explicitly recover. */
+  private rejectUpdate(
+    data: onStatelessPayload,
+    updateId: string | undefined,
+    error: string,
+  ) {
+    data.connection.sendStateless(
+      JSON.stringify({
+        type: 'document_update_rejected',
+        updateId,
+        error,
+      }),
+    );
+    data.connection.readOnly = true;
+    data.connection.close({ code: 4409, reason: error });
   }
 
   async onDisconnect(data: onDisconnectPayload) {

@@ -4,6 +4,10 @@ jest.mock('../../common/helpers', () => ({
   comparePasswordHash: jest.fn(),
   isUserDisabled: () => false,
 }));
+import {
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { IdentityService } from './identity.service';
 import { identityHash } from './identity.security';
 
@@ -40,13 +44,14 @@ describe('Identity browser bootstrap', () => {
     expect(sessions.authenticateBrowserCredential).toHaveBeenCalledWith(
       credential,
       workspace.id,
+      { checkIdentity: false },
     );
     expect(repository.registerHandle).not.toHaveBeenCalled();
   });
   it('idempotently reuses only a registered pending handle', async () => {
     const { service, repository, sessions } = fixture();
     sessions.authenticateBrowserCredential.mockRejectedValue(
-      new Error('pending'),
+      new UnauthorizedException('pending'),
     );
     repository.hasHandle.mockResolvedValue(true);
     expect(await service.bootstrap(workspace, browser, credential)).toEqual({
@@ -55,10 +60,10 @@ describe('Identity browser bootstrap', () => {
     expect(repository.registerHandle).not.toHaveBeenCalled();
     expect(repository.cancelBrowser).not.toHaveBeenCalled();
   });
-  it('revokes an inactive center handle and registers fresh random credentials', async () => {
+  it('revokes an inactive local handle and registers fresh random credentials', async () => {
     const { service, repository, sessions } = fixture();
     sessions.authenticateBrowserCredential.mockRejectedValue(
-      new Error('identity_unavailable'),
+      new UnauthorizedException('expired'),
     );
     repository.hasHandle.mockResolvedValue(false);
     const result = await service.bootstrap(workspace, browser, credential);
@@ -73,5 +78,16 @@ describe('Identity browser bootstrap', () => {
       identityHash(result.binding!),
     );
     expect(result.authenticated).not.toBe(true);
+  });
+  it('does not revoke a valid local session when the center is unavailable', async () => {
+    const { service, repository, sessions } = fixture();
+    sessions.authenticateBrowserCredential.mockRejectedValue(
+      new ServiceUnavailableException('identity_unavailable'),
+    );
+    await expect(
+      service.bootstrap(workspace, browser, credential),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(repository.cancelBrowser).not.toHaveBeenCalled();
+    expect(repository.registerHandle).not.toHaveBeenCalled();
   });
 });

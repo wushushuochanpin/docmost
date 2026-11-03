@@ -23,9 +23,18 @@ describe("collaboration session boundary", () => {
     expect(isAuthInvalidated()).toBe(false);
   });
   it("keeps lease conflicts and normal closes at document scope", () => {
-    for (const code of [1000, 1006, 4409]) {
+    for (const code of [1000, 1006, 4409, 1013]) {
       expect(handleCollaborationSessionEnd({ code, reason: "Session ended" }, captureAuthGeneration())).toBe(false);
     }
+    expect(isAuthInvalidated()).toBe(false);
+  });
+  it("treats an unconfirmed authorization close as retryable, never as a session change", () => {
+    expect(
+      handleCollaborationSessionEnd(
+        { code: 1013, reason: "Session verification unavailable" },
+        captureAuthGeneration(),
+      ),
+    ).toBe(false);
     expect(isAuthInvalidated()).toBe(false);
   });
 });

@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { WsGateway } from './ws.gateway';
 
 describe('Socket.IO session authentication', () => {
@@ -137,7 +138,7 @@ describe('Socket.IO session authentication', () => {
       operation: 'editorSession.registerClient',
       clientId: 'client',
     });
-    rejectAuthentication(new Error('revoked'));
+    rejectAuthentication(new UnauthorizedException('revoked'));
     await Promise.all([connecting, message]);
     expect(sessions.assertActiveSession).not.toHaveBeenCalled();
     expect(editor.registerClient).not.toHaveBeenCalled();
@@ -169,11 +170,29 @@ describe('Socket.IO session authentication', () => {
     const { gateway, client, sessions } = harness();
     await gateway.handleConnection(client);
     sessions.assertActiveSession.mockImplementation(async () => {
-      throw new Error('revoked');
+      throw new UnauthorizedException('revoked');
     });
     client.data = { sessionId: 's', userId: 'u', workspaceId: 'w' };
     await gateway.handleMessage(client, { operation: 'arbitrary' });
     expect(client.disconnect).toHaveBeenCalledWith(true);
     expect(client.broadcast.to).not.toHaveBeenCalled();
+  });
+  it('reports an infrastructure failure as retryable instead of a revocation', async () => {
+    const { gateway, client, sessions } = harness();
+    sessions.authenticateBrowserCredential.mockRejectedValue(
+      new Error('database offline'),
+    );
+    await gateway.handleConnection(client);
+    expect(client.emit).toHaveBeenCalledWith('SessionVerificationUnavailable');
+    expect(client.emit).not.toHaveBeenCalledWith('Unauthorized');
+  });
+  it('does not invalidate a socket when the session check hits an infrastructure error', async () => {
+    const { gateway, client, sessions } = harness();
+    await gateway.handleConnection(client);
+    sessions.assertActiveSession.mockRejectedValue(new Error('database offline'));
+    client.data = { sessionId: 's', userId: 'u', workspaceId: 'w' };
+    await gateway.handleMessage(client, { operation: 'arbitrary' });
+    expect(client.emit).toHaveBeenCalledWith('SessionVerificationUnavailable');
+    expect(client.emit).not.toHaveBeenCalledWith('Unauthorized');
   });
 });
