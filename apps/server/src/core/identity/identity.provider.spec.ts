@@ -135,7 +135,7 @@ describe('Identity center adapter (provider boundary stub)', () => {
           encryptedAccessToken: sealIdentity('token', encryptionKey),
           expiresAt: Date.now() + 60000,
         }),
-      ).rejects.toThrow('identity_unavailable');
+      ).rejects.toThrow('identity_invalid');
     },
   );
   it('denies center-disabled identity without reading any role or grants field', async () => {
@@ -169,6 +169,81 @@ describe('Identity center adapter (provider boundary stub)', () => {
         encryptedAccessToken: sealIdentity('token', encryptionKey),
         expiresAt: Date.now() + 60000,
       }),
+    ).rejects.toThrow('identity_invalid');
+  });
+  it('separates a network/timeout failure from a center revocation', async () => {
+    jest
+      .spyOn(adapter, 'provider')
+      .mockResolvedValue({
+        oidc: {
+          tokenIntrospection: async () => {
+            throw Object.assign(new Error('timed out'), {
+              name: 'TimeoutError',
+            });
+          },
+          fetchUserInfo: async () => ({ sub: 'person' }),
+        },
+        config: {},
+      } as any);
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(Response.json({ status: 'ok' }));
+    await expect(
+      adapter.verify({
+        issuer: configuration.issuer,
+        clientId: 'docmost',
+        subject: 'person',
+        encryptedAccessToken: sealIdentity('token', encryptionKey),
+        expiresAt: Date.now() + 60000,
+      }),
     ).rejects.toThrow('identity_unavailable');
+  });
+  it('treats an account-endpoint outage as unavailable rather than a revocation', async () => {
+    jest
+      .spyOn(adapter, 'provider')
+      .mockResolvedValue({
+        oidc: {
+          tokenIntrospection: async () => ({
+            active: true,
+            sub: 'person',
+            client_id: 'docmost',
+          }),
+          fetchUserInfo: async () => ({ sub: 'person' }),
+        },
+        config: {},
+      } as any);
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(new Response('', { status: 503 }));
+    await expect(
+      adapter.verify({
+        issuer: configuration.issuer,
+        clientId: 'docmost',
+        subject: 'person',
+        encryptedAccessToken: sealIdentity('token', encryptionKey),
+        expiresAt: Date.now() + 60000,
+      }),
+    ).rejects.toThrow('identity_unavailable');
+  });
+  it('maps a network failure during the code exchange to center_unavailable', async () => {
+    const authorizationCodeGrant = jest
+      .fn()
+      .mockRejectedValue(
+        Object.assign(new TypeError('fetch failed'), {
+          cause: new TypeError('fetch failed'),
+        }),
+      );
+    jest.spyOn(adapter, 'provider').mockResolvedValue({
+      oidc: { authorizationCodeGrant },
+      config: {},
+    } as any);
+    await expect(
+      adapter.exchange(
+        new URL(configuration.callback),
+        state,
+        'nonce',
+        'verifier',
+      ),
+    ).rejects.toThrow('center_unavailable');
   });
 });

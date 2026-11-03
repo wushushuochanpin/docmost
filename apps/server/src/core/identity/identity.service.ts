@@ -70,13 +70,20 @@ export class IdentityService {
     this.settings.get();
     if (credential) {
       try {
+        // This endpoint only decides whether the browser already has a local
+        // session. Protected requests and the revocation sweep still verify the
+        // center; asking it here too would make a transient outage look like an
+        // invalid credential and revoke a valid session below.
         await this.sessions.authenticateBrowserCredential(
           credential,
           workspace.id,
+          { checkIdentity: false },
         );
         return { ready: true, authenticated: true };
-      } catch {
-        // An expired credential is not an account binding and may start a new login.
+      } catch (error) {
+        // Only a locally invalid/expired session may start a fresh login and
+        // cancel the previous browser handle. Database/other failures propagate.
+        if (!(error instanceof UnauthorizedException)) throw error;
       }
     }
     if (

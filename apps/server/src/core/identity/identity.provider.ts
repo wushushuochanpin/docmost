@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -22,6 +23,7 @@ export interface IdentitySessionMetadata {
 
 @Injectable()
 export class IdentityProvider {
+  private readonly logger = new Logger(IdentityProvider.name);
   private configuration?: Promise<Oidc.Configuration>;
   private readonly checks = new Map<string, Promise<void>>();
   constructor(private readonly settings: IdentityConfigService) {}
@@ -107,7 +109,13 @@ export class IdentityProvider {
         accessToken: result.access_token,
         expiresAt,
       };
-    } catch {
+    } catch (error) {
+      if (this.isTransient(error)) {
+        this.logger.warn(
+          `Identity token exchange unavailable (${this.failureCode(error)})`,
+        );
+        throw new ServiceUnavailableException('center_unavailable');
+      }
       throw new UnauthorizedException('identity_invalid');
     }
   }
@@ -133,13 +141,20 @@ export class IdentityProvider {
   }
 
   private async verifyRemote(metadata: IdentitySessionMetadata) {
+    let accessToken: string;
     try {
-      const accessToken = openIdentity<string>(
+      accessToken = openIdentity<string>(
         metadata.encryptedAccessToken,
         this.settings.get().encryptionKey,
       );
-      const { oidc, config } = await this.provider();
-      const [active, , accountResponse] = await Promise.all([
+    } catch {
+      // A locally unreadable credential cannot be verified and is not an outage.
+      throw new UnauthorizedException('identity_invalid');
+    }
+
+    const { oidc, config } = await this.provider();
+    try {
+      const [introspection, userInfo, accountResponse] = await Promise.all([
         oidc.tokenIntrospection(config, accessToken),
         oidc.fetchUserInfo(config, accessToken, metadata.subject),
         fetch(new URL('/api/get-account', metadata.issuer), {
@@ -148,29 +163,93 @@ export class IdentityProvider {
           signal: AbortSignal.timeout(5000),
         }),
       ]);
+
+      // Only a parsed, authoritative answer from the center may end a session.
+      // A malformed answer is an availability failure, not a revocation.
+      if (typeof introspection.active !== 'boolean')
+        throw new ServiceUnavailableException('identity_unavailable');
+      if (!introspection.active)
+        throw new UnauthorizedException('identity_invalid');
       if (
-        !active.active ||
-        active.sub !== metadata.subject ||
-        active.client_id !== metadata.clientId ||
-        !accountResponse.ok
+        introspection.sub !== metadata.subject ||
+        introspection.client_id !== metadata.clientId
       )
-        throw new Error('inactive');
-      const account = (await accountResponse.json()) as {
+        throw new UnauthorizedException('identity_invalid');
+
+      if (!userInfo || typeof userInfo.sub !== 'string')
+        throw new ServiceUnavailableException('identity_unavailable');
+      if (userInfo.sub !== metadata.subject)
+        throw new UnauthorizedException('identity_invalid');
+
+      // Account deletion/disablement is an explicit center decision. Other
+      // non-2xx account responses are treated as a temporary failure so a
+      // center deploy or gateway error cannot sign every user out.
+      if (!accountResponse.ok)
+        throw new ServiceUnavailableException('identity_unavailable');
+      let account: {
         status?: string;
         sub?: string;
         data?: { id?: string; isForbidden?: boolean; isDeleted?: boolean };
       };
+      try {
+        account = await accountResponse.json();
+      } catch {
+        throw new ServiceUnavailableException('identity_unavailable');
+      }
+      if (account?.data?.isForbidden || account?.data?.isDeleted)
+        throw new UnauthorizedException('identity_invalid');
+      if (account?.sub !== undefined && account.sub !== metadata.subject)
+        throw new UnauthorizedException('identity_invalid');
       if (
-        account.status !== 'ok' ||
-        account.sub !== metadata.subject ||
-        account.data?.id !== metadata.subject ||
-        account.data.isForbidden ||
-        account.data.isDeleted
+        account?.data?.id !== undefined &&
+        account.data.id !== metadata.subject
       )
-        throw new Error('inactive');
-    } catch {
-      throw new UnauthorizedException('identity_unavailable');
+        throw new UnauthorizedException('identity_invalid');
+      if (
+        account?.status !== 'ok' ||
+        typeof account.sub !== 'string' ||
+        typeof account.data?.id !== 'string'
+      )
+        throw new ServiceUnavailableException('identity_unavailable');
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ServiceUnavailableException
+      )
+        throw error;
+      this.logger.warn(
+        `Identity verification unavailable (${this.failureCode(error)})`,
+      );
+      throw new ServiceUnavailableException('identity_unavailable');
     }
+  }
+
+  /** Network, timeout, throttling and 5xx failures are transient. */
+  private isTransient(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const status = (error as { status?: unknown }).status;
+    if (typeof status === 'number')
+      return status >= 500 || status === 408 || status === 429;
+    if (['TimeoutError', 'AbortError', 'TypeError'].includes(error.name))
+      return true;
+    const cause = (error as { cause?: unknown }).cause;
+    return (
+      cause instanceof Error &&
+      ['TimeoutError', 'AbortError', 'TypeError'].includes(cause.name)
+    );
+  }
+
+  private failureCode(error: unknown): string {
+    if (!(error instanceof Error)) return 'unknown';
+    const status = (error as { status?: unknown }).status;
+    const code = (error as { code?: unknown }).code;
+    return [
+      error.name,
+      typeof status === 'number' ? `status=${status}` : '',
+      typeof code === 'string' ? code : '',
+    ]
+      .filter(Boolean)
+      .join(',');
   }
 
   private async hosted(path: string, body: unknown): Promise<any> {

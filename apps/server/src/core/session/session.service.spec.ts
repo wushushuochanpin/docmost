@@ -3,6 +3,10 @@ import {
   isOpaqueSessionToken,
   IdentitySessionMetadata,
 } from './session.service';
+import {
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { createHash } from 'node:crypto';
 
 describe('browser sessions', () => {
@@ -125,7 +129,7 @@ describe('browser sessions', () => {
     const { token } = await service.createOpaqueSession(user, identity);
     await expect(
       service.authenticateBrowserCredential(token),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
     const verify = jest.fn<Promise<void>, [IdentitySessionMetadata]>(
       async () => {
         throw new Error('center unavailable');
@@ -145,6 +149,42 @@ describe('browser sessions', () => {
       service.authenticateBrowserCredential(token),
     ).resolves.toMatchObject({ sessionId: 'session', user });
     expect(verify).toHaveBeenCalledTimes(2);
+  });
+  it('keeps the session when the center is unavailable and rejects only on a definitive answer', async () => {
+    repo.findActiveById.mockResolvedValue({
+      id: 'session',
+      userId: 'user',
+      workspaceId: 'workspace',
+      metadata: { identity },
+    });
+    const { token } = await service.createOpaqueSession(user, identity);
+    service.registerIdentityVerifier(async () => {
+      throw new ServiceUnavailableException('identity_unavailable');
+    });
+    await expect(
+      service.authenticateBrowserCredential(token),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    service.registerIdentityVerifier(async () => {
+      throw new UnauthorizedException('identity_invalid');
+    });
+    await expect(
+      service.authenticateBrowserCredential(token),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+  it('still expires an identity session locally even while the center is unreachable', async () => {
+    repo.findActiveById.mockResolvedValue({
+      id: 'session',
+      userId: 'user',
+      workspaceId: 'workspace',
+      metadata: { identity: { ...identity, expiresAt: Date.now() - 1 } },
+    });
+    const { token } = await service.createOpaqueSession(user, identity);
+    const verify = jest.fn(async () => undefined);
+    service.registerIdentityVerifier(verify);
+    await expect(
+      service.authenticateBrowserCredential(token),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(verify).not.toHaveBeenCalled();
   });
   it('does not accept a session revoked while remote identity verification was in flight', async () => {
     const { token } = await service.createOpaqueSession(user, identity);

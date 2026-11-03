@@ -71,6 +71,14 @@ const conflict = (code: string): never => {
 };
 const digest = (data: Uint8Array | string) =>
   createHash('sha256').update(data).digest('hex');
+// Durable updates are already persisted as document_updates. Marking their Yjs
+// origin as local+skipStoreHooks prevents the generic persistence extension
+// from trying to materialize a context-less snapshot (and logging a missing
+// workspace for a document that is in fact saved).
+const DURABLE_YJS_ORIGIN = {
+  source: 'local' as const,
+  skipStoreHooks: true,
+};
 
 @Injectable()
 export class DocumentCommandService {
@@ -896,7 +904,7 @@ export class DocumentCommandService {
       const live = this.live.get(permit.pageId);
       if (!live || live.ownerEpoch !== permit.ownerEpoch)
         return conflict('DOCUMENT_OWNER_CHANGED');
-      Y.applyUpdate(live.doc, update, 'durable-human');
+      Y.applyUpdate(live.doc, update, DURABLE_YJS_ORIGIN);
       return revision;
     });
   }
@@ -977,7 +985,7 @@ export class DocumentCommandService {
       });
       const live = this.live.get(permit.pageId);
       if (live && live.ownerEpoch === permit.ownerEpoch)
-        Y.applyUpdate(live.doc, result.binary, 'durable-restore');
+        Y.applyUpdate(live.doc, result.binary, DURABLE_YJS_ORIGIN);
       return { title: result.title, revision: result.revision };
     });
   }
@@ -1020,7 +1028,7 @@ export class DocumentCommandService {
         }
       });
       const live = this.live.get(actor.pageId);
-      if (live) Y.applyUpdate(live.doc, binary, 'durable-command');
+      if (live) Y.applyUpdate(live.doc, binary, DURABLE_YJS_ORIGIN);
     });
   }
 
@@ -1653,7 +1661,7 @@ export class DocumentCommandService {
       if (gate.ownerValid && (!live || live.ownerEpoch !== gate.ownerEpoch))
         return;
       if (live)
-        Y.applyUpdate(live.doc, new Uint8Array(page.ydoc), 'durable-agent');
+        Y.applyUpdate(live.doc, new Uint8Array(page.ydoc), DURABLE_YJS_ORIGIN);
       await sql`update document_gates set mode='open',operation_id=null,agent_until=null where page_id=${actor.pageId}::uuid`.execute(
         trx,
       );

@@ -123,7 +123,7 @@
   "No group found": "未找到群组",
   "No page history saved yet.": "尚未保存页面历史。",
   "No pages yet": "暂无页面",
-  "No pinned pages yet": "暂无已置顶页面",
+  "No pinned pages yet": "暂无置顶页面",
   "Recent visits": "最近访问",
   "Switch to list": "切换为列表",
   "Switch to grid": "切换为网格",
@@ -1188,7 +1188,6 @@
   "Reordering pinned pages failed. Please try again.": "置顶排序保存失败，请重试",
   "Pinned pages limit hint": "置顶过多会降低查找效率，建议只保留最常用的页面。",
   "Pinned pages over limit hint": "已置顶 {{count}} 项，过多置顶会降低查找效率，建议只保留最常用的页面。",
-
   "Unpinned": "已取消置顶",
   "Unpin": "取消置顶",
   "Pin to top": "置顶",
@@ -1272,7 +1271,6 @@
   "Failed to reorder categories": "调整分组顺序失败",
   "Set category": "设置分组",
   "No pages in this category yet": "该分组下暂无页面",
-  "No pinned pages yet": "暂无置顶页面",
   "Move filtered pages here": "将筛选结果移动到这里",
   "Move selected here ({{count}})": "将所选项移动到这里（{{count}}）",
   "Move all matched pages in this space to the selected folder.": "将当前空间内所有匹配的页面移动到所选文件夹。",
@@ -1634,6 +1632,10 @@
   "Identity center sign-in could not be started. Please try again or use your existing local account.": "暂时无法启动认证中心登录，请重试或使用原有本地账号。",
   "This view is locked while sign-out completes. If it does not finish, retry sign-out.": "当前页面已锁定，请等待退出完成；若未跳转，请重试退出。",
   "Your sign-in state changed. Open sign-in again to verify the current account.": "登录状态已变化，请重新打开登录页确认当前账号。",
+  "Your session expired. Sign in again to continue.": "登录已过期，请重新登录后继续。",
+  "The identity center is temporarily unavailable. Your sign-in is still valid; retrying.": "认证中心暂时不可用，当前登录仍然有效，正在重试连接。",
+  "The identity center is temporarily unavailable. Your sign-in is still valid. Please retry shortly.": "认证中心暂时不可用，当前登录仍然有效，请稍后重试。",
   "Retry sign-out": "重试退出",
-  "Go to sign-in": "前往登录"
+  "Go to sign-in": "前往登录",
+  "The identity center could not confirm this sign-in. Please try again shortly.": "认证中心暂时无法确认本次登录，请稍后重试。"
 }

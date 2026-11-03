@@ -27,6 +27,9 @@ import {
 // editor-session lease is missing/expired/mismatched (409 EDITOR_SESSION_CONFLICT).
 // Keep in sync with the server constant EDITOR_SESSION_COLLAB_CLOSE_CODE.
 const EDITOR_SESSION_CONFLICT_CLOSE_CODE = 4409;
+// Server close code for "session is intact but authorization could not be
+// re-confirmed". It is retryable and must not clear the browser session.
+const SESSION_VERIFICATION_UNAVAILABLE_CLOSE_CODE = 1013;
 // Cooldown between lease re-acquire attempts triggered by collab close 4409,
 // so a server that keeps rejecting does not cause a tight re-acquire loop.
 const COLLAB_CONFLICT_REACQUIRE_COOLDOWN_MS = 10_000;
@@ -559,6 +562,7 @@ function LocalFallbackPageEditor({
   editable,
   content,
   currentUserId,
+  currentWorkspaceId,
   userPageEditMode,
   showCommentPopup,
   onUnsavedChangesChange,
@@ -572,6 +576,7 @@ function LocalFallbackPageEditor({
   editable: boolean;
   content: any;
   currentUserId?: string;
+  currentWorkspaceId?: string;
   userPageEditMode: PageEditMode;
   showCommentPopup: boolean;
   onUnsavedChangesChange: (value: boolean) => void;
@@ -635,6 +640,8 @@ function LocalFallbackPageEditor({
       } catch (error) {
         if (writeIntent === "handoff_flush") {
           await saveEditorRecoveryDraft({
+            workspaceId: currentWorkspaceId ?? "",
+            userId: currentUserId ?? "",
             resourceType: "page",
             resourceId: pageId,
             content: nextSave.content,
@@ -671,6 +678,8 @@ function LocalFallbackPageEditor({
     [
       editSession,
       pageId,
+      currentUserId,
+      currentWorkspaceId,
       onLastSavedContentChange,
       onSavePendingChange,
       onUnsavedChangesChange,
@@ -917,8 +926,10 @@ export default function PageEditor({
     pending: 0,
     recovery: false,
     storageError: false,
+    verificationPending: false,
   });
   const [recoveryText, setRecoveryText] = useState<string | null>(null);
+  const [collabNotice, setCollabNotice] = useState<string | null>(null);
   const draftScope = useMemo<DraftScope>(
     () => ({
       workspaceId: currentUser?.user?.workspaceId ?? "",
@@ -927,6 +938,9 @@ export default function PageEditor({
     }),
     [currentUser?.user?.workspaceId, currentUser?.user?.id, pageId],
   );
+  useEffect(() => {
+    if (durableState.permitted) setCollabNotice(null);
+  }, [durableState.permitted]);
   useEffect(() => {
     const abort = new AbortController();
     // Clear the previous external runtime before starting a new identity-bound request.
@@ -1031,6 +1045,8 @@ export default function PageEditor({
 
     if (pageLease.status === "revoked" && editorRef.current) {
       void saveEditorRecoveryDraft({
+        workspaceId: draftScope.workspaceId,
+        userId: draftScope.userId,
         resourceType: "page",
         resourceId: pageId,
         content: editorRef.current.getJSON(),
@@ -1063,6 +1079,8 @@ export default function PageEditor({
           updatePageData(page);
         } catch {
           await saveEditorRecoveryDraft({
+            workspaceId: draftScope.workspaceId,
+            userId: draftScope.userId,
             resourceType: "page",
             resourceId: pageId,
             content: currentContent,
@@ -1073,7 +1091,7 @@ export default function PageEditor({
 
       await pageLease.release("takeover_ack").catch(() => undefined);
     })();
-  }, [pageId, pageLease, runtimeMode]);
+  }, [pageId, pageLease, runtimeMode, draftScope]);
 
   useEffect(() => {
     setEditorSessionStatusAtom(
@@ -1184,6 +1202,7 @@ export default function PageEditor({
       pending: 0,
       recovery: false,
       storageError: false,
+      verificationPending: false,
     });
     if (!canStartCollabProvider) {
       setProvidersReady(false);
@@ -1286,8 +1305,22 @@ export default function PageEditor({
               console.warn("Unable to recheck the collaboration session", error);
             });
           }
-          if (managedDocument) setDurableState((state) => ({ ...state, permitted: false }));
-          else handleCollabClose(parameters);
+          if (managedDocument) {
+            setDurableState((state) => ({ ...state, permitted: false }));
+            if (parameters.event.code === SESSION_VERIFICATION_UNAVAILABLE_CLOSE_CODE) {
+              setCollabNotice(
+                "身份中心暂时不可用，编辑已暂停并正在重试连接；请用“查看恢复草稿”核对未同步内容。",
+              );
+            } else if (
+              parameters.event.code === EDITOR_SESSION_CONFLICT_CLOSE_CODE
+            ) {
+              setCollabNotice(
+                parameters.event.reason === "DOCUMENT_PERMIT_EXPIRED"
+                  ? "编辑许可已过期，正在重新获取；请用“查看恢复草稿”核对未同步内容。"
+                  : "编辑连接已中断，正在重新连接；请用“查看恢复草稿”核对未同步内容。",
+              );
+            }
+          } else handleCollabClose(parameters);
         },
       });
 
@@ -1583,14 +1616,21 @@ export default function PageEditor({
     collaborationEnabled && (managedDocument || runtimeError) ? (
       <Paper withBorder p="sm" mb="sm">
         <Stack gap="xs">
+          {collabNotice && (
+            <Text size="sm" c="yellow.8" role="status">
+              {collabNotice}
+            </Text>
+          )}
           <Text size="sm" role="status">
             {runtimeError
               ? "无法确认文档编辑状态，请重试。"
               : durableState.storageError
                 ? "本机草稿保存失败，已暂停编辑。请复制当前内容后再恢复连接。"
-                : durableState.recovery
-                  ? "文档已由其他会话更新。未确认保存的内容已隔离，请核对恢复草稿。"
-                  : !durableState.permitted
+                : durableState.verificationPending
+                  ? "认证中心暂时不可用，编辑已暂停并正在重试；未同步内容已保存在本机草稿。"
+                  : durableState.recovery
+                    ? "文档已由其他会话更新。未确认保存的内容已隔离，请核对恢复草稿。"
+                    : !durableState.permitted
                     ? "正在连接或文档被占用，暂时无法编辑。"
                     : durableState.pending
                       ? "正在保存，请勿关闭页面。"
@@ -1696,6 +1736,7 @@ export default function PageEditor({
           editable={effectiveEditable}
           content={editor ? editor.getJSON() : normalizedContent}
           currentUserId={currentUserId}
+          currentWorkspaceId={draftScope.workspaceId}
           userPageEditMode={userPageEditMode}
           showCommentPopup={showCommentPopup}
           onUnsavedChangesChange={setLocalHasUnsavedChanges}

@@ -10,7 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { SessionService } from '../core/session/session.service';
 import { SessionConnectionsService } from '../core/session/session-connections.service';
-import { OnModuleDestroy } from '@nestjs/common';
+import { OnModuleDestroy, UnauthorizedException } from '@nestjs/common';
 import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
 import { WsService } from './ws.service';
 import { getSpaceRoomName, getUserRoomName } from './ws.utils';
@@ -63,7 +63,7 @@ export class WsGateway
     try {
       const rawCookie = client.handshake.headers.cookie;
       if (!rawCookie) {
-        throw new Error('Missing auth cookie');
+        throw new UnauthorizedException('Missing auth cookie');
       }
 
       // Same-origin polling GETs may omit Origin. Fetch Metadata is set by the
@@ -91,9 +91,9 @@ export class WsGateway
           parsed.origin !== origin ||
           fetchSite === 'cross-site'
         )
-          throw new Error('Invalid socket origin');
+          throw new UnauthorizedException('Invalid socket origin');
       } else if (fetchSite !== 'same-origin') {
-        throw new Error('Missing same-origin socket evidence');
+        throw new UnauthorizedException('Missing same-origin socket evidence');
       }
 
       const cookies = cookie.parse(rawCookie);
@@ -120,16 +120,33 @@ export class WsGateway
       const spaceRooms = userSpaceIds.map((id) => getSpaceRoomName(id));
 
       client.join([userRoom, workspaceRoom, ...spaceRooms]);
-      this.sessionConnections.register(client, actor.sessionId, () => {
-        client.emit('Unauthorized');
+      this.sessionConnections.register(client, actor.sessionId, (reason) => {
+        client.emit(
+          reason === 'unavailable'
+            ? 'SessionVerificationUnavailable'
+            : 'Unauthorized',
+        );
         client.disconnect(true);
       });
       return true;
     } catch (err) {
-      client.emit('Unauthorized');
+      client.emit(
+        this.isUnauthorized(err) ? 'Unauthorized' : 'SessionVerificationUnavailable',
+      );
       client.disconnect();
       return false;
     }
+  }
+
+  /** Only a 401 is a revocation. Database/center failures are retryable and
+   * must not be reported to the browser as an account change. */
+  private isUnauthorized(error: unknown): boolean {
+    if (error instanceof UnauthorizedException) return true;
+    const getStatus = (error as { getStatus?: () => number })?.getStatus;
+    return (
+      (typeof getStatus === 'function' && getStatus.call(error) === 401) ||
+      (error as { status?: number })?.status === 401
+    );
   }
 
   async handleDisconnect(client: Socket): Promise<void> {
@@ -169,8 +186,12 @@ export class WsGateway
         client.data?.userId,
         client.data?.workspaceId,
       );
-    } catch {
-      client.emit('Unauthorized');
+    } catch (error) {
+      client.emit(
+        this.isUnauthorized(error)
+          ? 'Unauthorized'
+          : 'SessionVerificationUnavailable',
+      );
       client.disconnect(true);
       return;
     }

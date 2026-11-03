@@ -1,4 +1,9 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { TokenService } from '../auth/services/token.service';
 import { UserSessionRepo } from '@docmost/db/repos/session/user-session.repo';
@@ -77,12 +82,12 @@ export class SessionService {
     const identity = (metadata as { identity?: IdentitySessionMetadata } | null)
       ?.identity;
     if (!identity) return;
-    if (
-      !this.identityVerifier ||
-      !Number.isFinite(identity.expiresAt) ||
-      identity.expiresAt <= Date.now()
-    )
+    // Session expiry is a definitive local fact and must keep failing closed.
+    if (!Number.isFinite(identity.expiresAt) || identity.expiresAt <= Date.now())
       throw new UnauthorizedException();
+    // A missing verifier is an unavailable dependency, not proof of revocation.
+    if (!this.identityVerifier)
+      throw new ServiceUnavailableException('identity_unavailable');
     await this.identityVerifier(identity);
   }
 

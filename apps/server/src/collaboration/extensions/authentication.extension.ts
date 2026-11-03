@@ -27,6 +27,12 @@ import { SessionService } from '../../core/session/session.service';
 import { SessionConnectionsService } from '../../core/session/session-connections.service';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 
+// 1013 is "Try Again Later": the session is intact, but authorization could not
+// be re-confirmed. Clients must reconnect rather than clear the web session.
+export const SESSION_VERIFICATION_UNAVAILABLE_CODE = 1013;
+export const SESSION_VERIFICATION_UNAVAILABLE_REASON =
+  'Session verification unavailable';
+
 @Injectable()
 export class AuthenticationExtension implements Extension {
   private readonly logger = new Logger(AuthenticationExtension.name);
@@ -177,23 +183,47 @@ export class AuthenticationExtension implements Extension {
       user?.id,
       user?.workspaceId,
     );
-    this.sessionConnections.register(data.connection, sessionId, () => {
-      data.connection.close({ code: 4401, reason: 'Session ended' });
-      if (data.context.editSession) {
-        void this.editorSessionService
-          .release({
-            workspaceId: user.workspaceId,
-            userId: user.id,
-            resourceType: 'page',
-            resourceId: getPageId(data.documentName),
-            editSession: data.context.editSession,
-            reason: 'manual',
-          })
-          .catch(() =>
-            this.logger.warn('Revoked session lease cleanup failed'),
-          );
-      }
-    });
+    const baseReadOnly = data.connection.readOnly;
+    this.sessionConnections.register(
+      data.connection,
+      sessionId,
+      (reason) => {
+        data.connection.close(
+          reason === 'unavailable'
+            ? {
+                code: SESSION_VERIFICATION_UNAVAILABLE_CODE,
+                reason: SESSION_VERIFICATION_UNAVAILABLE_REASON,
+              }
+            : { code: 4401, reason: 'Session ended' },
+        );
+        if (data.context.editSession) {
+          void this.editorSessionService
+            .release({
+              workspaceId: user.workspaceId,
+              userId: user.id,
+              resourceType: 'page',
+              resourceId: getPageId(data.documentName),
+              editSession: data.context.editSession,
+              reason: 'manual',
+            })
+            .catch(() =>
+              this.logger.warn('Revoked session lease cleanup failed'),
+            );
+        }
+      },
+      (pending) => {
+        // Suspend writes while the center cannot confirm authorization. The
+        // document stays loaded and recovers in place if the next sweep passes.
+        data.connection.readOnly = pending ? true : baseReadOnly;
+        data.connection.sendStateless(
+          JSON.stringify({
+            type: pending
+              ? 'session_verification_pending'
+              : 'session_verification_recovered',
+          }),
+        );
+      },
+    );
     data.connection.onClose(() =>
       this.sessionConnections.unregister(data.connection),
     );

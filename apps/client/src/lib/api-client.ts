@@ -58,6 +58,13 @@ api.interceptors.response.use(
           // Password verification failure is a form error, not session expiry.
           if (url.endsWith("/identity/link/start") &&
             (error.response.data?.code === "identity_password_invalid" || error.response.data?.message === "identity_password_invalid")) break;
+          // Defense in depth: an unconfirmed center check is retryable and must
+          // never be presented as an account/session change.
+          if (
+            (error.response.data?.code ?? error.response.data?.message) ===
+            "identity_unavailable"
+          )
+            break;
           if (window.location.pathname.startsWith("/share/")) break;
 
           // Handle unauthorized error

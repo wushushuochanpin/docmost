@@ -5,6 +5,8 @@ const STORE_NAME = "recovery-drafts";
 
 type RecoveryDraft = {
   id: string;
+  workspaceId: string;
+  userId: string;
   resourceType: EditorSessionResourceType;
   resourceId: string;
   content: unknown;
@@ -26,7 +28,23 @@ function openDraftDb(): Promise<IDBDatabase> {
   });
 }
 
+export function editorRecoveryDraftId(
+  draft: {
+    workspaceId: string;
+    userId: string;
+    resourceType: EditorSessionResourceType;
+    resourceId: string;
+  },
+  now = Date.now(),
+) {
+  // Scope the record so a different account or workspace can never surface
+  // another user's unsynchronized draft.
+  return `${draft.workspaceId}:${draft.userId}:${draft.resourceType}:${draft.resourceId}:${now}`;
+}
+
 export async function saveEditorRecoveryDraft(draft: {
+  workspaceId: string;
+  userId: string;
   resourceType: EditorSessionResourceType;
   resourceId: string;
   content: unknown;
@@ -38,7 +56,7 @@ export async function saveEditorRecoveryDraft(draft: {
     const store = tx.objectStore(STORE_NAME);
     const record: RecoveryDraft = {
       ...draft,
-      id: `${draft.resourceType}:${draft.resourceId}:${Date.now()}`,
+      id: editorRecoveryDraftId(draft),
       createdAt: Date.now(),
     };
     store.put(record);

@@ -12,6 +12,7 @@ export type DurableState = {
   pending: number;
   recovery: boolean;
   storageError: boolean;
+  verificationPending: boolean;
 };
 function base64(value: Uint8Array) {
   let text = "";
@@ -25,6 +26,7 @@ export class DurableProvider extends HocuspocusProvider {
   private permitted = false;
   private recovery = false;
   private storageError = false;
+  private verificationPending = false;
   private pending = new Map<string, Uint8Array>();
   private stopped = false;
   private restoreRequest?: {
@@ -37,6 +39,7 @@ export class DurableProvider extends HocuspocusProvider {
     return (
       this.permitted &&
       !this.recovery &&
+      !this.verificationPending &&
       !this.pending.size &&
       !this.restoreRequest
     );
@@ -85,6 +88,7 @@ export class DurableProvider extends HocuspocusProvider {
       pending: this.pending.size,
       recovery: this.recovery,
       storageError: this.storageError,
+      verificationPending: this.verificationPending,
     });
   }
   override send(Message: Parameters<HocuspocusProvider["send"]>[0], args: any) {
@@ -105,7 +109,11 @@ export class DurableProvider extends HocuspocusProvider {
     if (origin === this || this.stopped) return;
     const id = crypto.randomUUID();
     this.pending.set(id, update.slice());
-    if (!this.permitted || !this.epoch || this.restoreRequest)
+    if (
+      (!this.permitted && !this.verificationPending) ||
+      !this.epoch ||
+      this.restoreRequest
+    )
       this.recovery = true;
     this.report();
     const snapshot = Y.encodeStateAsUpdate(this.document);
@@ -206,6 +214,29 @@ export class DurableProvider extends HocuspocusProvider {
         });
       this.report();
     }
+    if (message.type === "session_verification_pending") {
+      this.verificationPending = true;
+      this.permitted = false;
+      this.report();
+    }
+    if (message.type === "session_verification_recovered") {
+      this.verificationPending = false;
+      this.permitted = Boolean(this.epoch) && !this.stopped;
+      this.report();
+      if (this.permitted && !this.recovery) {
+        for (const [id, update] of this.pending) this.upload(id, update);
+      }
+    }
+    if (
+      message.type === "document_update_rejected" &&
+      this.pending.has(message.updateId)
+    ) {
+      // The server refused this update (permit/owner/envelope). Keep the draft
+      // and require an explicit recovery instead of replaying it silently.
+      this.permitted = false;
+      this.recovery = true;
+      this.report();
+    }
     super.receiveStateless(payload);
   }
   override onClose() {
@@ -216,6 +247,7 @@ export class DurableProvider extends HocuspocusProvider {
       this.recovery = true;
     }
     this.permitted = false;
+    this.verificationPending = false;
     this.report();
     super.onClose();
   }

@@ -11,6 +11,7 @@ import { useTreeSocket } from "@/features/websocket/use-tree-socket.ts";
 import { useNotificationSocket } from "@/features/notification/hooks/use-notification-socket.ts";
 import { Error404 } from "@/components/ui/error-404.tsx";
 import { Box, Button, Center, Loader, Text } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { captureAuthGeneration, getAuthInvalidationReason, invalidateAuthSession, isAuthInvalidated, isCurrentAuthGeneration, subscribeAuthLifecycle } from "@/features/auth/session-lifecycle";
 import useAuth from "@/features/auth/hooks/use-auth";
 import APP_ROUTE from "@/lib/app-route.ts";
@@ -39,11 +40,31 @@ export function UserProvider({ children }: React.PropsWithChildren) {
     }
 
     let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let reconnectAttempts = 0;
     const socketGeneration = captureAuthGeneration();
     const newSocket = io(SOCKET_URL, {
       transports: ["websocket"],
       withCredentials: true,
     });
+
+    const clearReconnect = () => {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+      }
+    };
+    const scheduleReconnect = () => {
+      if (disposed || isAuthInvalidated()) return;
+      // Bounded backoff avoids a tight reconnect loop during a center outage.
+      const delay = Math.min(30_000, 5_000 * 2 ** reconnectAttempts++);
+      clearReconnect();
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = undefined;
+        if (!disposed && !isAuthInvalidated() && isCurrentAuthGeneration(socketGeneration))
+          newSocket.connect();
+      }, delay);
+    };
 
     // @ts-ignore
     setSocket(newSocket);
@@ -52,8 +73,24 @@ export function UserProvider({ children }: React.PropsWithChildren) {
       if (!disposed && isCurrentAuthGeneration(socketGeneration)) invalidateAuthSession();
     });
 
+    newSocket.on("SessionVerificationUnavailable", () => {
+      if (disposed || !isCurrentAuthGeneration(socketGeneration)) return;
+      notifications.show({
+        id: "session-verification-unavailable",
+        message: i18n.t(
+          "The identity center is temporarily unavailable. Your sign-in is still valid; retrying.",
+        ),
+        color: "yellow",
+        autoClose: false,
+      });
+      scheduleReconnect();
+    });
+
     newSocket.on("connect", () => {
       console.log("ws connected");
+      reconnectAttempts = 0;
+      clearReconnect();
+      notifications.hide("session-verification-unavailable");
       ensureUniqueEditorSessionClientId().then((clientId) => {
         if (disposed || isAuthInvalidated()) return;
         newSocket.emit("message", {
@@ -65,10 +102,11 @@ export function UserProvider({ children }: React.PropsWithChildren) {
 
     return () => {
       disposed = true;
+      clearReconnect();
       console.log("ws disconnected");
       newSocket.disconnect();
     };
-  }, [isError, isLoading, invalidated, data?.user?.id]);
+  }, [isError, isLoading, invalidated, data?.user?.id, i18n]);
 
   useQuerySubscription();
   useTreeSocket();
@@ -89,10 +127,16 @@ export function UserProvider({ children }: React.PropsWithChildren) {
 
   if (invalidated) {
     const reason = getAuthInvalidationReason();
+    const message =
+      reason === "logout"
+        ? "This view is locked while sign-out completes. If it does not finish, retry sign-out."
+        : reason === "expired"
+          ? "Your session expired. Sign in again to continue."
+          : "Your sign-in state changed. Open sign-in again to verify the current account.";
     return (
       <Center h="100vh">
         <Box ta="center" p="lg">
-          <Text mb="sm">{t(reason === "logout" ? "This view is locked while sign-out completes. If it does not finish, retry sign-out." : "Your sign-in state changed. Open sign-in again to verify the current account.")}</Text>
+          <Text mb="sm">{t(message)}</Text>
           {reason === "logout"
             ? <Button onClick={logout} loading={isLoggingOut} color="black" radius={4}>{t("Retry sign-out")}</Button>
             : <Button component="a" href={`/login?logout=1&redirect=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`} color="black" radius={4}>{t("Go to sign-in")}</Button>}
@@ -118,11 +162,15 @@ export function UserProvider({ children }: React.PropsWithChildren) {
 
   if (error) {
     const status = error?.["response"]?.status;
+    const code =
+      error?.["response"]?.data?.code ?? error?.["response"]?.data?.message;
     const isUnauthorized = status === 401;
     if (isUnauthorized) {
       const from = `${location.pathname}${location.search}${location.hash}`;
       return <Navigate to={APP_ROUTE.AUTH.LOGIN} replace state={{ from }} />;
     }
+    const isIdentityUnavailable =
+      status === 503 || code === "identity_unavailable";
     return (
       <Center
         h="100vh"
@@ -130,7 +178,11 @@ export function UserProvider({ children }: React.PropsWithChildren) {
       >
         <Box ta="center">
           <Text c="dimmed" mb="sm">
-            加载失败，请检查网络或稍后重试
+            {isIdentityUnavailable
+              ? t(
+                  "The identity center is temporarily unavailable. Your sign-in is still valid. Please retry shortly.",
+                )
+              : "加载失败，请检查网络或稍后重试"}
           </Text>
           <Text
             component="button"

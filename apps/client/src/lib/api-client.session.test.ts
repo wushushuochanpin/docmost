@@ -79,6 +79,24 @@ describe("session response isolation", () => {
     expect(isAuthInvalidated()).toBe(false);
     window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, listener);
   });
+  it("keeps the session when the center cannot confirm authorization", async () => {
+    await expect(
+      api.get("/users/me", {
+        adapter: (config) =>
+          Promise.reject(rejection(config, 503, { code: "identity_unavailable" })),
+      }),
+    ).rejects.toMatchObject({ response: { status: 503 } });
+    expect(isAuthInvalidated()).toBe(false);
+  });
+  it("never treats an identity_unavailable 401 as an account change", async () => {
+    await expect(
+      api.get("/users/me", {
+        adapter: (config) =>
+          Promise.reject(rejection(config, 401, { code: "identity_unavailable" })),
+      }),
+    ).rejects.toMatchObject({ response: { status: 401 } });
+    expect(isAuthInvalidated()).toBe(false);
+  });
   it("keeps password verification errors local to the linking form", async () => {
     await expect(
       api.post(

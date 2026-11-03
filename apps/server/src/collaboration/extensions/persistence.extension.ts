@@ -204,10 +204,12 @@ export class PersistenceExtension implements Extension {
     const editingUserIds = this.captureContributors(documentName);
 
     if (!workspaceId) {
-      this.logger.warn(
-        `Missing workspace in collab store context for ${pageId}`,
+      // Do not report a successful store: the caller would then unload the
+      // document and discard changes that were never written.
+      this.logger.error(
+        `Missing workspace in collab store context for ${pageId}; keeping document in memory`,
       );
-      return;
+      throw new Error('Missing collab store workspace');
     }
 
     try {
