@@ -21,6 +21,9 @@ import { currentUserAtom } from "@/features/user/atoms/current-user-atom";
 type Consent = {
   id: string;
   application: string;
+  application_source?: string;
+  application_verified?: boolean;
+  requested_scopes?: string[];
   redirect_origin: string;
   scopes: string[];
   max_grant_days?: number;
@@ -137,7 +140,17 @@ export default function AgentConsentPage() {
           )}
           {consent && (
             <>
-              <Text fw={600}>{consent.application}</Text>
+              <Group gap="xs">
+                <Text fw={600}>{consent.application}</Text>
+                <Text size="sm" c="dimmed">
+                  {consent.application_verified
+                    ? "管理员登记"
+                    : "未验证应用"}
+                </Text>
+              </Group>
+              <Text size="sm" c="dimmed">
+                应用名称不能证明品牌身份。请确认返回地址后再授权。
+              </Text>
               <Text size="sm">
                 {t("只允许访问你选择的空间，且不能超出你的当前权限。")}
               </Text>
@@ -150,16 +163,30 @@ export default function AgentConsentPage() {
                 onChange={setScopes}
               >
                 <Stack gap="xs" mt="xs">
-                  {consent.scopes.map((scope) => (
-                    <Checkbox
-                      key={scope}
-                      value={scope}
-                      label={t(scopeLabels[scope] ?? scope)}
-                      disabled={busy || scope === "knowledge.read"}
-                    />
-                  ))}
+                  {(consent.requested_scopes ?? consent.scopes).map((scope) => {
+                    const allowed = consent.scopes.includes(scope);
+                    return (
+                      <Checkbox
+                        key={scope}
+                        value={scope}
+                        label={`${t(scopeLabels[scope] ?? scope)}${
+                          allowed ? "" : `（${t("工作区已禁写")}）`
+                        }`}
+                        disabled={
+                          busy || scope === "knowledge.read" || !allowed
+                        }
+                      />
+                    );
+                  })}
                 </Stack>
               </Checkbox.Group>
+              {consent.scopes.every((scope) => scope === "knowledge.read") ? (
+                <Alert color="yellow">
+                  {t(
+                    "工作区当前禁止 Agent 写入。你可以建立只读连接；如需写入，请联系管理员开启 Agent 写入策略。",
+                  )}
+                </Alert>
+              ) : null}
               <Checkbox.Group
                 label={t("允许访问的空间")}
                 value={spaces}

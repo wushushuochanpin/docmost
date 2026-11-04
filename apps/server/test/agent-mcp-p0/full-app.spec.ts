@@ -175,6 +175,23 @@ test('complete application: login, OAuth, collaborative editing, history conflic
             (await fetch('/api/auth/collab-token', { method: 'POST' })).status,
         ),
       ).toBe(200);
+    // New settings surface: create a scoped MCP token through the real HTTP
+    // controller, CSRF barrier and one-time secret modal.
+    await tab.goto(origin + '/settings/account/mcp-tokens');
+    await tab.waitForSelector('button::-p-text(创建 MCP 令牌)');
+    await tab.click('button::-p-text(创建 MCP 令牌)');
+    await tab.waitForSelector('input[placeholder="例如：豆包工作 · 产品库"]');
+    await tab.type(
+      'input[placeholder="例如：豆包工作 · 产品库"]',
+      'API 测试令牌',
+    );
+    await tab.click('input[value="' + space + '"]');
+    await tab.click('button::-p-text(创建令牌)');
+    await tab.waitForSelector('button::-p-text(我已保存，关闭)');
+    await tab.click('button::-p-text(我已保存，关闭)');
+    await tab.waitForFunction(() =>
+      document.body.innerText.includes('API 测试令牌'),
+    );
     if (process.env.P2_LEGACY === 'true') {
       // Delay the websocket only, after runtime discovery. Loading must never
       // mount the JSON writer while the authoritative Y.Doc is connecting.

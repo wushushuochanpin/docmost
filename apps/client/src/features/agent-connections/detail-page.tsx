@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Badge,
   Button,
   Checkbox,
   Group,
@@ -76,6 +77,12 @@ export default function ConnectionDetail() {
     }
   }
   const active = data?.status === "active";
+  const removedScopes = data
+    ? data.scopes.filter((scope) => !scopes.includes(scope))
+    : [];
+  const removedSpaces = data
+    ? data.spaces.filter((space) => !spaces.includes(space.id))
+    : [];
   return (
     <Stack>
       <Button
@@ -86,7 +93,14 @@ export default function ConnectionDetail() {
       >
         返回连接列表
       </Button>
-      <SettingsTitle title={data?.name ?? "连接详情"} />
+      <Group gap="xs">
+        <SettingsTitle title={data?.name ?? "连接详情"} />
+        {data?.source === "dcr" ? (
+          <Badge color="grape" variant="light">
+            未验证应用
+          </Badge>
+        ) : null}
+      </Group>
       <MutationMessage message={message} />
       <AgentState loading={loading} error={error} retry={refresh}>
         {data && (
@@ -141,6 +155,14 @@ export default function ConnectionDetail() {
             <Text size="sm" c="dimmed">
               只能缩小范围。增加权限、空间或延长有效期，需要重新授权。
             </Text>
+            {(removedScopes.length > 0 || removedSpaces.length > 0) && (
+              <Alert color="yellow">
+                将移除权限：
+                {removedScopes.join("、") || "无"}；将移除空间：
+                {removedSpaces.map((space) => space.name).join("、") || "无"}。
+                保存后立即生效，并在最终提交前由同一事务的授权屏障判定。
+              </Alert>
+            )}
             <Group>
               <Button
                 onClick={() => save()}

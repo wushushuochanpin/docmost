@@ -13,6 +13,9 @@ export const settingsRouteModules = {
   agentActivity: preloadableLazyWithRetry(
     () => import("@/features/agent-connections/activity-page"),
   ),
+  mcpTokens: preloadableLazyWithRetry(
+    () => import("@/features/mcp-tokens/mcp-tokens-page"),
+  ),
   accountProfile: preloadableLazyWithRetry(
     () => import("@/pages/settings/account/account-settings"),
   ),

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { TextInput, Group } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { Search } from "lucide-react";
@@ -21,10 +21,12 @@ export function SearchInput({
   const { t } = useTranslation();
   const [value, setValue] = useState("");
   const [debouncedValue] = useDebouncedValue(value, debounceDelay);
+  const onSearchRef = useRef(onSearch);
+  onSearchRef.current = onSearch;
 
   useEffect(() => {
-    onSearch(debouncedValue);
-  }, [debouncedValue, onSearch]);
+    onSearchRef.current(debouncedValue);
+  }, [debouncedValue]);
 
   return (
     <Group mb="sm" className={classes.wrapper}>

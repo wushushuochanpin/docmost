@@ -6,6 +6,7 @@ export type Connection = {
   id: string;
   name: string;
   status: string;
+  source?: string;
   version: string;
   scopes: string[];
   spaceIds: string[];

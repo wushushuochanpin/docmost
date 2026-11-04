@@ -1,6 +1,11 @@
 import { imageReferences } from './image-reference';
 import { TiptapTransformer } from '@hocuspocus/transformer';
 import { agentTelemetry } from '../agent-operations/agent-telemetry';
+import { AgentCredentialService } from '../agent-credentials/agent-credential.service';
+import {
+  AgentCredential,
+  AgentCredentialKind,
+} from '../agent-credentials/agent-credential.types';
 import {
   chargeEntrance,
   agentPolicy,
@@ -40,11 +45,18 @@ export type DocumentPermit = DocumentActor & {
   editEpoch: string;
   ownerEpoch: string;
 };
-export type AgentDocumentActor = DocumentActor & {
-  grantId: string;
-  clientId: string;
-  tokenHash?: string;
-};
+export type AgentDocumentActor = DocumentActor &
+  Partial<AgentCredential> & {
+    kind?: AgentCredentialKind;
+    credentialKind?: AgentCredentialKind;
+    credentialId?: string;
+    grantId?: string;
+    clientId?: string;
+    tokenHash?: string;
+    apiTokenId?: string;
+    scopes?: string[];
+    spaceIds?: string[];
+  };
 export type AgentCreateRequest = {
   principal: Omit<AgentDocumentActor, 'pageId'>;
   key: string;
@@ -247,6 +259,7 @@ export class DocumentCommandService {
     @InjectKysely() private readonly db: KyselyDB,
     private readonly permissions: PagePermissionRepo,
     private readonly members: SpaceMemberRepo,
+    private readonly credentials: AgentCredentialService,
   ) {}
 
   private async transaction<T>(
@@ -396,7 +409,7 @@ export class DocumentCommandService {
             pageId: string;
             result: any;
             resultExpiredAt: Date | null;
-          }>`select request_hash,page_id,result,result_expired_at from document_operations where workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and client_id=${agent.principal.clientId} and grant_id=${agent.principal.grantId}::uuid and tool=${agent.tool} and idempotency_key=${agent.key}`.execute(
+          }>`select request_hash,page_id,result,result_expired_at from document_operations where workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and ${this.credentialFilter(agent.principal)} and tool=${agent.tool} and idempotency_key=${agent.key}`.execute(
             trx,
           )
         ).rows[0];
@@ -447,20 +460,16 @@ export class DocumentCommandService {
             await sql<{ at: Date }>`select clock_timestamp() as at`.execute(trx)
           ).rows[0].at.toISOString(),
         };
-        await sql`insert into document_operations(id,workspace_id,user_id,client_id,grant_id,page_id,tool,idempotency_key,request_hash,status,result,committed_at)
-        values(${id}::uuid,${actor.workspaceId}::uuid,${actor.userId}::uuid,${agent.principal.clientId},${agent.principal.grantId}::uuid,${created.id}::uuid,${agent.tool},${agent.key},${requestHash},'committed',${JSON.stringify(response)}::text::jsonb,clock_timestamp())`.execute(
+        await sql`insert into document_operations(id,workspace_id,user_id,client_id,grant_id,page_id,tool,idempotency_key,request_hash,status,result,committed_at,credential_kind,credential_id)
+        values(${id}::uuid,${actor.workspaceId}::uuid,${actor.userId}::uuid,${agent.principal.clientId ?? 'mcp-api-token'},${agent.principal.grantId ?? null}::uuid,${created.id}::uuid,${agent.tool},${agent.key},${requestHash},'committed',${JSON.stringify(response)}::text::jsonb,clock_timestamp(),${this.credentialKind(agent.principal)},${this.credentialId(agent.principal)}::uuid)`.execute(
           trx,
         );
         await reserveQuota(trx, agent.principal, id, 'create');
         await settleQuota(trx, id, true);
-        const application =
-          (
-            await sql<{
-              name: string;
-            }>`select name from agent_oauth_clients where id=${agent.principal.clientId}::uuid`.execute(
-              trx,
-            )
-          ).rows[0]?.name ?? agent.principal.clientId;
+        const application = await this.credentials.displayName(
+          trx,
+          this.credential(agent.principal),
+        );
         const createdHistory = await this.saveHistory(
           trx,
           { ...actor, pageId: created.id },
@@ -1080,13 +1089,12 @@ export class DocumentCommandService {
     limit: number,
   ) {
     return this.transaction(actor.workspaceId, async (trx) => {
+      const allowed = await this.credentials.spaceIds(trx, this.credential(actor));
       const candidates = await trx
         .selectFrom('spaces')
         .select(['id', 'name'])
         .where('workspaceId', '=', actor.workspaceId)
-        .where(
-          sql<boolean>`id::text > ${after} and id=any(select unnest(space_ids) from document_agent_grants where id=${actor.grantId}::uuid)`,
-        )
+        .where(sql<boolean>`id::text > ${after} and id=any(${allowed}::uuid[])`)
         .orderBy('id')
         .limit(100)
         .execute();
@@ -1135,7 +1143,7 @@ export class DocumentCommandService {
           requestHash: string;
           resultJson: string;
           resultExpiredAt: Date | null;
-        }>`select request_hash,result::text as result_json,result_expired_at from document_operations where workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and client_id=${actor.clientId} and grant_id=${actor.grantId}::uuid and tool='upload_image' and idempotency_key=${input.key}`.execute(
+        }>`select request_hash,result::text as result_json,result_expired_at from document_operations where workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and ${this.credentialFilter(actor)} and tool='upload_image' and idempotency_key=${input.key}`.execute(
           trx,
         )
       ).rows[0];
@@ -1153,7 +1161,7 @@ export class DocumentCommandService {
         return result;
       }
       const id = randomUUID();
-      await sql`insert into document_operations(id,workspace_id,user_id,client_id,grant_id,page_id,tool,idempotency_key,request_hash,status) values(${id}::uuid,${actor.workspaceId}::uuid,${actor.userId}::uuid,${actor.clientId},${actor.grantId}::uuid,${actor.pageId}::uuid,'upload_image',${input.key},${requestHash},'running')`.execute(
+      await sql`insert into document_operations(id,workspace_id,user_id,client_id,grant_id,page_id,tool,idempotency_key,request_hash,status,credential_kind,credential_id) values(${id}::uuid,${actor.workspaceId}::uuid,${actor.userId}::uuid,${actor.clientId ?? 'mcp-api-token'},${actor.grantId ?? null}::uuid,${actor.pageId}::uuid,'upload_image',${input.key},${requestHash},'running',${this.credentialKind(actor)},${this.credentialId(actor)}::uuid)`.execute(
         trx,
       );
       await reserveQuota(trx, actor, id, 'edit');
@@ -1267,23 +1275,34 @@ export class DocumentCommandService {
     spaceId: string,
     scope: string,
   ) {
-    if (actor.tokenHash) {
-      const valid =
-        await sql`select 1 from agent_oauth_tokens t join agent_oauth_families f on f.id=t.family_id join agent_oauth_clients c on c.id=f.client_id
-        where t.access_hash=${actor.tokenHash} and t.access_expires_at>clock_timestamp() and not f.revoked and c.active and ARRAY['knowledge.read',${scope}]::text[] <@ c.scopes
-        and f.grant_id=${actor.grantId}::uuid and f.client_id=${actor.clientId}::uuid and f.workspace_id=${actor.workspaceId}::uuid
-        and t.metadata->'scope' @> ${JSON.stringify(['knowledge.read', scope])}::text::jsonb`.execute(
-          trx,
-        );
-      if (!valid.rows.length) return denied();
-    }
-    const grants =
-      await sql`select 1 from document_agent_grants where id=${actor.grantId}::uuid and workspace_id=${actor.workspaceId}::uuid
-      and user_id=${actor.userId}::uuid and client_id=${actor.clientId} and revoked_at is null and expires_at>clock_timestamp()
-      and ${spaceId}::uuid=any(space_ids) and ARRAY['knowledge.read',${scope}]::text[] <@ scopes for share`.execute(
-        trx,
-      );
-    if (!grants.rows.length) return denied();
+    return this.credentials.assertScope(
+      trx,
+      this.credential(actor),
+      spaceId,
+      scope,
+    );
+  }
+  private credential(actor: Omit<AgentDocumentActor, 'pageId'>) {
+    const kind = actor.kind ?? actor.credentialKind ?? 'oauth';
+    const credentialId =
+      actor.credentialId ?? actor.grantId ?? actor.apiTokenId ?? '';
+    return {
+      ...actor,
+      kind,
+      credentialId,
+      scopes: actor.scopes ?? [],
+      spaceIds: actor.spaceIds ?? [],
+      version: actor.version ?? '1',
+    } as AgentCredential;
+  }
+  private credentialKind(actor: Omit<AgentDocumentActor, 'pageId'>) {
+    return actor.kind ?? actor.credentialKind ?? 'oauth';
+  }
+  private credentialId(actor: Omit<AgentDocumentActor, 'pageId'>) {
+    return actor.credentialId ?? actor.grantId ?? actor.apiTokenId ?? '';
+  }
+  private credentialFilter(actor: Omit<AgentDocumentActor, 'pageId'>) {
+    return sql`credential_kind=${this.credentialKind(actor)} and credential_id=${this.credentialId(actor)}::uuid`;
   }
   async edit(
     actor: AgentDocumentActor,
@@ -1336,7 +1355,7 @@ export class DocumentCommandService {
           result: any;
           resultExpiredAt: Date | null;
         }>`select id,request_hash,status,result,result_expired_at from document_operations
-          where workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and client_id=${actor.clientId} and grant_id=${actor.grantId}::uuid and tool=${tool} and idempotency_key=${input.key}`.execute(
+          where workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and ${this.credentialFilter(actor)} and tool=${tool} and idempotency_key=${input.key}`.execute(
           trx,
         );
         if (old.rows[0]) {
@@ -1373,8 +1392,8 @@ export class DocumentCommandService {
         };
         this.engine().assertVersion(input.versionToken, version);
         const id = randomUUID();
-        await sql`insert into document_operations(id,workspace_id,user_id,client_id,grant_id,page_id,tool,idempotency_key,request_hash,status)
-          values(${id}::uuid,${actor.workspaceId}::uuid,${actor.userId}::uuid,${actor.clientId},${actor.grantId}::uuid,${actor.pageId}::uuid,${tool},${input.key},${requestHash},'running')`.execute(
+        await sql`insert into document_operations(id,workspace_id,user_id,client_id,grant_id,page_id,tool,idempotency_key,request_hash,status,credential_kind,credential_id)
+          values(${id}::uuid,${actor.workspaceId}::uuid,${actor.userId}::uuid,${actor.clientId ?? 'mcp-api-token'},${actor.grantId ?? null}::uuid,${actor.pageId}::uuid,${tool},${input.key},${requestHash},'running',${this.credentialKind(actor)},${this.credentialId(actor)}::uuid)`.execute(
           trx,
         );
         await reserveQuota(trx, actor, id, 'edit');
@@ -1456,15 +1475,10 @@ export class DocumentCommandService {
             await sql`select set_config('app.document_ticket',${actor.pageId + ':' + claim.fence},true)`.execute(
               trx,
             );
-            const application = actor.tokenHash
-              ? ((
-                  await sql<{
-                    name: string;
-                  }>`select name from agent_oauth_clients where id=${actor.clientId}::uuid`.execute(
-                    trx,
-                  )
-                ).rows[0]?.name ?? actor.clientId)
-              : actor.clientId;
+            const application = await this.credentials.displayName(
+              trx,
+              this.credential(actor),
+            );
             const changed =
               digest(binary) !== digest(new Uint8Array(page.ydoc)) ||
               (input.title !== undefined && input.title !== page.title);
@@ -1586,7 +1600,7 @@ export class DocumentCommandService {
           status: string;
           resultJson: string | null;
           resultExpiredAt: Date | null;
-        }>`select id,page_id,status,result::text as result_json,result_expired_at from document_operations where ${selector} and workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and client_id=${actor.clientId} and grant_id=${actor.grantId}::uuid`.execute(
+        }>`select id,page_id,status,result::text as result_json,result_expired_at from document_operations where ${selector} and workspace_id=${actor.workspaceId}::uuid and user_id=${actor.userId}::uuid and ${this.credentialFilter(actor)}`.execute(
           trx,
         )
       ).rows[0];
@@ -1634,7 +1648,7 @@ export class DocumentCommandService {
           resultExpiredAt: Date | null;
         }>`select id,status,result,result_expired_at from document_operations
         where id=${id}::uuid and workspace_id=${actor.workspaceId}::uuid and page_id=${actor.pageId}::uuid
-        and user_id=${actor.userId}::uuid and client_id=${actor.clientId} and grant_id=${actor.grantId}::uuid`.execute(
+        and user_id=${actor.userId}::uuid and ${this.credentialFilter(actor)}`.execute(
           trx,
         )
       ).rows[0];
@@ -1658,10 +1672,31 @@ export class DocumentCommandService {
       if (operation?.status !== 'committed')
         return conflict('OPERATION_RECONCILING');
       const live = this.live.get(actor.pageId);
-      if (gate.ownerValid && (!live || live.ownerEpoch !== gate.ownerEpoch))
+      const human = await sql`select 1 from document_human_permits
+        where page_id=${actor.pageId}::uuid and expires_at>clock_timestamp() limit 1`.execute(
+        trx,
+      );
+      // A stale owner lease without an active human permit must not keep the
+      // page in agent mode forever. If a human is actually editing, keep the
+      // gate closed until the owner lease/collaboration state is reconciled.
+      if (
+        gate.ownerValid &&
+        human.rows.length > 0 &&
+        (!live || live.ownerEpoch !== gate.ownerEpoch)
+      )
         return;
-      if (live)
-        Y.applyUpdate(live.doc, new Uint8Array(page.ydoc), DURABLE_YJS_ORIGIN);
+      if (live) {
+        try {
+          Y.applyUpdate(
+            live.doc,
+            new Uint8Array(page.ydoc),
+            DURABLE_YJS_ORIGIN,
+          );
+        } catch {
+          // The committed database binary remains authoritative; a stale live
+          // document is reconciled by the collaboration loader.
+        }
+      }
       await sql`update document_gates set mode='open',operation_id=null,agent_until=null where page_id=${actor.pageId}::uuid`.execute(
         trx,
       );

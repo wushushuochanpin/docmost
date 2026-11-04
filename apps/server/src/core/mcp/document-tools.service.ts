@@ -18,7 +18,7 @@ import {
   DocumentCommandError,
   TextBlockCommand,
 } from '../document-command/document-candidate';
-import { AgentOAuthService } from '../agent-oauth/agent-oauth.service';
+import { AgentCredentialService } from '../agent-credentials/agent-credential.service';
 import { McpToolContext } from './mcp.types';
 
 const key = z.string().regex(/^[\x21-\x7e]{1,128}$/);
@@ -77,7 +77,7 @@ async function parseContent(
 export class DocumentToolsService {
   constructor(
     private readonly commands: DocumentCommandService,
-    private readonly oauth: AgentOAuthService,
+    private readonly credentials: AgentCredentialService,
     private readonly pages: PageService,
     private readonly images: ImageUploadService,
   ) {}
@@ -106,9 +106,7 @@ export class DocumentToolsService {
       }
     };
     const actor = async (pageId?: string, scope = 'pages.edit') => {
-      const principal = await this.oauth.authenticateHash(
-        context.agent!.tokenHash,
-      );
+      const principal = await this.credentials.resolve(context.agent!);
       if (
         !principal.scopes.includes(scope) ||
         !principal.scopes.includes('knowledge.read')
@@ -151,7 +149,7 @@ export class DocumentToolsService {
               );
               const binding = {
                 tool: 'get_edit_context',
-                grant: a.grantId,
+                credential: a.credentialId,
                 spaces: a.spaceIds,
                 version: state.token,
                 page_size: input.page_size,
@@ -529,7 +527,7 @@ export class DocumentToolsService {
             await this.commands.requestQuota(a, ['read']);
             const binding = {
               tool: 'list_spaces',
-              grant: a.grantId,
+              credential: a.credentialId,
               spaces: a.spaceIds,
               page_size: input.page_size,
             };

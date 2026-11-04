@@ -1,6 +1,12 @@
 import * as path from 'path';
 import * as bcrypt from 'bcrypt';
-import sanitize from 'sanitize-filename';
+// sanitize-filename is a CommonJS function export; a default import breaks
+// under the server's current ts-jest/Nest interop. Keep the callable shape.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const sanitizeFileNameImpl = require('sanitize-filename') as (
+  name: string,
+  options?: { replacement?: string },
+) => string;
 import { FastifyRequest } from 'fastify';
 import { Readable, Transform } from 'stream';
 
@@ -94,7 +100,7 @@ export function sanitizeFileName(
     }
   });
 
-  const sanitized = sanitize(decoded);
+  const sanitized = sanitizeFileNameImpl(decoded);
   if (options.preserveSpaces) {
     return sanitized;
   }

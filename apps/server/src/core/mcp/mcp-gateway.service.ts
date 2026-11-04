@@ -1,6 +1,6 @@
 import { toolError } from './tool-result';
 import { DocumentToolsService } from './document-tools.service';
-import { AgentOAuthService } from '../agent-oauth/agent-oauth.service';
+import { AgentCredentialService } from '../agent-credentials/agent-credential.service';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as z from 'zod/v4';
@@ -19,7 +19,7 @@ const READ_ONLY_ANNOTATIONS = {
 export class McpGatewayService {
   constructor(
     private readonly knowledgeRetrievalService: KnowledgeRetrievalService,
-    private readonly oauth: AgentOAuthService,
+    private readonly credentials: AgentCredentialService,
     private readonly documents: DocumentToolsService,
   ) {}
 
@@ -32,9 +32,7 @@ export class McpGatewayService {
 
   async assertKnowledgeReadScope(context: McpToolContext) {
     if (context.agent) {
-      context.agent = await this.oauth.authenticateHash(
-        context.agent.tokenHash,
-      );
+      context.agent = await this.credentials.resolve(context.agent);
       if (!context.agent.scopes.includes('knowledge.read'))
         throw new ForbiddenException('SCOPE_DENIED');
       await this.documents.readQuota(context);

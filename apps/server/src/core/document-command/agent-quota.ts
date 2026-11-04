@@ -22,7 +22,8 @@ export class AgentRateLimitError extends DocumentCommandError {
     super('RATE_LIMITED');
   }
 }
-type Actor = { workspaceId: string; grantId: string };
+type Actor = { workspaceId: string; grantId?: string; credentialId?: string };
+const subject = (actor: Actor) => actor.credentialId ?? actor.grantId ?? '';
 export async function quotaLock(trx: KyselyTransaction, workspace: string) {
   await sql`select pg_advisory_xact_lock(hashtextextended(${workspace},20261019))`.execute(
     trx,
@@ -79,7 +80,7 @@ export async function chargeRate(
   await quotaLock(trx, a.workspaceId);
   const policy = await agentPolicy(trx, a.workspaceId);
   for (const kind of [...kinds].sort()) {
-    const b = await bucket(trx, a, a.grantId, kind, false, policy.timezone);
+    const b = await bucket(trx, a, subject(a), kind, false, policy.timezone);
     if (b.used >= policy.quotaLimits[kind])
       throw new AgentRateLimitError('minute', b.retry);
     await sql`update agent_quota_buckets set used=used+1 where id=${b.id}::uuid`.execute(
@@ -97,7 +98,7 @@ export async function reserveQuota(
   const policy = await agentPolicy(trx, a.workspaceId);
   if (!policy.enabled) throw new DocumentCommandError('MCP_DISABLED');
   const concurrency = (
-    await sql<any>`select count(*)::integer as workspace,count(*) filter(where grant_id=${a.grantId}::uuid)::integer as grant from document_operations where workspace_id=${a.workspaceId}::uuid and status in ('pending','running','recovering') and id<>${operation}::uuid`.execute(
+    await sql<any>`select count(*)::integer as workspace,count(*) filter(where credential_id=${subject(a)}::uuid)::integer as grant from document_operations where workspace_id=${a.workspaceId}::uuid and status in ('pending','running','recovering') and id<>${operation}::uuid`.execute(
       trx,
     )
   ).rows[0];
@@ -107,11 +108,11 @@ export async function reserveQuota(
   )
     throw new AgentRateLimitError('concurrency', 2000);
   await chargeRate(trx, a, ['write']);
-  for (const [subject, limit] of [
-    [a.grantId, policy.quotaLimits['grant_' + kind]],
+  for (const [scopeSubject, limit] of [
+    [subject(a), policy.quotaLimits['grant_' + kind]],
     ['workspace', policy.quotaLimits['workspace_' + kind]],
   ] as [string, number][]) {
-    const b = await bucket(trx, a, subject, kind, true, policy.timezone);
+    const b = await bucket(trx, a, scopeSubject, kind, true, policy.timezone);
     if (b.used + b.reserved >= limit)
       throw new AgentRateLimitError('day', b.retry);
     await sql`insert into agent_quota_reservations(workspace_id,operation_id,bucket_id) values(${a.workspaceId}::uuid,${operation}::uuid,${b.id}::uuid)`.execute(
@@ -143,7 +144,7 @@ export async function chargeEntrance(trx: KyselyTransaction, actor: Actor) {
   await quotaLock(trx, actor.workspaceId);
   const row = (
     await sql<any>`insert into agent_quota_buckets(workspace_id,subject,kind,bucket_start,bucket_end,used)
-    values(${actor.workspaceId}::uuid,${actor.grantId},'entrance',date_trunc('second',clock_timestamp()),date_trunc('second',clock_timestamp())+interval '1 second',1)
+    values(${actor.workspaceId}::uuid,${subject(actor)},'entrance',date_trunc('second',clock_timestamp()),date_trunc('second',clock_timestamp())+interval '1 second',1)
     on conflict(workspace_id,subject,kind,bucket_start) do update set used=agent_quota_buckets.used+1 where agent_quota_buckets.used<60 returning id`.execute(
       trx,
     )

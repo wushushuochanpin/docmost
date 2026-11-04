@@ -1,15 +1,18 @@
 import { AgentMaintenanceService } from '../../src/core/agent-operations/agent-maintenance.service';
 import { DocumentCommandService } from '../../src/core/document-command/document-command.service';
+import { AgentCredentialService } from '../../src/core/agent-credentials/agent-credential.service';
+import { AgentOAuthService } from '../../src/core/agent-oauth/agent-oauth.service';
 import { PagePermissionRepo } from '../../src/database/repos/page/page-permission.repo';
 import { SpaceMemberRepo } from '../../src/database/repos/space/space-member.repo';
 import 'reflect-metadata';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import postgres from 'postgres';
 import { CamelCasePlugin, Kysely, sql } from 'kysely';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import { db } from './store';
+import { ensureCredentialColumns } from './credential-schema';
 import { KyselyDB } from '../../src/database/types/kysely.types';
 import { up as boundary } from '../../src/database/migrations/20261018T180000-document-command-boundary';
 import { up as oauth } from '../../src/database/migrations/20261019T000100-agent-oauth';
@@ -33,7 +36,8 @@ let workspace: string,
   space: string,
   page: string,
   grant: string,
-  client: string;
+  client: string,
+  tokenHash: string;
 const policy = {
   resultDays: 30,
   auditDays: 180,
@@ -52,6 +56,8 @@ beforeAll(async () => {
   await pg.unsafe(readFileSync(join(__dirname, 'business-schema.sql'), 'utf8'));
   for (const migrate of [boundary, oauth, history, management, retention])
     await migrate(admin);
+  await pg`ALTER TABLE agent_oauth_clients ADD COLUMN source text NOT NULL DEFAULT 'manual', ADD COLUMN created_at timestamptz NOT NULL DEFAULT clock_timestamp()`;
+  await ensureCredentialColumns(pg);
   await pg`CREATE TABLE sc_audit_retention(workspace_id uuid PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE, retention_days bigint NOT NULL)`;
   await pg`CREATE ROLE p2_retention LOGIN NOSUPERUSER NOBYPASSRLS`;
   await pg`GRANT USAGE ON SCHEMA p0_retention TO p2_retention`;
@@ -76,6 +82,7 @@ beforeEach(async () => {
   page = randomUUID();
   grant = randomUUID();
   client = randomUUID();
+  tokenHash = createHash('sha256').update('retention-' + workspace).digest('hex');
   await pg`INSERT INTO workspaces VALUES(${workspace})`;
   await pg`INSERT INTO users(id,workspace_id) VALUES(${user},${workspace})`;
   await pg`INSERT INTO spaces VALUES(${space},${workspace})`;
@@ -277,15 +284,28 @@ test('expired creation result cannot invoke the creation callback again', async 
       throw Error('No cached authorization');
     },
   } as any;
+  const retentionMembers = new SpaceMemberRepo(
+    database,
+    null as any,
+    null as any,
+    cache,
+  );
   const commands = new DocumentCommandService(
     database,
     new PagePermissionRepo(database, null as any, cache),
-    new SpaceMemberRepo(database, null as any, null as any, cache),
+    retentionMembers,
+    new AgentCredentialService(
+      database,
+      new AgentOAuthService(database, retentionMembers),
+    ),
   );
   await pg`INSERT INTO space_members(space_id,user_id,role) VALUES(${space},${user},'admin')`;
   await pg`UPDATE document_agent_grants SET scopes=ARRAY['knowledge.read','folders.create'] WHERE id=${grant}`;
   await pg`UPDATE agent_oauth_clients SET scopes=ARRAY['knowledge.read','folders.create'] WHERE id=${client}`;
   await pg`INSERT INTO agent_policies(workspace_id,enabled) VALUES(${workspace},true)`;
+  const familyId = randomUUID();
+  await pg`INSERT INTO agent_oauth_families(id,client_id,workspace_id,grant_id) VALUES(${familyId},${client},${workspace},${grant})`;
+  await pg`INSERT INTO agent_oauth_tokens(access_hash,refresh_hash,family_id,metadata,access_expires_at,refresh_expires_at) VALUES(${tokenHash},${'refresh-' + familyId},${familyId},${pg.json({ scope: ['knowledge.read','pages.edit','folders.create'] })},clock_timestamp()+interval '1 year',clock_timestamp()+interval '1 year')`;
   const a = {
     workspaceId: workspace,
     userId: user,
@@ -297,6 +317,7 @@ test('expired creation result cannot invoke the creation callback again', async 
       userId: user,
       grantId: grant,
       clientId: client,
+      tokenHash,
     },
     key: 'retention-create',
     tool: 'create_folder' as const,

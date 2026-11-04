@@ -92,7 +92,8 @@ export class IntegrationTokenRepo {
   ): Promise<CursorPaginationResult<IntegrationTokenListItem>> {
     let query = this.baseListQuery(workspaceId)
       .where('scApiTokens.ownerUserId', '=', ownerUserId)
-      .where('scApiTokens.isWorkspaceManaged', '=', false);
+      .where('scApiTokens.isWorkspaceManaged', '=', false)
+      .where('scApiTokens.credentialType', '=', 'legacy');
 
     if (pagination.query) {
       query = query.where('scApiTokens.name', 'ilike', `%${pagination.query}%`);
@@ -111,11 +112,9 @@ export class IntegrationTokenRepo {
     workspaceId: string,
     pagination: ListIntegrationTokensDto,
   ): Promise<CursorPaginationResult<IntegrationTokenListItem>> {
-    let query = this.baseListQuery(workspaceId).where(
-      'scApiTokens.isWorkspaceManaged',
-      '=',
-      true,
-    );
+    let query = this.baseListQuery(workspaceId)
+      .where('scApiTokens.isWorkspaceManaged', '=', true)
+      .where('scApiTokens.credentialType', '=', 'legacy');
 
     if (pagination.query) {
       query = query.where('scApiTokens.name', 'ilike', `%${pagination.query}%`);

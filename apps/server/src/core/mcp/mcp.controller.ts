@@ -2,6 +2,7 @@ import { AgentRateLimitError } from '../document-command/agent-quota';
 import { toolError } from './tool-result';
 import { AgentMcpAuthGuard } from '../agent-oauth/agent-mcp-auth.guard';
 import { AgentOAuthService } from '../agent-oauth/agent-oauth.service';
+import { AgentCredentialService } from '../agent-credentials/agent-credential.service';
 import {
   Controller,
   Delete,
@@ -30,6 +31,7 @@ export class McpController {
     private readonly mcpGatewayService: McpGatewayService,
     private readonly environmentService: EnvironmentService,
     private readonly oauth: AgentOAuthService,
+    private readonly credentials: AgentCredentialService,
   ) {}
 
   @SkipTransform()
@@ -42,9 +44,15 @@ export class McpController {
     @AuthWorkspace() workspace: Workspace,
   ) {
     this.mcpGatewayService.assertMcpEnabled(workspace);
-    if ((req as any).user?.agent) {
+    const apiToken = (req as any).user?.apiToken;
+    const agent =
+      (req as any).user?.agent ??
+      (apiToken?.credentialType === 'mcp_scoped'
+        ? this.credentials.fromApiToken(apiToken)
+        : undefined);
+    if (agent) {
       try {
-        await this.mcpGatewayService.entranceQuota((req as any).user.agent);
+        await this.mcpGatewayService.entranceQuota(agent);
       } catch (error) {
         if (error instanceof AgentRateLimitError)
           return res
@@ -61,8 +69,8 @@ export class McpController {
       baseUrl: (req as any).user?.agent
         ? this.oauth.origin
         : this.getBaseUrl(req),
-      agent: (req as any).user?.agent,
-      apiToken: (req as any).user?.apiToken,
+      agent,
+      apiToken,
     });
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

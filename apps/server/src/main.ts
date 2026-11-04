@@ -49,6 +49,7 @@ async function bootstrap() {
       'oauth/authorize',
       'oauth/token',
       'oauth/revoke',
+      'oauth/register',
     ],
   });
 

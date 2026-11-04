@@ -43,21 +43,29 @@ export interface ApiKeys {
 }
 
 export interface ScApiTokens {
+  confirmedAt: Timestamp | null;
+  confirmedByUserId: string | null;
   createdAt: Generated<Timestamp>;
   creatorUserId: string;
+  credentialType: Generated<string>;
   expiresAt: Timestamp | null;
   id: Generated<string>;
   isWorkspaceManaged: Generated<boolean>;
+  lastScopeChange: Json | null;
   lastUsedAt: Timestamp | null;
   lastUsedIp: string | null;
   name: string;
   ownerUserId: string;
+  requestId: string | null;
   revokedAt: Timestamp | null;
   scopeJson: Generated<Json>;
+  scopes: Generated<string[]>;
+  spaceIds: Generated<string[]>;
   status: Generated<string>;
   tokenHash: string;
   tokenPrefix: string;
   updatedAt: Generated<Timestamp>;
+  version: Generated<string>;
   workspaceId: string;
 }
 
