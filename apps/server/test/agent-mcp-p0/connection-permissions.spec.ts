@@ -685,6 +685,26 @@ describe('MCP scoped API token lifecycle and write barrier', () => {
     await expect(
       oauth.registerClient(
         {
+          redirect_uris: ['https://client.example/callback'],
+          application_type: 'web',
+          scope: 'knowledge.read',
+        },
+        '127.0.0.1',
+      ),
+    ).resolves.toMatchObject({ application_type: 'web' });
+    await expect(
+      oauth.registerClient(
+        {
+          redirect_uris: ['https://client.example/callback'],
+          application_type: 'unknown',
+          scope: 'knowledge.read',
+        },
+        '127.0.0.1',
+      ),
+    ).rejects.toThrow();
+    await expect(
+      oauth.registerClient(
+        {
           redirect_uris: ['https://evil.example/callback'],
           client_name: 'evil',
           scope: 'knowledge.read',

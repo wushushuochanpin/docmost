@@ -181,7 +181,7 @@ export class AgentOAuthService {
           .optional(),
         response_types: z.array(z.literal('code')).min(1).max(1).optional(),
         token_endpoint_auth_method: z.literal('none').optional(),
-        application_type: z.literal('native').optional(),
+        application_type: z.enum(['native', 'web']).optional(),
         scope: z.string().max(4096).optional(),
         // Accepted as metadata only. They are never fetched (SSRF) and never
         // used to prove the client's brand identity.
@@ -203,7 +203,11 @@ export class AgentOAuthService {
       return oauthError('invalid_request');
     const scopes = scopeSet(parsed.data.scope ?? 'knowledge.read');
     const redirectUris = Array.from(new Set(parsed.data.redirect_uris));
-    redirectUris.forEach((uri) => validateRedirect(uri, true));
+    redirectUris.forEach((uri) => {
+      const redirect = validateRedirect(uri, true);
+      if (parsed.data.application_type === 'web' && redirect.protocol !== 'https:')
+        return oauthError('invalid_request');
+    });
     const origins = Array.from(
       new Set(
         redirectUris.map((uri) => {
