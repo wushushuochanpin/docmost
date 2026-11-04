@@ -87,6 +87,12 @@ const groupedData: DataGroup[] = [
         loader: settingsRouteLoaders.agentConnections,
       },
       {
+        label: "MCP 令牌",
+        icon: Key,
+        path: "/settings/account/mcp-tokens",
+        loader: settingsRouteLoaders.mcpTokens,
+      },
+      {
         label: "Profile",
         icon: User,
         path: "/settings/account/profile",

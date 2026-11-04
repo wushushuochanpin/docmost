@@ -9,6 +9,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { CamelCasePlugin, Kysely, sql } from 'kysely';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import { db } from './store';
+import { ensureCredentialColumns } from './credential-schema';
 import { up as boundary } from '../../src/database/migrations/20261018T180000-document-command-boundary';
 import { up as oauthMigration } from '../../src/database/migrations/20261019T000100-agent-oauth';
 import { AgentOAuthService } from '../../src/core/agent-oauth/agent-oauth.service';
@@ -91,7 +92,9 @@ beforeAll(async () => {
   await pg`ALTER TABLE pages ADD COLUMN position text, ALTER COLUMN id SET DEFAULT gen_random_uuid()`;
   await pg`CREATE TABLE attachments(id uuid PRIMARY KEY,workspace_id uuid,page_id uuid,file_name text,file_path text,file_size bigint,mime_type text,deleted_at timestamptz)`;
   await boundary(database);
+  await ensureCredentialColumns(pg);
   await oauthMigration(database);
+  await pg`ALTER TABLE agent_oauth_clients ADD COLUMN source text NOT NULL DEFAULT 'manual'`;
   await historySourceMigration(database);
   await managementMigration(database);
   await retentionMigration(database);

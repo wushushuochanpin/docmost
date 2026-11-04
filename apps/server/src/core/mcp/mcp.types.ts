@@ -1,19 +1,12 @@
 import { ScApiToken, User, Workspace } from '@docmost/db/types/entity.types';
+import { AgentCredential } from '../agent-credentials/agent-credential.types';
 
 export type McpToolContext = {
   user: User;
   workspace: Workspace;
   baseUrl: string;
   apiToken?: ScApiToken;
-  agent?: {
-    workspaceId: string;
-    userId: string;
-    clientId: string;
-    grantId: string;
-    tokenHash: string;
-    scopes: string[];
-    spaceIds: string[];
-  };
+  agent?: AgentCredential;
 };
 
 export type ImageReturnMode = 'none' | 'metadata' | 'url' | 'inline';

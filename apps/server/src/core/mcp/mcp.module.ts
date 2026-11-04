@@ -2,6 +2,7 @@ import { ImageUploadService } from './image-upload.service';
 import { DocumentCommandModule } from '../document-command/document-command.module';
 import { DocumentToolsService } from './document-tools.service';
 import { AgentOAuthModule } from '../agent-oauth/agent-oauth.module';
+import { AgentCredentialModule } from '../agent-credentials/agent-credential.module';
 import { AgentMcpAuthGuard } from '../agent-oauth/agent-mcp-auth.guard';
 import { Module } from '@nestjs/common';
 import { SearchModule } from '../search/search.module';
@@ -11,7 +12,13 @@ import { McpGatewayService } from './mcp-gateway.service';
 import { KnowledgeRetrievalService } from './knowledge-retrieval.service';
 
 @Module({
-  imports: [SearchModule, PageModule, AgentOAuthModule, DocumentCommandModule],
+  imports: [
+    SearchModule,
+    PageModule,
+    AgentOAuthModule,
+    AgentCredentialModule,
+    DocumentCommandModule,
+  ],
   controllers: [McpController],
   providers: [
     DocumentToolsService,

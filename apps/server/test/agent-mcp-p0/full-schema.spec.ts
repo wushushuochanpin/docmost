@@ -1,8 +1,10 @@
 import 'reflect-metadata';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import * as Y from 'yjs';
 import { TiptapTransformer } from '@hocuspocus/transformer';
 import { DocumentCommandService } from '../../src/core/document-command/document-command.service';
+import { AgentCredentialService } from '../../src/core/agent-credentials/agent-credential.service';
+import { AgentOAuthService } from '../../src/core/agent-oauth/agent-oauth.service';
 import { PagePermissionRepo } from '../../src/database/repos/page/page-permission.repo';
 import { SpaceMemberRepo } from '../../src/database/repos/space/space-member.repo';
 import { readdirSync } from 'node:fs';
@@ -26,7 +28,10 @@ test('full migration chain preserves pre-upgrade documents and accepts a durable
     user = randomUUID(),
     space = randomUUID(),
     page = randomUUID(),
-    grant = randomUUID();
+    grant = randomUUID(),
+    client = randomUUID(),
+    family = randomUUID(),
+    tokenHash = createHash('sha256').update('migration-token').digest('hex');
   const original = new Y.Doc();
   const paragraph = new Y.XmlElement('paragraph');
   const text = new Y.XmlText();
@@ -65,23 +70,37 @@ test('full migration chain preserves pre-upgrade documents and accepts a durable
     process.env.DOCUMENT_COMMAND_SIGNING_KEY = Buffer.alloc(32, 9).toString(
       'base64',
     );
-    await connection`INSERT INTO document_agent_grants(id,workspace_id,user_id,client_id,space_ids,scopes,expires_at) VALUES(${grant},${workspace},${user},'migration-client',ARRAY[${space}]::uuid[],ARRAY['knowledge.read','pages.edit'],clock_timestamp()+interval '1 day')`;
+    await connection`INSERT INTO agent_oauth_clients(id,name,type,redirect_uris,scopes,origins) VALUES(${client},'migration-client','public',ARRAY['http://127.0.0.1:1/callback'],ARRAY['knowledge.read','pages.edit'],ARRAY[]::text[])`;
+    await connection`INSERT INTO document_agent_grants(id,workspace_id,user_id,client_id,space_ids,scopes,expires_at) VALUES(${grant},${workspace},${user},${client},ARRAY[${space}]::uuid[],ARRAY['knowledge.read','pages.edit'],clock_timestamp()+interval '1 day')`;
+    await connection`INSERT INTO agent_oauth_families(id,client_id,workspace_id,grant_id) VALUES(${family},${client},${workspace},${grant})`;
+    await connection`INSERT INTO agent_oauth_tokens(access_hash,refresh_hash,family_id,metadata,access_expires_at,refresh_expires_at) VALUES(${tokenHash},${'refresh-' + family},${family},${connection.json({ scope: ['knowledge.read','pages.edit'] })},clock_timestamp()+interval '1 day',clock_timestamp()+interval '1 day')`;
     const cache = {
       get: () => {
         throw Error('cached write ACL');
       },
     } as any;
+    const schemaMembers = new SpaceMemberRepo(
+      database as any,
+      null as any,
+      null as any,
+      cache,
+    );
     const commands = new DocumentCommandService(
       database as any,
       new PagePermissionRepo(database as any, null as any, cache),
-      new SpaceMemberRepo(database as any, null as any, null as any, cache),
+      schemaMembers,
+      new AgentCredentialService(
+        database as any,
+        new AgentOAuthService(database as any, schemaMembers),
+      ),
     );
     const actor = {
       workspaceId: workspace,
       userId: user,
       pageId: page,
-      clientId: 'migration-client',
+      clientId: client,
       grantId: grant,
+      tokenHash,
     };
     const context = await commands.editContext(actor);
     const changed = await commands.edit(

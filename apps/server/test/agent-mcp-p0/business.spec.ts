@@ -9,17 +9,21 @@ import WebSocket, { WebSocketServer } from 'ws';
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import 'reflect-metadata';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CamelCasePlugin, Kysely, sql } from 'kysely';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import * as Y from 'yjs';
 import { db } from './store';
+import { ensureCredentialColumns } from './credential-schema';
 import { up } from '../../src/database/migrations/20261018T180000-document-command-boundary';
+import { up as oauthMigration } from '../../src/database/migrations/20261019T000100-agent-oauth';
 import { PagePermissionRepo } from '../../src/database/repos/page/page-permission.repo';
 import { SpaceMemberRepo } from '../../src/database/repos/space/space-member.repo';
 import { DocumentCommandService } from '../../src/core/document-command/document-command.service';
+import { AgentCredentialService } from '../../src/core/agent-credentials/agent-credential.service';
+import { AgentOAuthService } from '../../src/core/agent-oauth/agent-oauth.service';
 import { KyselyDB } from '../../src/database/types/kysely.types';
 const pg = db('p0_business');
 const database = new Kysely({
@@ -42,10 +46,15 @@ const memberRepo = new SpaceMemberRepo(
   null as any,
   poisonCache,
 );
+const credentials = new AgentCredentialService(
+  database,
+  new AgentOAuthService(database, memberRepo),
+);
 const commands = new DocumentCommandService(
   database,
   permissionRepo,
   memberRepo,
+  credentials,
 );
 let ids: {
   workspace: string;
@@ -64,10 +73,15 @@ const actor = () => ({
   userId: ids.user,
   pageId: ids.page,
 });
+const clientId = randomUUID();
+const tokenHash = createHash('sha256').update('business-agent-token').digest('hex');
+const refreshHash = createHash('sha256').update('business-refresh-token').digest('hex');
+const familyId = randomUUID();
 const agent = () => ({
   ...actor(),
   grantId: ids.grant,
-  clientId: 'registered-client',
+  clientId,
+  tokenHash,
 });
 const render = (d: Y.Doc) => ({
   type: 'doc',
@@ -88,12 +102,14 @@ beforeAll(async () => {
   await pg`CREATE SCHEMA p0_business`;
   await pg.unsafe(readFileSync(join(__dirname, 'business-schema.sql'), 'utf8'));
   await up(database);
+  await ensureCredentialColumns(pg);
+  await oauthMigration(database);
   await historySourceMigration(database);
   await managementMigration(database);
   await retentionMigration(database);
 });
 beforeEach(async () => {
-  await pg`TRUNCATE workspaces CASCADE`;
+  await pg`TRUNCATE workspaces,agent_oauth_clients CASCADE`;
   ids = {
     workspace: randomUUID(),
     space: randomUUID(),
@@ -121,7 +137,10 @@ beforeEach(async () => {
   await pg`INSERT INTO pages(id,workspace_id,space_id,parent_page_id,ydoc,content,title) VALUES(${ids.page},${ids.workspace},${ids.space},${ids.parent},${Buffer.from(Y.encodeStateAsUpdate(doc))},${pg.json(render(doc))},'page')`;
   doc.destroy();
   await pg`INSERT INTO user_sessions VALUES(${ids.session},${ids.user},${ids.workspace},null,clock_timestamp()+interval '1 day')`;
-  await pg`INSERT INTO document_agent_grants(id,workspace_id,user_id,client_id,space_ids,scopes,expires_at) VALUES(${ids.grant},${ids.workspace},${ids.user},'registered-client',ARRAY[${ids.space}]::uuid[],ARRAY['knowledge.read','pages.edit'],clock_timestamp()+interval '1 day')`;
+  await pg`INSERT INTO agent_oauth_clients(id,name,type,redirect_uris,scopes,origins) VALUES(${clientId},'registered-client','public',ARRAY['http://127.0.0.1:1/callback'],ARRAY['knowledge.read','pages.edit','pages.create','folders.create'],ARRAY[]::text[])`;
+  await pg`INSERT INTO document_agent_grants(id,workspace_id,user_id,client_id,space_ids,scopes,expires_at) VALUES(${ids.grant},${ids.workspace},${ids.user},${clientId},ARRAY[${ids.space}]::uuid[],ARRAY['knowledge.read','pages.edit'],clock_timestamp()+interval '1 day')`;
+  await pg`INSERT INTO agent_oauth_families(id,client_id,workspace_id,grant_id) VALUES(${familyId},${clientId},${ids.workspace},${ids.grant})`;
+  await pg`INSERT INTO agent_oauth_tokens(access_hash,refresh_hash,family_id,metadata,access_expires_at,refresh_expires_at) VALUES(${tokenHash},${refreshHash},${familyId},${pg.json({ scope: ['knowledge.read','pages.edit','pages.create','folders.create'] })},clock_timestamp()+interval '1 day',clock_timestamp()+interval '1 day')`;
   live = new Y.Doc();
   const bytes = await commands.load(actor(), live);
   Y.applyUpdate(live, bytes!);
@@ -375,6 +394,7 @@ describe('P0 production service + actual migration + real ACL repositories', () 
       database,
       permissionRepo,
       memberRepo,
+      credentials,
     );
     const context = await commands.editContext(agent());
     const results = await Promise.allSettled([
@@ -643,6 +663,7 @@ describe('P0 production service + actual migration + real ACL repositories', () 
       database,
       permissionRepo,
       memberRepo,
+      credentials,
     );
     await expect(unsafe.onModuleInit()).rejects.toThrow(
       'DOCUMENT_COMMAND_REQUIRES_NON_BYPASSRLS_ROLE',
@@ -661,19 +682,24 @@ describe('P0 production service + actual migration + real ACL repositories', () 
       context: { documentPermit: permit },
       readOnly: false,
       sendStateless: jest.fn(),
+      close: jest.fn(),
     };
-    await expect(
-      extension.onStateless({
-        connection,
-        payload: JSON.stringify({
-          type: 'document_update',
-          updateId: 'stale',
-          editEpoch: '0',
-          update: Buffer.from(update).toString('base64'),
-        }),
-      } as any),
-    ).rejects.toThrow('INVALID_DOCUMENT_ENVELOPE');
-    expect(connection.sendStateless).not.toHaveBeenCalled();
+    await extension.onStateless({
+      connection,
+      payload: JSON.stringify({
+        type: 'document_update',
+        updateId: 'stale',
+        editEpoch: '0',
+        update: Buffer.from(update).toString('base64'),
+      }),
+    } as any);
+    expect(connection.sendStateless).toHaveBeenCalledWith(
+      expect.stringContaining('INVALID_DOCUMENT_ENVELOPE'),
+    );
+    expect(connection.readOnly).toBe(true);
+    expect(connection.close).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 4409 }),
+    );
     expect(
       await pg`SELECT * FROM document_updates WHERE update_id='stale'`,
     ).toHaveLength(0);
@@ -703,6 +729,7 @@ describe('P0 production service + actual migration + real ACL repositories', () 
       database,
       permissionRepo,
       memberRepo,
+      credentials,
     );
     const gatewayA = await redisGateway(commands, {
       userId: ids.user,

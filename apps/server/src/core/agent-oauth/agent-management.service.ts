@@ -72,7 +72,7 @@ export class AgentManagementService {
   }
   private async grant(trx: KyselyTransaction, a: Actor, id: string) {
     const row = (
-      await sql<any>`select g.id,g.client_id,g.scopes,g.space_ids,g.expires_at,g.revoked_at,g.created_at,g.version::text,c.name,c.active,
+      await sql<any>`select g.id,g.client_id,g.scopes,g.space_ids,g.expires_at,g.revoked_at,g.created_at,g.version::text,c.name,c.active,c.source,
       (select max(t.last_used_at) from agent_oauth_tokens t join agent_oauth_families f on f.id=t.family_id where f.grant_id=g.id) as last_used_at,
       case when g.revoked_at is not null then 'revoked' when g.expires_at<=clock_timestamp() then 'expired' when not c.active then 'suspended' else 'active' end as status
       from document_agent_grants g join agent_oauth_clients c on c.id::text=g.client_id where g.id=${id}::uuid and g.workspace_id=${a.workspaceId}::uuid and g.user_id=${a.userId}::uuid`.execute(
@@ -98,7 +98,7 @@ export class AgentManagementService {
     const after = p.cursor ? String(openCursor(p.cursor, binding)) : '';
     return this.tx(a, false, async (trx) => {
       const rows = (
-        await sql<any>`select g.id,c.name,g.version::text,g.scopes,g.space_ids,g.expires_at,g.revoked_at,
+        await sql<any>`select g.id,c.name,c.source,g.version::text,g.scopes,g.space_ids,g.expires_at,g.revoked_at,
         case when g.revoked_at is not null then 'revoked' when g.expires_at<=clock_timestamp() then 'expired' when not c.active then 'suspended' else 'active' end as status
         from document_agent_grants g join agent_oauth_clients c on c.id::text=g.client_id where g.workspace_id=${a.workspaceId}::uuid and g.user_id=${a.userId}::uuid and g.id::text>${after} order by g.id limit ${p.page_size + 1}`.execute(
           trx,

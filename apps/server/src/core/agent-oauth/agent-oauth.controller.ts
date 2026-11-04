@@ -90,12 +90,27 @@ export class AgentOAuthController {
       authorization_endpoint: o + '/oauth/authorize',
       token_endpoint: o + '/oauth/token',
       revocation_endpoint: o + '/oauth/revoke',
+      ...(this.oauth.dcrEnabled
+        ? { registration_endpoint: o + '/oauth/register' }
+        : {}),
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
       code_challenge_methods_supported: ['S256'],
       token_endpoint_auth_methods_supported: ['none', 'client_secret_basic'],
       scopes_supported: OAUTH_SCOPES,
     };
+  }
+  @SkipTransform()
+  @HttpCode(201)
+  @Post('oauth/register')
+  @Throttle({ [AUTH_THROTTLER]: { ttl: 60000, limit: 10 } })
+  async registerClient(@Req() req: FastifyRequest, @Body() body: any) {
+    if (
+      req.headers['content-type'] &&
+      !req.headers['content-type'].startsWith('application/json')
+    )
+      return oauthError('invalid_request');
+    return this.oauth.registerClient(body, req.ip);
   }
   @SkipTransform()
   @Get('oauth/authorize')

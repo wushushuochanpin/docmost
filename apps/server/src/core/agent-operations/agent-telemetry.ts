@@ -51,7 +51,14 @@ export class AgentTelemetry {
     this.loop = undefined;
   }
   increment(
-    event: 'refresh_replay' | 'checkpoint_failure' | 'retention_failure',
+    event:
+      | 'refresh_replay'
+      | 'checkpoint_failure'
+      | 'retention_failure'
+      | 'dcr_registration'
+      | 'token_create'
+      | 'token_update'
+      | 'token_revoke',
   ) {
     this.count(event);
   }

@@ -2,6 +2,7 @@ import { agentTelemetry } from '../agent-operations/agent-telemetry';
 import { agentPolicy } from '../document-command/agent-quota';
 import {
   ForbiddenException,
+  HttpException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -42,6 +43,7 @@ type Client = {
   secretHash: string | null;
   version: string;
   active: boolean;
+  source?: string;
 };
 
 @Injectable()
@@ -83,6 +85,25 @@ export class AgentOAuthService {
   private enabled() {
     if (process.env.AGENT_OAUTH_ENABLED !== 'true')
       throw new ForbiddenException('MCP_DISABLED');
+  }
+  private originAllowed(client: Client, origin?: string) {
+    if (!origin || origin === this.origin || client.origins.includes(origin))
+      return true;
+    // A DCR public client may use a fresh loopback port for each run. Keep
+    // rejecting non-loopback origins so a hostile web origin cannot redeem a
+    // leaked code; PKCE and exact redirect matching still apply.
+    if (client.type === 'public' && client.source === 'dcr') {
+      try {
+        const url = new URL(origin);
+        return (
+          url.protocol === 'http:' &&
+          ['127.0.0.1', '[::1]'].includes(url.hostname)
+        );
+      } catch {
+        return false;
+      }
+    }
+    return false;
   }
   private async tx<T>(
     fn: (trx: KyselyTransaction) => Promise<T>,
@@ -133,6 +154,114 @@ export class AgentOAuthService {
     ).rows[0];
     if (!row) return oauthError('invalid_client');
     return row;
+  }
+  get dcrEnabled() {
+    return process.env.AGENT_OAUTH_DCR_ENABLED === 'true';
+  }
+  private dcrLimit(name: string, fallback: number) {
+    const value = Number(process.env[name] ?? fallback);
+    return Number.isSafeInteger(value) && value > 0 ? value : fallback;
+  }
+  /**
+   * RFC 7591 public-client registration. Registering an application identity
+   * grants no workspace, user or document access; the user still has to sign in
+   * and explicitly consent on the authorization page.
+   */
+  async registerClient(input: unknown, ip?: string) {
+    this.enabled();
+    if (!this.dcrEnabled) throw new ForbiddenException('MCP_DISABLED');
+    const parsed = z
+      .strictObject({
+        redirect_uris: z.array(z.string().max(2048)).min(1).max(10),
+        client_name: z.string().trim().min(1).max(100).optional(),
+        grant_types: z
+          .array(z.enum(['authorization_code', 'refresh_token']))
+          .min(1)
+          .max(2)
+          .optional(),
+        response_types: z.array(z.literal('code')).min(1).max(1).optional(),
+        token_endpoint_auth_method: z.literal('none').optional(),
+        scope: z.string().max(4096).optional(),
+        // Accepted as metadata only. They are never fetched (SSRF) and never
+        // used to prove the client's brand identity.
+        client_uri: z.string().max(2048).optional(),
+        logo_uri: z.string().max(2048).optional(),
+        software_id: z.string().max(200).optional(),
+        software_version: z.string().max(200).optional(),
+      })
+      .safeParse(input);
+    if (!parsed.success) return oauthError('invalid_request');
+    const grantTypes = parsed.data.grant_types ?? [
+      'authorization_code',
+      'refresh_token',
+    ];
+    if (!grantTypes.includes('authorization_code'))
+      return oauthError('invalid_request');
+    const responseTypes = parsed.data.response_types ?? ['code'];
+    if (responseTypes.length !== 1 || responseTypes[0] !== 'code')
+      return oauthError('invalid_request');
+    const scopes = scopeSet(parsed.data.scope ?? 'knowledge.read');
+    const redirectUris = Array.from(new Set(parsed.data.redirect_uris));
+    redirectUris.forEach((uri) => validateRedirect(uri, true));
+    const origins = Array.from(
+      new Set(
+        redirectUris.map((uri) => {
+          const url = new URL(uri);
+          return url.origin;
+        }),
+      ),
+    );
+    const id = randomUUID();
+    const name = parsed.data.client_name?.trim() || '未命名应用';
+    const maxTotal = this.dcrLimit('AGENT_OAUTH_DCR_MAX_CLIENTS', 1000);
+    const maxPerIp = this.dcrLimit('AGENT_OAUTH_DCR_MAX_CLIENTS_PER_IP', 20);
+    await this.tx(async (trx) => {
+      if (ip) {
+        const count = (
+          await sql<{
+            count: number;
+          }>`select count(*)::integer as count from agent_oauth_clients where source='dcr' and registration_ip=${ip}`.execute(
+            trx,
+          )
+        ).rows[0].count;
+        if (count >= maxPerIp)
+          throw new HttpException(
+            { error: 'registration_limit_exceeded' },
+            429,
+          );
+      }
+      const total = (
+        await sql<{
+          count: number;
+        }>`select count(*)::integer as count from agent_oauth_clients where source='dcr'`.execute(
+          trx,
+        )
+      ).rows[0].count;
+      if (total >= maxTotal)
+        throw new HttpException({ error: 'registration_limit_exceeded' }, 429);
+      await sql`insert into agent_oauth_clients(id,name,type,redirect_uris,scopes,origins,secret_hash,source,registration_ip,client_metadata)
+        values(${id}::uuid,${name},'public',${redirectUris},${scopes},${origins},null,'dcr',${ip ?? null},${JSON.stringify({
+          grant_types: grantTypes,
+          response_types: responseTypes,
+          token_endpoint_auth_method: 'none',
+          scope: scopes.join(' '),
+          client_uri: parsed.data.client_uri,
+          logo_uri: parsed.data.logo_uri,
+          software_id: parsed.data.software_id,
+          software_version: parsed.data.software_version,
+        })}::text::jsonb)`.execute(trx);
+    }, true);
+    agentTelemetry.increment('dcr_registration');
+    return {
+      client_id: id,
+      client_name: name,
+      redirect_uris: redirectUris,
+      grant_types: grantTypes,
+      response_types: responseTypes,
+      token_endpoint_auth_method: 'none' as const,
+      scope: scopes.join(' '),
+      client_id_issued_at: Math.floor(Date.now() / 1000),
+    };
   }
   async register(
     actor: SessionActor,
@@ -282,7 +411,10 @@ export class AgentOAuthService {
       return {
         id,
         application: client.name,
+        application_source: client.source ?? 'manual',
+        application_verified: client.source === 'manual',
         redirect_origin: new URL(row.parameters.redirect_uri).origin,
+        requested_scopes: row.parameters.scope.split(' '),
         scopes: row.parameters.scope
           .split(' ')
           .filter(
@@ -622,7 +754,7 @@ export class AgentOAuthService {
     const outcome = await this.tx(async (trx) => {
       const client = await this.client(trx, credentials.id ?? body.client_id);
       this.authenticateClient(client, credentials.secret, credentials.method);
-      if (origin && origin !== this.origin && !client.origins.includes(origin))
+      if (!this.originAllowed(client, origin))
         throw new ForbiddenException('ORIGIN_REJECTED');
       let replay = false;
       try {
@@ -710,7 +842,7 @@ export class AgentOAuthService {
       const client = await this.client(trx, row.clientId).catch(() => {
         throw new UnauthorizedException();
       });
-      if (origin && origin !== this.origin && !client.origins.includes(origin))
+      if (!this.originAllowed(client, origin))
         throw new ForbiddenException('ORIGIN_REJECTED');
       const grant = await this.grant(
         trx,
@@ -727,6 +859,7 @@ export class AgentOAuthService {
         workspaceId: row.workspaceId,
         userId: grant.userId,
         grantId: grant.id,
+        grantVersion: String(grant.version ?? '1'),
         clientId: row.clientId,
         tokenHash: hash,
         scopes: row.metadata.scope.filter(

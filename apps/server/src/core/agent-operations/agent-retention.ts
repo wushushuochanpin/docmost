@@ -163,6 +163,17 @@ export async function retainUnboundRequests(db: KyselyDB) {
       await sql`delete from agent_oauth_requests where id in (select id from agent_oauth_requests where workspace_id is null AND expires_at<clock_timestamp()-interval '24 hours' AND coalesce(response_until,expires_at)<clock_timestamp()-interval '24 hours' order by expires_at,id limit 200) returning id`.execute(
         trx,
       );
-    return result.rows.length;
+    // Unused DCR application identities are disposable. Never remove a client
+    // that has ever received a grant, code, family, or authorization request.
+    const clients =
+      await sql`delete from agent_oauth_clients c
+        where c.source='dcr'
+          and c.created_at<clock_timestamp()-interval '30 days'
+          and not exists(select 1 from document_agent_grants g where g.client_id=c.id::text)
+          and not exists(select 1 from agent_oauth_families f where f.client_id=c.id)
+          and not exists(select 1 from agent_oauth_codes a where a.client_id=c.id)
+          and not exists(select 1 from agent_oauth_requests r where r.client_id=c.id)
+        returning c.id`.execute(trx);
+    return result.rows.length + clients.rows.length;
   });
 }

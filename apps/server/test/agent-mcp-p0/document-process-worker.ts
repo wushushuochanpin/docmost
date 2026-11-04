@@ -3,6 +3,8 @@ import { CamelCasePlugin, Kysely } from 'kysely';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import { db } from './store';
 import { DocumentCommandService } from '../../src/core/document-command/document-command.service';
+import { AgentCredentialService } from '../../src/core/agent-credentials/agent-credential.service';
+import { AgentOAuthService } from '../../src/core/agent-oauth/agent-oauth.service';
 import { PagePermissionRepo } from '../../src/database/repos/page/page-permission.repo';
 import { SpaceMemberRepo } from '../../src/database/repos/space/space-member.repo';
 import { KyselyDB } from '../../src/database/types/kysely.types';
@@ -11,10 +13,20 @@ const database = new Kysely({
   dialect: new PostgresJSDialect({ postgres: db('p0_business') }),
   plugins: [new CamelCasePlugin()],
 }) as KyselyDB;
+const workerMembers = new SpaceMemberRepo(
+  database,
+  null as any,
+  null as any,
+  {} as any,
+);
 const service = new DocumentCommandService(
   database,
   new PagePermissionRepo(database, null as any, {} as any),
-  new SpaceMemberRepo(database, null as any, null as any, {} as any),
+  workerMembers,
+  new AgentCredentialService(
+    database,
+    new AgentOAuthService(database, workerMembers),
+  ),
 );
 process.on('message', async (message: any) => {
   try {

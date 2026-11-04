@@ -18,6 +18,7 @@ import { McpController } from '../../src/core/mcp/mcp.controller';
 import { McpGatewayService } from '../../src/core/mcp/mcp-gateway.service';
 import { DocumentToolsService } from '../../src/core/mcp/document-tools.service';
 import { DocumentCommandService } from '../../src/core/document-command/document-command.service';
+import { AgentCredentialService } from '../../src/core/agent-credentials/agent-credential.service';
 import { EnvironmentService } from '../../src/integrations/environment/environment.service';
 import { UserRepo } from '../../src/database/repos/user/user.repo';
 import { WorkspaceRepo } from '../../src/database/repos/workspace/workspace.repo';
@@ -25,6 +26,7 @@ import { JwtStrategy } from '../../src/core/auth/strategies/jwt.strategy';
 import { KyselyDB } from '../../src/database/types/kysely.types';
 import { PagePermissionRepo } from '../../src/database/repos/page/page-permission.repo';
 import { SpaceMemberRepo } from '../../src/database/repos/space/space-member.repo';
+import { SessionService } from '../../src/core/session/session.service';
 
 export const sessionSecret = 'isolated-test-session-secret-never-production';
 export async function httpNode(
@@ -69,6 +71,7 @@ export async function httpNode(
     isHttps: () => false,
     getAppUrl: () => process.env.AGENT_OAUTH_ORIGIN,
   };
+  const credentials = new AgentCredentialService(database, oauth);
   const commands = new DocumentCommandService(
     database,
     new PagePermissionRepo(
@@ -81,6 +84,7 @@ export async function httpNode(
       } as any,
     ),
     members,
+    credentials,
   );
   const pageRepository = {
     findById: (id: string, opts: { workspaceId: string }) =>
@@ -109,7 +113,12 @@ export async function httpNode(
     null as any,
     commands,
   );
-  const documents = new DocumentToolsService(commands, oauth, pages, new ImageUploadService(commands, storage as any, database));
+  const documents = new DocumentToolsService(
+    commands,
+    credentials,
+    pages,
+    new ImageUploadService(commands, storage as any, database),
+  );
   // Production JWT strategy verifies signatures and DB-backed sessions. Fixture repositories select the minimal test schema.
   const strategy = new JwtStrategy(
     users as any,
@@ -132,6 +141,8 @@ export async function httpNode(
     ],
     providers: [
       { provide: AgentOAuthService, useValue: oauth },
+      { provide: AgentCredentialService, useValue: credentials },
+      { provide: SessionService, useValue: {} },
       { provide: EnvironmentService, useValue: environment },
       { provide: UserRepo, useValue: users },
       { provide: WorkspaceRepo, useValue: workspaces },
@@ -147,8 +158,9 @@ export async function httpNode(
             storage,
             new PagePermissionRepo(database, null as any, {} as any),
             members,
+            credentials,
           ),
-          oauth,
+          credentials,
           documents,
         ),
       },
@@ -168,6 +180,7 @@ export async function httpNode(
       'oauth/authorize',
       'oauth/token',
       'oauth/revoke',
+      'oauth/register',
       '.well-known/oauth-authorization-server',
       '.well-known/oauth-protected-resource/mcp',
     ],

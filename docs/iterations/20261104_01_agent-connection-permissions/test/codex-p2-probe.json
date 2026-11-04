@@ -1,0 +1,43 @@
+{
+  "client": "codex-cli 0.166.0-alpha.5.1",
+  "executed_at": "2026-11-04T07:56:13.306Z",
+  "registration": "pre-registered public client, exact loopback callback; temporary Codex runtime config, no persistent desktop connection",
+  "oauth": "real Codex PKCE + browser consent + Codex token exchange",
+  "transport": "Codex app-server mcpServer/tool/call (no model inference)",
+  "tools": [
+    "edit_page",
+    "list_spaces",
+    "upload_image",
+    "fetch",
+    "list_pages",
+    "search",
+    "update_page_metadata",
+    "get_edit_context",
+    "get_operation",
+    "create_folder",
+    "get_page",
+    "create_page"
+  ],
+  "checks": [
+    "discovery",
+    "OAuth",
+    "get_page",
+    "get_edit_context",
+    "edit_page committed",
+    "idempotent replay",
+    "fetch read-after-write",
+    "get_operation",
+    "create_folder",
+    "create_page",
+    "write disable denies new writes",
+    "write disable preserves reads and committed operation",
+    "grant revoke",
+    "revoked Codex call denied"
+  ],
+  "status": "passed",
+  "deployment": "none",
+  "observed_protocol_headers": [
+    "2024-11-05",
+    "2025-06-18"
+  ]
+}

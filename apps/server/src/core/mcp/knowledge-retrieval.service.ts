@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { AgentCredentialService } from '../agent-credentials/agent-credential.service';
 import { openCursor, sealCursor } from '../document-command/agent-cursor';
 import {
   ForbiddenException,
@@ -76,6 +77,7 @@ export class KnowledgeRetrievalService {
     private readonly storageService: StorageService,
     private readonly pagePermissionRepo: PagePermissionRepo,
     private readonly spaceMemberRepo: SpaceMemberRepo,
+    private readonly credentials: AgentCredentialService,
   ) {}
 
   private async agentCanRead(
@@ -89,11 +91,16 @@ export class KnowledgeRetrievalService {
       await sql`select set_config('app.workspace_id',${context.workspace.id},true),pg_advisory_xact_lock_shared(20261018,1)`.execute(
         trx,
       );
-      const grant =
-        await sql`select 1 from document_agent_grants g join users u on u.id=g.user_id and u.workspace_id=g.workspace_id join agent_oauth_families f on f.grant_id=g.id join agent_oauth_tokens t on t.family_id=f.id join agent_oauth_clients c on c.id=f.client_id where g.id=${context.agent.grantId}::uuid and g.user_id=${context.user.id}::uuid and g.client_id=${context.agent.clientId} and g.revoked_at is null and g.expires_at>clock_timestamp() and ${spaceId}::uuid=any(g.space_ids) and 'knowledge.read'=any(g.scopes) and not f.revoked and c.active and 'knowledge.read'=any(c.scopes) and t.access_hash=${context.agent.tokenHash} and t.access_expires_at>clock_timestamp() and t.metadata->'scope' @> '["knowledge.read"]'::jsonb and u.deleted_at is null and u.deactivated_at is null`.execute(
+      try {
+        await this.credentials.assertScope(
           trx,
+          context.agent!,
+          spaceId,
+          'knowledge.read',
         );
-      if (!grant.rows.length) return false;
+      } catch {
+        return false;
+      }
       const page = await trx
         .selectFrom('pages')
         .select('id')
@@ -329,7 +336,7 @@ export class KnowledgeRetrievalService {
 
     const binding = {
       tool: 'list_pages',
-      grant: context.agent?.grantId,
+      credential: context.agent?.credentialId,
       spaces: context.agent?.spaceIds,
       space: input.space_id,
       parent: input.parent_page_id,

@@ -16,6 +16,7 @@ import { AUDIT_SERVICE } from '../../integrations/audit/audit.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PageController } from './page.controller';
 import { PageService } from './services/page.service';
+import { DocumentCommandService } from '../document-command/document-command.service';
 import { PageHistoryService } from './services/page-history.service';
 import { BacklinkService } from './services/backlink.service';
 import { PageAccessService } from './page-access/page-access.service';
@@ -49,6 +50,7 @@ describe('PageController', () => {
         { provide: WatcherService, useValue: {} },
         { provide: EditorSessionService, useValue: {} },
         { provide: TransclusionService, useValue: {} },
+        { provide: DocumentCommandService, useValue: {} },
         { provide: PageHistoryService, useValue: {} },
         { provide: BacklinkService, useValue: {} },
         { provide: PageAccessService, useValue: {} },

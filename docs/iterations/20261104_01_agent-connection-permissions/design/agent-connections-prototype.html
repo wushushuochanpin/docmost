@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent 连接与权限管理 — 可执行交互原型</title>
+<style>
+  :root{--text:#24292f;--dim:#57606a;--line:#d0d7de;--bg:#f6f8fa;--brand:#1f6feb;--danger:#cf222e;--ok:#1a7f37;--warn:#9a6700}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif;color:var(--text);background:var(--bg)}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:14px 20px;display:flex;gap:12px;align-items:center;position:sticky;top:0;z-index:2}
+  header strong{font-size:15px}
+  nav{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+  nav button{border:1px solid transparent;background:transparent;color:var(--dim);padding:6px 9px;border-radius:6px;cursor:pointer;font:inherit}
+  nav button[aria-current="true"]{background:#ddf4ff;border-color:#54aeff;color:#0969da}
+  main{max-width:980px;margin:24px auto;padding:0 16px 64px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:22px;margin-bottom:18px}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .between{justify-content:space-between}
+  .stack{display:grid;gap:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:17px;margin:0 0 10px}
+  h3{font-size:14px;margin:18px 0 8px}
+  .dim{color:var(--dim)}
+  .pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:12px;background:#fff}
+  .pill.ok{color:var(--ok);border-color:#aceebb;background:#dafbe1}
+  .pill.bad{color:var(--danger);border-color:#ffcecb;background:#ffebe9}
+  .pill.warn{color:var(--warn);border-color:#f2d58a;background:#fff8c5}
+  .pill.unverified{color:#6e40c9;border-color:#d2a8ff;background:#fbefff}
+  button{font:inherit;border:1px solid var(--line);background:#f6f8fa;border-radius:6px;padding:7px 12px;cursor:pointer}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  button.danger{background:#fff;border-color:#ffcecb;color:var(--danger)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  input[type="text"],select{font:inherit;border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+  label.check{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff}
+  label.check small{display:block;color:var(--dim)}
+  fieldset{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  legend{font-weight:600;padding:0 5px}
+  .alert{border:1px solid var(--line);border-left-width:4px;border-radius:6px;padding:10px 12px;background:#fff}
+  .alert.err{border-left-color:var(--danger);background:#ffebe9}
+  .alert.warn{border-left-color:#d4a72c;background:#fff8c5}
+  .alert.info{border-left-color:var(--brand);background:#ddf4ff}
+  .alert.ok{border-left-color:var(--ok);background:#dafbe1}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:12px;color:var(--dim);font-weight:600}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
+  .token{border:1px dashed var(--line);border-radius:8px;background:var(--bg);padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
+  .diff{border:1px solid var(--line);border-radius:8px;padding:12px;background:#fff}
+  .diff .del{color:var(--danger);text-decoration:line-through}
+  .diff .add{color:var(--ok)}
+  .muted-box{border:1px dashed var(--line);border-radius:8px;padding:18px;text-align:center;color:var(--dim);background:#fff}
+  .skeleton{height:14px;border-radius:6px;background:linear-gradient(90deg,#eaeef2,#f6f8fa,#eaeef2);margin:8px 0;animation:p 1.2s infinite}
+  @keyframes p{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
+  dialog{border:1px solid var(--line);border-radius:10px;max-width:520px;width:calc(100vw - 32px);padding:0}
+  dialog .card{border:0;margin:0}
+  .tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:16px}
+  .tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;padding:8px 10px}
+  .tabs button[aria-selected="true"]{border-bottom-color:var(--brand);color:var(--brand);font-weight:600}
+  .small{font-size:12px}
+  .sticky-actions{position:sticky;bottom:0;background:linear-gradient(transparent,#fff 30%);padding-top:14px;margin-top:8px}
+  @media (max-width:600px){header{align-items:flex-start;flex-direction:column}nav{margin-left:0}}
+</style>
+</head>
+<body>
+<header>
+  <strong>Agent 连接与权限 · 可执行原型</strong>
+  <span class="pill">仅交互演示，不调用真实接口</span>
+  <nav id="nav" aria-label="场景">
+    <button data-scene="s1">S1 授权</button>
+    <button data-scene="s2">S2 连接列表</button>
+    <button data-scene="s3">S3 创建令牌</button>
+    <button data-scene="s4">S4 一次展示</button>
+    <button data-scene="s5">S5 详情</button>
+    <button data-scene="s6">S6 修改</button>
+    <button data-scene="s7">S7 撤销</button>
+    <button data-scene="s8">S8 策略</button>
+  </nav>
+</header>
+<main id="app" aria-live="polite"></main>
+<dialog id="modal"><div class="card" id="modal-body"></div></dialog>
+<script>
+const app = document.querySelector('#app');
+const modal = document.querySelector('#modal');
+const modalBody = document.querySelector('#modal-body');
+const state = {
+  scene: 's1',
+  oauth: [
+    { id: 'g1', name: '豆包工作', type: 'OAuth', status: 'active', spaces: ['产品知识库'], scopes: ['knowledge.read'], expires: '2026-12-04', lastUsed: '2026-11-04 14:20' },
+    { id: 'g2', name: 'Codex', type: 'OAuth', status: 'expired', spaces: ['研发文档'], scopes: ['knowledge.read', 'pages.edit'], expires: '2026-10-20', lastUsed: '2026-10-19 18:02' }
+  ],
+  tokens: [
+    { id: 't1', name: 'CI 发布机器人', type: 'MCP 令牌', status: 'active', spaces: ['研发文档'], scopes: ['knowledge.read'], expires: '2026-12-31', lastUsed: '2026-11-03 09:12' },
+    { id: 't2', name: '旧脚本令牌', type: '旧版令牌', status: 'active', spaces: [], scopes: [], expires: null, lastUsed: '2026-11-01 08:00' }
+  ],
+  consentSpaces: ['产品知识库'],
+  consentScopes: ['knowledge.read'],
+  consentPolicyWrites: false,
+  consentUnverified: true,
+  consentState: 'ready',
+  listState: 'ready',
+  createScopes: ['knowledge.read'],
+  createSpaces: ['产品知识库'],
+  createState: 'editing',
+  tokenValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.prototype-token-not-real',
+  detailState: 'ready',
+  editScopes: ['knowledge.read'],
+  editSpaces: ['产品知识库'],
+  editMessage: '',
+  editBusy: false,
+  revokeState: 'ready',
+  policyWrites: false,
+  policyState: 'ready'
+};
+const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+const pill = (text, kind = '') => `<span class="pill ${kind}">${text}</span>`;
+function sceneButton(id) { return document.querySelector(`#nav [data-scene="${id}"]`); }
+function go(id) { state.scene = id; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+function layout(title, subtitle, body) {
+  return `<section class="stack">
+    <div class="card">
+      <div class="row between">
+        <div><h1>${title}</h1><div class="dim">${subtitle}</div></div>
+        <div>${pill('交互原型 · 待审阅', 'warn')}</div>
+      </div>
+    </div>
+    ${body}
+  </section>`;
+}
+
+function s1() {
+  const writes = ['pages.create', 'folders.create', 'pages.edit'];
+  const allow = state.consentSpaces.length > 0 && state.consentScopes.includes('knowledge.read') && state.consentState !== 'submitting';
+  return layout('允许应用访问你的文档？', 'S1 · OAuth 同意页：默认只读；只能从客户端申请范围内选择；工作区禁写时写权限禁用并解释。', `
+    <div class="card stack">
+      ${state.consentState === 'error' ? `<div class="alert err" role="alert">无法完成连接，请重试。请求可能已过期，请返回应用重新发起连接。<div class="row" style="margin-top:8px"><button onclick="state.consentState='ready';render()">重试</button><button onclick="alert('返回应用（原型）')">返回应用</button></div></div>` : ''}
+      ${state.consentState === 'expired' ? `<div class="alert err" role="alert">授权请求已过期。请回到 Agent 重新发起连接，不会创建任何授权。<div class="row" style="margin-top:8px"><button onclick="state.consentState='ready';render()">模拟重新开始</button></div></div>` : ''}
+      <div class="row between">
+        <div>
+          <div class="row"><h2 style="margin:0">豆包工作</h2>${state.consentUnverified ? pill('未验证应用', 'unverified') : pill('管理员登记')}</div>
+          <div class="dim small">应用名称不能证明品牌身份。请确认返回地址后再授权。</div>
+        </div>
+        <button onclick="state.consentUnverified=!state.consentUnverified;render()">切换验证标识</button>
+      </div>
+      <div class="alert info small">返回地址：<span class="mono">http://127.0.0.1:43119/callback</span></div>
+      <fieldset>
+        <legend>访问权限</legend>
+        <label class="check"><input type="checkbox" checked disabled><span>读取文档 <small>knowledge.read · 必需</small></span></label>
+        ${writes.map((scope) => `<label class="check"><input type="checkbox" ${state.consentScopes.includes(scope) ? 'checked' : ''} ${!state.consentPolicyWrites ? 'disabled' : ''} onchange="toggleConsentScope('${scope}')"><span>${scope === 'pages.edit' ? '编辑文档' : scope === 'pages.create' ? '新建文档' : '新建文件夹'} <small>${scope}${!state.consentPolicyWrites ? ' · 工作区已禁写' : ''}</small></span></label>`).join('')}
+        ${!state.consentPolicyWrites ? `<div class="alert warn small">工作区当前禁止 Agent 写入。你仍可建立只读连接；如需写入，请联系管理员在 S8 开启策略。</div>` : ''}
+      </fieldset>
+      <fieldset>
+        <legend>允许访问的空间</legend>
+        ${['产品知识库', '研发文档', '运营手册'].map((name) => `<label class="check"><input type="checkbox" ${state.consentSpaces.includes(name) ? 'checked' : ''} onchange="toggleConsentSpace('${name}')"><span>${name} <small>只能访问你有权限的空间中的文档</small></span></label>`).join('')}
+        ${!state.consentSpaces.length ? `<div class="alert warn small">请选择至少一个空间。</div>` : ''}
+      </fieldset>
+      <div class="grid">
+        <label>有效期
+          <select><option>1 天</option><option>7 天</option><option selected>30 天</option><option>90 天</option></select>
+        </label>
+        <div class="alert small">授权后仍会逐次检查你的当前 ACL、用户状态、空间范围和工作区策略。缩权或撤销会在最终提交前生效。</div>
+      </div>
+      <div class="row">
+        <button class="primary" ${allow ? '' : 'disabled'} onclick="state.consentState='submitting';render();setTimeout(()=>{state.consentState='done';render()},450)">${state.consentState === 'submitting' ? '正在连接…' : '允许连接'}</button>
+        <button ${state.consentState === 'submitting' ? 'disabled' : ''} onclick="state.consentState='denied';render()">拒绝</button>
+        <button onclick="state.consentState='error';render()">模拟网络失败</button>
+        <button onclick="state.consentState='expired';render()">模拟过期</button>
+      </div>
+      ${state.consentState === 'done' ? `<div class="alert ok" role="status">授权成功，已返回应用。连接会出现在 S2 列表，可随时缩权或撤销。</div>` : ''}
+      ${state.consentState === 'denied' ? `<div class="alert" role="status">已拒绝，返回应用。未创建任何授权。</div>` : ''}
+    </div>
+  `);
+}
+function toggleConsentScope(scope) { state.consentScopes = state.consentScopes.includes(scope) ? state.consentScopes.filter((s) => s !== scope) : [...state.consentScopes, scope]; render(); }
+function toggleConsentSpace(name) { state.consentSpaces = state.consentSpaces.includes(name) ? state.consentSpaces.filter((s) => s !== name) : [...state.consentSpaces, name]; render(); }
+
+function s2() {
+  const items = [...state.oauth, ...state.tokens];
+  const loading = state.listState === 'loading';
+  const error = state.listState === 'error';
+  return layout('我的 Agent 连接', 'S2 · 连接列表：聚合 OAuth 连接与 MCP 令牌，展示类型、范围、权限、状态、到期和最近使用；分页、空、错误、加载。', `
+    <div class="card stack">
+      <div class="row between">
+        <div class="row">
+          <button onclick="state.listState='loading';render()">模拟加载</button>
+          <button onclick="state.listState='error';render()">模拟失败</button>
+          <button onclick="state.listState='ready';render()">恢复</button>
+        </div>
+        <button class="primary" onclick="go('s3')">创建 MCP 令牌</button>
+      </div>
+      ${error ? `<div class="alert err" role="alert">列表加载失败。请检查网络后重试。<div class="row" style="margin-top:8px"><button onclick="state.listState='ready';render()">重新加载</button></div></div>` : ''}
+      ${loading ? `<div><div class="skeleton" style="width:40%"></div><div class="skeleton" style="width:90%"></div><div class="skeleton" style="width:70%"></div></div>` : ''}
+      ${!loading && !error && !items.length ? `<div class="muted-box"><p>暂无连接。</p><p><button onclick="go('s3')">创建 MCP 令牌</button></p><p class="small">或从 Agent 发起 OAuth 授权。</p></div>` : ''}
+      ${!loading && !error && items.length ? `<table><thead><tr><th>名称</th><th>类型</th><th>空间</th><th>权限</th><th>状态</th><th>到期 / 最近使用</th><th></th></tr></thead><tbody>${items.map((item) => `
+        <tr>
+          <td><strong>${item.name}</strong>${item.type === '旧版令牌' ? `<div class="small dim">旧令牌保持原 HTTP 能力与 MCP 只读，不会自动升级</div>` : ''}</td>
+          <td>${item.type === 'OAuth' ? pill('OAuth') : item.type === 'MCP 令牌' ? pill('MCP 令牌', 'ok') : pill('旧版', 'warn')}</td>
+          <td>${item.spaces.length ? item.spaces.join('、') : '—'}</td>
+          <td>${item.scopes.length ? item.scopes.map((s) => `<span class="pill">${s}</span>`).join(' ') : '只读（旧版）'}</td>
+          <td>${item.status === 'active' ? pill('已连接', 'ok') : item.status === 'expired' ? pill('已过期', 'bad') : pill('已撤销', 'bad')}</td>
+          <td class="small">${item.expires ?? '永不过期'}<br><span class="dim">${item.lastUsed}</span></td>
+          <td><button onclick="state.current='${item.id}';go('s5')">查看</button></td>
+        </tr>`).join('')}</tbody></table>` : ''}
+      <div class="row between small dim"><span>每页 20 条 · 上次刷新 14:47</span><span><button disabled>上一页</button> <button disabled>下一页</button></span></div>
+    </div>
+  `);
+}
+
+function s3() {
+  const writes = ['pages.create', 'folders.create', 'pages.edit'];
+  const writeSelected = state.createScopes.some((s) => writes.includes(s));
+  return layout('创建 MCP 令牌', 'S3 · 表单：名称、空间、到期、权限及依赖；默认只读；写权限依赖 knowledge.read；空间必须为当前用户可访问。', `
+    <div class="card stack">
+      ${state.createState === 'error' ? `<div class="alert err" role="alert">创建失败，输入已保留。请修正后重试。</div>` : ''}
+      <label>令牌名称<input type="text" value="豆包工作 · 产品库" maxlength="64"></label>
+      <div class="grid">
+        <label>到期时间<select><option>30 天</option><option>90 天</option><option>365 天</option></select></label>
+        <div class="alert info small">令牌明文只在创建成功后显示一次；关闭后无法再次查看。遗失请撤销后新建。</div>
+      </div>
+      <fieldset>
+        <legend>权限</legend>
+        <label class="check"><input type="checkbox" checked disabled><span>读取文档 <small>knowledge.read · 默认且必需</small></span></label>
+        ${writes.map((scope) => `<label class="check"><input type="checkbox" ${state.createScopes.includes(scope) ? 'checked' : ''} onchange="toggleCreateScope('${scope}')"><span>${scope === 'pages.edit' ? '编辑文档' : scope === 'pages.create' ? '新建文档' : '新建文件夹'} <small>${scope}${!state.policyWrites ? ' · 工作区已禁写' : ''}</small></span></label>`).join('')}
+        ${!state.policyWrites && writeSelected ? `<div class="alert warn small">工作区当前禁止写入，无法创建带写权限的令牌。请先由管理员在 S8 开启。</div>` : ''}
+      </fieldset>
+      <fieldset>
+        <legend>可访问空间</legend>
+        ${['产品知识库', '研发文档', '运营手册'].map((name) => `<label class="check"><input type="checkbox" ${state.createSpaces.includes(name) ? 'checked' : ''} onchange="toggleCreateSpace('${name}')"><span>${name} <small>逐对象 ACL 仍会再次校验</small></span></label>`).join('')}
+        ${!state.createSpaces.length ? `<div class="alert warn small">请选择至少一个空间。</div>` : ''}
+      </fieldset>
+      <div class="alert small">此令牌只用于 MCP，不会扩大其他 HTTP API 权限。旧版令牌不受影响。</div>
+      <div class="row">
+        <button class="primary" ${!state.createSpaces.length || (!state.policyWrites && writeSelected) ? 'disabled' : ''} onclick="state.createState='saving';render();setTimeout(()=>{state.createState='done';go('s4')},500)">${state.createState === 'saving' ? '保存中…' : '创建令牌'}</button>
+        <button onclick="state.createState='editing';render()">取消</button>
+        <button onclick="state.createState='error';render()">模拟失败</button>
+      </div>
+      <div class="small dim">保存中禁止重复提交；取消不会产生凭据。</div>
+    </div>
+  `);
+}
+function toggleCreateScope(scope) { state.createScopes = state.createScopes.includes(scope) ? state.createScopes.filter((s) => s !== scope) : [...state.createScopes, scope]; render(); }
+function toggleCreateSpace(name) { state.createSpaces = state.createSpaces.includes(name) ? state.createSpaces.filter((s) => s !== name) : [...state.createSpaces, name]; render(); }
+
+function s4() {
+  return layout('令牌已创建', 'S4 · 一次性展示：明文只在内存态显示，不进入 URL、日志或持久化缓存；关闭后不可再取回。', `
+    <div class="card stack">
+      <div class="alert warn"><strong>只显示一次。</strong> 关闭后无法再次查看。请立即复制到 Agent 配置中。</div>
+      <div>名称：豆包工作 · 产品库</div>
+      <div class="token" id="token-value">${state.tokenValue}</div>
+      <div class="row between">
+        <button onclick="navigator.clipboard&&navigator.clipboard.writeText(document.querySelector('#token-value').textContent).then(()=>alert('已复制'),()=>alert('复制失败，请手动选择文本'))">复制令牌</button>
+        <button class="primary" onclick="go('s2')">我已保存，关闭</button>
+      </div>
+      <div class="alert small">如果复制失败，请手动选择上方文本复制。若页面已关闭，只能撤销该令牌并重新创建。</div>
+    </div>
+  `);
+}
+
+function s5() {
+  const isToken = state.current === 't1' || state.current === 't2';
+  const item = [...state.oauth, ...state.tokens].find((x) => x.id === state.current) || state.oauth[0];
+  if (!state.current) state.current = item.id;
+  const active = item.status === 'active';
+  return layout(item.name, 'S5 · 详情：只展示服务端事实；无权限、过期、撤销、策略禁用均有明确状态。', `
+    <div class="card stack">
+      <div class="row between">
+        <div class="row">${item.type === 'OAuth' ? pill('OAuth 连接') : item.type === 'MCP 令牌' ? pill('MCP 令牌', 'ok') : pill('旧版令牌', 'warn')}${item.status === 'active' ? pill('已连接', 'ok') : pill(item.status === 'expired' ? '已过期' : '已撤销', 'bad')}</div>
+        <button onclick="go('s2')">返回列表</button>
+      </div>
+      <div class="grid">
+        <div><div class="small dim">空间</div>${item.spaces.length ? item.spaces.join('、') : '—'}</div>
+        <div><div class="small dim">权限</div>${item.scopes.length ? item.scopes.join('、') : '旧版只读 MCP / 原 HTTP 行为'}</div>
+        <div><div class="small dim">到期</div>${item.expires ?? '永不过期'}</div>
+        <div><div class="small dim">最近使用</div>${item.lastUsed}</div>
+      </div>
+      ${!active ? `<div class="alert warn">此连接不可修改。需要继续使用时，${item.type === 'OAuth' ? '请从 Agent 重新授权' : '请新建令牌'}。</div>` : ''}
+      ${item.type === '旧版令牌' ? `<div class="alert info">旧版令牌保留原有 HTTP 能力与 MCP 只读行为。它不能被升级为 MCP 写入令牌；需要写入请新建 MCP 令牌。</div>` : ''}
+      ${item.type === 'OAuth' ? `<div class="alert info">OAuth 连接只能缩小范围。增加权限或空间必须由客户端重新发起授权，并在同意页重新确认；原授权在新授权成功前不会扩大。</div>` : ''}
+      ${isToken && item.type === 'MCP 令牌' ? `<div class="alert info">MCP 令牌的写权限只对 MCP 生效，不会扩大其他 HTTP API 权限。升权必须由已登录用户在本页明确确认。</div>` : ''}
+      <div class="row">
+        <button class="primary" ${!active || item.type === '旧版令牌' ? 'disabled' : ''} onclick="state.editScopes=[...item.scopes];state.editSpaces=[...item.spaces];state.editMessage='';go('s6')">修改访问范围</button>
+        <button class="danger" ${!active ? 'disabled' : ''} onclick="go('s7')">撤销</button>
+        <button onclick="alert('活动列表（原型）')">查看活动</button>
+        <button onclick="state.detailState='conflict';render()">模拟版本冲突</button>
+      </div>
+      ${state.detailState === 'conflict' ? `<div class="alert warn" role="alert">连接已变化，请重新加载后再操作。<button onclick="state.detailState='ready';render()">重新加载</button></div>` : ''}
+    </div>
+  `);
+}
+
+function s6() {
+  const item = [...state.oauth, ...state.tokens].find((x) => x.id === state.current) || state.oauth[0];
+  const isToken = item.type === 'MCP 令牌';
+  const current = new Set(item.scopes);
+  const added = state.editScopes.filter((s) => !current.has(s));
+  const removed = item.scopes.filter((s) => !state.editScopes.includes(s));
+  const spacesAdded = state.editSpaces.filter((s) => !item.spaces.includes(s));
+  const upgrade = added.length > 0 || spacesAdded.length > 0;
+  const writes = ['pages.create', 'folders.create', 'pages.edit'];
+  const writeSelected = state.editScopes.some((s) => writes.includes(s));
+  return layout('修改 ' + item.name, 'S6 · 权限调整：展示前后差异；OAuth 升权只能重新授权；API 升权必须由已登录用户明确确认；缩权立即生效。', `
+    <div class="card stack">
+      ${state.editMessage ? `<div class="alert ${state.editMessage.includes('成功') ? 'ok' : 'warn'}" role="status">${state.editMessage}</div>` : ''}
+      ${upgrade ? `<div class="alert warn"><strong>这是升权操作。</strong> ${item.type === 'OAuth' ? 'OAuth 连接不能在这里升权。请从 Agent 重新发起授权；在新授权完成前原范围不变。' : '保存时需要你明确确认；服务端会再次校验 ACL、空间范围和工作区策略。'}</div>` : `<div class="alert info">只能缩小范围。缩权会在最终提交前由同一事务的授权屏障判定。</div>`}
+      <div class="diff">
+        <div class="small dim">差异预览</div>
+        <div>权限：${removed.map((s) => `<span class="del">${s}</span>`).join(' ') || '<span class="dim">无移除</span>'} ${added.map((s) => `<span class="add">${s}</span>`).join(' ') || ''}</div>
+        <div>空间：${item.spaces.map((s) => state.editSpaces.includes(s) ? s : `<span class="del">${s}</span>`).join('、') || '—'} ${spacesAdded.map((s) => `<span class="add">${s}</span>`).join('、') || ''}</div>
+      </div>
+      <fieldset>
+        <legend>权限</legend>
+        <label class="check"><input type="checkbox" checked disabled><span>读取文档 <small>knowledge.read · 必需</small></span></label>
+        ${['pages.create', 'folders.create', 'pages.edit'].map((scope) => `<label class="check"><input type="checkbox" ${state.editScopes.includes(scope) ? 'checked' : ''} onchange="toggleEditScope('${scope}')"><span>${scope} <small>${!state.policyWrites ? '工作区已禁写' : ''}</small></span></label>`).join('')}
+      </fieldset>
+      <fieldset>
+        <legend>空间</legend>
+        ${['产品知识库', '研发文档', '运营手册'].filter((name) => item.spaces.includes(name) || isToken).map((name) => `<label class="check"><input type="checkbox" ${state.editSpaces.includes(name) ? 'checked' : ''} ${item.spaces.includes(name) ? '' : ''} onchange="toggleEditSpace('${name}')"><span>${name}${item.spaces.includes(name) ? '' : ' <small>新增空间属于升权</small>'}</span></label>`).join('')}
+      </fieldset>
+      ${isToken && upgrade ? `<label class="check"><input type="checkbox" id="confirm-upgrade"><span>我确认为此 MCP 令牌增加权限/空间 <small>仅对 MCP 生效，不扩大其他 HTTP API 权限</small></span></label>` : ''}
+      ${!state.policyWrites && writeSelected ? `<div class="alert warn">工作区当前禁止写入，无法保存写权限。</div>` : ''}
+      <div class="row">
+        <button class="primary" ${state.editBusy || (item.type === 'OAuth' && upgrade) || (!state.policyWrites && writeSelected) ? 'disabled' : ''} onclick="saveEdit('${item.type}','${upgrade}')">${state.editBusy ? '保存中…' : (item.type === 'OAuth' && upgrade ? '需要重新授权' : '保存范围')}</button>
+        <button onclick="state.editScopes=[...item.scopes];state.editSpaces=[...item.spaces];state.editMessage='';render()">取消修改</button>
+        <button onclick="state.editMessage='已变化，请重新加载后再操作。';render()">模拟版本冲突</button>
+        <button onclick="state.editMessage='结果待确认。请重新加载核对当前范围，再决定是否重试。';render()">模拟网络超时</button>
+      </div>
+    </div>
+  `);
+}
+function toggleEditScope(scope) { state.editScopes = state.editScopes.includes(scope) ? state.editScopes.filter((s) => s !== scope) : [...state.editScopes, scope]; render(); }
+function toggleEditSpace(name) { state.editSpaces = state.editSpaces.includes(name) ? state.editSpaces.filter((s) => s !== name) : [...state.editSpaces, name]; render(); }
+function saveEdit(type, upgrade) {
+  if (type === 'OAuth' && upgrade === 'true') { state.editMessage = 'OAuth 升权需要从 Agent 重新授权；原范围未改变。'; render(); return; }
+  if (type === 'MCP 令牌' && upgrade === 'true') { const cb = document.querySelector('#confirm-upgrade'); if (!cb || !cb.checked) { state.editMessage = '请先勾选确认升权。'; render(); return; } }
+  state.editBusy = true; render();
+  setTimeout(() => {
+    const item = [...state.oauth, ...state.tokens].find((x) => x.id === state.current);
+    item.scopes = [...state.editScopes]; item.spaces = [...state.editSpaces]; item.lastUsed = '刚刚';
+    state.editBusy = false; state.editMessage = '范围已成功更新。'; render();
+  }, 500);
+}
+
+function s7() {
+  const item = [...state.oauth, ...state.tokens].find((x) => x.id === state.current) || state.oauth[0];
+  return layout('撤销 ' + item.name + ' 的连接？', 'S7 · 撤销确认：明示影响；成功后终态；重复撤销幂等；取消无变化。', `
+    <div class="card stack">
+      ${state.revokeState === 'done' ? `<div class="alert ok" role="status">已撤销。后续调用会立即被拒绝；已返回给 Agent 的内容无法收回。</div>` : ''}
+      ${state.revokeState === 'error' ? `<div class="alert err" role="alert">撤销结果待确认。请重新加载核对状态，不要盲目重复提交。<button onclick="state.revokeState='ready';render()">重新加载</button></div>` : ''}
+      <div class="alert warn">撤销后该${item.type === 'OAuth' ? '应用' : '令牌'}不能继续读取或编辑文档。已经保存到文档的修改会保留，并可在活动中审计。再次撤销是幂等的。</div>
+      <div class="row">
+        <button class="danger" ${state.revokeState === 'done' ? 'disabled' : ''} onclick="state.revokeState='saving';render();setTimeout(()=>{state.revokeState='done';render()},450)">${state.revokeState === 'saving' ? '撤销中…' : '确认撤销'}</button>
+        <button onclick="go('s5')">取消</button>
+        <button onclick="state.revokeState='error';render()">模拟网络失败</button>
+      </div>
+    </div>
+  `);
+}
+
+function s8() {
+  return layout('工作区 Agent 策略', 'S8 · 工作区策略：管理员可禁写；禁写阻断新写但不删除连接；列表显示生效原因；权限不足或冲突可返回/刷新。', `
+    <div class="card stack">
+      ${state.policyState === 'saved' ? `<div class="alert ok" role="status">策略已保存。新写操作会立即按新策略校验，已有连接保留但写工具不可用。</div>` : ''}
+      ${state.policyState === 'conflict' ? `<div class="alert warn" role="alert">策略已被其他管理员更新，请刷新后再提交。</div>` : ''}
+      <label class="check"><input type="checkbox" ${state.policyWrites ? 'checked' : ''} onchange="state.policyWrites=this.checked;render()"><span>允许 Agent 写入 <small>关闭后，OAuth 与 MCP 令牌都不能新建/编辑文档；读取不受影响</small></span></label>
+      <div class="grid">
+        <label>授权最长有效期<select><option>30 天</option><option>90 天</option></select></label>
+        <label>生成配额<select><option>默认</option><option>收紧</option></select></label>
+      </div>
+      <div class="alert info small">策略关闭不会自动删除或撤销连接。恢复后，已有写权限连接按原范围恢复；不需要重新授权。</div>
+      <div class="row">
+        <button class="primary" onclick="state.policyState='saved';render()">保存策略</button>
+        <button onclick="state.policyState='conflict';render()">模拟版本冲突</button>
+        <button onclick="state.policyState='ready';render()">重置</button>
+      </div>
+      <div class="alert small">非管理员访问：返回 403 并说明需要管理员权限；不展示其他工作区策略。</div>
+    </div>
+  `);
+}
+
+function render() {
+  const scenes = { s1, s2, s3, s4, s5, s6, s7, s8 };
+  app.replaceChildren(el(scenes[state.scene]()));
+  document.querySelectorAll('#nav [data-scene]').forEach((b) => b.setAttribute('aria-current', String(b.dataset.scene === state.scene)));
+}
+document.querySelector('#nav').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-scene]');
+  if (b) go(b.dataset.scene);
+});
+modal.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
+render();
+</script>
+</body>
+</html>

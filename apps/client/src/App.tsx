@@ -37,6 +37,7 @@ const AgentConnections = settingsRouteModules.agentConnections.Component;
 const AgentConnectionDetail =
   settingsRouteModules.agentConnectionDetail.Component;
 const AgentPolicy = settingsRouteModules.agentPolicy.Component;
+const McpTokens = settingsRouteModules.mcpTokens.Component;
 const AgentActivity = settingsRouteModules.agentActivity.Component;
 const AccountSettings = settingsRouteModules.accountProfile.Component;
 const WorkspaceMembers = settingsRouteModules.members.Component;
@@ -237,6 +238,10 @@ export default function App() {
             <Route
               path="account/agent-connections/:connectionId/activity"
               element={settingsRoute(<AgentActivity />)}
+            />
+            <Route
+              path="account/mcp-tokens"
+              element={settingsRoute(<McpTokens />)}
             />
             <Route
               path="agent-policy"
