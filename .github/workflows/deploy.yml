@@ -51,11 +51,18 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          tags: ${{ env.IMAGE_REPOSITORY }}:${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE_REPOSITORY }}:${{ github.sha }}
+            ${{ env.IMAGE_REPOSITORY }}:buildcache-production-amd64
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha,scope=docmost-production-amd64
+          build-args: BUILDKIT_INLINE_CACHE=1
+          # Prefer the registry copy of unchanged layers; keep the existing
+          # Actions cache for the first run or if the registry cache is absent.
+          cache-from: |
+            type=registry,ref=${{ env.IMAGE_REPOSITORY }}:buildcache-production-amd64
+            type=gha,scope=docmost-production-amd64
           # Cache is optional; keep upload bounded after the immutable image is pushed.
           cache-to: type=gha,scope=docmost-production-amd64,mode=min,timeout=2m,ignore-error=true
 
