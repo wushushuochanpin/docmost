@@ -427,13 +427,15 @@ describe('MCP scoped API token lifecycle and write barrier', () => {
           grant_types: ['authorization_code', 'refresh_token'],
           response_types: ['code'],
           token_endpoint_auth_method: 'none',
-          scope: 'knowledge.read pages.edit',
+          application_type: 'native',
+          scope: 'knowledge.read pages.create folders.create pages.edit',
         }),
       });
       expect(response.status).toBe(201);
       const body = await response.json();
       expect(body.client_id).toBeTruthy();
-      expect(body.scope).toBe('knowledge.read pages.edit');
+      expect(body.scope).toBe('knowledge.read pages.create folders.create pages.edit');
+      expect(body.application_type).toBe('native');
       const count = (
         await pg`SELECT count(*)::int AS count FROM document_agent_grants`
       )[0];
@@ -670,6 +672,16 @@ describe('MCP scoped API token lifecycle and write barrier', () => {
     expect(row.source).toBe('dcr');
     expect(row.type).toBe('public');
     expect(row.redirect_uris).toEqual(['http://127.0.0.1:43119/callback']);
+    await expect(
+      oauth.registerClient(
+        {
+          redirect_uris: ['http://127.0.0.1:43119/callback'],
+          application_type: 'web',
+          scope: 'knowledge.read',
+        },
+        '127.0.0.1',
+      ),
+    ).rejects.toThrow();
     await expect(
       oauth.registerClient(
         {

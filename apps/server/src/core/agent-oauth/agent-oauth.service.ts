@@ -181,6 +181,7 @@ export class AgentOAuthService {
           .optional(),
         response_types: z.array(z.literal('code')).min(1).max(1).optional(),
         token_endpoint_auth_method: z.literal('none').optional(),
+        application_type: z.literal('native').optional(),
         scope: z.string().max(4096).optional(),
         // Accepted as metadata only. They are never fetched (SSRF) and never
         // used to prove the client's brand identity.
@@ -244,6 +245,7 @@ export class AgentOAuthService {
           grant_types: grantTypes,
           response_types: responseTypes,
           token_endpoint_auth_method: 'none',
+          application_type: parsed.data.application_type,
           scope: scopes.join(' '),
           client_uri: parsed.data.client_uri,
           logo_uri: parsed.data.logo_uri,
@@ -259,6 +261,9 @@ export class AgentOAuthService {
       grant_types: grantTypes,
       response_types: responseTypes,
       token_endpoint_auth_method: 'none' as const,
+      ...(parsed.data.application_type && {
+        application_type: parsed.data.application_type,
+      }),
       scope: scopes.join(' '),
       client_id_issued_at: Math.floor(Date.now() / 1000),
     };
