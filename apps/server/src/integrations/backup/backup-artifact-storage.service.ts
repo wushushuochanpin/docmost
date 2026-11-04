@@ -65,7 +65,7 @@ export class BackupArtifactStorageService {
     if (copy) {
       const driver = this.getS3Driver(true);
       if (!driver) throw new Error('Backup replica storage is unavailable');
-      const remote = await digest(await driver.readStream(copy.key));
+      const remote = await driver.checksumObject(copy.key);
       if (
         local.sha256 !== remote.sha256 ||
         local.sizeBytes !== remote.sizeBytes

@@ -14,6 +14,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getMimeType } from '../../../common/helpers';
 import { Upload } from '@aws-sdk/lib-storage';
 import { Logger } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 
 export class S3Driver implements StorageDriver {
   private readonly s3Client: S3Client;
@@ -147,6 +148,79 @@ export class S3Driver implements StorageDriver {
     } catch (err) {
       throw new Error(`Failed to read file from S3: ${(err as Error).message}`);
     }
+  }
+
+  // Verify a stable object in bounded chunks. A broken response body cannot
+  // be retried by the SDK after headers have arrived, so resume only that chunk.
+  async checksumObject(
+    filePath: string,
+  ): Promise<{ sha256: string; sizeBytes: number }> {
+    const head = await this.s3Client.send(
+      new HeadObjectCommand({
+        Bucket: this.config.bucket,
+        Key: filePath,
+      }),
+    );
+    const size = head.ContentLength;
+    const etag = head.ETag;
+    if (!Number.isSafeInteger(size) || size < 1 || !etag) {
+      throw new Error('Backup replica has no stable size or ETag');
+    }
+    const hash = createHash('sha256');
+    const chunkSize = 8 * 1024 * 1024;
+    for (let start = 0; start < size; start += chunkSize) {
+      const end = Math.min(start + chunkSize - 1, size - 1);
+      let completed = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const response = await this.s3Client.send(
+            new GetObjectCommand({
+              Bucket: this.config.bucket,
+              Key: filePath,
+              Range: `bytes=${start}-${end}`,
+              IfMatch: etag,
+            }),
+          );
+          if (
+            response.$metadata.httpStatusCode !== 206 ||
+            response.ContentRange !== `bytes ${start}-${end}/${size}` ||
+            response.ContentLength !== end - start + 1 ||
+            response.ETag !== etag ||
+            !(response.Body instanceof Readable)
+          ) {
+            (response.Body as Readable | undefined)?.destroy?.();
+            throw new Error('Invalid backup replica range response');
+          }
+          const chunks: Buffer[] = [];
+          let received = 0;
+          for await (const part of response.Body) {
+            const buffer = Buffer.from(part);
+            received += buffer.length;
+            if (received > end - start + 1)
+              throw new Error('Backup replica range too long');
+            chunks.push(buffer);
+          }
+          if (received !== end - start + 1)
+            throw new Error('Backup replica range incomplete');
+          for (const chunk of chunks) hash.update(chunk);
+          completed = true;
+          break;
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (
+            !['ECONNRESET', 'ERR_STREAM_PREMATURE_CLOSE'].includes(code) ||
+            attempt === 2
+          )
+            throw error;
+          Logger.warn(
+            `Backup replica connection interrupted at byte ${start}; resuming range`,
+            S3Driver.name,
+          );
+        }
+      }
+      if (!completed) throw new Error('Backup replica range could not be read');
+    }
+    return { sha256: hash.digest('hex'), sizeBytes: size };
   }
 
   async exists(filePath: string): Promise<boolean> {
