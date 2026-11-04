@@ -23,5 +23,7 @@ jobs:
       - run: pnpm run guard:realtime-deployment
       - run: pnpm --filter @docmost/editor-ext build
       - run: pnpm --filter server build
+      - name: Check interrupted and invalid remote backup reads
+        run: pnpm --filter server test --runInBand s3-backup-checksum.spec.ts
       - name: Restore real backups with PostgreSQL 16, RLS and isolated Redis
         run: pnpm run test:backup
