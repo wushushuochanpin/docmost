@@ -7,7 +7,11 @@ import { useTranslation } from "react-i18next";
 import { useAtom } from "jotai";
 import { homeTabAtom } from "@/features/home/atoms/home-tab-atom";
 
-export default function HomeTabs() {
+interface Props {
+  spaceId?: string;
+}
+
+export default function HomeTabs({ spaceId }: Props) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useAtom(homeTabAtom);
 
@@ -40,13 +44,13 @@ export default function HomeTabs() {
       <Space my="md" />
 
       <Tabs.Panel value="recent">
-        <RecentChanges />
+        <RecentChanges spaceId={spaceId} />
       </Tabs.Panel>
       <Tabs.Panel value="favorites">
-        <FavoritesPages />
+        <FavoritesPages spaceId={spaceId} />
       </Tabs.Panel>
       <Tabs.Panel value="created">
-        <CreatedByMe />
+        <CreatedByMe spaceId={spaceId} />
       </Tabs.Panel>
     </Tabs>
   );
