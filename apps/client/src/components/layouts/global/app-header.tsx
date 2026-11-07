@@ -1,6 +1,6 @@
 import { Badge, Group, Tooltip, UnstyledButton } from "@mantine/core";
 import classes from "./app-header.module.css";
-import React from "react";
+import React, { useEffect } from "react";
 import TopMenu from "@/components/layouts/global/top-menu.tsx";
 import { Link, useLocation, useParams } from "react-router-dom";
 import APP_ROUTE from "@/lib/app-route.ts";
@@ -21,6 +21,8 @@ import {
 } from "@/features/search/components/search-control.tsx";
 import { searchSpotlight } from "@/features/search/constants.ts";
 import SpaceSettingsModal from "@/features/space/components/settings-modal.tsx";
+import { SpaceSwitcher } from "@/components/layouts/global/space-switcher.tsx";
+import { recentSpaceSlugAtom } from "@/features/space/atoms/recent-space-atom";
 
 const links = [{ link: APP_ROUTE.HOME, label: "Home" }];
 
@@ -36,6 +38,13 @@ export function AppHeader() {
   const { spaceSlug } = useParams();
   const [opened, { open: openSpaceSettings, close: closeSpaceSettings }] =
     useDisclosure(false);
+  const [, setRecentSpaceSlug] = useAtom(recentSpaceSlugAtom);
+
+  useEffect(() => {
+    if (spaceSlug) {
+      setRecentSpaceSlug(spaceSlug);
+    }
+  }, [spaceSlug, setRecentSpaceSlug]);
 
   const isHomeRoute = location.pathname.startsWith("/home");
   const isSpacesRoute = location.pathname === "/spaces";
@@ -106,6 +115,8 @@ export function AppHeader() {
               className={classes.brandLogo}
             />
           </Link>
+
+          <SpaceSwitcher />
 
           <Group ml={50} gap={5} className={classes.links} visibleFrom="sm">
             {items}
