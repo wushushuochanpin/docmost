@@ -423,6 +423,8 @@ export class AgentOAuthService {
         application_source: client.source ?? 'manual',
         application_verified: client.source === 'manual',
         redirect_origin: new URL(row.parameters.redirect_uri).origin,
+        supported_scopes: OAUTH_SCOPES,
+        writes_enabled: policy.enabled,
         requested_scopes: row.parameters.scope.split(' '),
         scopes: row.parameters.scope
           .split(' ')

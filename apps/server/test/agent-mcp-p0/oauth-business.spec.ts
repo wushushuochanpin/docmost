@@ -192,6 +192,21 @@ describe('production OAuth authorization and atomic token lifecycle', () => {
     ).rejects.toThrow();
     expect(await pg`SELECT * FROM document_agent_grants`).toHaveLength(0);
   });
+  test('consent explains supported permissions without authorizing unrequested scopes', async () => {
+    const url = await oauth.start({ ...query(), scope: 'knowledge.read' });
+    const id = new URL(url).searchParams.get('request_id')!;
+    const consent = await oauth.consent(id, actor);
+    expect(consent.supported_scopes).toEqual(['knowledge.read', 'pages.create', 'folders.create', 'pages.edit']);
+    expect(consent.requested_scopes).toEqual(['knowledge.read']);
+    expect(consent.writes_enabled).toBe(true);
+    await expect(oauth.decide(id, actor, {
+      decision: 'allow', space_ids: [space], scopes: ['knowledge.read', 'pages.edit'], duration_days: 1,
+    }, consent.csrf_token)).rejects.toMatchObject({ response: { error: 'invalid_scope' } });
+    await pg`UPDATE agent_policies SET enabled=false WHERE workspace_id=${actor.workspaceId}`;
+    const disabled = await oauth.consent(id, actor);
+    expect(disabled.writes_enabled).toBe(false);
+    expect(disabled.supported_scopes).toContain('pages.edit');
+  });
   test('wrong verifier/resource do not consume a valid code; duplicate decision returns encrypted cached redirect', async () => {
     const { id, code, result, consent } = await approved();
     const repeated = await oauth.decide(
@@ -841,12 +856,31 @@ describe('real consent component and session-bound authorization', () => {
           });
         else void request.continue();
       });
+      const readOnlyUrl = node.url + '/oauth/authorize?' + new URLSearchParams({
+        ...query(), scope: 'knowledge.read', resource: node.url + '/mcp',
+      });
+      await tab.goto(readOnlyUrl);
+      await tab.waitForSelector('input[value="pages.edit"]');
+      expect(await tab.$eval('input[value="pages.edit"]', (el) => (el as HTMLInputElement).disabled)).toBe(true);
+      expect(await tab.evaluate(() => document.body.textContent)).toContain('客户端本次未申请此权限');
+      expect(await tab.evaluate(() => document.body.textContent)).not.toContain('工作区当前禁止 Agent 写入');
+      await pg`UPDATE agent_policies SET enabled=false WHERE workspace_id=${actor.workspaceId}`;
+      await tab.reload();
+      await tab.waitForSelector('input[value="pages.edit"]');
+      expect(await tab.evaluate(() => document.body.textContent)).toContain('工作区已禁用 Agent 写入');
+      expect(await tab.evaluate(() => document.body.textContent)).toContain('工作区当前禁止 Agent 写入');
+      await pg`UPDATE agent_policies SET enabled=true WHERE workspace_id=${actor.workspaceId}`;
       await tab.goto(
         node.url +
           '/oauth/authorize?' +
           new URLSearchParams({ ...query(), resource: node.url + '/mcp' }),
       );
       await tab.waitForSelector('button::-p-text(允许连接)');
+      expect(await tab.$eval('input[value="pages.create"]', (el) => (el as HTMLInputElement).disabled)).toBe(true);
+      expect(await tab.$eval('input[value="folders.create"]', (el) => (el as HTMLInputElement).disabled)).toBe(true);
+      expect(await tab.evaluate(() => document.body.textContent)).toContain('客户端本次未申请此权限');
+      expect(await tab.evaluate(() => document.body.textContent)).toContain('重新发起授权');
+      expect(await tab.evaluate(() => document.body.textContent)).not.toContain('工作区当前禁止 Agent 写入');
       expect(
         await tab.$eval(
           'button::-p-text(允许连接)',

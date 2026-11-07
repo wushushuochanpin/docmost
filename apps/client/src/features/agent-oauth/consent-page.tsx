@@ -23,6 +23,8 @@ type Consent = {
   application: string;
   application_source?: string;
   application_verified?: boolean;
+  supported_scopes?: string[];
+  writes_enabled?: boolean;
   requested_scopes?: string[];
   redirect_origin: string;
   scopes: string[];
@@ -163,15 +165,20 @@ export default function AgentConsentPage() {
                 onChange={setScopes}
               >
                 <Stack gap="xs" mt="xs">
-                  {(consent.requested_scopes ?? consent.scopes).map((scope) => {
-                    const allowed = consent.scopes.includes(scope);
+                  {(consent.supported_scopes ?? Object.keys(scopeLabels)).map((scope) => {
+                    const requested = (consent.requested_scopes ?? consent.scopes).includes(scope);
+                    const blocked = scope !== "knowledge.read" && consent.writes_enabled === false;
+                    const allowed = requested && consent.scopes.includes(scope) && !blocked;
                     return (
                       <Checkbox
                         key={scope}
                         value={scope}
-                        label={`${t(scopeLabels[scope] ?? scope)}${
-                          allowed ? "" : `（${t("工作区已禁写")}）`
-                        }`}
+                        label={t(scopeLabels[scope] ?? scope)}
+                        description={[
+                          !requested ? t("客户端本次未申请此权限") : null,
+                          blocked ? t("工作区已禁用 Agent 写入") : null,
+                          requested && !allowed && !blocked ? t("当前不可授权，请联系管理员") : null,
+                        ].filter(Boolean).join("；") || undefined}
                         disabled={
                           busy || scope === "knowledge.read" || !allowed
                         }
@@ -180,13 +187,21 @@ export default function AgentConsentPage() {
                   })}
                 </Stack>
               </Checkbox.Group>
-              {consent.scopes.every((scope) => scope === "knowledge.read") ? (
+              {consent.writes_enabled === false ? (
                 <Alert color="yellow">
                   {t(
                     "工作区当前禁止 Agent 写入。你可以建立只读连接；如需写入，请联系管理员开启 Agent 写入策略。",
                   )}
+                  {" "}<Link to="/settings/agent-policy">{t("查看 Agent 策略")}</Link>
                 </Alert>
               ) : null}
+              {(consent.supported_scopes ?? Object.keys(scopeLabels)).some(
+                (scope) => !(consent.requested_scopes ?? consent.scopes).includes(scope),
+              ) && (
+                <Alert color="blue" title={t("需要其他权限？")}>
+                  {t("未申请的权限不能在本次授权中添加。请返回客户端，配置需要的权限并重新发起授权；重新授权时再选择权限和空间。对于 Codex，可在 MCP 配置中设置 scopes，或使用 codex mcp login --scopes 重新登录。")}
+                </Alert>
+              )}
               <Checkbox.Group
                 label={t("允许访问的空间")}
                 value={spaces}
