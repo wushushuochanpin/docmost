@@ -111,7 +111,10 @@ export default function AgentConsentPage() {
       );
       if (current !== generation.current) return;
       const destination = new URL(data.redirect_url);
-      if (destination.origin !== consent.redirect_origin)
+      const destinationOrigin = destination.protocol === "workbuddy:"
+        ? `${destination.protocol}//${destination.host}`
+        : destination.origin;
+      if (destinationOrigin !== consent.redirect_origin)
         throw new Error("Unexpected callback");
       window.location.assign(destination.href);
     } catch {

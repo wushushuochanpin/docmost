@@ -447,9 +447,9 @@ describe('MCP scoped API token lifecycle and write barrier', () => {
 
 
 
-  test('DCR client completes authorization, consent, token exchange and MCP edit', async () => {
+  test('WorkBuddy DCR client completes authorization, consent, token exchange and MCP edit', async () => {
     const verifier = 'v'.repeat(43);
-    const redirect = 'http://127.0.0.1:43119/callback';
+    const redirect = 'workbuddy://workbuddy/mcp/custom-mcp%3Adocmost/oauth/callback';
     const registration = await oauth.registerClient(
       {
         redirect_uris: [redirect],
@@ -470,6 +470,7 @@ describe('MCP scoped API token lifecycle and write barrier', () => {
     });
     const requestId = new URL(authorize).searchParams.get('request_id')!;
     const consent = await oauth.consent(requestId, actor);
+    expect(consent.redirect_origin).toBe('workbuddy://workbuddy');
     expect(consent.application_verified).toBe(false);
     expect(consent.requested_scopes).toEqual([
       'knowledge.read',

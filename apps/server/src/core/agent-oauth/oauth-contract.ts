@@ -39,6 +39,13 @@ export function validateRedirect(uri: string, publicClient: boolean) {
   } catch {
     return oauthError('invalid_request');
   }
+  // WorkBuddy's desktop client returns via this fixed app deep-link format.
+  // Keep the entire URI exact; arbitrary custom schemes are not allowed.
+  if (
+    publicClient &&
+    /^workbuddy:\/\/workbuddy\/mcp\/custom-mcp%3A[A-Za-z0-9._-]{1,100}\/oauth\/callback$/.test(uri)
+  )
+    return url;
   if (
     url.hash ||
     url.username ||
@@ -52,6 +59,11 @@ export function validateRedirect(uri: string, publicClient: boolean) {
   )
     return oauthError('invalid_request');
   return url;
+}
+export function redirectOrigin(url: URL) {
+  return url.protocol === 'workbuddy:'
+    ? `${url.protocol}//${url.host}`
+    : url.origin;
 }
 export function matchesRedirect(
   uri: string,

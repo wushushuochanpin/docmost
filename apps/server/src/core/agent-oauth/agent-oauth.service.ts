@@ -23,6 +23,7 @@ import {
   OAUTH_SCOPES,
   exactParameters,
   matchesRedirect,
+  redirectOrigin,
   oauthError,
   opaque,
   scopeSet,
@@ -212,7 +213,7 @@ export class AgentOAuthService {
       new Set(
         redirectUris.map((uri) => {
           const url = new URL(uri);
-          return url.origin;
+          return redirectOrigin(url);
         }),
       ),
     );
@@ -422,7 +423,7 @@ export class AgentOAuthService {
         application: client.name,
         application_source: client.source ?? 'manual',
         application_verified: client.source === 'manual',
-        redirect_origin: new URL(row.parameters.redirect_uri).origin,
+        redirect_origin: redirectOrigin(new URL(row.parameters.redirect_uri)),
         supported_scopes: OAUTH_SCOPES,
         writes_enabled: policy.enabled,
         requested_scopes: row.parameters.scope.split(' '),
