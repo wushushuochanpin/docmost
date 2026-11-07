@@ -1,0 +1,39 @@
+.page {
+  min-height: 100vh;
+  padding: 48px 20px;
+  background: light-dark(
+    var(--mantine-color-gray-0),
+    var(--mantine-color-dark-8)
+  );
+}
+
+.container {
+  width: 100%;
+  padding: 0;
+}
+
+.logo {
+  display: block;
+  width: 150px;
+  height: 64px;
+  object-fit: contain;
+  object-position: left center;
+  margin: 0 0 24px;
+}
+
+.card {
+  background: var(--mantine-color-body);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.04);
+}
+
+@media (max-width: 36em) {
+  .page {
+    padding: 24px 16px;
+  }
+  .logo {
+    margin-bottom: 16px;
+  }
+  .card {
+    padding: 24px 20px;
+  }
+}

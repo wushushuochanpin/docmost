@@ -21,6 +21,7 @@ import {
 } from "@/lib/api-client.ts";
 import { lazyWithRetry } from "@/lib/lazy-import.ts";
 import Layout from "@/components/layouts/global/layout.tsx";
+import { UserProvider } from "@/features/user/user-provider.tsx";
 import {
   RouteLoadingBoundary,
   RouteLoadingFallback,
@@ -212,9 +213,13 @@ export default function App() {
         <Route path={"/share/:shareId"} element={<ShareRedirect />} />
         <Route path={"/p/:pageSlug"} element={<PageRedirect />} />
 
+        <Route
+          path="/oauth/consent"
+          element={<UserProvider><AgentConsentPage /></UserProvider>}
+        />
+
         <Route element={<Layout />}>
           <Route path={"/home"} element={<Home />} />
-          <Route path="/oauth/consent" element={<AgentConsentPage />} />
           <Route path={"/ai"} element={<AiChat />} />
           <Route path={"/ai/chat/:chatId"} element={<AiChat />} />
           <Route path={"/spaces"} element={<SpacesPage />} />
