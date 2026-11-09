@@ -14,3 +14,5 @@ disclaimer: 文档仅供参考，可能更新；当前代码、产品及源系�
 按YYYYMMDD_index_short-slug建立迭代包，分别保存PRD、设计、SDD、测试、实现和发布材料。历史方案仍保留在docs/prd。
 
 - [第三方Agent文档MCP](20261018_01_agent-document-mcp/README.md)：用户主动OAuth授权、文档新增和局部编辑；PRD和SDD已确认，P0核心技术探针通过，业务集成待完成。
+
+- [20261109_01_identity_account_switch](20261109_01_identity_account_switch/README.md)：认证 SDK 与 Book 账号切换计划，PRD/SDD 待评审。

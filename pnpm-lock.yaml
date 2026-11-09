@@ -597,6 +597,9 @@ importers:
       '@socket.io/redis-adapter':
         specifier: ^8.3.0
         version: 8.3.0(socket.io-adapter@2.5.4)
+      '@wushushuochanpin/identity-server':
+        specifier: file:../../vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz
+        version: file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz(fastify@5.8.5)
       ai:
         specifier: ^6.0.134
         version: 6.0.134(zod@4.3.6)
@@ -5284,6 +5287,16 @@ packages:
 
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
+
+  '@wushushuochanpin/identity-server@file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz':
+    resolution: {integrity: sha512-DZhUjY+JvOdpk44UQ0tgP016Ul2FTVkrxozZAIF97dkA9eA3anZmA9Dd8wU6nNfBBcSszHwkh6aKJSTYMjW1fw==, tarball: file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz}
+    version: 0.5.1
+    engines: {node: '>=20.18.1'}
+    peerDependencies:
+      fastify: 5.8.5
+    peerDependenciesMeta:
+      fastify:
+        optional: true
 
   '@xmldom/is-dom-node@1.0.1':
     resolution: {integrity: sha512-CJDxIgE5I0FH+ttq/Fxy6nRpxP70+e2O048EPe85J2use3XKdatVM7dDVvFNjQudd9B49NPoZ+8PG49zj4Er8Q==}
@@ -15802,6 +15815,13 @@ snapshots:
     dependencies:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
+
+  '@wushushuochanpin/identity-server@file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz(fastify@5.8.5)':
+    dependencies:
+      openid-client: 6.8.8
+      undici: 7.24.0
+    optionalDependencies:
+      fastify: 5.8.5
 
   '@xmldom/is-dom-node@1.0.1': {}
 

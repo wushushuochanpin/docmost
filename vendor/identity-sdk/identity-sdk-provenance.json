@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "repository": "company-identity-center",
+  "version": "0.5.1",
+  "baseCommit": "d58e03a662b102e1060f9c52f44ed24347d30d3e",
+  "workingTreeSnapshot": false,
+  "freshlyCompiled": true,
+  "packages": {
+    "server": {
+      "archive": "wushushuochanpin-identity-server-0.5.1.tgz",
+      "sha256": "55e4d230ed8e9d62fb3526003ab9b181ef4488c9a99d51bc430881f584ff73bc",
+      "sources": {
+        "packages/identity-server/package.json": "8fadc27ae8f547d820ce4d28195e608181616a222ab5f45c3c4f0a38c4e68967",
+        "packages/identity-server/src/assurance.ts": "0df1fa8f99a91e31aab7ee6a09e03150f7abe58c8d887b7061f823123e26e062",
+        "packages/identity-server/src/async.ts": "c789ab374778da9f278ab1da2fbd68b9f09a87f4edb068acbeceb07f5c461871",
+        "packages/identity-server/src/core.ts": "fc241f34c912dc93624ba724bcbf44fa00a85dfee5bbfb447426196f437b7a7e",
+        "packages/identity-server/src/delegation.ts": "dd27e943e1029a38d1cb63dc139a8e520e2f2ec3cd064ca5128acc1aa6418c29",
+        "packages/identity-server/src/diagnostics.ts": "a4be3a1ff721af17ffe9c9fda83581935a9ec1efb520d303d438451679264e0f",
+        "packages/identity-server/src/express.ts": "96d284c30ce27bf11abac6c6ac29323b7226736271d627fbb4257379f1333275",
+        "packages/identity-server/src/grants.ts": "4abb6aab159849dbb8692795116c7ca6822c52ae126e6c61b0c69745c6d8fd91",
+        "packages/identity-server/src/hosted.ts": "57e64a3f6f03febe0bb586dfa424726704d5e162a034ebfa31e11385b80f7f54",
+        "packages/identity-server/src/http.ts": "a7b3eb27a6b2eb2d4e6ded8c5ed66ee6db856010da0ac39f5997c0648309010b",
+        "packages/identity-server/src/index.ts": "d86f6c8c39301b1294736462b7a81a657351870afb873af30d0922c33b77283c",
+        "packages/identity-server/src/portable.ts": "e951ce5a7c72b63be58333821bff681770df5165046cc3888dd49cc06628da04",
+        "packages/identity-server/src/postgres-store.ts": "e3bb2ba63470df5a9e54db236a61a9609c2f6fb8da6dc1f8cb84ec19dff4d326",
+        "packages/identity-server/src/profile.ts": "ffee881d2db98a81f61ed41fcb9f071a366f4a583b248c22538925a6b1e05f98",
+        "packages/identity-server/src/provider.ts": "a0f72d3d58e972cafdebb05a38e852d17a7d2b22340020ab94904130ef1214c6",
+        "packages/identity-server/src/reauthentication.ts": "20f942f87038cebab681a9fbe15b0aa218be0ce9a2b435cb651dce5f1289b831",
+        "packages/identity-server/src/runtime.ts": "7c5c4c1ea3225f0f0362424f18cba4a466b1452b726962777020ca7d699d1aaf",
+        "packages/identity-server/src/storage.ts": "49e619afea4abaf2094a9a93d85406d7080f4b9cb3496c091c7f45ad061774ab",
+        "packages/identity-server/src/store.ts": "eef7d78bdf921826899c03d1a9daa37b9182c39a797a41a751de70b8a872d495",
+        "packages/identity-server/src/transport.ts": "f07a32941626d9fb00910829a34f4896d48bddc7d429d918df6ad7a89e3c48f2",
+        "packages/identity-server/src/types.ts": "b4d5c2a6c576e5b0b61e6a4a8944a97d7dba17008b91eaf1fdd5c939da3f36ea"
+      },
+      "name": "@wushushuochanpin/identity-server",
+      "version": "0.5.1"
+    },
+    "web": {
+      "archive": "wushushuochanpin-identity-web-0.5.1.tgz",
+      "sha256": "be318228365668902e794fd7d7a89628bb47ca0df95ed9b5344d55cec6c6f517",
+      "sources": {
+        "packages/identity-web/package.json": "6c5e00fbc6eb65dddd655fdd5e593b8640fcd2386baf333135682a6bf8d100fe",
+        "packages/identity-web/src/index.ts": "e87c8a5338d7436b544e336b253ee2939f24a3fa2e8031ef888d3346b114e9b0"
+      },
+      "name": "@wushushuochanpin/identity-web",
+      "version": "0.5.1"
+    },
+    "react": {
+      "archive": "wushushuochanpin-identity-react-0.5.1.tgz",
+      "sha256": "fec61f184c15a95d28e4a7a493ed0c7825b177449494989d508979c2f6171c34",
+      "sources": {
+        "packages/identity-react/package.json": "1fbe7906eddfcd9da686a84cc7a2ce4a8632699498466026519896cac364910a",
+        "packages/identity-react/src/AuthPage.tsx": "53a394c82f8135bc11415776fb34832c523fffdb97f2886205cf346ac8982c51",
+        "packages/identity-react/src/Login.tsx": "63a6236516234977e97d7bed72b6adba128bc96c7878dc4fee52904f12b1bac8",
+        "packages/identity-react/src/LoginContext.tsx": "07946a21539457739736789976fccbb044de6a5cbd820ab3ed6e8788fbb8e2a8",
+        "packages/identity-react/src/LoginLegal.tsx": "9fd490af28df4be3917cffb3a91771abd0010b723b0c7b0211fecff0d60ec91f",
+        "packages/identity-react/src/Management.tsx": "603946238675184a2099024ea337fea5310a610fc43ae6b349fe79e33b436f68",
+        "packages/identity-react/src/index.ts": "27f7b907d5ee7992d17ab575c9d649829da27202cea0e8829ae2c0a7d19c4d85",
+        "packages/identity-react/src/login.css": "8a59e389aad62460678d9e3c2b54876c9f9b4ce19bad49ab38dfcc9f5432346d",
+        "packages/identity-react/src/server.tsx": "316b529840d88ad90efaf1cedcfd1da9b7e74a37b2f0f7aadc2733829351fcd2",
+        "packages/identity-react/src/tokens.css": "d91f1ccd030806d4aa1e6447867be57f85b827c82e839897df5c82a50006b2cf"
+      },
+      "name": "@wushushuochanpin/identity-react",
+      "version": "0.5.1"
+    }
+  }
+}

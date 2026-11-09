@@ -31,6 +31,9 @@ describe("identity navigation contract", () => {
   ])("rejects unsafe or unsupported destination %s", (path) => {
     expect(identityReturnPath(path)).toBe("/home");
   });
+  it("requests explicit reauthentication for account switching", () => {
+    expect(identityLoginUrl("/home", true)).toBe("/api/identity/start?returnTo=%2Fhome&reauthenticate=1");
+  });
   it("maps unbound identities to local binding rather than automatic signup", () => {
     expect(identityErrorMessage("identity_not_linked")).toContain("invitation");
     expect(identityErrorMessage("<script>secret</script>")).not.toContain(

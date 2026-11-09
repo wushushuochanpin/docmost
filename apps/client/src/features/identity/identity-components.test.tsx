@@ -96,6 +96,8 @@ describe("identity login", () => {
     expect((await screen.findByRole("alert")).textContent).toContain(
       "first accept an invitation",
     );
+    fireEvent.click(await screen.findByRole("button", { name: "Scan again or switch account" }));
+    await waitFor(() => expect(beginIdentityLogin).toHaveBeenCalledWith(undefined, undefined, true));
   });
 });
 

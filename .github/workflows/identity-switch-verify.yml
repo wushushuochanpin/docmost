@@ -1,0 +1,40 @@
+name: Verify identity account switch
+
+on:
+  pull_request:
+    paths:
+      - 'apps/client/src/features/identity/**'
+      - 'apps/client/public/locales/**/translation.json'
+      - 'apps/server/src/core/identity/**'
+      - 'apps/server/package.json'
+      - 'vendor/identity-sdk/**'
+      - 'scripts/verify-identity-sdk.mjs'
+      - 'pnpm-lock.yaml'
+      - 'Dockerfile'
+      - '.github/workflows/identity-switch-verify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: docmost-linux-checks
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: node scripts/verify-identity-sdk.mjs
+      - run: pnpm install --frozen-lockfile
+      - name: Test identity service
+        run: pnpm --filter server test --runInBand src/core/identity/identity.provider.spec.ts src/core/identity/identity.service.spec.ts src/core/identity/identity.controller.spec.ts
+      - name: Test identity entry
+        run: pnpm --filter client test src/features/identity/identity-components.test.tsx src/features/identity/identity-flow.test.ts
+      - name: Build the production image without publishing
+        run: docker build --target installer -t docmost-identity-pr-check .

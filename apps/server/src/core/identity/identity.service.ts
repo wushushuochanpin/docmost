@@ -34,6 +34,7 @@ interface LoginParameters {
   issuer: string;
   clientId: string;
   callback: string;
+  reauthenticationStartedAt?: number;
 }
 
 @Injectable()
@@ -114,6 +115,7 @@ export class IdentityService {
     returnTo?: string,
     link?: { user: User; sessionId: string; password: string },
     credential?: string,
+    reauthenticate = false,
   ) {
     this.assertEnabled(workspace.id);
     const config = this.settings.get();
@@ -154,7 +156,9 @@ export class IdentityService {
     const state = randomIdentitySecret(),
       nonce = randomIdentitySecret(),
       verifier = randomIdentitySecret();
+    const reauthenticationStartedAt = reauthenticate && !link ? Date.now() : undefined;
     const expiresAt = Date.now() + IDENTITY_TTL_MS;
+    const freshParameters = reauthenticationStartedAt ? await this.provider.reauthenticationParameters() : {};
     const query = new URLSearchParams({
       client_id: config.clientId,
       redirect_uri: config.callback,
@@ -164,7 +168,7 @@ export class IdentityService {
       nonce,
       code_challenge: createHash('sha256').update(verifier).digest('base64url'),
       code_challenge_method: 'S256',
-      ...(link ? { prompt: 'login', max_age: '0' } : {}),
+      ...(link ? { prompt: 'login', max_age: '0' } : freshParameters),
     });
     const hosted = await this.provider.create(query, expiresAt);
     await this.repository.create({
@@ -183,6 +187,7 @@ export class IdentityService {
           issuer: config.issuer,
           clientId: config.clientId,
           callback: config.callback,
+          reauthenticationStartedAt,
         },
         config.encryptionKey,
       ),
@@ -251,7 +256,8 @@ export class IdentityService {
         state,
         parameters.nonce,
         parameters.verifier,
-        tx.purpose === 'link' ? 0 : undefined,
+        tx.purpose === 'link' || parameters.reauthenticationStartedAt ? 0 : undefined,
+        parameters.reauthenticationStartedAt,
       );
       const metadata = {
         issuer: config.issuer,

@@ -12,6 +12,7 @@ ENV NX_SOCKET_DIR=/tmp/nx-tmp
 
 COPY . .
 
+RUN node scripts/verify-identity-sdk.mjs
 RUN pnpm install --frozen-lockfile
 RUN pnpm clean && pnpm build
 
@@ -40,6 +41,9 @@ COPY --from=builder /app/apps/server/package.json /app/apps/server/package.json
 # Copy packages
 COPY --from=builder /app/packages/editor-ext/dist /app/packages/editor-ext/dist
 COPY --from=builder /app/packages/editor-ext/package.json /app/packages/editor-ext/package.json
+
+# Copy the pinned SDK candidate for the production dependency installation.
+COPY --from=builder /app/vendor/identity-sdk /app/vendor/identity-sdk
 
 # Copy root package files
 COPY --from=builder /app/package.json /app/package.json

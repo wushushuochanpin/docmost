@@ -23,20 +23,19 @@ export function IdentityLogin() {
     staleTime: 0,
     refetchOnMount: true,
   });
-  const error = identityErrorMessage(
-    new URLSearchParams(location.search).get("identity_error"),
-  );
+  const errorCode = new URLSearchParams(location.search).get("identity_error");
+  const error = identityErrorMessage(errorCode);
   // Failed callbacks remain explainable even if an administrator disabled the feature.
   if (!data?.enabled && !error) return null;
 
   const returnTo = getRedirectParam() ?? location.state?.from;
-  async function start() {
+  async function start(reauthenticate = false) {
     if (pending.current) return;
     pending.current = true;
     setStarting(true);
     setStartError(null);
     try {
-      await beginIdentityLogin(returnTo);
+      await beginIdentityLogin(returnTo, undefined, reauthenticate);
     } catch (failure) {
       setStartError(
         failure instanceof IdentityBrowserUnsupportedError
@@ -63,14 +62,14 @@ export function IdentityLogin() {
       {data?.enabled && (
         <>
           <Button
-            onClick={start}
+            onClick={() => start(errorCode === "identity_not_linked")}
             loading={starting}
             disabled={starting}
             fullWidth
             color="black"
             radius={4}
           >
-            {t("Sign in with Xianzhi Identity Center")}
+            {t(errorCode === "identity_not_linked" ? "Scan again or switch account" : "Sign in with Xianzhi Identity Center")}
           </Button>
           <Text size="xs" c="dimmed">
             {t(

@@ -45,6 +45,7 @@ describe('Identity HTTP contract', () => {
             ? controller.start(
                 { id: 'workspace' } as any,
                 '/home',
+                undefined,
                 request,
                 reply,
               )
@@ -128,6 +129,7 @@ describe('Identity HTTP contract', () => {
     await controller.start(
       { id: 'workspace' } as any,
       '/home',
+      undefined,
       { cookies: {} } as any,
       res,
     );

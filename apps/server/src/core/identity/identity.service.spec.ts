@@ -91,3 +91,25 @@ describe('Identity browser bootstrap', () => {
     expect(repository.registerHandle).not.toHaveBeenCalled();
   });
 });
+
+describe('Identity account switch', () => {
+  it('binds the fresh-auth requirement to the server transaction', async () => {
+    const key = Buffer.alloc(32, 9);
+    const provider = {
+      reauthenticationParameters: jest.fn().mockResolvedValue({prompt: 'login', max_age: '0'}),
+      create: jest.fn().mockImplementation(async (_query, expiresAt) => ({url: 'https://center.test/login', expiresAt})),
+    };
+    const repository = {hasHandle: jest.fn().mockResolvedValue(true), create: jest.fn()};
+    const service = new IdentityService({enabled: () => true, get: () => ({issuer: 'https://center.test', clientId: 'book', callback: 'https://book.test/api/identity/callback', encryptionKey: key})} as any, provider as any, repository as any, {} as any, {} as any, {} as any);
+    const before = Date.now();
+    await service.start({id:'workspace'} as any, 'a'.repeat(43), '/home', undefined, 'dms_' + 'b'.repeat(43), true);
+    const query = provider.create.mock.calls[0][0] as URLSearchParams;
+    expect(query.get('prompt')).toBe('login');
+    expect(query.get('max_age')).toBe('0');
+    expect(query.get('code_challenge_method')).toBe('S256');
+    const {openIdentity} = await import('./identity.security');
+    const saved = openIdentity<{reauthenticationStartedAt:number}>(repository.create.mock.calls[0][0].sealedParameters, key);
+    expect(saved.reauthenticationStartedAt).toBeGreaterThanOrEqual(before);
+    expect(saved.reauthenticationStartedAt).toBeLessThanOrEqual(Date.now());
+  });
+});

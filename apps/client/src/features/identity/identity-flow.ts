@@ -23,10 +23,10 @@ export function identityReturnPath(candidate: unknown): string {
   return "/home";
 }
 
-export function identityLoginUrl(candidate: unknown): string {
-  return `/api/identity/start?${new URLSearchParams({
-    returnTo: identityReturnPath(candidate),
-  })}`;
+export function identityLoginUrl(candidate: unknown, reauthenticate = false): string {
+  const query = new URLSearchParams({ returnTo: identityReturnPath(candidate) });
+  if (reauthenticate) query.set("reauthenticate", "1");
+  return `/api/identity/start?${query}`;
 }
 
 // Only known codes become user-facing copy; never render provider error text.

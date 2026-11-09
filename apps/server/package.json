@@ -69,6 +69,7 @@
     "@node-oauth/oauth2-server": "5.3.1",
     "@node-saml/passport-saml": "^5.1.0",
     "@socket.io/redis-adapter": "^8.3.0",
+    "@wushushuochanpin/identity-server": "file:../../vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz",
     "ai": "^6.0.134",
     "ai-sdk-ollama": "^3.8.1",
     "bcrypt": "^6.0.0",
