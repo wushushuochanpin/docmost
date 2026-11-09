@@ -597,6 +597,9 @@ importers:
       '@socket.io/redis-adapter':
         specifier: ^8.3.0
         version: 8.3.0(socket.io-adapter@2.5.4)
+      '@wushushuochanpin/identity-server':
+        specifier: file:../../vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz
+        version: file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz(fastify@5.8.5)
       ai:
         specifier: ^6.0.134
         version: 6.0.134(zod@4.3.6)
@@ -5285,6 +5288,16 @@ packages:
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
 
+  '@wushushuochanpin/identity-server@file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz':
+    resolution: {integrity: sha512-DZhUjY+JvOdpk44UQ0tgP016Ul2FTVkrxozZAIF97dkA9eA3anZmA9Dd8wU6nNfBBcSszHwkh6aKJSTYMjW1fw==, tarball: file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz}
+    version: 0.5.1
+    engines: {node: '>=20.18.1'}
+    peerDependencies:
+      fastify: 5.8.5
+    peerDependenciesMeta:
+      fastify:
+        optional: true
+
   '@xmldom/is-dom-node@1.0.1':
     resolution: {integrity: sha512-CJDxIgE5I0FH+ttq/Fxy6nRpxP70+e2O048EPe85J2use3XKdatVM7dDVvFNjQudd9B49NPoZ+8PG49zj4Er8Q==}
     engines: {node: '>= 16'}
@@ -7674,6 +7687,9 @@ packages:
     resolution: {integrity: sha512-rg9zJN+G4n2nfJl5MW3BMygZX56zKPNVEYYqq7adpmMh4Jn2QNEwhvQlFy6jPVdcod7txZtKHWnyZiA3a0zP7A==}
     hasBin: true
 
+  jose@6.2.16:
+    resolution: {integrity: sha512-4LSJpbuBuPdGrONCdZUy0xnxtLf8eEz+EY0SMXdHQEBU7bgUHDVblU/JAjryv3wID9/LK7/YuwFwq+AQNfMscQ==}
+
   jose@6.1.3:
     resolution: {integrity: sha512-0TpaTfihd4QMNwrz/ob2Bp7X04yuxJkjRGi4aKmOqwhov54i6u79oCv7T+C7lo70MKH6BesI3vscD1yb/yzKXQ==}
 
@@ -8492,6 +8508,9 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  oauth4webapi@3.8.8:
+    resolution: {integrity: sha512-8N28E+a/oxfXWBgOMt+ZP/JUf/XR+IFbvkAEPP3gznXOMv9BpAAwiIj0TFNz3tGTPc0ZQ8zmWBNgN1nAys0gng==}
+
   oauth4webapi@3.8.5:
     resolution: {integrity: sha512-A8jmyUckVhRJj5lspguklcl90Ydqk61H3dcU0oLhH3Yv13KpAliKTt5hknpGGPZSSfOwGyraNEFmofDYH+1kSg==}
 
@@ -8570,6 +8589,9 @@ packages:
         optional: true
       zod:
         optional: true
+
+  openid-client@6.8.8:
+    resolution: {integrity: sha512-ZsucJA5Ad04Uv7YN4ql+s4GXNmb9uAYQwyJTsJx7CH/MX3JZioLE2pVKi1SC+YrbSLA4Px3Gi30dMjgOZtb6pA==}
 
   openid-client@6.8.2:
     resolution: {integrity: sha512-uOvTCndr4udZsKihJ68H9bUICrriHdUVJ6Az+4Ns6cW55rwM5h0bjVIzDz2SxgOI84LKjFyjOFvERLzdTUROGA==}
@@ -15803,6 +15825,13 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
 
+  '@wushushuochanpin/identity-server@file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz(fastify@5.8.5)':
+    dependencies:
+      openid-client: 6.8.8
+      undici: 7.24.0
+    optionalDependencies:
+      fastify: 5.8.5
+
   '@xmldom/is-dom-node@1.0.1': {}
 
   '@xmldom/xmldom@0.8.13': {}
@@ -18695,6 +18724,8 @@ snapshots:
 
   jiti@2.4.2: {}
 
+  jose@6.2.16: {}
+
   jose@6.1.3: {}
 
   jotai-optics@0.4.0(jotai@2.18.1(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@18.3.12)(react@18.3.1))(optics-ts@2.4.1):
@@ -19460,6 +19491,8 @@ snapshots:
       pathe: 2.0.3
       tinyexec: 1.1.2
 
+  oauth4webapi@3.8.8: {}
+
   oauth4webapi@3.8.5: {}
 
   oauth@0.10.0: {}
@@ -19535,6 +19568,11 @@ snapshots:
       ws: 8.20.1
       zod: 4.3.6
     optional: true
+
+  openid-client@6.8.8:
+    dependencies:
+      jose: 6.2.16
+      oauth4webapi: 3.8.8
 
   openid-client@6.8.2:
     dependencies:

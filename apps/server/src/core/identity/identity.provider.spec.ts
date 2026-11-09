@@ -102,6 +102,17 @@ describe('Identity center adapter (provider boundary stub)', () => {
       ),
     ).rejects.toThrow('identity_invalid');
   });
+  it('checks the verified auth_time for an explicit account switch', async () => {
+    const enforce = jest.fn();
+    jest.spyOn(adapter as any, 'reauthenticationSdk').mockResolvedValue({requireFreshAuthentication: enforce});
+    jest.spyOn(adapter, 'provider').mockResolvedValue({
+      oidc: {authorizationCodeGrant: jest.fn().mockResolvedValue({access_token: 'token', expires_in: 60, claims: () => ({sub: 'person', exp: Math.floor(Date.now()/1000)+60, auth_time: 123})})}, config: {},
+    } as any);
+    await adapter.exchange(new URL(configuration.callback), state, 'nonce', 'verifier', 0, 123000);
+    expect(enforce).toHaveBeenCalledWith(123, 123000);
+    enforce.mockImplementation(() => { throw new Error('fresh_authentication_required'); });
+    await expect(adapter.exchange(new URL(configuration.callback), state, 'nonce', 'verifier', 0, 123000)).rejects.toThrow('identity_invalid');
+  });
   it.each([
     { active: false, sub: 'person', client_id: 'docmost' },
     { active: true, sub: 'other', client_id: 'docmost' },

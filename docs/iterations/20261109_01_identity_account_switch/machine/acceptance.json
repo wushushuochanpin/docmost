@@ -1,0 +1,48 @@
+{
+  "iteration": "20261109_01_identity_account_switch",
+  "status": "review",
+  "acceptance": [
+    {
+      "id": "ACC-IDC-SW-001",
+      "prd": "../prd/PRD.md",
+      "sdd": "../sdd/SDD.md",
+      "status": "planned"
+    },
+    {
+      "id": "ACC-IDC-SW-002",
+      "prd": "../prd/PRD.md",
+      "sdd": "../sdd/SDD.md",
+      "status": "planned"
+    },
+    {
+      "id": "ACC-IDC-SW-003",
+      "prd": "../prd/PRD.md",
+      "sdd": "../sdd/SDD.md",
+      "status": "planned"
+    },
+    {
+      "id": "ACC-IDC-SW-004",
+      "prd": "../prd/PRD.md",
+      "sdd": "../sdd/SDD.md",
+      "status": "planned"
+    },
+    {
+      "id": "ACC-IDC-SW-005",
+      "prd": "../prd/PRD.md",
+      "sdd": "../sdd/SDD.md",
+      "status": "planned"
+    },
+    {
+      "id": "ACC-IDC-SW-006",
+      "prd": "../prd/PRD.md",
+      "sdd": "../sdd/SDD.md",
+      "status": "planned"
+    },
+    {
+      "id": "ACC-IDC-SW-007",
+      "prd": "../prd/PRD.md",
+      "sdd": "../sdd/SDD.md",
+      "status": "planned"
+    }
+  ]
+}

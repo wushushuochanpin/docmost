@@ -73,12 +73,21 @@ export class IdentityProvider {
       throw new UnauthorizedException('invalid_transaction');
   }
 
+  private async reauthenticationSdk() {
+    return (new Function('return import(\"@wushushuochanpin/identity-server/reauthentication\")') as () => Promise<{reauthenticationParameters: () => {prompt: 'login'; max_age: '0'}; requireFreshAuthentication: (authTime: unknown, startedAt: number) => void}>)();
+  }
+
+  async reauthenticationParameters() {
+    return (await this.reauthenticationSdk()).reauthenticationParameters();
+  }
+
   async exchange(
     url: URL,
     expectedState: string,
     nonce: string,
     verifier: string,
     maxAge?: number,
+    reauthenticationStartedAt?: number,
   ) {
     const { oidc, config } = await this.provider();
     try {
@@ -90,6 +99,8 @@ export class IdentityProvider {
         ...(maxAge !== undefined ? { maxAge } : {}),
       });
       const claims = result.claims();
+      if (reauthenticationStartedAt !== undefined)
+        (await this.reauthenticationSdk()).requireFreshAuthentication(claims?.auth_time, reauthenticationStartedAt);
       if (
         !claims?.sub ||
         !result.access_token ||

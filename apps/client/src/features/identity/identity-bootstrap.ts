@@ -7,6 +7,7 @@ export { IdentityBrowserUnsupportedError } from "@/features/auth/auth-cookie-loc
 export async function beginIdentityLogin(
   returnTo: unknown,
   navigate: (url: string) => void = (url) => window.location.assign(url),
+  reauthenticate = false,
 ): Promise<void> {
   await withAuthCookieLock(async () => {
     const result = await bootstrapIdentity();
@@ -14,7 +15,7 @@ export async function beginIdentityLogin(
     navigate(
       result.authenticated
         ? identityReturnPath(returnTo)
-        : identityLoginUrl(returnTo),
+        : identityLoginUrl(returnTo, reauthenticate),
     );
   }, true);
 }

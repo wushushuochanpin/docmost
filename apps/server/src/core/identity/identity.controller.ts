@@ -92,6 +92,7 @@ export class IdentityController {
   async start(
     @AuthWorkspace() workspace: Workspace,
     @Query('returnTo') returnTo: string | undefined,
+    @Query('reauthenticate') reauthenticate: string | undefined,
     @Req() req: FastifyRequest,
     @Res() res: FastifyReply,
   ) {
@@ -103,6 +104,7 @@ export class IdentityController {
         returnTo,
         undefined,
         req.cookies.authToken,
+        reauthenticate === '1',
       );
       return res.code(302).redirect(started.url);
     } catch (error) {
