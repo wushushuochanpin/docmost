@@ -58,7 +58,7 @@ RUN chown -R node:node /app
 USER node
 
 RUN pnpm install --frozen-lockfile --prod
-RUN cd apps/server && node --input-type=module -e 'const sdk = await import("@wushushuochanpin/identity-server/reauthentication"); if (sdk.reauthenticationParameters().prompt !== "login") process.exit(1)'
+RUN cd apps/server && node --input-type=module -e 'import { createRequire } from "node:module"; const path = import.meta.resolve("@wushushuochanpin/identity-server/reauthentication"); const sdk = await import(path); if (sdk.reauthenticationParameters().prompt !== "login" || createRequire(path)("undici/package.json").version !== "7.30.1") process.exit(1)'
 
 RUN mkdir -p /app/data/storage
 
