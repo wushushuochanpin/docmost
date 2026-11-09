@@ -10168,6 +10168,10 @@ packages:
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
+  undici@7.30.1:
+    resolution: {integrity: sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==}
+    engines: {node: ">=20.18.1"}
+
   undici@7.24.0:
     resolution: {integrity: sha512-jxytwMHhsbdpBXxLAcuu0fzlQeXCNnWdDyRHpvWsUl8vd98UwYdl9YTyn8/HcpcJPC3pwUveefsa3zTxyD/ERg==}
     engines: {node: '>=20.18.1'}
@@ -15828,7 +15832,7 @@ snapshots:
   '@wushushuochanpin/identity-server@file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz(fastify@5.8.5)':
     dependencies:
       openid-client: 6.8.8
-      undici: 7.24.0
+      undici: 7.30.1
     optionalDependencies:
       fastify: 5.8.5
 
@@ -21487,6 +21491,8 @@ snapshots:
   undici-types@6.21.0: {}
 
   undici-types@7.18.2: {}
+
+  undici@7.30.1: {}
 
   undici@7.24.0: {}
 

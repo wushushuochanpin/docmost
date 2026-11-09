@@ -58,6 +58,7 @@ RUN chown -R node:node /app
 USER node
 
 RUN pnpm install --frozen-lockfile --prod
+RUN cd apps/server && node --input-type=module -e 'const sdk = await import("@wushushuochanpin/identity-server/reauthentication"); if (sdk.reauthenticationParameters().prompt !== "login") process.exit(1)'
 
 RUN mkdir -p /app/data/storage
 
