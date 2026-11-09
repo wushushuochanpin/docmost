@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   verify:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: docmost-linux-checks
     timeout-minutes: 45
     steps:
