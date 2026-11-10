@@ -39,6 +39,18 @@ namespace。宿主 Nginx 代理固定 ClusterIP `10.43.30.30:3000`。PostgreSQL 
 应用发布路径。Release workflow 与生产 Deploy workflow 是不同入口：前者创建版本发布，
 后者部署合并后的精确 SHA。
 
+## 手动触发受保护的快速发布
+
+合并到 `main` 且需要重新触发发布时，可在已安装并登录 `gh` 的开发机运行：
+
+```bash
+./scripts/release-production.sh <main 的完整 40 位提交 SHA>
+```
+
+脚本核对 GitHub 上的 `main`，触发对应的 `workflow_dispatch` 并跟踪该次运行；工作流也会检查提交 SHA，防止触发期间 `main` 变化导致发布错误版本。构建在隔离的 Runner Docker 中进行，优先复用镜像缓存；宿主机不需要安装 Node。备份回归、迁移、发布后真实备份和远端校验仍是发布条件。首次缓存未命中及真实备份所需时间无法保证。
+
+先把脚本和工作流合并到 `main`，再使用该入口。运行失败或找不到已提交的运行时，先在 Actions 中按输出的 request ID 检查，避免重复触发。不要将一次性手动豁免视为常规发布方式。发布结果仍需按本页要求验收；界面改动需单独进行浏览器验证。
+
 ## Initial migration
 
 首次迁移需要在合并后的服务器 checkout 上运行：

@@ -1642,5 +1642,8 @@
   "Teleprompter": "提词模式",
   "Speed": "速度",
   "Pause": "暂停",
-  "Play": "播放"
+  "Play": "播放",
+  "Play from beginning": "从头播放",
+  "Decrease speed": "降低速度",
+  "Increase speed": "提高速度"
 }

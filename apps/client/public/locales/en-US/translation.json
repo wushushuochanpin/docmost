@@ -1345,5 +1345,8 @@
   "Retry sign-out": "Retry sign-out",
   "Go to sign-in": "Go to sign-in",
   "The identity center could not confirm this sign-in. Please try again shortly.": "The identity center could not confirm this sign-in. Please try again shortly.",
-  "Teleprompter": "Teleprompter"
+  "Teleprompter": "Teleprompter",
+  "Play from beginning": "Play from beginning",
+  "Decrease speed": "Decrease speed",
+  "Increase speed": "Increase speed"
 }
