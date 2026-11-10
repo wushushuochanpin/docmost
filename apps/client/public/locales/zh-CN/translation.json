@@ -1638,5 +1638,9 @@
   "The identity center is temporarily unavailable. Your sign-in is still valid. Please retry shortly.": "认证中心暂时不可用，当前登录仍然有效，请稍后重试。",
   "Retry sign-out": "重试退出",
   "Go to sign-in": "前往登录",
-  "The identity center could not confirm this sign-in. Please try again shortly.": "认证中心暂时无法确认本次登录，请稍后重试。"
+  "The identity center could not confirm this sign-in. Please try again shortly.": "认证中心暂时无法确认本次登录，请稍后重试。",
+  "Teleprompter": "提词模式",
+  "Speed": "速度",
+  "Pause": "暂停",
+  "Play": "播放"
 }

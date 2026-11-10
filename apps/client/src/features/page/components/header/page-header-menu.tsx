@@ -1,6 +1,32 @@
-import { ActionIcon, Group, Loader, Menu, Text, ThemeIcon, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Group,
+  Loader,
+  Menu,
+  Text,
+  ThemeIcon,
+  Tooltip,
+} from "@mantine/core";
 import type { Editor } from "@tiptap/core";
-import { ArrowRight, MoveHorizontal, ChevronDown, ChevronUp, MoreHorizontal, FileDown, FileText, History, Link, FileCode, MessageSquare, Printer, Trash, Wifi, WifiOff, Globe } from "lucide-react";
+import {
+  ArrowRight,
+  MoveHorizontal,
+  ChevronDown,
+  ChevronUp,
+  MoreHorizontal,
+  FileDown,
+  FileText,
+  History,
+  Link,
+  FileCode,
+  MessageSquare,
+  Printer,
+  Trash,
+  Wifi,
+  WifiOff,
+  Globe,
+  Presentation,
+} from "lucide-react";
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import useToggleAside from "@/hooks/use-toggle-aside.tsx";
 import { useAsideTriggerProps } from "@/hooks/use-toggle-aside.tsx";
@@ -35,6 +61,10 @@ import {
   normalizeMarkdownClipboard,
   normalizePlainTextClipboard,
 } from "@/features/editor/utils/clipboard-format.ts";
+
+const LazyTeleprompter = React.lazy(
+  () => import("@/features/page/components/teleprompter/teleprompter"),
+);
 
 const LazyExportModal = React.lazy(
   () => import("@/components/common/export-modal"),
@@ -121,10 +151,7 @@ function getWordCountFromText(text?: string | null) {
   }
 
   const cjkMatches = normalized.match(/[㐀-鿿豈-﫿]/g) ?? [];
-  const remainingText = normalized.replace(
-    /[㐀-鿿豈-﫿]/g,
-    " ",
-  );
+  const remainingText = normalized.replace(/[㐀-鿿豈-﫿]/g, " ");
   const wordMatches = remainingText.match(/[^\s]+/g) ?? [];
 
   return cjkMatches.length + wordMatches.length;
@@ -163,6 +190,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
     moveToModalOpened,
     { open: openMoveToModal, close: closeMoveToModal },
   ] = useDisclosure(false);
+  const [teleprompterText, setTeleprompterText] = useState<string | null>(null);
   const [menuOpened, setMenuOpened] = useState(false);
   const [shareExpanded, setShareExpanded] = useState(false);
   const pageEditor = useAtomValue(pageEditorAtom);
@@ -250,6 +278,15 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
 
   return (
     <>
+      {teleprompterText !== null && (
+        <Suspense fallback={null}>
+          <LazyTeleprompter
+            title={currentPage.title || ""}
+            text={teleprompterText}
+            onClose={() => setTeleprompterText(null)}
+          />
+        </Suspense>
+      )}
       <Menu
         shadow="xl"
         position="bottom-end"
@@ -317,12 +354,23 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
             {t("Comments")}
           </Menu.Item>
 
+          {currentPage.nodeType !== "folder" && (
+            <Menu.Item
+              leftSection={<Presentation size={16} />}
+              onClick={() =>
+                setTeleprompterText(
+                  activeEditor
+                    ? getEditorPlainText(activeEditor)
+                    : (currentPage.textContent ?? ""),
+                )
+              }
+            >
+              {t("Teleprompter")}
+            </Menu.Item>
+          )}
           <Menu.Divider />
 
-          <Menu.Item
-            leftSection={<Link size={16} />}
-            onClick={handleCopyLink}
-          >
+          <Menu.Item leftSection={<Link size={16} />} onClick={handleCopyLink}>
             {t("Copy link")}
           </Menu.Item>
 
@@ -382,10 +430,7 @@ function PageActionMenu({ readOnly, page }: PageActionMenuProps) {
             {t("Export")}
           </Menu.Item>
 
-          <Menu.Item
-            leftSection={<Printer size={16} />}
-            onClick={handlePrint}
-          >
+          <Menu.Item leftSection={<Printer size={16} />} onClick={handlePrint}>
             {t("Print")}
           </Menu.Item>
 
