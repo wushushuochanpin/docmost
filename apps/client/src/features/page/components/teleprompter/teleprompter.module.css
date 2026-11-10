@@ -1,0 +1,108 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #101319;
+  color: #f7f7f5;
+}
+.controls {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  background: #171b22;
+  box-shadow: 0 1px 0 #ffffff1c;
+}
+.controls strong {
+  margin-right: auto;
+}
+.controls button {
+  color: inherit;
+  border: 1px solid #ffffff45;
+  background: #282e38;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.controls button:focus-visible,
+.speed input:focus-visible {
+  outline: 2px solid #9dbbff;
+  outline-offset: 3px;
+}
+.speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.speed input {
+  width: 120px;
+}
+.speed span {
+  min-width: 3ch;
+  font-variant-numeric: tabular-nums;
+}
+.viewport {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.content {
+  width: min(70%, 900px);
+  margin: 0 auto;
+  padding: 50vh 0;
+  font:
+    28px/1.9 system-ui,
+    sans-serif;
+}
+.line {
+  height: 1.9em;
+  white-space: pre;
+  color: #aeb7c4;
+  transform-origin: left center;
+  transition:
+    transform 150ms ease,
+    color 150ms ease;
+}
+.active {
+  color: #fff;
+  transform: scale(1.2);
+}
+.guide {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 54px;
+  transform: translateY(-50%);
+  background: #ffffff0b;
+  border-block: 1px solid #ffffff12;
+  pointer-events: none;
+}
+@media (max-width: 600px) {
+  .controls {
+    gap: 8px;
+    padding: 12px;
+    flex-wrap: wrap;
+  }
+  .controls strong {
+    width: 100%;
+  }
+  .speed input {
+    width: 80px;
+  }
+  .content {
+    width: 75%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .line {
+    transition: none;
+  }
+}
