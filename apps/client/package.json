@@ -64,7 +64,9 @@
     "react-router-dom": "7.13.1",
     "semver": "7.7.4",
     "socket.io-client": "4.8.3",
-    "zod": "4.3.6"
+    "zod": "4.3.6",
+    "@wushushuochanpin/identity-web": "file:../../vendor/identity-sdk/wushushuochanpin-identity-web-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz",
+    "@wushushuochanpin/identity-react": "file:../../vendor/identity-sdk/wushushuochanpin-identity-react-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz"
   },
   "devDependencies": {
     "@eslint/js": "9.28.0",
