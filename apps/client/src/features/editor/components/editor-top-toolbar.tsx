@@ -27,7 +27,7 @@ export function EditorTopToolbar({ editable }: EditorTopToolbarProps) {
   const isTakenOver =
     sessionStatus === "takeover_requested" || sessionStatus === "revoked";
   const loadingLabel = isLocalFallback
-    ? t("Editing locally while live collaboration reconnects")
+    ? t("Editor is loading...")
     : isPendingTakeover
       ? t("Waiting for another tab to hand off editing...")
       : isTakenOver

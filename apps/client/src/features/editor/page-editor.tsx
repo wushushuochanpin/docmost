@@ -724,6 +724,17 @@ function LocalFallbackPageEditor({
     1200,
   );
 
+  const localCleanupRef = useRef({
+    persistLocalContent,
+    onUnsavedChangesChange,
+    onSavePendingChange,
+  });
+  localCleanupRef.current = {
+    persistLocalContent,
+    onUnsavedChangesChange,
+    onSavePendingChange,
+  };
+
   const editor = useEditor(
     {
       extensions: mainExtensions,
@@ -765,15 +776,17 @@ function LocalFallbackPageEditor({
         const serialized = serializeEditorContent(currentContent);
         if (serialized && serialized !== lastSavedContentRef.current) {
           queuedSaveRef.current = { content: currentContent, serialized };
-          void persistLocalContent();
+          void localCleanupRef.current.persistLocalContent();
         }
       }
 
-      store.set(pageEditorAtom as any, null);
-      onUnsavedChangesChange(false);
-      onSavePendingChange(false);
+      if (store.get(pageEditorAtom as any) === currentEditor) {
+        store.set(pageEditorAtom as any, null);
+      }
+      localCleanupRef.current.onUnsavedChangesChange(false);
+      localCleanupRef.current.onSavePendingChange(false);
     };
-  }, [onSavePendingChange, onUnsavedChangesChange, persistLocalContent, store]);
+  }, [store]);
 
   useEffect(() => {
     if (!editor) {
