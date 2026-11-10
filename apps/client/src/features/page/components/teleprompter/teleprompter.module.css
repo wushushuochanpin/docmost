@@ -55,6 +55,7 @@
   overscroll-behavior: contain;
 }
 .content {
+  position: relative;
   width: min(70%, 900px);
   margin: 0 auto;
   padding: 50vh 0;

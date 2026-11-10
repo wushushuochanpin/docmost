@@ -35,6 +35,15 @@ function wrapText(text: string, width: number): string[] {
   return lines;
 }
 
+// A 20-character line uses the selected speed. Bound the adjustment so short
+// headings and long lines remain readable without stopping the continuous scroll.
+export function getLineDurationFactor(line: string): number {
+  const length = Array.from(line).filter(
+    (character) => !/\s/u.test(character),
+  ).length;
+  return Math.max(0.5, Math.min(2, length / 20));
+}
+
 export default function Teleprompter({ title, text, onClose }: Props) {
   const { t } = useTranslation();
   const viewport = useRef<HTMLDivElement>(null);
@@ -74,6 +83,8 @@ export default function Teleprompter({ title, text, onClose }: Props) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
+  const lineFactors = useMemo(() => lines.map(getLineDurationFactor), [lines]);
+
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;
@@ -81,8 +92,23 @@ export default function Teleprompter({ title, text, onClose }: Props) {
     let previous: number | undefined;
     let position = element.scrollTop;
     const tick = (now: number) => {
+      const center =
+        element.getBoundingClientRect().top + element.clientHeight / 2;
+      const contentElement = content.current;
+      const first = contentElement?.firstElementChild as HTMLElement | null;
+      const lineHeight = first?.offsetHeight ?? 0;
+      const firstTop =
+        contentElement && first
+          ? contentElement.getBoundingClientRect().top + first.offsetTop
+          : 0;
+      const index =
+        lineHeight > 0 ? Math.floor((center - firstTop) / lineHeight) : -1;
+      const currentIndex = index >= 0 && index < lines.length ? index : -1;
+      setActive(currentIndex);
+
       if (playing && previous !== undefined) {
-        position += speed * Math.min((now - previous) / 1000, 0.1);
+        const factor = currentIndex >= 0 ? lineFactors[currentIndex] : 1;
+        position += (speed / factor) * Math.min((now - previous) / 1000, 0.1);
         element.scrollTop = position;
         if (position >= element.scrollHeight - element.clientHeight)
           setPlaying(false);
@@ -90,20 +116,11 @@ export default function Teleprompter({ title, text, onClose }: Props) {
         position = element.scrollTop;
       }
       previous = now;
-      const center =
-        element.getBoundingClientRect().top + element.clientHeight / 2;
-      const children = content.current?.children;
-      if (children?.length) {
-        const first = (children[0] as HTMLElement).getBoundingClientRect();
-        const lineHeight = first.height;
-        const index = Math.floor((center - first.top) / lineHeight);
-        setActive(index >= 0 && index < children.length ? index : -1);
-      }
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, speed, lines, restartCount]);
+  }, [playing, speed, lines, lineFactors, restartCount]);
 
   const togglePlayback = () => {
     const element = viewport.current;
