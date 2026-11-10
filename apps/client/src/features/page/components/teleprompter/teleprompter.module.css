@@ -29,8 +29,7 @@
   padding: 8px 14px;
   cursor: pointer;
 }
-.controls button:focus-visible,
-.speed input:focus-visible {
+.controls button:focus-visible {
   outline: 2px solid #9dbbff;
   outline-offset: 3px;
 }
@@ -40,12 +39,14 @@
   gap: 8px;
   white-space: nowrap;
 }
-.speed input {
-  width: 120px;
+.controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
-.speed span {
+.speed output {
   min-width: 3ch;
   font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 .viewport {
   position: absolute;
@@ -93,9 +94,6 @@
   }
   .controls strong {
     width: 100%;
-  }
-  .speed input {
-    width: 80px;
   }
   .content {
     width: 75%;

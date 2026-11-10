@@ -14,24 +14,23 @@ interface Props {
 function wrapText(text: string, width: number): string[] {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
-  if (!context || width <= 0) return text.split("\n");
+  const paragraphs = text
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0);
+  if (!context || width <= 0) return paragraphs;
   context.font = "28px system-ui, sans-serif";
   const lines: string[] = [];
-  for (const paragraph of text.split("\n")) {
-    if (!paragraph) {
-      lines.push("");
-      continue;
-    }
+  for (const paragraph of paragraphs) {
     let line = "";
     for (const character of Array.from(paragraph)) {
       if (line && context.measureText(line + character).width > width) {
-        lines.push(line);
+        if (line.trim()) lines.push(line);
         line = character;
       } else {
         line += character;
       }
     }
-    lines.push(line);
+    if (line.trim()) lines.push(line);
   }
   return lines;
 }
@@ -43,6 +42,7 @@ export default function Teleprompter({ title, text, onClose }: Props) {
   const [width, setWidth] = useState(0);
   const [speed, setSpeed] = useState(40);
   const [playing, setPlaying] = useState(true);
+  const [restartCount, setRestartCount] = useState(0);
   const [active, setActive] = useState(-1);
   const lines = useMemo(
     () => wrapText([title, text].filter(Boolean).join("\n\n"), width),
@@ -103,7 +103,7 @@ export default function Teleprompter({ title, text, onClose }: Props) {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, speed, lines]);
+  }, [playing, speed, lines, restartCount]);
 
   const togglePlayback = () => {
     const element = viewport.current;
@@ -115,6 +115,12 @@ export default function Teleprompter({ title, text, onClose }: Props) {
       element.scrollTop = 0;
     }
     setPlaying((value) => !value);
+  };
+
+  const restartPlayback = () => {
+    if (viewport.current) viewport.current.scrollTop = 0;
+    setPlaying(true);
+    setRestartCount((value) => value + 1);
   };
 
   return createPortal(
@@ -129,18 +135,29 @@ export default function Teleprompter({ title, text, onClose }: Props) {
         <button type="button" autoFocus onClick={togglePlayback}>
           {playing ? t("Pause") : t("Play")}
         </button>
-        <label className={styles.speed}>
-          {t("Speed")}{" "}
-          <input
-            type="range"
-            min="10"
-            max="150"
-            step="10"
-            value={speed}
-            onChange={(event) => setSpeed(Number(event.target.value))}
-          />{" "}
-          <span>{speed}</span>
-        </label>
+        <button type="button" onClick={restartPlayback}>
+          {t("Play from beginning")}
+        </button>
+        <div className={styles.speed} role="group" aria-label={t("Speed")}>
+          <span>{t("Speed")}</span>
+          <button
+            type="button"
+            aria-label={t("Decrease speed")}
+            disabled={speed <= 10}
+            onClick={() => setSpeed((value) => Math.max(10, value - 10))}
+          >
+            −
+          </button>
+          <output aria-live="polite">{speed}</output>
+          <button
+            type="button"
+            aria-label={t("Increase speed")}
+            disabled={speed >= 150}
+            onClick={() => setSpeed((value) => Math.min(150, value + 10))}
+          >
+            +
+          </button>
+        </div>
         <button type="button" onClick={onClose}>
           {t("Exit")} · Esc
         </button>

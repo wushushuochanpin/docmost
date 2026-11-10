@@ -51,7 +51,7 @@ describe("Teleprompter", () => {
     render(
       <Teleprompter
         title="Title"
-        text="First line\nSecond line"
+        text={"First line\n\n  \nSecond line"}
         onClose={close}
       />,
     );
@@ -70,9 +70,26 @@ describe("Teleprompter", () => {
     expect(viewport.scrollTop).toBe(4);
     fireEvent.click(screen.getByRole("button", { name: "Pause" }));
     expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
-    fireEvent.change(screen.getByRole("slider"), { target: { value: "100" } });
-    expect(screen.getByText("100")).toBeTruthy();
+    expect(document.querySelectorAll('[class*="line"]')).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: "Increase speed" }));
+    expect(screen.getByText("50")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Decrease speed" }));
+    expect(screen.getByText("40")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Play" }));
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+    viewport.scrollTop = 200;
+    fireEvent.click(
+      screen.getByRole("button", { name: "Play from beginning" }),
+    );
+    expect(viewport.scrollTop).toBe(0);
+    tick(300);
+    tick(400);
+    expect(viewport.scrollTop).toBe(4);
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Play from beginning" }),
+    );
+    expect(viewport.scrollTop).toBe(0);
     expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(close).toHaveBeenCalledOnce();
