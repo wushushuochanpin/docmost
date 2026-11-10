@@ -42,6 +42,8 @@ overrides:
   follow-redirects: 1.16.0
   protobufjs: 7.5.8
   ip-address: 10.1.1
+  '@wushushuochanpin/identity-react>@wushushuochanpin/identity-web': file:vendor/identity-sdk/wushushuochanpin-identity-web-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz
+  '@wushushuochanpin/identity-server>undici': 7.30.1
 
 patchedDependencies:
   scimmy@1.3.5:
@@ -308,6 +310,12 @@ importers:
       '@tanstack/react-virtual':
         specifier: 3.13.24
         version: 3.13.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@wushushuochanpin/identity-react':
+        specifier: file:../../vendor/identity-sdk/wushushuochanpin-identity-react-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz
+        version: file:vendor/identity-sdk/wushushuochanpin-identity-react-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@wushushuochanpin/identity-web':
+        specifier: file:../../vendor/identity-sdk/wushushuochanpin-identity-web-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz
+        version: file:vendor/identity-sdk/wushushuochanpin-identity-web-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz
       alfaaz:
         specifier: 1.1.0
         version: 1.1.0
@@ -598,8 +606,8 @@ importers:
         specifier: ^8.3.0
         version: 8.3.0(socket.io-adapter@2.5.4)
       '@wushushuochanpin/identity-server':
-        specifier: file:../../vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz
-        version: file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz(fastify@5.8.5)
+        specifier: file:../../vendor/identity-sdk/wushushuochanpin-identity-server-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz
+        version: file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz(fastify@5.8.5)
       ai:
         specifier: ^6.0.134
         version: 6.0.134(zod@4.3.6)
@@ -5288,15 +5296,33 @@ packages:
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
 
-  '@wushushuochanpin/identity-server@file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz':
-    resolution: {integrity: sha512-DZhUjY+JvOdpk44UQ0tgP016Ul2FTVkrxozZAIF97dkA9eA3anZmA9Dd8wU6nNfBBcSszHwkh6aKJSTYMjW1fw==, tarball: file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz}
-    version: 0.5.1
+  '@wushushuochanpin/identity-react@file:vendor/identity-sdk/wushushuochanpin-identity-react-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz':
+    resolution: {integrity: sha512-CXdMx5v5PDFt/4GmqRw/0q+mP9M5og1tR6w/szTwjsjGL6hTPaIJh+CHvj59vdedKGyNGPVsxUjdlH35X/B29g==, tarball: file:vendor/identity-sdk/wushushuochanpin-identity-react-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz}
+    version: 0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524
+    peerDependencies:
+      '@ant-design/icons': ^6.0.0
+      antd: '>=5.20.0 <7'
+      react: '>=18.3.0 <20'
+      react-dom: '>=18.3.0 <20'
+    peerDependenciesMeta:
+      '@ant-design/icons':
+        optional: true
+      antd:
+        optional: true
+
+  '@wushushuochanpin/identity-server@file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz':
+    resolution: {integrity: sha512-eu+1rJVQ4FLYOrJvLXcNfqvMxIfp4vH8SJgqhaTuBBV9W9xm/LLphYbplwalfzOJwX0qUa1NHgbY6q2269pdJg==, tarball: file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz}
+    version: 0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524
     engines: {node: '>=20.18.1'}
     peerDependencies:
       fastify: 5.8.5
     peerDependenciesMeta:
       fastify:
         optional: true
+
+  '@wushushuochanpin/identity-web@file:vendor/identity-sdk/wushushuochanpin-identity-web-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz':
+    resolution: {integrity: sha512-O6sCsa1uXTk4DNMfJGCcAyG2tZ1i9Wl60xH0gDOcpriN+0As0K8bilQc4ss5HdRNxQu00w1WPksOrArUupsMeg==, tarball: file:vendor/identity-sdk/wushushuochanpin-identity-web-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz}
+    version: 0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524
 
   '@xmldom/is-dom-node@1.0.1':
     resolution: {integrity: sha512-CJDxIgE5I0FH+ttq/Fxy6nRpxP70+e2O048EPe85J2use3XKdatVM7dDVvFNjQudd9B49NPoZ+8PG49zj4Er8Q==}
@@ -15829,12 +15855,20 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
 
-  '@wushushuochanpin/identity-server@file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.1.tgz(fastify@5.8.5)':
+  '@wushushuochanpin/identity-react@file:vendor/identity-sdk/wushushuochanpin-identity-react-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@wushushuochanpin/identity-web': file:vendor/identity-sdk/wushushuochanpin-identity-web-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
+  '@wushushuochanpin/identity-server@file:vendor/identity-sdk/wushushuochanpin-identity-server-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz(fastify@5.8.5)':
     dependencies:
       openid-client: 6.8.8
       undici: 7.30.1
     optionalDependencies:
       fastify: 5.8.5
+
+  '@wushushuochanpin/identity-web@file:vendor/identity-sdk/wushushuochanpin-identity-web-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz': {}
 
   '@xmldom/is-dom-node@1.0.1': {}
 

@@ -143,7 +143,9 @@
       "langsmith": "0.7.0",
       "follow-redirects": "1.16.0",
       "protobufjs": "7.5.8",
-      "ip-address": "10.1.1"
+      "ip-address": "10.1.1",
+      "@wushushuochanpin/identity-react>@wushushuochanpin/identity-web": "file:vendor/identity-sdk/wushushuochanpin-identity-web-0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524.tgz",
+      "@wushushuochanpin/identity-server>undici": "7.30.1"
     },
     "neverBuiltDependencies": []
   }

@@ -5,23 +5,42 @@ import { fileURLToPath } from 'node:url';
 
 const root = new URL('../vendor/identity-sdk/', import.meta.url);
 const provenance = JSON.parse(readFileSync(new URL('identity-sdk-provenance.json', root), 'utf8'));
-const archive = 'wushushuochanpin-identity-server-0.5.1.tgz';
-const digest = createHash('sha256').update(readFileSync(new URL(archive, root))).digest('hex');
-if (provenance.repository !== 'company-identity-center' ||
-    provenance.baseCommit !== 'd58e03a662b102e1060f9c52f44ed24347d30d3e' ||
-    provenance.workingTreeSnapshot !== false || provenance.freshlyCompiled !== true ||
-    provenance.version !== '0.5.1' || provenance.packages?.server?.archive !== archive ||
-    provenance.packages.server.sha256 !== digest) {
+const version = '0.5.5-build.g493ca2d1c2d4a9b3f898b194e79eceb180f00436.b511f60f8e52d4fa3a6e7c7d5c9556524';
+const baseCommit = '493ca2d1c2d4a9b3f898b194e79eceb180f00436';
+if (provenance.repository !== 'company-identity-center' || provenance.baseCommit !== baseCommit ||
+    provenance.version !== version || provenance.buildId !== '511f60f8e52d4fa3a6e7c7d5c9556524' ||
+    provenance.workingTreeSnapshot !== false || provenance.freshlyCompiled !== true)
   throw new Error('Identity SDK artifact provenance mismatch');
-}
-const manifest = JSON.parse(execFileSync('tar', ['-xOf', fileURLToPath(new URL(archive, root)), 'package/package.json'], { encoding: 'utf8' }));
+const client = JSON.parse(readFileSync(new URL('../apps/client/package.json', import.meta.url), 'utf8'));
+const server = JSON.parse(readFileSync(new URL('../apps/server/package.json', import.meta.url), 'utf8'));
+const rootPackage = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const lock = readFileSync(new URL('../pnpm-lock.yaml', import.meta.url), 'utf8');
-const marker = `  '@wushushuochanpin/identity-server@file:vendor/identity-sdk/${archive}(fastify@5.8.5)':`;
-const start = lock.indexOf(marker);
-const end = lock.indexOf('\n\n', start);
-if (start < 0 || end < 0) throw new Error('Identity SDK lockfile snapshot missing');
-const snapshot = lock.slice(start, end);
-for (const [name, version] of Object.entries(manifest.dependencies)) {
-  if (!snapshot.includes(`\n      ${name}: ${version}\n`)) throw new Error(`Identity SDK lockfile dependency mismatch: ${name}`);
+for (const name of ['server', 'web', 'react']) {
+  const item = provenance.packages?.[name];
+  const archive = `wushushuochanpin-identity-${name}-${version}.tgz`;
+  const packageName = `@wushushuochanpin/identity-${name}`;
+  if (!item || item.name !== packageName || item.version !== version || item.archive !== archive)
+    throw new Error(`Identity SDK package identity mismatch: ${name}`);
+  const file = new URL(archive, root);
+  if (createHash('sha256').update(readFileSync(file)).digest('hex') !== item.sha256)
+    throw new Error(`Identity SDK artifact digest mismatch: ${name}`);
+  const manifest = JSON.parse(execFileSync('tar', ['-xOf', fileURLToPath(file), 'package/package.json'], { encoding: 'utf8' }));
+  if (manifest.name !== packageName || manifest.version !== version ||
+      (name === 'react' && manifest.dependencies?.['@wushushuochanpin/identity-web'] !== version))
+    throw new Error(`Identity SDK tarball manifest mismatch: ${name}`);
+  const declared = (name === 'server' ? server : client).dependencies[packageName];
+  if (declared !== `file:../../vendor/identity-sdk/${archive}` || !lock.includes(`file:vendor/identity-sdk/${archive}`))
+    throw new Error(`Identity SDK dependency mismatch: ${name}`);
+  if (name === 'server') {
+    const marker = `  '${packageName}@file:vendor/identity-sdk/${archive}(fastify@5.8.5)':`;
+    const start = lock.indexOf(marker), end = lock.indexOf('\n\n', start);
+    if (start < 0 || end < 0) throw new Error('Identity SDK server lockfile snapshot missing');
+    const snapshot = lock.slice(start, end);
+    for (const [dependency, expected] of Object.entries(manifest.dependencies))
+      if (!snapshot.includes(`\n      ${dependency}: ${expected}\n`)) throw new Error(`Identity SDK dependency version mismatch: ${dependency}`);
+  }
 }
-console.log('Identity SDK artifact provenance and dependency versions verified');
+const webArchive = provenance.packages.web.archive;
+if (rootPackage.pnpm.overrides['@wushushuochanpin/identity-react>@wushushuochanpin/identity-web'] !== `file:vendor/identity-sdk/${webArchive}`)
+  throw new Error('Identity SDK React dependency override mismatch');
+console.log('Identity SDK artifacts, provenance and dependency versions verified');
