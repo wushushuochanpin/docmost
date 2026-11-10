@@ -1,10 +1,20 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import Teleprompter from "./teleprompter";
+import Teleprompter, { getLineDurationFactor } from "./teleprompter";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
+
+describe("line reading duration", () => {
+  it("gives longer visual lines more time within bounded limits", () => {
+    expect(getLineDurationFactor("短句")).toBe(0.5);
+    expect(getLineDurationFactor("字".repeat(20))).toBe(1);
+    expect(getLineDurationFactor("字".repeat(30))).toBe(1.5);
+    expect(getLineDurationFactor("字".repeat(80))).toBe(2);
+    expect(getLineDurationFactor("字 ".repeat(20))).toBe(1);
+  });
+});
 
 describe("Teleprompter", () => {
   let frames: Map<number, FrameRequestCallback>;
@@ -42,8 +52,40 @@ describe("Teleprompter", () => {
     });
   });
   afterEach(() => {
+    Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
+    Reflect.deleteProperty(HTMLElement.prototype, "offsetTop");
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("slows the continuous scroll for the line at the reading position", () => {
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      get: () => 53,
+    });
+    Object.defineProperty(HTMLElement.prototype, "offsetTop", {
+      configurable: true,
+      get: () => 0,
+    });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: HTMLElement) {
+        return { top: this.className.includes("content") ? 190 : 0 } as DOMRect;
+      },
+    );
+    render(<Teleprompter title="" text={"字".repeat(30)} onClose={() => {}} />);
+    const viewport = document.querySelector(
+      '[class*="viewport"]',
+    ) as HTMLElement;
+    const tick = (time: number) => {
+      const entry = frames.entries().next().value;
+      if (entry) {
+        frames.delete(entry[0]);
+        act(() => entry[1](time));
+      }
+    };
+    tick(100);
+    tick(200);
+    expect(viewport.scrollTop).toBeCloseTo(40 / 1.5 / 10);
   });
 
   it("scrolls, pauses, changes speed and exits", () => {
