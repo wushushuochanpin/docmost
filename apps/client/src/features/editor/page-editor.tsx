@@ -103,7 +103,7 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { isAxiosError } from "axios";
+import { isAxiosError, isCancel } from "axios";
 import { updatePage } from "@/features/page/services/page-service";
 import { updatePageData } from "@/features/page/queries/page-query";
 import { markEditorBootstrapStage } from "@/features/editor/lib/editor-bootstrap-metrics";
@@ -126,6 +126,7 @@ type SerializedContent = {
   content: any;
   serialized: string;
 };
+const LOCAL_SAVE_RETRY_DELAY_MS = 1500;
 
 function isEditorSessionConflict(error: unknown) {
   return (
@@ -591,7 +592,10 @@ function LocalFallbackPageEditor({
   const isMountedRef = useRef(false);
   const saveFailureNotifiedRef = useRef(false);
   const queuedSaveRef = useRef<SerializedContent | null>(null);
+  const latestLocalContentRef = useRef<SerializedContent["content"]>(null);
   const saveInFlightRef = useRef(false);
+  const saveRetryTimerRef = useRef<number | undefined>(undefined);
+  const authGenerationRef = useRef(captureAuthGeneration());
   const conflictEditSessionRef = useRef<EditSession | null | undefined>(
     undefined,
   );
@@ -608,20 +612,58 @@ function LocalFallbackPageEditor({
   );
   const { handleScrollTo } = useEditorScroll({ canScroll });
 
+  const saveInterruptedDraft = useCallback(
+    async (fallback: SerializedContent) => {
+      const content = latestLocalContentRef.current ?? fallback.content;
+      const serialized = serializeEditorContent(content);
+      try {
+        await saveEditorRecoveryDraft({
+          workspaceId: currentWorkspaceId ?? "",
+          userId: currentUserId ?? "",
+          resourceType: "page",
+          resourceId: pageId,
+          content,
+          reason: "local_save_interrupted",
+        });
+        if (queuedSaveRef.current?.serialized === serialized) {
+          queuedSaveRef.current = null;
+        }
+      } catch {
+        queuedSaveRef.current ??= { content, serialized };
+      }
+    },
+    [currentWorkspaceId, currentUserId, pageId],
+  );
+
   const persistLocalContent = useCallback(
     async (writeIntent: EditorSessionWriteIntent = "normal") => {
-      if (saveInFlightRef.current || !queuedSaveRef.current) {
+      if (
+        saveInFlightRef.current ||
+        !queuedSaveRef.current ||
+        (writeIntent === "normal" && saveRetryTimerRef.current !== undefined)
+      ) {
         return;
       }
 
+      window.clearTimeout(saveRetryTimerRef.current);
+      saveRetryTimerRef.current = undefined;
       const nextSave = queuedSaveRef.current;
       queuedSaveRef.current = null;
       saveInFlightRef.current = true;
       onSavePendingChange(true);
 
-      let shouldRetryImmediately = true;
+      let saved = false;
+      let retryAfterFailure = false;
 
       try {
+        if (
+          isAuthInvalidated() ||
+          !isCurrentAuthGeneration(authGenerationRef.current)
+        ) {
+          await saveInterruptedDraft(nextSave);
+          return;
+        }
+
         const page = await updatePage({
           pageId,
           content: nextSave.content,
@@ -634,9 +676,13 @@ function LocalFallbackPageEditor({
         updatePageData(page);
         lastSavedContentRef.current = nextSave.serialized;
         onLastSavedContentChange(nextSave.serialized);
-        onUnsavedChangesChange(false);
+        onUnsavedChangesChange(
+          latestLocalContentRef.current !== null &&
+            latestLocalContentRef.current !== nextSave.content,
+        );
         saveFailureNotifiedRef.current = false;
         conflictEditSessionRef.current = undefined;
+        saved = true;
       } catch (error) {
         if (writeIntent === "handoff_flush") {
           await saveEditorRecoveryDraft({
@@ -647,14 +693,21 @@ function LocalFallbackPageEditor({
             content: nextSave.content,
             reason: "handoff_flush_failed",
           });
-        } else if (isEditorSessionConflict(error)) {
-          queuedSaveRef.current = nextSave;
-          conflictEditSessionRef.current = editSession ?? null;
-          shouldRetryImmediately = false;
         } else {
-          queuedSaveRef.current = nextSave;
+          const pendingSave = (queuedSaveRef.current ??= nextSave);
+          if (isAuthInvalidated() || isCancel(error) || !isMountedRef.current) {
+            await saveInterruptedDraft(pendingSave);
+          } else if (isEditorSessionConflict(error)) {
+            conflictEditSessionRef.current = editSession ?? null;
+          } else {
+            retryAfterFailure = true;
+          }
         }
-        if (!saveFailureNotifiedRef.current) {
+        if (
+          isMountedRef.current &&
+          !isAuthInvalidated() &&
+          !saveFailureNotifiedRef.current
+        ) {
           notifications.show({
             message: "实时协作暂不可用，已切换为本地保存重试模式",
             color: "yellow",
@@ -667,11 +720,17 @@ function LocalFallbackPageEditor({
         if (
           queuedSaveRef.current &&
           writeIntent !== "handoff_flush" &&
-          shouldRetryImmediately
+          saved
         ) {
-          void persistLocalContent();
+          void localCleanupRef.current.persistLocalContent();
         } else {
           onSavePendingChange(Boolean(queuedSaveRef.current));
+          if (retryAfterFailure && isMountedRef.current) {
+            saveRetryTimerRef.current = window.setTimeout(() => {
+              saveRetryTimerRef.current = undefined;
+              void localCleanupRef.current.persistLocalContent();
+            }, LOCAL_SAVE_RETRY_DELAY_MS);
+          }
         }
       }
     },
@@ -683,6 +742,7 @@ function LocalFallbackPageEditor({
       onLastSavedContentChange,
       onSavePendingChange,
       onUnsavedChangesChange,
+      saveInterruptedDraft,
     ],
   );
 
@@ -759,6 +819,7 @@ function LocalFallbackPageEditor({
         if (editor.isEmpty) return;
 
         const editorJson = editor.getJSON();
+        latestLocalContentRef.current = editorJson;
         onUnsavedChangesChange(true);
         debouncedPersistLocalContent(editorJson);
       },
@@ -770,9 +831,13 @@ function LocalFallbackPageEditor({
     isMountedRef.current = true;
 
     return () => {
+      isMountedRef.current = false;
+      window.clearTimeout(saveRetryTimerRef.current);
+      saveRetryTimerRef.current = undefined;
       const currentEditor = localEditorRef.current;
       if (currentEditor) {
         const currentContent = currentEditor.getJSON();
+        latestLocalContentRef.current = currentContent;
         const serialized = serializeEditorContent(currentContent);
         if (serialized && serialized !== lastSavedContentRef.current) {
           queuedSaveRef.current = { content: currentContent, serialized };
@@ -828,6 +893,7 @@ function LocalFallbackPageEditor({
 
     handoffStartedRef.current = true;
     const currentContent = localEditorRef.current.getJSON();
+    latestLocalContentRef.current = currentContent;
     const serialized = serializeEditorContent(currentContent);
     queuedSaveRef.current = { content: currentContent, serialized };
     localEditorRef.current.setEditable(false);
