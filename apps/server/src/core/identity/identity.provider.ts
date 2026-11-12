@@ -127,6 +127,11 @@ export class IdentityProvider {
         );
         throw new ServiceUnavailableException('center_unavailable');
       }
+      // The user-facing error stays generic; the provider's rejection reason is
+      // logged here so an operator can tell invalid_grant from invalid_client.
+      this.logger.warn(
+        `Identity token exchange rejected (${this.failureCode(error)})`,
+      );
       throw new UnauthorizedException('identity_invalid');
     }
   }
@@ -138,7 +143,7 @@ export class IdentityProvider {
       metadata.clientId !== settings.clientId ||
       metadata.expiresAt <= Date.now()
     ) {
-      throw new UnauthorizedException('identity_invalid');
+      throw this.invalid('session_metadata_mismatch');
     }
     const key = metadata.encryptedAccessToken;
     let pending = this.checks.get(key);
@@ -160,7 +165,7 @@ export class IdentityProvider {
       );
     } catch {
       // A locally unreadable credential cannot be verified and is not an outage.
-      throw new UnauthorizedException('identity_invalid');
+      throw this.invalid('credential_unreadable');
     }
 
     const { oidc, config } = await this.provider();
@@ -180,17 +185,17 @@ export class IdentityProvider {
       if (typeof introspection.active !== 'boolean')
         throw new ServiceUnavailableException('identity_unavailable');
       if (!introspection.active)
-        throw new UnauthorizedException('identity_invalid');
+        throw this.invalid('introspection_inactive');
       if (
         introspection.sub !== metadata.subject ||
         introspection.client_id !== metadata.clientId
       )
-        throw new UnauthorizedException('identity_invalid');
+        throw this.invalid('introspection_subject_mismatch');
 
       if (!userInfo || typeof userInfo.sub !== 'string')
         throw new ServiceUnavailableException('identity_unavailable');
       if (userInfo.sub !== metadata.subject)
-        throw new UnauthorizedException('identity_invalid');
+        throw this.invalid('userinfo_subject_mismatch');
 
       // Account deletion/disablement is an explicit center decision. Other
       // non-2xx account responses are treated as a temporary failure so a
@@ -208,14 +213,14 @@ export class IdentityProvider {
         throw new ServiceUnavailableException('identity_unavailable');
       }
       if (account?.data?.isForbidden || account?.data?.isDeleted)
-        throw new UnauthorizedException('identity_invalid');
+        throw this.invalid('account_disabled');
       if (account?.sub !== undefined && account.sub !== metadata.subject)
-        throw new UnauthorizedException('identity_invalid');
+        throw this.invalid('account_subject_mismatch');
       if (
         account?.data?.id !== undefined &&
         account.data.id !== metadata.subject
       )
-        throw new UnauthorizedException('identity_invalid');
+        throw this.invalid('account_id_mismatch');
       if (
         account?.status !== 'ok' ||
         typeof account.sub !== 'string' ||
@@ -233,6 +238,15 @@ export class IdentityProvider {
       );
       throw new ServiceUnavailableException('identity_unavailable');
     }
+  }
+
+  /**
+   * Convert a provider-side rejection into the deliberately generic HTTP error,
+   * keeping the concrete reason in the server log only.
+   */
+  private invalid(reason: string): UnauthorizedException {
+    this.logger.warn(`Identity verification rejected (${reason})`);
+    return new UnauthorizedException('identity_invalid');
   }
 
   /** Network, timeout, throttling and 5xx failures are transient. */
@@ -254,10 +268,12 @@ export class IdentityProvider {
     if (!(error instanceof Error)) return 'unknown';
     const status = (error as { status?: unknown }).status;
     const code = (error as { code?: unknown }).code;
+    const oauth = (error as { error?: unknown }).error;
     return [
       error.name,
       typeof status === 'number' ? `status=${status}` : '',
       typeof code === 'string' ? code : '',
+      typeof oauth === 'string' ? `oauth=${oauth}` : '',
     ]
       .filter(Boolean)
       .join(',');

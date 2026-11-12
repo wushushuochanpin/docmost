@@ -2,6 +2,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
@@ -47,6 +48,8 @@ export class IdentityService {
     private readonly sessions: SessionService,
     @Inject(AUDIT_SERVICE) private readonly audit: IAuditService,
   ) {}
+
+  private readonly logger = new Logger(IdentityService.name);
 
   enabled(workspaceId: string) {
     return this.settings.enabled(workspaceId);
@@ -238,8 +241,17 @@ export class IdentityService {
       )
         throw new UnauthorizedException('invalid_transaction');
       validatedReturnTo = identityReturnTo(parameters.returnTo);
-      if (query.has('error') || !query.get('code'))
+      if (query.has('error') || !query.get('code')) {
+        const providerError =
+          query
+            .get('error')
+            ?.replace(/[^A-Za-z0-9_.-]/g, '')
+            .slice(0, 64) || 'none';
+        this.logger.warn(
+          `Identity callback carried no usable code; providerError=${providerError}; code=${query.get('code') ? 'present' : 'missing'}`,
+        );
         throw new UnauthorizedException('identity_invalid');
+      }
       if (tx.purpose === 'link') {
         const actor = await this.sessions.authenticateBrowserCredential(
           credential ?? '',
