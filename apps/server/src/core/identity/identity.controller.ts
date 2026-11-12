@@ -170,7 +170,9 @@ export class IdentityController {
         error instanceof Error && errors.has(error.message)
           ? error.message
           : 'identity_invalid';
-      this.logger.warn(`Identity callback rejected: ${code}`);
+      this.logger.warn(
+        `Identity callback rejected: ${code}; errorType=${error instanceof Error ? error.constructor.name : 'unknown'}`,
+      );
       const path =
         (error as { identityPurpose?: string })?.identityPurpose === 'link'
           ? '/settings/account/profile'
