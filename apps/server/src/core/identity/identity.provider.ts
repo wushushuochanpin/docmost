@@ -1,3 +1,4 @@
+import { identityStage, identityCenterRequest, withIdentityTiming } from './identity.timing';
 import {
   Injectable,
   Logger,
@@ -31,14 +32,13 @@ export class IdentityProvider {
   async provider() {
     const oidc = await loadOidc();
     const config = this.settings.get();
-    this.configuration ??= oidc
-      .discovery(
+    this.configuration ??= identityStage('discovery', () => oidc.discovery(
         new URL(config.issuer),
         config.clientId,
         config.clientSecret,
         oidc.ClientSecretPost(config.clientSecret),
         { execute: [oidc.enableNonRepudiationChecks], timeout: 5 },
-      )
+      ))
       .catch(() => {
         this.configuration = undefined;
         throw new ServiceUnavailableException('center_unavailable');
@@ -91,13 +91,13 @@ export class IdentityProvider {
   ) {
     const { oidc, config } = await this.provider();
     try {
-      const result = await oidc.authorizationCodeGrant(config, url, {
+      const result = await identityStage('token_exchange', () => oidc.authorizationCodeGrant(config, url, {
         expectedState,
         expectedNonce: nonce,
         pkceCodeVerifier: verifier,
         idTokenExpected: true,
         ...(maxAge !== undefined ? { maxAge } : {}),
-      });
+      }));
       const claims = result.claims();
       if (reauthenticationStartedAt !== undefined)
         (await this.reauthenticationSdk()).requireFreshAuthentication(claims?.auth_time, reauthenticationStartedAt);
@@ -137,6 +137,10 @@ export class IdentityProvider {
   }
 
   async verify(metadata: IdentitySessionMetadata): Promise<void> {
+    return withIdentityTiming('session_verify', undefined, () => this.verifySession(metadata));
+  }
+
+  private async verifySession(metadata: IdentitySessionMetadata): Promise<void> {
     const settings = this.settings.get();
     if (
       metadata.issuer !== settings.issuer ||
@@ -171,13 +175,13 @@ export class IdentityProvider {
     const { oidc, config } = await this.provider();
     try {
       const [introspection, userInfo, accountResponse] = await Promise.all([
-        oidc.tokenIntrospection(config, accessToken),
-        oidc.fetchUserInfo(config, accessToken, metadata.subject),
-        fetch(new URL('/api/get-account', metadata.issuer), {
+        identityStage('introspection', () => oidc.tokenIntrospection(config, accessToken)),
+        identityStage('userinfo', () => oidc.fetchUserInfo(config, accessToken, metadata.subject)),
+        identityStage('account_headers', () => fetch(new URL('/api/get-account', metadata.issuer), {
           headers: { Authorization: `Bearer ${accessToken}` },
           redirect: 'error',
           signal: AbortSignal.timeout(5000),
-        }),
+        })),
       ]);
 
       // Only a parsed, authoritative answer from the center may end a session.
@@ -208,7 +212,7 @@ export class IdentityProvider {
         data?: { id?: string; isForbidden?: boolean; isDeleted?: boolean };
       };
       try {
-        account = await accountResponse.json();
+        account = await identityStage('account_body', () => accountResponse.json());
       } catch {
         throw new ServiceUnavailableException('identity_unavailable');
       }
@@ -279,7 +283,11 @@ export class IdentityProvider {
       .join(',');
   }
 
-  private async hosted(path: string, body: unknown): Promise<any> {
+  private hosted(path: string, body: unknown): Promise<any> {
+    return identityStage(path === '' ? 'hosted_create' : 'hosted_complete', () => this.hostedRequest(path, body));
+  }
+
+  private async hostedRequest(path: string, body: unknown): Promise<any> {
     const config = this.settings.get();
     try {
       const response = await fetch(
@@ -295,6 +303,7 @@ export class IdentityProvider {
           body: JSON.stringify(body),
         },
       );
+      identityCenterRequest(response);
       if (!response.ok) throw new Error('hosted_failed');
       return await response.json();
     } catch {
