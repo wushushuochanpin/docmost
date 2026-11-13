@@ -34,8 +34,8 @@ jobs:
       - run: node scripts/verify-identity-sdk.mjs
       - run: pnpm install --frozen-lockfile
       - name: Test identity service
-        run: pnpm --filter server test --runInBand src/core/identity/identity.provider.spec.ts src/core/identity/identity.service.spec.ts src/core/identity/identity.controller.spec.ts
+        run: pnpm --filter server test --runInBand src/core/identity/identity.timing.spec.ts src/core/identity/identity.provider.spec.ts src/core/identity/identity.service.spec.ts src/core/identity/identity.controller.spec.ts
       - name: Test identity entry
-        run: pnpm --filter client test src/features/identity/identity-components.test.tsx src/features/identity/identity-flow.test.ts
+        run: pnpm --filter client test src/features/identity/identity-bootstrap.test.ts src/features/identity/identity-service.test.ts src/features/identity/identity-components.test.tsx src/features/identity/identity-flow.test.ts
       - name: Build the production image without publishing
         run: docker build --target installer -t docmost-identity-pr-check .
