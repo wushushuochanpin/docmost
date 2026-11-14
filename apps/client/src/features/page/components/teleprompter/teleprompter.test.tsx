@@ -114,8 +114,12 @@ describe("Teleprompter", () => {
     expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
     expect(document.querySelectorAll('[class*="line"]')).toHaveLength(3);
     fireEvent.click(screen.getByRole("button", { name: "Increase speed" }));
-    expect(screen.getByText("50")).toBeTruthy();
+    expect(screen.getByText("41")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Decrease speed" }));
+    expect(screen.getByText("40")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Decrease speed" }));
+    expect(screen.getByText("39")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Increase speed" }));
     expect(screen.getByText("40")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Play" }));
     expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
