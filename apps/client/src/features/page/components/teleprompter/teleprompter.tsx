@@ -161,7 +161,7 @@ export default function Teleprompter({ title, text, onClose }: Props) {
             type="button"
             aria-label={t("Decrease speed")}
             disabled={speed <= 10}
-            onClick={() => setSpeed((value) => Math.max(10, value - 10))}
+            onClick={() => setSpeed((value) => Math.max(10, value - 1))}
           >
             −
           </button>
@@ -170,7 +170,7 @@ export default function Teleprompter({ title, text, onClose }: Props) {
             type="button"
             aria-label={t("Increase speed")}
             disabled={speed >= 150}
-            onClick={() => setSpeed((value) => Math.min(150, value + 10))}
+            onClick={() => setSpeed((value) => Math.min(150, value + 1))}
           >
             +
           </button>
