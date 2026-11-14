@@ -1,3 +1,4 @@
+import { withIdentityTiming } from './identity.timing';
 import {
   Body,
   Controller,
@@ -68,11 +69,11 @@ export class IdentityController {
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
     this.assertOrigin(req);
-    const result = await this.identity.bootstrap(
+    const result = await withIdentityTiming('bootstrap', res, () => this.identity.bootstrap(
       workspace,
       req.cookies[IDENTITY_BROWSER_COOKIE],
       req.cookies.authToken,
-    );
+    ));
     if (result.binding && result.token) {
       this.binding(res, result.binding);
       res.setCookie('authToken', result.token, {
@@ -98,14 +99,14 @@ export class IdentityController {
   ) {
     res.header('Cache-Control', 'no-store');
     try {
-      const started = await this.identity.start(
+      const started = await withIdentityTiming('start', res, () => this.identity.start(
         workspace,
         req.cookies[IDENTITY_BROWSER_COOKIE],
         returnTo,
         undefined,
         req.cookies.authToken,
         reauthenticate === '1',
-      );
+      ));
       return res.code(302).redirect(started.url);
     } catch (error) {
       const code =
@@ -139,12 +140,12 @@ export class IdentityController {
     ) {
       throw new BadRequestException('invalid_identity_request');
     }
-    const started = await this.identity.start(
+    const started = await withIdentityTiming('link_start', res, () => this.identity.start(
       workspace,
       req.cookies[IDENTITY_BROWSER_COOKIE],
       body.returnTo,
       { user, password: body.password, sessionId: (req.raw as any).sessionId },
-    );
+    ));
     this.binding(res, started.binding);
     return { url: started.url };
   }
@@ -158,12 +159,12 @@ export class IdentityController {
     res.header('Cache-Control', 'no-store');
     res.header('Referrer-Policy', 'no-referrer');
     try {
-      const result = await this.identity.callback(
+      const result = await withIdentityTiming('callback', res, () => this.identity.callback(
         workspace,
         (req.raw.url ?? '').split('?').slice(1).join('?'),
         req.cookies[IDENTITY_BROWSER_COOKIE],
         req.cookies.authToken,
-      );
+      ));
       return res.code(302).redirect(result.returnTo);
     } catch (error) {
       const code =
